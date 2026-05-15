@@ -44,6 +44,15 @@ export function getSemana(referencia: Date): Date[] {
   });
 }
 
+/** Devuelve 9 días: 2 anteriores + hoy + 6 siguientes, centrado en `hoy` */
+export function getVentanaDias(hoy: Date): Date[] {
+  return Array.from({ length: 9 }, (_, i) => {
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() - 2 + i);
+    return d;
+  });
+}
+
 export function esMismodia(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -72,10 +81,10 @@ export function formatHora(hora: string): string {
   return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
 }
 
-/** Actividades antes de las 13hs se consideran "mañana" */
+/** Actividades antes de las 12hs se consideran "mañana" */
 export function esMañana(horaInicio: string): boolean {
   const { horas } = parseHora(horaInicio);
-  return horas < 13;
+  return horas < 12;
 }
 
 /** Retorna Age a partir de fecha_nacimiento 'YYYY-MM-DD' */

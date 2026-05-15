@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -14,11 +14,7 @@ interface DaySelectorProps {
 export function DaySelector({ semana, diaSeleccionado, onSeleccionar }: DaySelectorProps) {
   return (
     <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-      >
+      <View style={styles.row}>
         {semana.map((dia) => {
           const activo = esMismodia(dia, diaSeleccionado);
           return (
@@ -41,7 +37,7 @@ export function DaySelector({ semana, diaSeleccionado, onSeleccionar }: DaySelec
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -51,14 +47,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ui.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.ui.border,
-  },
-  scroll: {
-    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    gap: Spacing.xs,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xs,
   },
   dayItem: {
-    width: 40,
+    flex: 1,
     alignItems: 'center',
     gap: 4,
   },
@@ -72,9 +70,9 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.bold,
   },
   numeroBg: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -82,7 +80,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.red,
   },
   numeroDia: {
-    fontSize: Typography.size.md,
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.text.primary,
   },

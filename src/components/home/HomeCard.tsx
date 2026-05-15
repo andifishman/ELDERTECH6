@@ -1,95 +1,88 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
-import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { SpeakRow } from '@/components/common/SpeakButton';
 
 interface HomeCardProps {
   label: string;
+  subtitulo?: string;
   emoji: string;
   backgroundColor: string;
   textoHablar: string;
   onPress: () => void;
-  variant?: 'large' | 'small';
 }
 
 export function HomeCard({
   label,
+  subtitulo,
   emoji,
   backgroundColor,
   textoHablar,
   onPress,
-  variant = 'small',
 }: HomeCardProps) {
-  if (variant === 'large') {
-    return (
-      <TouchableOpacity
-        style={[styles.largeCard, { backgroundColor }]}
-        onPress={onPress}
-        activeOpacity={0.85}
-        accessibilityLabel={label}
-        accessibilityRole="button"
-      >
-        <Text style={styles.largeEmoji}>{emoji}</Text>
-        <Text style={styles.largeLabel}>{label}</Text>
-      </TouchableOpacity>
-    );
-  }
-
   return (
     <TouchableOpacity
-      style={[styles.smallCard, { backgroundColor }]}
+      style={[styles.card, { backgroundColor }]}
       onPress={onPress}
       activeOpacity={0.85}
       accessibilityLabel={label}
       accessibilityRole="button"
     >
-      <Text style={styles.smallEmoji}>{emoji}</Text>
-      <Text style={styles.smallLabel}>{label}</Text>
-      <SpeakRow texto={textoHablar} onDark />
+      <View style={styles.emojiContainer}>
+        <Text style={styles.emoji}>{emoji}</Text>
+      </View>
+      <Text style={styles.label}>{label}</Text>
+      {subtitulo ? (
+        <Text style={styles.subtitulo}>{subtitulo}</Text>
+      ) : null}
+      <View style={styles.speakWrapper}>
+        <SpeakRow texto={textoHablar} onDark />
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  largeCard: {
-    width: '100%',
-    borderRadius: Spacing.radius.xl,
-    paddingVertical: Spacing.xxl,
-    paddingHorizontal: Spacing.xxl,
-    alignItems: 'center',
-    gap: Spacing.sm,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-  },
-  largeEmoji: {
-    fontSize: 52,
-  },
-  largeLabel: {
-    ...Typography.styles.cardTitle,
-  },
-  smallCard: {
-    flex: 1,
+  card: {
+    // Ocupa mitad del ancho menos el gap
+    width: '48%',
     borderRadius: Spacing.radius.xl,
     paddingVertical: Spacing.xl,
     paddingHorizontal: Spacing.lg,
-    alignItems: 'center',
     gap: Spacing.sm,
-    minHeight: 140,
+    minHeight: 180,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 4,
   },
-  smallEmoji: {
-    fontSize: 36,
+  emojiContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
   },
-  smallLabel: {
-    ...Typography.styles.cardTitleSmall,
+  emoji: {
+    fontSize: 28,
+  },
+  label: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: '#FFFFFF',
+  },
+  subtitulo: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.regular,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 20,
+    flex: 1,
+  },
+  speakWrapper: {
+    marginTop: Spacing.xs,
   },
 });

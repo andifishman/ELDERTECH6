@@ -14,12 +14,12 @@ import { useActividades } from '@/hooks/useActividades';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { getSemana, formatFechaLarga, esMismodia } from '@/utils/dateUtils';
+import { getVentanaDias, formatFechaLarga, esMismodia } from '@/utils/dateUtils';
 import type { ActividadCompleta } from '@/types/database.types';
 
 export default function HorariosScreen() {
   const [diaSeleccionado, setDiaSeleccionado] = useState(new Date());
-  const semana = getSemana(diaSeleccionado);
+  const ventana = getVentanaDias(new Date());
 
   const { data: actividades, isLoading, error, refetch } = useActividades(diaSeleccionado);
 
@@ -43,7 +43,7 @@ export default function HorariosScreen() {
       </View>
 
       <DaySelector
-        semana={semana}
+        semana={ventana}
         diaSeleccionado={diaSeleccionado}
         onSeleccionar={setDiaSeleccionado}
       />
@@ -54,7 +54,7 @@ export default function HorariosScreen() {
           <LoadingState mensaje="Cargando actividades..." />
         ) : error ? (
           <ErrorState
-            mensaje="No se pudieron cargar las actividades."
+            mensaje={error instanceof Error ? error.message : 'No se pudieron cargar las actividades.'}
             onReintentar={refetch}
           />
         ) : !actividades?.length ? (
