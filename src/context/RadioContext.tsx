@@ -63,7 +63,12 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       });
 
       const { sound } = await Audio.Sound.createAsync(
-        { uri: radio.urlStream },
+        {
+          uri: radio.urlStream,
+          // Icy-MetaData: 0 fuerza HTTP/1.1 en servidores Icecast/SHOUTcast.
+          // Sin esto, responden con "ICY 200 OK" que Android no puede parsear.
+          headers: { 'Icy-MetaData': '0', 'User-Agent': 'Mozilla/5.0' },
+        },
         { shouldPlay: true, isLooping: false },
         (status) => {
           // Evitar actualizar estado si el componente ya se desmontó
