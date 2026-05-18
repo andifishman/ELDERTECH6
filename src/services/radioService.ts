@@ -1,129 +1,157 @@
 import { supabase } from './supabase';
-import type { RadioStation, RadioGroup } from '@/types/radio.types';
-import { PAIS_LABELS } from '@/types/radio.types';
+import type { RadioStation, CategoriaRadio, PaisRadio, RadioData } from '@/types/radio.types';
+import { PAIS_LABELS, PAIS_FLAGS } from '@/types/radio.types';
 
-/**
- * Trae todas las radios activas agrupadas por país.
- * Primero las destacadas, luego el resto.
- */
-export async function getRadios(): Promise<RadioGroup[]> {
-  const { data, error } = await supabase
-    .from('radios')
-    .select(`
-      *,
-      categoria:categorias_radio(nombre, emoji)
-    `)
-    .eq('activo', true)
-    .order('es_destacada', { ascending: false })
-    .order('nombre', { ascending: true });
+export async function getRadioData(): Promise<RadioData> {
+  const [radiosRes, categoriasRes, paisesRes] = await Promise.all([
+    supabase
+      .from('radios')
+      .select(`
+        *,
+        categoria:categorias_radio(id, nombre, emoji),
+        pais_data:paises_radio(codigo, nombre, emoji_bandera)
+      `)
+      .eq('activo', true)
+      .order('es_destacada', { ascending: false })
+      .order('nombre', { ascending: true }),
+    supabase
+      .from('categorias_radio')
+      .select('id, nombre, emoji, orden')
+      .eq('activo', true)
+      .order('orden'),
+    supabase
+      .from('paises_radio')
+      .select('id, codigo, nombre, emoji_bandera, orden')
+      .eq('activo', true)
+      .order('orden'),
+  ]);
 
-  if (error) throw new Error(`Error al cargar radios: ${error.message}`);
+  if (radiosRes.error) throw new Error(`Error al cargar radios: ${radiosRes.error.message}`);
+  if (categoriasRes.error) throw new Error(`Error al cargar categorías: ${categoriasRes.error.message}`);
+  if (paisesRes.error) throw new Error(`Error al cargar países: ${paisesRes.error.message}`);
 
-  const radios: RadioStation[] = (data ?? []).map((r: any) => ({
+  const radios: RadioStation[] = (radiosRes.data ?? []).map((r: any) => ({
     id: r.id,
     nombre: r.nombre,
     descripcion: r.descripcion,
     urlStream: r.url_stream ?? '',
     urlLogo: r.url_logo,
     pais: r.pais ?? 'AR',
+    paisNombre: r.pais_data?.nombre ?? PAIS_LABELS[r.pais] ?? r.pais,
+    paisEmoji: r.pais_data?.emoji_bandera ?? PAIS_FLAGS[r.pais] ?? null,
     ciudad: r.ciudad,
     genero: r.genero,
     esDestacada: r.es_destacada,
+    categoriaId: r.categoria?.id ?? null,
     categoria: r.categoria?.nombre ?? null,
     categoriaEmoji: r.categoria?.emoji ?? null,
   }));
 
-  // Agrupar por país, manteniendo el orden de primera aparición
-  const mapa = new Map<string, RadioStation[]>();
-  for (const radio of radios) {
-    if (!mapa.has(radio.pais)) mapa.set(radio.pais, []);
-    mapa.get(radio.pais)!.push(radio);
-  }
-
-  return Array.from(mapa.entries()).map(([pais, items]) => ({
-    pais,
-    paisLabel: PAIS_LABELS[pais] ?? pais,
-    radios: items,
+  const categorias: CategoriaRadio[] = (categoriasRes.data ?? []).map((c: any) => ({
+    id: c.id,
+    nombre: c.nombre,
+    emoji: c.emoji,
+    orden: c.orden,
   }));
+
+  // Solo mostrar países que tienen al menos una radio activa
+  const paisesConRadios = new Set(radios.map((r) => r.pais));
+  const paises: PaisRadio[] = (paisesRes.data ?? [])
+    .filter((p: any) => paisesConRadios.has(p.codigo))
+    .map((p: any) => ({
+      id: p.id,
+      codigo: p.codigo,
+      nombre: p.nombre,
+      emojiBandera: p.emoji_bandera,
+      orden: p.orden,
+    }));
+
+  return { radios, categorias, paises };
 }
 
-/** Radios de fallback hardcodeadas para desarrollo sin Supabase */
-export const RADIOS_FALLBACK: RadioGroup[] = [
-  {
-    pais: 'AR',
-    paisLabel: 'Argentina',
-    radios: [
-      {
-        id: '1',
-        nombre: 'Radio Mitre',
-        descripcion: 'Radio de noticias y actualidad',
-        urlStream: 'https://17923.live.streamtheworld.com/MITRE.mp3',
-        urlLogo: null,
-        pais: 'AR',
-        ciudad: 'Buenos Aires',
-        genero: 'Noticias / Actualidad',
-        esDestacada: true,
-        categoria: 'Noticias',
-        categoriaEmoji: '📰',
-      },
-      {
-        id: '2',
-        nombre: 'La 100',
-        descripcion: 'Los mejores hits',
-        urlStream: 'https://17953.live.streamtheworld.com/LA100.mp3',
-        urlLogo: null,
-        pais: 'AR',
-        ciudad: 'Buenos Aires',
-        genero: 'Pop',
-        esDestacada: true,
-        categoria: 'Música popular',
-        categoriaEmoji: '🎵',
-      },
-      {
-        id: '3',
-        nombre: 'Radio Nacional',
-        descripcion: 'Radio pública argentina',
-        urlStream: 'https://stream.radionacional.com.ar/radio-nacional-am870-lrar',
-        urlLogo: null,
-        pais: 'AR',
-        ciudad: 'Buenos Aires',
-        genero: 'General',
-        esDestacada: true,
-        categoria: 'General',
-        categoriaEmoji: '📻',
-      },
-    ],
-  },
-  {
-    pais: 'IL',
-    paisLabel: 'Israel',
-    radios: [
-      {
-        id: '4',
-        nombre: 'Galatz',
-        descripcion: 'Radio del ejército israelí',
-        urlStream: 'https://glzwizzlv.bynetcdn.com/glz_mp3',
-        urlLogo: null,
-        pais: 'IL',
-        ciudad: 'Tel Aviv',
-        genero: 'Pop / Noticias',
-        esDestacada: false,
-        categoria: 'General',
-        categoriaEmoji: '📻',
-      },
-      {
-        id: '5',
-        nombre: 'Reshet Bet',
-        descripcion: 'Noticias y cultura israelí',
-        urlStream: 'https://radioapp.bynetcdn.com/reshetbet/mp3',
-        urlLogo: null,
-        pais: 'IL',
-        ciudad: 'Tel Aviv',
-        genero: 'Noticias',
-        esDestacada: false,
-        categoria: 'Noticias',
-        categoriaEmoji: '📰',
-      },
-    ],
-  },
-];
+export const RADIO_DATA_FALLBACK: RadioData = {
+  radios: [
+    {
+      id: 'f-1',
+      nombre: 'Radio Mitre',
+      descripcion: 'Noticias, política y actualidad — AM 790',
+      urlStream: 'https://playerservices.streamtheworld.com/api/livestream-redirect/AM790_56AAC.aac',
+      urlLogo: null,
+      pais: 'AR',
+      paisNombre: 'Argentina',
+      paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires',
+      genero: 'Noticias',
+      esDestacada: true,
+      categoriaId: null,
+      categoria: 'Noticias',
+      categoriaEmoji: '📰',
+    },
+    {
+      id: 'f-2',
+      nombre: 'Radio Nacional',
+      descripcion: 'Radio pública argentina — AM 870',
+      urlStream: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad1',
+      urlLogo: null,
+      pais: 'AR',
+      paisNombre: 'Argentina',
+      paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires',
+      genero: 'Noticias',
+      esDestacada: true,
+      categoriaId: null,
+      categoria: 'Noticias',
+      categoriaEmoji: '📰',
+    },
+    {
+      id: 'f-3',
+      nombre: 'La 100',
+      descripcion: 'Los mejores hits — FM 99.9',
+      urlStream: 'https://playerservices.streamtheworld.com/api/livestream-redirect/FM999_56.mp3',
+      urlLogo: null,
+      pais: 'AR',
+      paisNombre: 'Argentina',
+      paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires',
+      genero: 'Pop',
+      esDestacada: true,
+      categoriaId: null,
+      categoria: 'Música popular',
+      categoriaEmoji: '🎵',
+    },
+    {
+      id: 'f-4',
+      nombre: 'Galei Tzahal',
+      descripcion: 'Radio israelí en vivo',
+      urlStream: 'https://glzwizzlv.bynetcdn.com/glz_mp3',
+      urlLogo: null,
+      pais: 'IL',
+      paisNombre: 'Israel',
+      paisEmoji: '🇮🇱',
+      ciudad: 'Tel Aviv',
+      genero: 'General',
+      esDestacada: true,
+      categoriaId: null,
+      categoria: 'General',
+      categoriaEmoji: '📻',
+    },
+    {
+      id: 'f-5',
+      nombre: 'NPR News',
+      descripcion: 'Radio pública de Estados Unidos',
+      urlStream: 'https://npr-ice.streamguys1.com/live.mp3',
+      urlLogo: null,
+      pais: 'US',
+      paisNombre: 'Estados Unidos',
+      paisEmoji: '🇺🇸',
+      ciudad: 'Washington',
+      genero: 'Noticias',
+      esDestacada: true,
+      categoriaId: null,
+      categoria: 'Noticias',
+      categoriaEmoji: '📰',
+    },
+  ],
+  categorias: [],
+  paises: [],
+};

@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -9,44 +15,83 @@ import type { RadioStation } from '@/types/radio.types';
 
 interface RadioCardProps {
   radio: RadioStation;
+  mostrarPais?: boolean;
 }
 
-export function RadioCard({ radio }: RadioCardProps) {
+export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
   const { alternar, radioActual, estado } = useRadioPlayer();
   const esActiva = radioActual?.id === radio.id;
   const cargando = esActiva && estado === 'loading';
   const reproduciendo = esActiva && estado === 'playing';
+  const hayError = esActiva && estado === 'error';
 
   return (
-    <View style={styles.card}>
-      {/* Emoji de categoría */}
-      <View style={styles.logoContainer}>
-        <Text style={styles.logoEmoji}>{radio.categoriaEmoji ?? '📻'}</Text>
+    <TouchableOpacity
+      style={[styles.card, reproduciendo && styles.cardActiva]}
+      onPress={() => alternar(radio)}
+      activeOpacity={0.75}
+      accessibilityLabel={
+        reproduciendo ? `Detener ${radio.nombre}` : `Reproducir ${radio.nombre}`
+      }
+      accessibilityRole="button"
+      accessibilityState={{ selected: reproduciendo }}
+    >
+      {/* Ícono / emoji de categoría */}
+      <View style={[styles.iconoContainer, reproduciendo && styles.iconoContainerActivo]}>
+        <Text style={styles.icono}>{radio.categoriaEmoji ?? '📻'}</Text>
       </View>
 
-      {/* Solo el nombre — sin descripción ni género */}
-      <Text style={styles.nombre} numberOfLines={2}>
-        {radio.nombre}
-      </Text>
+      {/* Info */}
+      <View style={styles.info}>
+        <View style={styles.nombreRow}>
+          <Text style={[styles.nombre, reproduciendo && styles.nombreActivo]} numberOfLines={1}>
+            {radio.nombre}
+          </Text>
+          {radio.esDestacada && !reproduciendo && (
+            <Text style={styles.destacadaBadge}>⭐</Text>
+          )}
+        </View>
 
-      {/* Botón play/stop — grande y fácil de tocar */}
-      <TouchableOpacity
-        style={[styles.playButton, reproduciendo && styles.playButtonActivo]}
-        onPress={() => alternar(radio)}
-        accessibilityLabel={reproduciendo ? `Detener ${radio.nombre}` : `Reproducir ${radio.nombre}`}
-        accessibilityRole="button"
-      >
+        {radio.descripcion ? (
+          <Text style={styles.descripcion} numberOfLines={1}>
+            {radio.descripcion}
+          </Text>
+        ) : null}
+
+        <View style={styles.badgesRow}>
+          {radio.categoriaEmoji && radio.categoria ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{radio.categoria}</Text>
+            </View>
+          ) : null}
+          {mostrarPais && radio.paisEmoji ? (
+            <View style={[styles.badge, styles.badgePais]}>
+              <Text style={styles.badgeText}>
+                {radio.paisEmoji} {radio.paisNombre}
+              </Text>
+            </View>
+          ) : null}
+          {hayError ? (
+            <View style={[styles.badge, styles.badgeError]}>
+              <Text style={[styles.badgeText, styles.badgeErrorText]}>Sin señal</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Botón play / stop */}
+      <View style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}>
         {cargando ? (
           <ActivityIndicator size="large" color={Colors.text.onDark} />
         ) : (
           <Ionicons
             name={reproduciendo ? 'stop' : 'play'}
-            size={32}
+            size={26}
             color={Colors.text.onDark}
           />
         )}
-      </TouchableOpacity>
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -59,51 +104,104 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.screen.horizontal,
     marginBottom: Spacing.md,
     borderRadius: Spacing.radius.lg,
-    paddingVertical: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.lg,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    minHeight: 80,
+    borderWidth: 2,
+    borderColor: 'transparent',
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
   },
-
-  // Círculo con emoji — más grande
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#E3F0FF',
+  cardActiva: {
+    borderColor: Colors.radio.playButton,
+    backgroundColor: '#F0FAF0',
+    elevation: 3,
+    shadowOpacity: 0.15,
+  },
+  iconoContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E8F0FF',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  logoEmoji: {
-    fontSize: 32,
+  iconoContainerActivo: {
+    backgroundColor: '#D0EDD0',
+  },
+  icono: {
+    fontSize: 26,
+  },
+  info: {
+    flex: 1,
+    gap: 3,
+  },
+  nombreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
 
   // Nombre de la radio — grande y legible
   nombre: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: Typography.weight.regular,
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
-    lineHeight: 32,
+    flex: 1,
   },
-
-  // Botón play — grande (72×72) para no errarle
-  playButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  nombreActivo: {
+    color: Colors.radio.playButton,
+  },
+  destacadaBadge: {
+    fontSize: 14,
+  },
+  descripcion: {
+    fontSize: Typography.size.sm,
+    color: Colors.text.secondary,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 2,
+  },
+  badge: {
+    backgroundColor: Colors.ui.background,
+    borderRadius: Spacing.radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgePais: {
+    backgroundColor: '#E8F0FF',
+  },
+  badgeError: {
+    backgroundColor: '#FFEBEE',
+  },
+  badgeText: {
+    fontSize: Typography.size.xs,
+    color: Colors.text.secondary,
+  },
+  badgeErrorText: {
+    color: Colors.brand.red,
+  },
+  playBtn: {
+    width: Spacing.touch.comfortable,
+    height: Spacing.touch.comfortable,
+    borderRadius: Spacing.touch.comfortable / 2,
     backgroundColor: Colors.radio.playButton,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
-    flexShrink: 0,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
-  playButtonActivo: {
-    backgroundColor: Colors.radio.playButtonActive,
+  playBtnActivo: {
+    backgroundColor: Colors.brand.red,
   },
 });
