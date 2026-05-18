@@ -82,7 +82,7 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
       {/* Botón play / stop */}
       <View style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}>
         {cargando ? (
-          <ActivityIndicator size="small" color={Colors.text.onDark} />
+          <ActivityIndicator size="large" color={Colors.text.onDark} />
         ) : (
           <Ionicons
             name={reproduciendo ? 'stop' : 'play'}
@@ -96,12 +96,13 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
 }
 
 const styles = StyleSheet.create({
+  // Tarjeta más alta para facilitar el toque
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.ui.surface,
     marginHorizontal: Spacing.screen.horizontal,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
     borderRadius: Spacing.radius.lg,
     padding: Spacing.lg,
     gap: Spacing.md,
@@ -127,6 +128,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F0FF',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   iconoContainerActivo: {
     backgroundColor: '#D0EDD0',
@@ -143,6 +145,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
   },
+
+  // Nombre de la radio — grande y legible
   nombre: {
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,

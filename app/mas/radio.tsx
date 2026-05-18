@@ -37,7 +37,7 @@ export default function RadioScreen() {
   if (isLoading) {
     return (
       <View style={styles.root}>
-        <AppHeader titulo="Radio" subtitulo="Escuchá radios en vivo" mostrarVolver />
+        <AppHeader titulo="Radio" mostrarVolver tituloGrande />
         <LoadingState mensaje="Cargando radios..." />
       </View>
     );
@@ -46,7 +46,7 @@ export default function RadioScreen() {
   if (error || !data) {
     return (
       <View style={styles.root}>
-        <AppHeader titulo="Radio" subtitulo="Escuchá radios en vivo" mostrarVolver />
+        <AppHeader titulo="Radio" mostrarVolver tituloGrande />
         <ErrorState mensaje="No se pudieron cargar las radios." onReintentar={refetch} />
       </View>
     );
@@ -54,9 +54,9 @@ export default function RadioScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Header sin subtítulo, título grande */}
       <AppHeader
         titulo="Radio"
-        subtitulo="Escuchá radios en vivo"
         mostrarVolver
         textoHablar="Radio. Tocá una radio para escucharla en vivo. Podés filtrar por país o por tipo de música."
       />

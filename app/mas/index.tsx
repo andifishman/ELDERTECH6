@@ -13,13 +13,24 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 
-const OPCIONES = [
+interface OpcionMenu {
+  id: string;
+  emoji: string;
+  titulo: string;
+  descripcion: string;
+  ruta: string;
+  textoHablar: string;
+  proximamente?: boolean;
+}
+
+// Opciones disponibles — aparecen arriba de la línea roja
+const OPCIONES_ACTIVAS: OpcionMenu[] = [
   {
     id: 'clima',
     emoji: '⛅',
     titulo: 'Clima',
     descripcion: 'Consultá el clima del día',
-    ruta: '/mas/clima' as const,
+    ruta: '/mas/clima',
     textoHablar: 'Clima. Consultá el clima del día.',
   },
   {
@@ -27,27 +38,31 @@ const OPCIONES = [
     emoji: '📻',
     titulo: 'Radio',
     descripcion: 'Escuchá la radio',
-    ruta: '/mas/radio' as const,
+    ruta: '/mas/radio',
     textoHablar: 'Radio. Escuchá radios en vivo.',
   },
+];
+
+// Opciones próximamente — aparecen abajo de la línea, bloqueadas y tachadas
+const OPCIONES_PROXIMAMENTE: OpcionMenu[] = [
   {
     id: 'juegos',
     emoji: '🎲',
     titulo: 'Juegos',
     descripcion: 'Divertite con ElderTech',
-    ruta: '/mas/juegos' as const,
+    ruta: '/mas/juegos',
     textoHablar: 'Juegos. Divertite con ElderTech.',
     proximamente: true,
   },
-] as const;
+];
 
 export default function MasScreen() {
   return (
     <View style={styles.root}>
       <AppHeader
         titulo="Más"
-        subtitulo="Ver más opciones de la aplicación"
         mostrarVolver
+        tituloGrande
         textoHablar="Más opciones: Clima, Radio y Juegos."
       />
 
@@ -56,34 +71,47 @@ export default function MasScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {OPCIONES.map((opcion, index) => (
-          <React.Fragment key={opcion.id}>
-            <TouchableOpacity
-              style={styles.opcionCard}
-              onPress={() => !opcion.proximamente && router.push(opcion.ruta)}
-              activeOpacity={opcion.proximamente ? 1 : 0.8}
-              accessibilityLabel={opcion.titulo}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: opcion.proximamente }}
-            >
-              <View style={styles.opcionLeft}>
-                <View style={styles.emojiContainer}>
-                  <Text style={styles.opcionEmoji}>{opcion.emoji}</Text>
-                </View>
-                <View style={styles.opcionInfo}>
-                  <Text style={styles.opcionTitulo}>{opcion.titulo}</Text>
-                  <Text style={styles.opcionDescripcion}>{opcion.descripcion}</Text>
-                  {opcion.proximamente && (
-                    <Text style={styles.proximamente}>Próximamente</Text>
-                  )}
-                </View>
-              </View>
-              <SpeakButton texto={opcion.textoHablar} size="sm" />
-            </TouchableOpacity>
+        {/* ── Opciones disponibles ── */}
+        {OPCIONES_ACTIVAS.map((opcion) => (
+          <TouchableOpacity
+            key={opcion.id}
+            style={styles.opcionCard}
+            onPress={() => router.push(opcion.ruta as any)}
+            activeOpacity={0.8}
+            accessibilityLabel={opcion.titulo}
+            accessibilityRole="button"
+          >
+            <View style={styles.emojiContainer}>
+              <Text style={styles.opcionEmoji}>{opcion.emoji}</Text>
+            </View>
+            <Text style={styles.opcionTitulo}>{opcion.titulo}</Text>
+            <SpeakButton texto={opcion.textoHablar} size="lg" />
+          </TouchableOpacity>
+        ))}
 
-            {/* Separador rojo entre Clima y Radio */}
-            {index === 0 && <View style={styles.separator} />}
-          </React.Fragment>
+        {/* ── Línea roja separadora ── */}
+        <View style={styles.separator} />
+
+        {/* ── Opciones próximamente — bloqueadas y tachadas ── */}
+        {OPCIONES_PROXIMAMENTE.map((opcion) => (
+          <View
+            key={opcion.id}
+            style={[styles.opcionCard, styles.opcionBloqueada]}
+            accessibilityLabel={`${opcion.titulo} — próximamente`}
+          >
+            <View style={styles.opcionOverlay} pointerEvents="none" />
+            <View style={[styles.emojiContainer, styles.emojiContainerBloqueado]}>
+              <Text style={[styles.opcionEmoji, styles.opcionEmojiBloqueado]}>
+                {opcion.emoji}
+              </Text>
+            </View>
+            <View style={styles.opcionInfo}>
+              <Text style={[styles.opcionTitulo, styles.textoBloqueado, styles.textoTachado]}>
+                {opcion.titulo}
+              </Text>
+              <Text style={styles.proximamenteLabel}>🔒 Próximamente</Text>
+            </View>
+          </View>
         ))}
       </ScrollView>
 
@@ -117,9 +145,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.ui.surface,
     borderRadius: Spacing.radius.lg,
-    padding: Spacing.lg,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
-    gap: Spacing.md,
+    gap: Spacing.lg,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -133,33 +162,62 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   emojiContainer: {
-    width: 52,
-    height: 52,
+    width: 64,
+    height: 64,
     borderRadius: Spacing.radius.md,
     backgroundColor: Colors.ui.background,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   opcionEmoji: {
-    fontSize: 28,
+    fontSize: 36,
   },
   opcionInfo: {
     flex: 1,
-    gap: 3,
+    gap: 4,
   },
   opcionTitulo: {
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.bold,
+    flex: 1,
+    fontSize: 26,
+    fontWeight: Typography.weight.medium,
     color: Colors.text.primary,
   },
   opcionDescripcion: {
     fontSize: Typography.size.sm,
     color: Colors.text.secondary,
   },
-  proximamente: {
+  proximamenteLabel: {
     fontSize: Typography.size.xs,
     color: Colors.text.hint,
     fontStyle: 'italic',
+    marginTop: 2,
+  },
+  // Tarjeta bloqueada — fondo grisáceo
+  opcionBloqueada: {
+    opacity: 0.55,
+    position: 'relative',
+  },
+  // Overlay encima de la tarjeta bloqueada
+  opcionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(200,200,200,0.15)',
+    borderRadius: Spacing.radius.lg,
+    zIndex: 1,
+  },
+  // Emoji desaturado en tarjeta bloqueada
+  emojiContainerBloqueado: {
+    backgroundColor: '#E0E0E0',
+  },
+  opcionEmojiBloqueado: {
+    opacity: 0.5,
+  },
+  // Texto tachado
+  textoTachado: {
+    textDecorationLine: 'line-through',
+  },
+  textoBloqueado: {
+    color: Colors.text.hint,
   },
   separator: {
     height: 3,
