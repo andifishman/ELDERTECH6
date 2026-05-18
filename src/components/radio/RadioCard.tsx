@@ -26,16 +26,7 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
   const hayError = esActiva && estado === 'error';
 
   return (
-    <TouchableOpacity
-      style={[styles.card, reproduciendo && styles.cardActiva]}
-      onPress={() => alternar(radio)}
-      activeOpacity={0.75}
-      accessibilityLabel={
-        reproduciendo ? `Detener ${radio.nombre}` : `Reproducir ${radio.nombre}`
-      }
-      accessibilityRole="button"
-      accessibilityState={{ selected: reproduciendo }}
-    >
+    <View style={[styles.card, reproduciendo && styles.cardActiva]}>
       {/* Ícono / emoji de categoría */}
       <View style={[styles.iconoContainer, reproduciendo && styles.iconoContainerActivo]}>
         <Text style={styles.icono}>{radio.categoriaEmoji ?? '📻'}</Text>
@@ -79,8 +70,15 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
         </View>
       </View>
 
-      {/* Botón play / stop */}
-      <View style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}>
+      {/* Botón play / stop — único elemento interactivo */}
+      <TouchableOpacity
+        style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}
+        onPress={() => alternar(radio)}
+        activeOpacity={0.75}
+        accessibilityLabel={reproduciendo ? `Detener ${radio.nombre}` : `Reproducir ${radio.nombre}`}
+        accessibilityRole="button"
+        accessibilityState={{ selected: reproduciendo }}
+      >
         {cargando ? (
           <ActivityIndicator size="large" color={Colors.text.onDark} />
         ) : (
@@ -90,8 +88,8 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
             color={Colors.text.onDark}
           />
         )}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 }
 
