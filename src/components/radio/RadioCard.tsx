@@ -19,29 +19,17 @@ export function RadioCard({ radio }: RadioCardProps) {
 
   return (
     <View style={styles.card}>
-      {/* Ícono de radio */}
+      {/* Emoji de categoría */}
       <View style={styles.logoContainer}>
         <Text style={styles.logoEmoji}>{radio.categoriaEmoji ?? '📻'}</Text>
       </View>
 
-      {/* Info */}
-      <View style={styles.info}>
-        <Text style={styles.nombre} numberOfLines={1}>
-          {radio.nombre}
-        </Text>
-        {radio.descripcion ? (
-          <Text style={styles.descripcion} numberOfLines={1}>
-            {radio.descripcion}
-          </Text>
-        ) : null}
-        {radio.genero ? (
-          <Text style={styles.genero} numberOfLines={1}>
-            {radio.genero}
-          </Text>
-        ) : null}
-      </View>
+      {/* Solo el nombre — sin descripción ni género */}
+      <Text style={styles.nombre} numberOfLines={2}>
+        {radio.nombre}
+      </Text>
 
-      {/* Botón play */}
+      {/* Botón play/stop — grande y fácil de tocar */}
       <TouchableOpacity
         style={[styles.playButton, reproduciendo && styles.playButtonActivo]}
         onPress={() => alternar(radio)}
@@ -49,11 +37,11 @@ export function RadioCard({ radio }: RadioCardProps) {
         accessibilityRole="button"
       >
         {cargando ? (
-          <ActivityIndicator size="small" color={Colors.text.onDark} />
+          <ActivityIndicator size="large" color={Colors.text.onDark} />
         ) : (
           <Ionicons
             name={reproduciendo ? 'stop' : 'play'}
-            size={22}
+            size={32}
             color={Colors.text.onDark}
           />
         )}
@@ -63,57 +51,57 @@ export function RadioCard({ radio }: RadioCardProps) {
 }
 
 const styles = StyleSheet.create({
+  // Tarjeta más alta para facilitar el toque
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.ui.surface,
     marginHorizontal: Spacing.screen.horizontal,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
     borderRadius: Spacing.radius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.md,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.lg,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
   },
+
+  // Círculo con emoji — más grande
   logoContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#E3F0FF',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   logoEmoji: {
-    fontSize: 24,
+    fontSize: 32,
   },
-  info: {
-    flex: 1,
-    gap: 2,
-  },
+
+  // Nombre de la radio — grande y legible
   nombre: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
+    flex: 1,
+    fontSize: 24,
+    fontWeight: Typography.weight.regular,
     color: Colors.text.primary,
+    lineHeight: 32,
   },
-  descripcion: {
-    fontSize: Typography.size.sm,
-    color: Colors.text.secondary,
-  },
-  genero: {
-    fontSize: Typography.size.xs,
-    color: Colors.text.hint,
-  },
+
+  // Botón play — grande (72×72) para no errarle
   playButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: Colors.radio.playButton,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 2,
+    elevation: 3,
+    flexShrink: 0,
   },
   playButtonActivo: {
     backgroundColor: Colors.radio.playButtonActive,

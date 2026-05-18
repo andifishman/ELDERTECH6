@@ -24,6 +24,7 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/common/AppHeader';

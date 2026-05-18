@@ -20,13 +20,22 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { SpeakButton } from '@/components/common/SpeakButton';
 import { formatHora, esMañana } from '@/utils/dateUtils';
 import type { ActividadCompleta } from '@/types/database.types';
+
+// ── Escala responsiva ──
+// Reduce proporcionalmente en pantallas pequeñas para que todo quepa bien.
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = Math.min(1, SCREEN_WIDTH / 390);
+function s(size: number, min?: number): number {
+  const scaled = Math.round(size * scale);
+  return min !== undefined ? Math.max(min, scaled) : scaled;
+}
 
 interface ActividadCardProps {
   /** Datos completos de la actividad (con joins a tipo, ubicación y responsable) */
@@ -95,8 +104,9 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.radius.lg,
     marginHorizontal: Spacing.screen.horizontal,
     marginBottom: Spacing.sm,
-    padding: Spacing.md,
-    gap: Spacing.md,
+    paddingVertical: s(Spacing.lg, 10),
+    paddingHorizontal: s(Spacing.md, 10),
+    gap: s(Spacing.md, 8),
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -106,17 +116,17 @@ const styles = StyleSheet.create({
 
   // Badge de hora — rectángulo redondeado con el color del turno
   timeBadge: {
-    width: 82,
-    height: 52,
+    width: s(82, 68),
+    height: s(52, 44),
     borderRadius: Spacing.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0, // No se achica si el nombre es largo
+    flexShrink: 0,
   },
 
   // Texto de la hora — grande y sin negrita para no cansar la vista
   timeText: {
-    fontSize: 22,
+    fontSize: s(22, 17),
     fontWeight: '500' as const,
     color: '#FFFFFF',
     letterSpacing: 0.5,
@@ -124,9 +134,9 @@ const styles = StyleSheet.create({
 
   // Círculo con el emoji de la actividad
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: s(44, 36),
+    height: s(44, 36),
+    borderRadius: s(22, 18),
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -134,12 +144,15 @@ const styles = StyleSheet.create({
 
   // Emoji dentro del círculo
   emoji: {
-    fontSize: 24,
+    fontSize: s(24, 18),
   },
 
   // Nombre de la actividad — ocupa el espacio restante
   nombre: {
     flex: 1,
-    ...Typography.styles.activityName,
+    fontSize: s(26, 20),
+    fontWeight: '400' as const,
+    color: '#212121',
+    lineHeight: s(34, 26),
   },
 });

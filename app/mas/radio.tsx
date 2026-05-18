@@ -5,7 +5,6 @@ import {
   SectionList,
   StyleSheet,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { RadioCard } from '@/components/radio/RadioCard';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
@@ -22,7 +21,7 @@ export default function RadioScreen() {
   if (isLoading) {
     return (
       <View style={styles.root}>
-        <AppHeader titulo="Radio" subtitulo="Escuchá radios en vivo" mostrarVolver />
+        <AppHeader titulo="Radio" mostrarVolver tituloGrande />
         <LoadingState mensaje="Cargando radios..." />
       </View>
     );
@@ -31,7 +30,7 @@ export default function RadioScreen() {
   if (error || !grupos) {
     return (
       <View style={styles.root}>
-        <AppHeader titulo="Radio" subtitulo="Escuchá radios en vivo" mostrarVolver />
+        <AppHeader titulo="Radio" mostrarVolver tituloGrande />
         <ErrorState mensaje="No se pudieron cargar las radios." onReintentar={refetch} />
       </View>
     );
@@ -45,16 +44,16 @@ export default function RadioScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Header sin subtítulo, título grande */}
       <AppHeader
         titulo="Radio"
-        subtitulo="Escuchá radios en vivo"
         mostrarVolver
+        tituloGrande
         textoHablar="Radio. Tocá una radio para escucharla en vivo."
       />
 
-      {/* Instrucción */}
+      {/* Instrucción centrada como título */}
       <View style={styles.instruccionBar}>
-        <Ionicons name="headset-outline" size={18} color={Colors.text.secondary} />
         <Text style={styles.instruccionTexto}>Tocá una radio para escuchar</Text>
       </View>
 
@@ -83,24 +82,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.ui.background,
   },
+
+  // Barra de instrucción — centrada y grande
   instruccionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
     backgroundColor: Colors.ui.surface,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: Colors.ui.border,
+    alignItems: 'center',
   },
   instruccionTexto: {
-    fontSize: Typography.size.sm,
-    color: Colors.text.secondary,
+    fontSize: Typography.size.xl,
+    color: Colors.text.primary,
+    fontWeight: Typography.weight.regular,
+    textAlign: 'center',
   },
+
   listContent: {
     paddingTop: Spacing.lg,
-    paddingBottom: 100, // espacio para NowPlayingBar
+    paddingBottom: 120,
   },
+
+  // Encabezado de sección (país)
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -111,7 +115,7 @@ const styles = StyleSheet.create({
   },
   sectionPais: {
     fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.bold,
+    fontWeight: Typography.weight.medium,
     color: Colors.text.hint,
     backgroundColor: Colors.ui.border,
     paddingHorizontal: Spacing.sm,
@@ -119,8 +123,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   sectionLabel: {
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.bold,
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.medium,
     color: Colors.text.primary,
   },
 });
