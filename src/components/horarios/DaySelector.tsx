@@ -16,12 +16,24 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { getDiaLetra, esMismodia } from '@/utils/dateUtils';
+
+// ── Escala responsiva ──
+// En pantallas pequeñas (< 380px) los elementos se achican proporcionalmente.
+// En pantallas normales o grandes se usa el tamaño base (factor 1).
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = Math.min(1, SCREEN_WIDTH / 390); // 390px = ancho base de referencia (iPhone 14)
+
+/** Escala un tamaño según el ancho de pantalla, con un mínimo para legibilidad */
+function s(size: number, min?: number): number {
+  const scaled = Math.round(size * scale);
+  return min !== undefined ? Math.max(min, scaled) : scaled;
+}
 
 interface DaySelectorProps {
   /** Lista completa de días disponibles para navegar */
@@ -152,13 +164,23 @@ export function DaySelector({ semana, diaSeleccionado, onSeleccionar, onPedirMas
               {/* Número del día dentro de un círculo */}
               <View style={[
                 styles.numeroBg,
-                activo && styles.numeroBgActivo,   // Fondo rojo si está seleccionado
-                esHoy && !activo && styles.numeroBgHoy, // Borde rojo si es hoy pero no está seleccionado
+                activo && styles.numeroBgActivo,
+                esHoy && !activo && styles.numeroBgHoy,
               ]}>
                 <Text style={[styles.numeroDia, activo && styles.numeroDiaActivo]}>
                   {dia.getDate()}
                 </Text>
               </View>
+
+              {/* Etiqueta "Hoy" debajo del círculo — solo en el día actual.
+                  Placeholder invisible en los demás días para mantener altura uniforme. */}
+              {esHoy ? (
+                <Text style={[styles.etiquetaHoy, activo && styles.etiquetaHoyActivo]}>
+                  Hoy
+                </Text>
+              ) : (
+                <Text style={styles.etiquetaHoyPlaceholder}> </Text>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -187,7 +209,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ui.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.ui.border,
-    paddingVertical: Spacing.md,
+    paddingVertical: s(Spacing.sm, 6),
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 4,
@@ -195,8 +217,8 @@ const styles = StyleSheet.create({
 
   // Botones de flecha — área táctil amplia para facilitar el toque
   arrowBtn: {
-    width: 44,
-    height: 64,
+    width: s(44, 36),
+    height: s(56, 48),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -212,13 +234,13 @@ const styles = StyleSheet.create({
   // Cada ítem de día (letra + número)
   dayItem: {
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 4,
+    gap: s(4, 2),
+    paddingHorizontal: s(4, 2),
   },
 
   // Letra del día (L, M, M, J, V, S, D)
   letraDia: {
-    fontSize: 17,
+    fontSize: s(17, 13),
     fontWeight: Typography.weight.regular,
     color: Colors.text.secondary,
   },
@@ -227,33 +249,49 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.medium,
   },
   letraDiaHoy: {
-    color: Colors.brand.red, // Hoy en rojo aunque no esté seleccionado
+    color: Colors.brand.red,
   },
 
   // Círculo detrás del número
   numeroBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: s(48, 36),
+    height: s(48, 36),
+    borderRadius: s(24, 18),
     alignItems: 'center',
     justifyContent: 'center',
   },
   numeroBgActivo: {
-    backgroundColor: Colors.brand.red, // Relleno rojo = día seleccionado
+    backgroundColor: Colors.brand.red,
   },
   numeroBgHoy: {
     borderWidth: 2,
-    borderColor: Colors.brand.red, // Solo borde = hoy pero no seleccionado
+    borderColor: Colors.brand.red,
   },
 
   // Número del día
   numeroDia: {
-    fontSize: 22,
+    fontSize: s(22, 16),
     fontWeight: Typography.weight.regular,
     color: Colors.text.primary,
   },
   numeroDiaActivo: {
-    color: Colors.text.onDark, // Blanco sobre fondo rojo
+    color: Colors.text.onDark,
     fontWeight: Typography.weight.medium,
+  },
+
+  // Etiqueta "Hoy" debajo del círculo
+  etiquetaHoy: {
+    fontSize: s(16, 12),
+    fontWeight: Typography.weight.bold,
+    color: Colors.brand.red,
+    textAlign: 'center',
+  },
+  etiquetaHoyActivo: {
+    color: Colors.brand.red,
+  },
+  // Placeholder invisible para que todos los días tengan la misma altura
+  etiquetaHoyPlaceholder: {
+    fontSize: s(16, 12),
+    color: 'transparent',
   },
 });

@@ -4,12 +4,12 @@
  * Pantalla principal de Clima.
  *
  * Funcionalidades:
- *  - Muestra el clima de la ciudad natal (Buenos Aires) y de ciudades agregadas
- *  - Selector de ciudades en la parte superior (tabs deslizables)
- *  - Botón "+" para buscar y agregar nuevas ciudades
+ *  - Muestra el clima de la ciudad natal (Buenos Aires) y de ciudades agregadas por el usuario
+ *  - Selector de ciudades en la parte superior con flechas de navegación
+ *  - Botón "Agregar ciudad" para buscar y agregar nuevas ciudades via API
  *  - Botón "Eliminar ciudad" para borrar ciudades agregadas (no la natal)
- *  - Las ciudades se guardan en AsyncStorage para persistir entre sesiones
- *  - Diseño optimizado para personas mayores: texto grande, colores claros, botones amplios
+ *  - Las ciudades se guardan en AsyncStorage y persisten entre sesiones
+ *  - Diseño optimizado para personas mayores: texto grande, botones amplios, colores claros
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -24,7 +24,6 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,10 +37,17 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { PronosticoDia, GeocodingResult, CiudadGuardada } from '@/types/clima.types';
 
-// Clave de AsyncStorage donde se guardan las ciudades del usuario
+// ─────────────────────────────────────────────────────────────────────────────
+// Constantes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Clave de AsyncStorage donde se persisten las ciudades del usuario */
 const STORAGE_KEY = 'eldertech_ciudades_clima';
 
-// Ciudad natal fija — siempre presente, no se puede eliminar
+/**
+ * Ciudad natal fija — Buenos Aires.
+ * Siempre aparece primera en el selector y no se puede eliminar.
+ */
 const CIUDAD_NATAL: CiudadGuardada = {
   id: 'natal',
   nombre: 'Buenos Aires',
@@ -58,77 +64,74 @@ const CIUDAD_NATAL: CiudadGuardada = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ClimaScreen() {
-  // Lista de ciudades guardadas por el usuario (incluye la natal)
+  /** Lista completa de ciudades (natal + las que agregó el usuario) */
   const [ciudades, setCiudades] = useState<CiudadGuardada[]>([CIUDAD_NATAL]);
 
-  // Ciudad actualmente seleccionada en el selector de tabs
+  /** Ciudad cuyo clima se está mostrando actualmente */
   const [ciudadActiva, setCiudadActiva] = useState<CiudadGuardada>(CIUDAD_NATAL);
 
-  // Control del modal de búsqueda de ciudades
+  /** Controla si el modal de búsqueda de ciudades está abierto */
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Control del modal de confirmación de eliminación
+  /** Controla si el modal de confirmación de eliminación está abierto */
   const [modalEliminar, setModalEliminar] = useState(false);
 
-  // Texto ingresado en el buscador de ciudades
+  /** Texto que el usuario escribe en el buscador de ciudades */
   const [busqueda, setBusqueda] = useState('');
 
-  // Resultados de la búsqueda de ciudades
+  /** Resultados devueltos por la API de geocodificación */
   const [resultados, setResultados] = useState<GeocodingResult[]>([]);
 
-  // Indica si se está buscando ciudades en la API
+  /** true mientras se espera respuesta de la API de búsqueda */
   const [buscando, setBuscando] = useState(false);
 
-  // Hook para el clima de la ciudad natal (siempre cargado)
+  // Hook de React Query para el clima de la ciudad natal
   const climaNatal = useClima();
 
-  // Hook para el clima de la ciudad activa (si no es la natal)
-  const climaCiudad = useClimaCiudad(
-    ciudadActiva.esNatal ? null : ciudadActiva
-  );
+  // Hook de React Query para el clima de la ciudad activa (si no es la natal)
+  const climaCiudad = useClimaCiudad(ciudadActiva.esNatal ? null : ciudadActiva);
 
-  // Seleccionar qué datos mostrar según la ciudad activa
+  // Usar los datos de la ciudad natal o de la ciudad activa según corresponda
   const { data, isLoading, error, refetch, isRefetching } = ciudadActiva.esNatal
     ? climaNatal
     : climaCiudad;
 
-  // ── Cargar ciudades guardadas desde AsyncStorage al iniciar ──
+  // ── Cargar ciudades guardadas desde AsyncStorage al iniciar la pantalla ──
   useEffect(() => {
     async function cargarCiudades() {
       try {
         const json = await AsyncStorage.getItem(STORAGE_KEY);
         if (json) {
           const guardadas: CiudadGuardada[] = JSON.parse(json);
-          // Siempre asegurarse de que la ciudad natal esté primera
+          // La ciudad natal siempre va primera, luego las guardadas
           setCiudades([CIUDAD_NATAL, ...guardadas.filter((c) => !c.esNatal)]);
         }
       } catch {
-        // Si falla la lectura, simplemente usar solo la ciudad natal
+        // Si falla la lectura del storage, se usa solo la ciudad natal
       }
     }
     cargarCiudades();
   }, []);
 
-  // ── Guardar ciudades en AsyncStorage cada vez que cambian ──
+  /** Guarda la lista de ciudades en AsyncStorage (excluye la natal que es fija) */
   const persistirCiudades = useCallback(async (lista: CiudadGuardada[]) => {
     try {
-      // Solo guardar las ciudades no natales (la natal es fija)
       const sinNatal = lista.filter((c) => !c.esNatal);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sinNatal));
     } catch {
-      // Fallo silencioso — la app sigue funcionando sin persistencia
+      // Fallo silencioso — la app sigue funcionando aunque no se guarde
     }
   }, []);
 
-  // ── Buscar ciudades en la API mientras el usuario escribe ──
+  // ── Buscar ciudades en la API mientras el usuario escribe (con debounce) ──
   useEffect(() => {
-    // No buscar si el texto es muy corto
+    // No buscar si el texto tiene menos de 2 caracteres
     if (busqueda.trim().length < 2) {
       setResultados([]);
       return;
     }
 
-    // Debounce: esperar 400ms después de que el usuario deje de escribir
+    // Esperar 400ms después del último tecleo antes de llamar a la API
     const timer = setTimeout(async () => {
       setBuscando(true);
       try {
@@ -141,12 +144,13 @@ export default function ClimaScreen() {
       }
     }, 400);
 
+    // Cancelar el timer si el usuario sigue escribiendo
     return () => clearTimeout(timer);
   }, [busqueda]);
 
-  // ── Agregar una ciudad seleccionada desde los resultados de búsqueda ──
+  /** Agrega una ciudad seleccionada desde los resultados de búsqueda */
   function agregarCiudad(geo: GeocodingResult) {
-    // Verificar que la ciudad no esté ya en la lista
+    // Evitar duplicados comparando coordenadas con tolerancia de ~1km
     const yaExiste = ciudades.some(
       (c) => Math.abs(c.lat - geo.latitude) < 0.01 && Math.abs(c.lon - geo.longitude) < 0.01
     );
@@ -157,6 +161,7 @@ export default function ClimaScreen() {
       return;
     }
 
+    // Crear el objeto de ciudad guardada con un ID único basado en timestamp
     const nueva: CiudadGuardada = {
       id: String(Date.now()),
       nombre: geo.name,
@@ -172,16 +177,16 @@ export default function ClimaScreen() {
     setCiudades(nuevaLista);
     persistirCiudades(nuevaLista);
 
-    // Seleccionar automáticamente la ciudad recién agregada
+    // Seleccionar automáticamente la ciudad recién agregada para mostrar su clima
     setCiudadActiva(nueva);
 
-    // Cerrar el modal y limpiar la búsqueda
+    // Cerrar el modal y limpiar el estado de búsqueda
     setModalVisible(false);
     setBusqueda('');
     setResultados([]);
   }
 
-  // ── Eliminar la ciudad activa (solo si no es la natal) ──
+  /** Elimina la ciudad activa (solo funciona si no es la natal) */
   function confirmarEliminar() {
     if (ciudadActiva.esNatal) return;
 
@@ -194,7 +199,7 @@ export default function ClimaScreen() {
     setModalEliminar(false);
   }
 
-  // ── Texto para el botón de voz (TTS) ──
+  /** Texto que lee el botón de voz (TTS) describiendo el clima actual */
   const textoHablar = data ? [
     `Clima en ${data.ciudad}.`,
     `Temperatura actual: ${data.temperatura} grados.`,
@@ -207,7 +212,8 @@ export default function ClimaScreen() {
 
   return (
     <View style={styles.root}>
-      {/* ── Encabezado de pantalla ── */}
+
+      {/* ── Encabezado: título "Clima" grande + botón volver + botón voz ── */}
       <AppHeader
         titulo="Clima"
         mostrarVolver
@@ -215,9 +221,10 @@ export default function ClimaScreen() {
         tituloGrande
       />
 
-      {/* ── Selector de ciudades con flechas ── */}
-      {/* Muestra hasta 3 ciudades a la vez. Si hay más, aparecen flechas para navegar.
-          El botón "+" siempre es visible al final. */}
+      {/* ── Selector de ciudades con flechas de navegación ── */}
+      {/* Muestra hasta 3 ciudades a la vez.
+          Si hay más, aparecen flechas ‹ › para navegar.
+          El botón "Agregar ciudad" siempre está visible al final. */}
       <CiudadSelector
         ciudades={ciudades}
         ciudadActiva={ciudadActiva}
@@ -227,8 +234,10 @@ export default function ClimaScreen() {
 
       {/* ── Contenido principal: clima de la ciudad activa ── */}
       {isLoading ? (
+        // Estado de carga — spinner con nombre de la ciudad
         <LoadingState mensaje={`Cargando clima de ${ciudadActiva.nombre}...`} />
       ) : error || !data ? (
+        // Estado de error — mensaje y botón para reintentar
         <ErrorState
           mensaje="No se pudo cargar el clima. Verificá tu conexión."
           onReintentar={refetch}
@@ -237,6 +246,7 @@ export default function ClimaScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
+            // Pull-to-refresh para actualizar el clima manualmente
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
@@ -244,7 +254,7 @@ export default function ClimaScreen() {
             />
           }
         >
-          {/* Botón eliminar ciudad (solo visible si no es la natal) */}
+          {/* Botón "Eliminar ciudad" — solo visible si la ciudad activa no es la natal */}
           {!ciudadActiva.esNatal && (
             <TouchableOpacity
               style={styles.eliminarBtn}
@@ -262,16 +272,23 @@ export default function ClimaScreen() {
             colors={['#1565C0', '#1976D2', '#2196F3']}
             style={styles.weatherCard}
           >
+            {/* Nombre y código de país */}
             <Text style={styles.ciudadNombre}>{data.ciudad}</Text>
             <Text style={styles.ciudadPais}>{data.pais}</Text>
+
+            {/* Emoji del estado del tiempo */}
             <Text style={styles.weatherEmoji}>{data.emoji}</Text>
+
+            {/* Temperatura actual en grande */}
             <Text style={styles.temperatura}>{data.temperatura}°C</Text>
+
+            {/* Descripción textual y rango del día */}
             <Text style={styles.descripcion}>{data.descripcion}</Text>
             <Text style={styles.maxMin}>
               Máx {data.tempMax}° · Mín {data.tempMin}°
             </Text>
 
-            {/* Detalles: sensación, humedad, viento */}
+            {/* Caja de detalles: sensación térmica, humedad y viento */}
             <View style={styles.detallesRow}>
               <DetalleItem emoji="🌡️" valor={`${data.sensacionTermica}°C`} label="Sensación" />
               <DetalleItem emoji="💧" valor={`${data.humedad}%`} label="Humedad" />
@@ -279,7 +296,7 @@ export default function ClimaScreen() {
             </View>
           </LinearGradient>
 
-          {/* ── Pronóstico 7 días ── */}
+          {/* ── Pronóstico de los próximos 7 días ── */}
           <View style={styles.pronosticoContainer}>
             <Text style={styles.pronosticoTitulo}>Pronóstico 7 días</Text>
             {data.pronostico.map((dia: PronosticoDia) => (
@@ -289,13 +306,14 @@ export default function ClimaScreen() {
         </ScrollView>
       )}
 
-      {/* ── Modal: buscar y agregar ciudad ── */}
+      {/* ── Modal: buscar y agregar una nueva ciudad ── */}
+      {/* Se abre al tocar "Agregar ciudad". Ocupa toda la pantalla desde arriba. */}
       <Modal visible={modalVisible} transparent animationType="none">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitulo}>Agregar ciudad</Text>
 
-            {/* Campo de búsqueda */}
+            {/* Campo de texto para escribir el nombre de la ciudad */}
             <TextInput
               style={styles.searchInput}
               placeholder="Escribí el nombre de la ciudad..."
@@ -307,7 +325,7 @@ export default function ClimaScreen() {
               accessibilityLabel="Buscar ciudad"
             />
 
-            {/* Indicador de carga mientras busca */}
+            {/* Spinner mientras se espera respuesta de la API */}
             {buscando && (
               <ActivityIndicator
                 size="small"
@@ -316,7 +334,7 @@ export default function ClimaScreen() {
               />
             )}
 
-            {/* Lista de resultados */}
+            {/* Lista de ciudades encontradas — al tocar una se agrega */}
             <FlatList
               data={resultados}
               keyExtractor={(_, i) => String(i)}
@@ -337,7 +355,7 @@ export default function ClimaScreen() {
               ItemSeparatorComponent={() => <View style={styles.separador} />}
             />
 
-            {/* Botón cancelar */}
+            {/* Botón cancelar — pegado al fondo del panel */}
             <TouchableOpacity
               style={styles.cancelarBtn}
               onPress={() => {
@@ -353,6 +371,7 @@ export default function ClimaScreen() {
       </Modal>
 
       {/* ── Modal: confirmar eliminación de ciudad ── */}
+      {/* Centrado en pantalla. Muestra el nombre de la ciudad a eliminar. */}
       <Modal visible={modalEliminar} transparent animationType="fade">
         <View style={styles.modalOverlayCentrado}>
           <View style={styles.modalBoxPequeno}>
@@ -361,12 +380,14 @@ export default function ClimaScreen() {
               ¿Querés eliminar {ciudadActiva.nombre}?
             </Text>
             <View style={styles.modalBtns}>
+              {/* Botón principal: confirmar eliminación */}
               <TouchableOpacity
                 style={styles.btnEliminarModal}
                 onPress={confirmarEliminar}
               >
                 <Text style={styles.btnEliminarModalTexto}>Eliminar</Text>
               </TouchableOpacity>
+              {/* Botón secundario: cancelar y volver */}
               <TouchableOpacity
                 style={styles.btnCancelarModal}
                 onPress={() => setModalEliminar(false)}
@@ -386,9 +407,14 @@ export default function ClimaScreen() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Selector de ciudades con flechas de navegación.
- * Muestra hasta 3 tabs a la vez. Si hay más ciudades, las flechas permiten navegar.
- * El botón "+" siempre está visible al final para agregar nuevas ciudades.
+ * CiudadSelector
+ * ──────────────
+ * Barra horizontal con tabs de ciudades y flechas de navegación.
+ *
+ * - Muestra hasta 3 ciudades a la vez
+ * - Si hay más de 3, aparecen flechas ‹ › para desplazarse
+ * - La flecha izquierda no aparece cuando se está al inicio (sin espacio vacío)
+ * - El botón "Agregar ciudad" siempre está visible al final
  */
 function CiudadSelector({
   ciudades,
@@ -401,11 +427,13 @@ function CiudadSelector({
   onSeleccionar: (c: CiudadGuardada) => void;
   onAgregar: () => void;
 }) {
-  // Cuántas ciudades mostrar a la vez (sin contar el botón "+")
+  /** Cantidad máxima de ciudades visibles al mismo tiempo */
   const VISIBLE = 3;
+
+  /** Índice del primer tab visible en la ventana actual */
   const [inicio, setInicio] = useState(0);
 
-  // Cuando se selecciona una ciudad, asegurarse de que sea visible
+  // Cuando cambia la ciudad activa, ajustar la ventana para que sea visible
   useEffect(() => {
     const idx = ciudades.findIndex((c) => c.id === ciudadActiva.id);
     if (idx < 0) return;
@@ -415,21 +443,28 @@ function CiudadSelector({
 
   const puedeAtras = inicio > 0;
   const puedeAdelante = inicio + VISIBLE < ciudades.length;
+
+  /** Ciudades que se muestran en este momento */
   const visibles = ciudades.slice(inicio, inicio + VISIBLE);
 
   return (
     <View style={styles.ciudadesBar}>
-      {/* Flecha izquierda — solo visible si hay ciudades ocultas a la izquierda */}
-      <TouchableOpacity
-        style={[styles.ciudadArrow, !puedeAtras && styles.ciudadArrowHidden]}
-        onPress={() => puedeAtras && setInicio((p) => p - 1)}
-        disabled={!puedeAtras}
-        accessibilityLabel="Ciudad anterior"
-      >
-        <Ionicons name="chevron-back" size={22} color={Colors.text.secondary} />
-      </TouchableOpacity>
 
-      {/* Tabs de ciudades visibles */}
+      {/* Flecha izquierda — solo se renderiza si hay ciudades ocultas a la izquierda.
+          Cuando no hay, se usa un placeholder de ancho 0 para no dejar espacio vacío. */}
+      {puedeAtras ? (
+        <TouchableOpacity
+          style={styles.ciudadArrow}
+          onPress={() => setInicio((p) => p - 1)}
+          accessibilityLabel="Ciudad anterior"
+        >
+          <Ionicons name="chevron-back" size={22} color={Colors.text.secondary} />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.ciudadArrowPlaceholder} />
+      )}
+
+      {/* Tabs de las ciudades visibles actualmente */}
       <View style={styles.ciudadesRow}>
         {visibles.map((ciudad) => {
           const activa = ciudad.id === ciudadActiva.id;
@@ -442,9 +477,7 @@ function CiudadSelector({
               accessibilityRole="tab"
               accessibilityState={{ selected: activa }}
             >
-              <Text
-                style={[styles.ciudadTabTexto, activa && styles.ciudadTabTextoActivo]}
-              >
+              <Text style={[styles.ciudadTabTexto, activa && styles.ciudadTabTextoActivo]}>
                 {ciudad.nombre}
               </Text>
             </TouchableOpacity>
@@ -453,29 +486,36 @@ function CiudadSelector({
       </View>
 
       {/* Flecha derecha — solo visible si hay ciudades ocultas a la derecha */}
-      <TouchableOpacity
-        style={[styles.ciudadArrow, !puedeAdelante && styles.ciudadArrowHidden]}
-        onPress={() => puedeAdelante && setInicio((p) => p + 1)}
-        disabled={!puedeAdelante}
-        accessibilityLabel="Ciudad siguiente"
-      >
-        <Ionicons name="chevron-forward" size={22} color={Colors.text.secondary} />
-      </TouchableOpacity>
+      {puedeAdelante && (
+        <TouchableOpacity
+          style={styles.ciudadArrow}
+          onPress={() => setInicio((p) => p + 1)}
+          accessibilityLabel="Ciudad siguiente"
+        >
+          <Ionicons name="chevron-forward" size={22} color={Colors.text.secondary} />
+        </TouchableOpacity>
+      )}
 
-      {/* Botón "+" siempre visible para agregar ciudad */}
+      {/* Botón "Agregar ciudad" — siempre visible, pegado justo después de los tabs */}
       <TouchableOpacity
         style={styles.addBtn}
         onPress={onAgregar}
         accessibilityLabel="Agregar ciudad"
         accessibilityRole="button"
       >
-        <Ionicons name="add" size={24} color={Colors.text.secondary} />
+        <Ionicons name="add" size={18} color={Colors.text.secondary} />
+        <Text style={styles.addBtnTexto}>Agregar ciudad</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-/** Muestra un detalle del clima (sensación, humedad o viento) dentro de la card */
+/**
+ * DetalleItem
+ * ───────────
+ * Muestra un dato puntual del clima dentro de la caja de detalles:
+ * sensación térmica, humedad o velocidad del viento.
+ */
 function DetalleItem({ emoji, valor, label }: { emoji: string; valor: string; label: string }) {
   return (
     <View style={styles.detalleItem}>
@@ -486,7 +526,12 @@ function DetalleItem({ emoji, valor, label }: { emoji: string; valor: string; la
   );
 }
 
-/** Muestra una fila del pronóstico de 7 días */
+/**
+ * PronosticoDiaRow
+ * ────────────────
+ * Fila del pronóstico de 7 días.
+ * Muestra: nombre del día | emoji del tiempo | temperaturas máx/mín
+ */
 function PronosticoDiaRow({ dia }: { dia: PronosticoDia }) {
   return (
     <View style={styles.pronosticoRow}>
@@ -504,12 +549,13 @@ function PronosticoDiaRow({ dia }: { dia: PronosticoDia }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  /** Contenedor raíz de toda la pantalla */
   root: {
     flex: 1,
     backgroundColor: Colors.ui.background,
   },
 
-  // ── Selector de ciudades ──
+  // ── Barra de selector de ciudades ──
   ciudadesBar: {
     backgroundColor: Colors.ui.surface,
     borderBottomWidth: 1,
@@ -519,6 +565,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.xs,
   },
+  /** Botón de flecha (izquierda o derecha) */
   ciudadArrow: {
     width: 32,
     height: 44,
@@ -526,15 +573,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  ciudadArrowHidden: {
-    opacity: 0,           // Invisible pero ocupa espacio para mantener el layout
+  /** Placeholder de ancho 0 — reemplaza la flecha izquierda cuando no hay ciudades ocultas */
+  ciudadArrowPlaceholder: {
+    width: 0,
   },
+  /** Fila que contiene los tabs de ciudades visibles */
   ciudadesRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    justifyContent: 'flex-start',
   },
   ciudadesScroll: {
     paddingHorizontal: Spacing.md,
@@ -542,6 +589,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
+  /** Tab de ciudad no seleccionada */
   ciudadTab: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -551,6 +599,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.ui.border,
     alignItems: 'center',
   },
+  /** Tab de ciudad actualmente seleccionada — fondo azul */
   ciudadTabActiva: {
     backgroundColor: Colors.weather.background,
     borderColor: Colors.weather.background,
@@ -564,20 +613,26 @@ const styles = StyleSheet.create({
     color: Colors.text.onDark,
     fontWeight: Typography.weight.medium,
   },
+  /** Botón "Agregar ciudad" con borde punteado */
   addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Spacing.radius.full,
     borderWidth: 2,
     borderColor: Colors.ui.border,
     borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
     flexShrink: 0,
     marginLeft: Spacing.xs,
   },
+  addBtnTexto: {
+    fontSize: Typography.size.sm,
+    color: Colors.text.secondary,
+  },
 
-  // ── Botón eliminar ciudad ──
+  // ── Botón "Eliminar ciudad" (solo visible en ciudades no natales) ──
   eliminarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -595,12 +650,12 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.medium,
   },
 
-  // ── Card principal de clima ──
+  // ── Card principal de clima (gradiente azul) ──
   weatherCard: {
     margin: Spacing.screen.horizontal,
     borderRadius: Spacing.radius.xl,
     padding: Spacing.xxl,
-    alignItems: 'flex-start',     // Todo alineado a la izquierda
+    alignItems: 'center',   // Todo el contenido centrado horizontalmente
     gap: Spacing.sm,
     elevation: 4,
     shadowColor: Colors.weather.background,
@@ -608,37 +663,50 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
   },
+  /** Nombre de la ciudad en la card */
   ciudadNombre: {
     fontSize: 30,
     fontWeight: Typography.weight.medium,
     color: Colors.text.onDark,
+    textAlign: 'center',
   },
+  /** Código de país (AR, IT, FR...) */
   ciudadPais: {
     fontSize: Typography.size.md,
     color: Colors.text.onDarkSecondary,
+    textAlign: 'center',
   },
+  /** Emoji grande del estado del tiempo */
   weatherEmoji: {
-    fontSize: 88,
-    marginVertical: Spacing.sm,
+    fontSize: 96,
+    marginVertical: Spacing.md,
   },
+  /** Temperatura actual en grande — el dato más importante */
   temperatura: {
-    fontSize: 72,
+    fontSize: 80,
     fontWeight: Typography.weight.regular,
     color: Colors.text.onDark,
-    lineHeight: 80,
+    lineHeight: 88,
+    textAlign: 'center',
   },
+  /** Descripción textual: "Despejado", "Lluvia leve", etc. */
   descripcion: {
     fontSize: Typography.size.xl,
     color: Colors.text.onDark,
     fontWeight: Typography.weight.regular,
+    textAlign: 'center',
   },
+  /** Rango de temperatura del día */
   maxMin: {
     fontSize: Typography.size.lg,
     color: Colors.text.onDarkSecondary,
+    textAlign: 'center',
   },
+
+  // ── Caja de detalles: sensación, humedad, viento ──
   detallesRow: {
     flexDirection: 'row',
-    marginTop: Spacing.md,
+    marginTop: Spacing.lg,
     backgroundColor: Colors.weather.card,
     borderRadius: Spacing.radius.lg,
     borderWidth: 1,
@@ -646,20 +714,21 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: '100%',
   },
+  /** Cada celda de la caja de detalles */
   detalleItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: Spacing.lg,
-    gap: 6,
+    paddingVertical: Spacing.xl,
+    gap: 8,
   },
-  detalleEmoji: { fontSize: 26 },
+  detalleEmoji: { fontSize: 32 },
   detalleValor: {
-    fontSize: Typography.size.lg,
+    fontSize: 22,
     fontWeight: Typography.weight.medium,
     color: Colors.text.onDark,
   },
   detalleLabel: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.md,
     color: Colors.text.onDarkSecondary,
   },
 
@@ -684,6 +753,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     marginBottom: Spacing.sm,
   },
+  /** Fila de un día del pronóstico */
   pronosticoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -710,22 +780,25 @@ const styles = StyleSheet.create({
     minWidth: 90,
   },
 
-  // ── Modal buscar ciudad ──
+  // ── Modal: buscar y agregar ciudad ──
+  /** Fondo semitransparente del modal de búsqueda */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-start',  // Panel pegado arriba
-    paddingTop: 80,                // Espacio para el header de la app
+    justifyContent: 'flex-start',
+    paddingTop: 80,   // Deja espacio para el header de la app
   },
+  /** Caja blanca del modal — ocupa toda la pantalla desde el header hacia abajo */
   modalBox: {
     backgroundColor: Colors.ui.surface,
     borderRadius: 24,
     marginHorizontal: Spacing.md,
     padding: Spacing.xxl,
-    flex: 1,                       // Ocupa todo el espacio hasta abajo
+    flex: 1,
     marginBottom: 0,
-    flexDirection: 'column',       // Layout en columna para poder empujar el botón al fondo
+    flexDirection: 'column',
   },
+  /** Título compartido por ambos modales */
   modalTitulo: {
     fontSize: 28,
     fontWeight: Typography.weight.medium,
@@ -733,6 +806,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: Spacing.lg,
   },
+  /** Campo de texto para buscar ciudades */
   searchInput: {
     backgroundColor: Colors.ui.background,
     borderRadius: Spacing.radius.lg,
@@ -744,9 +818,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.ui.border,
     marginBottom: Spacing.sm,
   },
+  /** Lista de resultados — crece para empujar el botón Cancelar al fondo */
   resultadosList: {
-    flex: 1,           // Crece para ocupar el espacio disponible y empuja el botón al fondo
+    flex: 1,
   },
+  /** Cada resultado de búsqueda */
   resultadoItem: {
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.sm,
@@ -765,28 +841,30 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.ui.border,
   },
+  /** Botón Cancelar del modal de búsqueda — pegado al fondo */
   cancelarBtn: {
     marginTop: Spacing.lg,
     paddingVertical: Spacing.lg,
     alignItems: 'center',
     borderRadius: Spacing.radius.lg,
-    backgroundColor: '#BDBDBD',    // Gris más oscuro — más visible
+    backgroundColor: '#BDBDBD',
     width: '100%',
   },
   cancelarBtnTexto: {
     fontSize: Typography.size.lg,
-    color: '#424242',              // Texto oscuro sobre fondo gris
+    color: '#424242',
     fontWeight: Typography.weight.medium,
   },
 
-  // ── Modal confirmar eliminación — centrado en pantalla ──
+  // ── Modal: confirmar eliminación ──
+  /** Fondo semitransparente centrado en pantalla */
   modalOverlayCentrado: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // ── Modal confirmar eliminación ──
+  /** Caja del modal de eliminación */
   modalBoxPequeno: {
     backgroundColor: Colors.ui.surface,
     borderRadius: 20,
@@ -795,9 +873,9 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   modalMensaje: {
-    fontSize: Typography.size.lg,
+    fontSize: 22,
     color: Colors.text.secondary,
-    lineHeight: 30,
+    lineHeight: 32,
   },
   modalBtns: {
     flexDirection: 'column',
@@ -805,8 +883,22 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     width: '100%',
   },
+  /** Botón "Eliminar" — rojo, va primero */
+  btnEliminarModal: {
+    paddingVertical: Spacing.xl,
+    borderRadius: Spacing.radius.lg,
+    backgroundColor: Colors.brand.red,
+    alignItems: 'center',
+    width: '100%',
+  },
+  btnEliminarModalTexto: {
+    fontSize: 22,
+    color: Colors.text.onDark,
+    fontWeight: Typography.weight.medium,
+  },
+  /** Botón "Cancelar" — gris claro, va segundo */
   btnCancelarModal: {
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.xl,
     borderRadius: Spacing.radius.lg,
     backgroundColor: Colors.ui.background,
     borderWidth: 1,
@@ -815,19 +907,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   btnCancelarModalTexto: {
-    fontSize: Typography.size.lg,
+    fontSize: 22,
     color: Colors.text.secondary,
-  },
-  btnEliminarModal: {
-    paddingVertical: Spacing.lg,
-    borderRadius: Spacing.radius.lg,
-    backgroundColor: Colors.brand.red,
-    alignItems: 'center',
-    width: '100%',
-  },
-  btnEliminarModalTexto: {
-    fontSize: Typography.size.lg,
-    color: Colors.text.onDark,
-    fontWeight: Typography.weight.medium,
   },
 });

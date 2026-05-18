@@ -12,7 +12,7 @@ interface SpeakButtonProps {
   texto: string;
   label?: string;
   variante?: Variante;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
 }
 
 export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', size = 'md' }: SpeakButtonProps) {
@@ -51,8 +51,8 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
   }
 
   const isOnDark = variante === 'onDark';
-  const iconSize = size === 'sm' ? 18 : 22;
-  const btnSize = size === 'sm' ? 36 : 44;
+  const iconSize = size === 'sm' ? 18 : size === 'lg' ? 32 : 22;
+  const btnSize = size === 'sm' ? 36 : size === 'lg' ? 64 : 44;
 
   return (
     <TouchableOpacity
