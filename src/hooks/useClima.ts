@@ -1,10 +1,29 @@
+/**
+ * useClima.ts
+ * ───────────
+ * Hooks de React Query para el módulo de Clima.
+ *
+ * Contiene dos hooks:
+ *  - useClimaCiudad(ciudad)  → obtiene el clima de una ciudad específica
+ *  - useClimaOrg()           → obtiene el clima de la ciudad configurada en Supabase
+ *                              (con fallback a Buenos Aires si no hay config)
+ *
+ * Usa React Query para cachear los resultados y evitar llamadas innecesarias a la API.
+ * El clima se considera fresco por 30 minutos (staleTime).
+ */
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase, ORG_ID } from '@/services/supabase';
 import { geocodificarCiudad, getClima } from '@/services/climaService';
+import type { CiudadGuardada } from '@/types/clima.types';
 import type { ConfiguracionClima } from '@/types/database.types';
 
-async function fetchClimaOrg(): Promise<ReturnType<typeof getClima>> {
-  // 1. Leer config de Supabase
+// ─────────────────────────────────────────────────────────────────────────────
+// Función interna: obtiene el clima de la organización desde Supabase
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function fetchClimaOrg() {
+  // 1. Intentar leer la configuración de clima de la organización en Supabase
   const { data, error } = await supabase
     .from('configuracion_clima')
     .select('*')
@@ -18,20 +37,20 @@ async function fetchClimaOrg(): Promise<ReturnType<typeof getClima>> {
   let pais: string = 'AR';
 
   if (error || !data) {
-    // Fallback: Buenos Aires hardcodeado para desarrollo
+    // Fallback: si no hay configuración en Supabase, usar Buenos Aires
     ciudad = 'Buenos Aires';
     lat = -34.6037;
     lon = -58.3816;
   } else {
     const config = data as ConfiguracionClima;
     ciudad = config.ciudad;
-    pais = 'AR'; // podría derivarse de la org
 
     if (config.latitud && config.longitud) {
+      // Usar coordenadas guardadas directamente (más rápido)
       lat = Number(config.latitud);
       lon = Number(config.longitud);
     } else {
-      // Geocodificar si no hay coords guardadas
+      // Si no hay coordenadas, geocodificar la ciudad por nombre
       const geo = await geocodificarCiudad(ciudad);
       lat = geo.latitude;
       lon = geo.longitude;
@@ -42,11 +61,44 @@ async function fetchClimaOrg(): Promise<ReturnType<typeof getClima>> {
   return getClima(ciudad, lat, lon, 'America/Argentina/Buenos_Aires', pais);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hook principal: clima de la organización (ciudad natal)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene el clima de la ciudad configurada para la organización.
+ * Si no hay configuración en Supabase, usa Buenos Aires como fallback.
+ */
 export function useClima() {
   return useQuery({
-    queryKey: ['clima', ORG_ID],
+    queryKey: ['clima', 'org', ORG_ID],
     queryFn: fetchClimaOrg,
-    staleTime: 30 * 60 * 1000, // 30 min — clima se actualiza cada media hora
+    staleTime: 30 * 60 * 1000, // 30 minutos — el clima no cambia tan seguido
+    retry: 2,
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hook secundario: clima de una ciudad guardada por el usuario
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene el clima de una ciudad específica guardada por el usuario.
+ * Usa las coordenadas ya almacenadas en CiudadGuardada para evitar geocodificar de nuevo.
+ *
+ * @param ciudad  Objeto CiudadGuardada con coordenadas y zona horaria
+ */
+export function useClimaCiudad(ciudad: CiudadGuardada | null) {
+  return useQuery({
+    // La query key incluye lat/lon para que cada ciudad tenga su propio caché
+    queryKey: ['clima', 'ciudad', ciudad?.lat, ciudad?.lon],
+    queryFn: () => {
+      if (!ciudad) throw new Error('No hay ciudad seleccionada');
+      return getClima(ciudad.nombre, ciudad.lat, ciudad.lon, ciudad.timezone, ciudad.pais);
+    },
+    enabled: !!ciudad, // Solo ejecutar si hay una ciudad seleccionada
+    staleTime: 30 * 60 * 1000,
     retry: 2,
     refetchOnWindowFocus: false,
   });

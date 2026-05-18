@@ -16,6 +16,8 @@ interface AppHeaderProps {
   textoHablar?: string;
   backgroundColor?: string;
   onVolver?: () => void;
+  /** Si es true, el título se muestra más grande (para pantallas principales) */
+  tituloGrande?: boolean;
 }
 
 export function AppHeader({
@@ -26,14 +28,17 @@ export function AppHeader({
   textoHablar,
   backgroundColor = Colors.brand.greenDark,
   onVolver,
+  tituloGrande = false,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
 
   function handleVolver() {
     if (onVolver) {
       onVolver();
-    } else {
+    } else if (router.canGoBack()) {
       router.back();
+    } else {
+      router.push('/');
     }
   }
 
@@ -62,7 +67,7 @@ export function AppHeader({
 
         {/* Título central */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titulo} numberOfLines={1}>
+          <Text style={[styles.titulo, tituloGrande && styles.tituloGrande]} numberOfLines={1}>
             {titulo}
           </Text>
           {subtitulo ? (
@@ -128,6 +133,10 @@ const styles = StyleSheet.create({
   },
   titulo: {
     ...Typography.styles.screenTitle,
+  },
+  tituloGrande: {
+    fontSize: 32,
+    fontWeight: '500' as const,
   },
   subtitulo: {
     ...Typography.styles.screenSubtitle,

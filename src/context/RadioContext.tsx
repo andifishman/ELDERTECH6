@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
+import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { Audio } from 'expo-av';
 import type { RadioStation, RadioPlayerState } from '@/types/radio.types';
 
@@ -14,8 +14,22 @@ const RadioContext = createContext<RadioContextValue | null>(null);
 
 export function RadioProvider({ children }: { children: React.ReactNode }) {
   const soundRef = useRef<Audio.Sound | null>(null);
+  const mountedRef = useRef(true);
   const [radioActual, setRadioActual] = useState<RadioStation | null>(null);
   const [estado, setEstado] = useState<RadioPlayerState>('idle');
+
+  // Marcar como desmontado y limpiar audio al desmontar el provider
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (soundRef.current) {
+        soundRef.current.stopAsync().catch(() => null);
+        soundRef.current.unloadAsync().catch(() => null);
+        soundRef.current = null;
+      }
+    };
+  }, []);
 
   const detener = useCallback(async () => {
     if (soundRef.current) {
@@ -23,8 +37,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       await soundRef.current.unloadAsync().catch(() => null);
       soundRef.current = null;
     }
-    setEstado('idle');
-    setRadioActual(null);
+    if (mountedRef.current) {
+      setEstado('idle');
+      setRadioActual(null);
+    }
   }, []);
 
   const reproducir = useCallback(async (radio: RadioStation) => {
@@ -35,6 +51,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       soundRef.current = null;
     }
 
+    if (!mountedRef.current) return;
     setEstado('loading');
     setRadioActual(radio);
 
@@ -49,6 +66,8 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         { uri: radio.urlStream },
         { shouldPlay: true, isLooping: false },
         (status) => {
+          // Evitar actualizar estado si el componente ya se desmontó
+          if (!mountedRef.current) return;
           if (!status.isLoaded) {
             if (status.error) setEstado('error');
             return;
@@ -59,11 +78,13 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       );
 
       soundRef.current = sound;
-      setEstado('playing');
+      if (mountedRef.current) setEstado('playing');
     } catch (err) {
       console.error('[Radio] Error al reproducir:', err);
-      setEstado('error');
-      setRadioActual(null);
+      if (mountedRef.current) {
+        setEstado('error');
+        setRadioActual(null);
+      }
     }
   }, []);
 
