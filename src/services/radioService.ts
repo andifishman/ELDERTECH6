@@ -14,6 +14,8 @@
  *  • URLs HTTP: Android bloquea tráfico cleartext por defecto.
  *  • Protocolo ICY: Icecast/SHOUTcast responden "ICY 200 OK" en vez de HTTP
  *    estándar. Expo Audio necesita el header `Icy-MetaData: 0` para forzar HTTP/1.1
+ *  • Puertos no estándar (9270, 9660, 8000): algunos firewalls los bloquean,
+ *    pero funcionan correctamente en redes móviles (4G/5G).
  *
  * ── Estrategia de streams verificados ────────────────────────────────────────
  *  • Solo HTTPS (o HTTP con fallback HTTPS cuando no hay alternativa)
@@ -22,13 +24,15 @@
  *  • Fallback URL alternativa para cada radio crítica
  *  • Headers Icy-MetaData: 0 aplicados en RadioContext al reproducir
  *
- * ── Fuentes verificadas ───────────────────────────────────────────────────────
- *  • gist.github.com/pisculichi/fae88a2f5570ab22da53 (radios AR, actualizado 2026)
- *  • buecrplb01.cienradios.com.ar (Mitre + La 100, servidor Icecast directo)
- *  • sa.mp3.icecast.magma.edge-access.net (RTA — Nacionales)
- *  • bynetcdn.com (Galei Tzahal, Galgalatz, KAN — verificados)
- *  • somafm.com (streams públicos estables, sin publicidad)
- *  • npr-ice.streamguys1.com (NPR — muy estable)
+ * ── CDNs verificados ──────────────────────────────────────────────────────────
+ *  [C] = CienRadios (buecrplb01.cienradios.com.ar) — Icecast directo AAC
+ *  [R] = RTA/Magma (sa.mp3.icecast.magma.edge-access.net) — Nacionales AR
+ *  [B] = ByNetCDN (bynetcdn.com) — radios israelíes KAN/GLZ
+ *  [K] = KAN CDN oficial (kanliveicy.media.kan.org.il) — Israel Broadcasting
+ *  [S] = SomaFM (somafm.com) — streams públicos Icecast, muy estables
+ *  [N] = NPR (streamguys1.com) — radio pública USA
+ *  [A] = Alsolnet/Streammax (alsolnet.com) — CDN argentino
+ *  [H] = RadioHDVivo (radiohdvivo.com) — CDN argentino
  */
 
 import { supabase } from './supabase';
@@ -113,23 +117,22 @@ export async function getRadioData(): Promise<RadioData> {
 // REGLA PRINCIPAL: Solo streams directos sin redirects encadenados.
 // Esto es lo que diferencia las radios que cargan en <2s de las que tardan 10s+.
 //
-// Leyenda de fuentes:
-//  [C] = CienRadios (buecrplb01.cienradios.com.ar) — Icecast directo
-//  [R] = RTA/Magma (sa.mp3.icecast.magma.edge-access.net) — Nacionales
-//  [B] = ByNetCDN (bynetcdn.com) — radios israelíes KAN/GLZ
-//  [S] = SomaFM (somafm.com) — streams públicos estables
-//  [N] = NPR (streamguys1.com) — radio pública USA
-//  [A] = Alsolnet/Streammax — CDN argentino
-//  [I] = Instream.audio — CDN argentino
+// Fuentes de verificación usadas (mayo 2026):
+//  - gist.github.com/pisculichi/fae88a2f5570ab22da53
+//  - gist.github.com/YoSoyGena/7f3a225f39e98d5ac988e1af1526fdc4 (actualizado 2026)
+//  - somafm.com/listen/ (streams directos oficiales)
+//  - github.com/yuvadm/streams (radios israelíes)
+//  - curl -sI --max-time 5 <url> (test HTTP 200)
 
 export const RADIO_DATA_FALLBACK: RadioData = {
   categorias: [
-    { id: 'cat-noticias',  nombre: 'Noticias',         emoji: '📰', orden: 1 },
-    { id: 'cat-musica',    nombre: 'Música popular',   emoji: '🎵', orden: 2 },
-    { id: 'cat-tango',     nombre: 'Tango y folklore', emoji: '🎻', orden: 3 },
-    { id: 'cat-deportes',  nombre: 'Deportes',         emoji: '⚽', orden: 4 },
-    { id: 'cat-clasica',   nombre: 'Clásica y jazz',   emoji: '🎼', orden: 5 },
-    { id: 'cat-general',   nombre: 'General',          emoji: '📻', orden: 6 },
+    { id: 'cat-noticias',  nombre: 'Noticias',  emoji: '📰', orden: 1 },
+    { id: 'cat-musica',    nombre: 'Música',    emoji: '🎵', orden: 2 },
+    { id: 'cat-folklore',  nombre: 'Folklore',  emoji: '💃', orden: 3 },
+    { id: 'cat-clasica',   nombre: 'Clásica',   emoji: '🎻', orden: 4 },
+    { id: 'cat-deportes',  nombre: 'Deportes',  emoji: '⚽', orden: 5 },
+    { id: 'cat-general',   nombre: 'General',   emoji: '📻', orden: 6 },
+    { id: 'cat-tango',     nombre: 'Tango',     emoji: '🕺', orden: 7 },
   ],
   paises: [
     { id: 'p-ar', codigo: 'AR', nombre: 'Argentina',      emojiBandera: '🇦🇷', orden: 1 },
@@ -138,8 +141,11 @@ export const RADIO_DATA_FALLBACK: RadioData = {
   ],
   radios: [
 
-    // ── ARGENTINA — Noticias ─────────────────────────────────────────────────
-    // [C] CienRadios Icecast directo — sin redirects, carga en <2s
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ARGENTINA — Noticias
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // [C] CienRadios Icecast directo AAC — sin redirects, carga en <2s
     {
       id: 'ar-mitre',
       nombre: 'Radio Mitre',
@@ -151,7 +157,7 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Buenos Aires', genero: 'Noticias', esDestacada: true,
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
-    // [R] RTA Magma Icecast — stream directo de Radio Nacional
+    // [R] RTA/Magma Icecast — stream directo Radio Nacional
     {
       id: 'ar-nacional',
       nombre: 'Radio Nacional',
@@ -163,93 +169,31 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Buenos Aires', genero: 'Noticias', esDestacada: true,
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
-    // Radio 10 — stream HLS directo (sin StreamTheWorld redirect)
+    // Radio 10 — HLS directo vía stweb.tv (2026: nuevo hostname radio10.stweb.tv)
     {
       id: 'ar-radio10',
       nombre: 'Radio 10',
       descripcion: 'Noticias y debate · AM 710',
-      urlStream: 'https://s6.stweb.tv/radio10/live/playlist.m3u8',
-      urlFallback: 'https://server1.stweb.tv/radio10/live/playlist.m3u8',
+      urlStream: 'https://radio10.stweb.tv/radio10/live/chunks.m3u8',
+      urlFallback: 'https://s6.stweb.tv/radio10/live/playlist.m3u8',
       urlLogo: null,
       pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
       ciudad: 'Buenos Aires', genero: 'Noticias', esDestacada: true,
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
-    // [A] Alsolnet CDN — stream directo de Rivadavia (también noticias/tango)
+    // [H] RadioHDVivo CDN — Continental AM 590 (fuente: gist YoSoyGena 2026)
     {
       id: 'ar-continental',
       nombre: 'Radio Continental',
       descripcion: 'Noticias y actualidad · AM 590',
-      urlStream: 'https://streammax.alsolnet.com/continental590',
-      urlFallback: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC',
+      urlStream: 'https://edge01.radiohdvivo.com/continental',
+      urlFallback: 'https://streammax.alsolnet.com/continental590',
       urlLogo: null,
       pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
       ciudad: 'Buenos Aires', genero: 'Noticias', esDestacada: true,
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
-    // La Red — HLS directo via Akamai (verificado en gist)
-    {
-      id: 'ar-lared',
-      nombre: 'La Red',
-      descripcion: 'Deportes y noticias · AM 910',
-      urlStream: 'https://strive-sdn-lsdlive-live.akamaized.net/live_passthrough_static/amlared/playlist/manifest/gotardisz/audio/1770918776/livestream1.m3u8',
-      urlFallback: 'https://playerservices.streamtheworld.com/api/livestream-redirect/LARED_SC',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Deportes', esDestacada: false,
-      categoriaId: 'cat-deportes', categoria: 'Deportes', categoriaEmoji: '⚽',
-    },
-
-    // ── ARGENTINA — Música popular ───────────────────────────────────────────
-    // [C] CienRadios Icecast directo — La 100
-    {
-      id: 'ar-la100',
-      nombre: 'La 100',
-      descripcion: 'Los mejores hits · FM 99.9',
-      urlStream: 'https://buecrplb01.cienradios.com.ar/la100.aac',
-      urlFallback: 'https://buecrp01.cienradios.com.ar/la100.aac',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Pop', esDestacada: true,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
-    },
-    // [I] Instream.audio CDN — Urbana Play (verificado en gist Feb 2026)
-    {
-      id: 'ar-urbana',
-      nombre: 'Urbana Play',
-      descripcion: 'Pop, rock y actualidad · FM 104.3',
-      urlStream: 'https://cdn.instream.audio:9660/stream',
-      urlFallback: 'http://cdn.instream.audio:9660/stream',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Pop/Rock', esDestacada: true,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
-    },
-    // Metro 95.1 — stream Icecast directo
-    {
-      id: 'ar-metro',
-      nombre: 'Metro 95.1',
-      descripcion: 'Rock y pop alternativo · FM 95.1',
-      urlStream: 'https://mp3.metroaudio1.stream.avstreaming.net:7200/metro',
-      urlFallback: 'http://mp3.metroaudio1.stream.avstreaming.net:7200/metro',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Rock', esDestacada: false,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
-    },
-    // Vorterix — stream Icecast directo (IP verificada en gist)
-    {
-      id: 'ar-vorterix',
-      nombre: 'Vorterix',
-      descripcion: 'Rock nacional e internacional · FM 92.1',
-      urlStream: 'https://147.135.11.82:9904/',
-      urlFallback: 'http://147.135.11.82:9904/',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Rock', esDestacada: false,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
-    },
-    // [A] Alsolnet — La 990
+    // [A] Alsolnet — La 990 AM
     {
       id: 'ar-la990',
       nombre: 'La 990',
@@ -262,71 +206,36 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
 
-    // ── ARGENTINA — Tango y folklore (PRIORIDAD ABSOLUTA) ────────────────────
-    // La 2x4 — radio oficial de tango del GCBA, stream Icecast directo
-    // Fuente: gist pisculichi + roonlabs community (verificado 2025)
-    {
-      id: 'ar-la2x4',
-      nombre: 'La 2x4',
-      descripcion: 'Radio oficial de tango · FM 92.7 · GCBA',
-      urlStream: 'https://media.radios.ar:9270/stream',
-      urlFallback: 'http://radios.argentina.fm:9270/stream',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Tango', esDestacada: true,
-      categoriaId: 'cat-tango', categoria: 'Tango y folklore', categoriaEmoji: '🎻',
-    },
-    // [R] RTA Magma — Nacional Folklórica (stream directo, verificado)
-    {
-      id: 'ar-folklorica',
-      nombre: 'Nacional Folklórica',
-      descripcion: 'Folklore argentino · FM 98.7',
-      urlStream: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad38',
-      urlFallback: 'http://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad38',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Folklore', esDestacada: true,
-      categoriaId: 'cat-tango', categoria: 'Tango y folklore', categoriaEmoji: '🎻',
-    },
-    // [A] Alsolnet — Rivadavia (tango, folklore, nostalgia · AM 630)
-    {
-      id: 'ar-rivadavia',
-      nombre: 'Radio Rivadavia',
-      descripcion: 'Tango, folklore y nostalgia · AM 630',
-      urlStream: 'https://streammax.alsolnet.com/radiorivadavia',
-      urlFallback: 'http://streammax.alsolnet.com/radiorivadavia',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Tango/Folklore', esDestacada: false,
-      categoriaId: 'cat-tango', categoria: 'Tango y folklore', categoriaEmoji: '🎻',
-    },
-    // SomaFM Tango — stream público internacional de tango, muy estable
-    {
-      id: 'ar-soma-tango',
-      nombre: 'Tango Internacional',
-      descripcion: 'Tango clásico y moderno · SomaFM',
-      urlStream: 'https://ice6.somafm.com/tangonation-128-mp3',
-      urlFallback: 'https://ice4.somafm.com/tangonation-128-mp3',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Tango', esDestacada: true,
-      categoriaId: 'cat-tango', categoria: 'Tango y folklore', categoriaEmoji: '🎻',
-    },
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ARGENTINA — Música popular
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    // ── ARGENTINA — Clásica ──────────────────────────────────────────────────
-    // [R] RTA Magma — Nacional Clásica (stream directo, verificado)
+    // [C] CienRadios Icecast directo AAC — La 100
     {
-      id: 'ar-clasica',
-      nombre: 'Nacional Clásica',
-      descripcion: 'Música clásica · FM 96.7',
-      urlStream: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad37',
-      urlFallback: 'http://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad37',
+      id: 'ar-la100',
+      nombre: 'La 100',
+      descripcion: 'Los mejores hits · FM 99.9',
+      urlStream: 'https://buecrplb01.cienradios.com.ar/la100.aac',
+      urlFallback: 'https://buecrp01.cienradios.com.ar/la100.aac',
       urlLogo: null,
       pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Clásica', esDestacada: true,
-      categoriaId: 'cat-clasica', categoria: 'Clásica y jazz', categoriaEmoji: '🎼',
+      ciudad: 'Buenos Aires', genero: 'Pop', esDestacada: true,
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
     },
-    // [R] RTA Magma — Nacional Rock (stream directo, verificado)
+    // Urbana Play — CDN instream.audio puerto 9660
+    // Puerto 9660 puede estar bloqueado en firewalls corporativos, funciona en 4G/5G
+    {
+      id: 'ar-urbana',
+      nombre: 'Urbana Play',
+      descripcion: 'Pop, rock y actualidad · FM 104.3',
+      urlStream: 'https://cdn.instream.audio:9660/stream',
+      urlFallback: 'http://cdn.instream.audio:9660/stream',
+      urlLogo: null,
+      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires', genero: 'Pop/Rock', esDestacada: true,
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
+    },
+    // [R] RTA/Magma — Nacional Rock FM 93.7 (stream directo, verificado)
     {
       id: 'ar-nacional-rock',
       nombre: 'Nacional Rock',
@@ -336,11 +245,103 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       urlLogo: null,
       pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
       ciudad: 'Buenos Aires', genero: 'Rock', esDestacada: false,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
     },
 
-    // ── ISRAEL ───────────────────────────────────────────────────────────────
-    // [B] ByNetCDN — streams directos, verificados y funcionando
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ARGENTINA — Tango y folklore (PRIORIDAD ABSOLUTA)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // La 2x4 — única radio del mundo dedicada íntegramente al tango · GCBA
+    // Puerto 9270 — funciona en redes móviles (4G/5G), puede estar bloqueado
+    // en firewalls corporativos. Fuente: gist pisculichi + buenosaires.gob.ar
+    {
+      id: 'ar-la2x4',
+      nombre: 'La 2x4',
+      descripcion: 'La única radio de tango del mundo · FM 92.7 · GCBA',
+      urlStream: 'https://media.radios.ar:9270/stream',
+      urlFallback: 'http://radios.argentina.fm:9270/stream',
+      urlLogo: null,
+      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires', genero: 'Tango', esDestacada: true,
+      categoriaId: 'cat-tango', categoria: 'Tango', categoriaEmoji: '🕺',
+    },
+    // [S] SomaFM TangoNation — tango internacional verificado, carga en <1s
+    {
+      id: 'ar-soma-tango',
+      nombre: 'Tango Internacional',
+      descripcion: 'Tango clásico y moderno · SomaFM',
+      urlStream: 'https://ice6.somafm.com/tangonation-128-mp3',
+      urlFallback: 'https://ice4.somafm.com/tangonation-128-mp3',
+      urlLogo: null,
+      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
+      ciudad: 'Internacional', genero: 'Tango', esDestacada: true,
+      categoriaId: 'cat-tango', categoria: 'Tango', categoriaEmoji: '🕺',
+    },
+    // [A] Alsolnet — Radio Rivadavia AM 630 (tango, folklore, nostalgia)
+    {
+      id: 'ar-rivadavia',
+      nombre: 'Radio Rivadavia',
+      descripcion: 'Tango, folklore y nostalgia · AM 630',
+      urlStream: 'https://streammax.alsolnet.com/radiorivadavia',
+      urlFallback: 'http://streammax.alsolnet.com/radiorivadavia',
+      urlLogo: null,
+      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires', genero: 'Tango/Folklore', esDestacada: true,
+      categoriaId: 'cat-tango', categoria: 'Tango', categoriaEmoji: '🕺',
+    },
+    // [R] RTA/Magma — Nacional Folklórica FM 98.7 (stream directo, verificado)
+    {
+      id: 'ar-folklorica',
+      nombre: 'Nacional Folklórica',
+      descripcion: 'Folklore argentino · FM 98.7',
+      urlStream: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad38',
+      urlFallback: 'http://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad38',
+      urlLogo: null,
+      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires', genero: 'Folklore', esDestacada: true,
+      categoriaId: 'cat-folklore', categoria: 'Folklore', categoriaEmoji: '💃',
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ARGENTINA — Clásica
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // [R] RTA/Magma — Nacional Clásica FM 96.7 (stream directo, verificado)
+    {
+      id: 'ar-clasica',
+      nombre: 'Nacional Clásica',
+      descripcion: 'Música clásica · FM 96.7',
+      urlStream: 'https://sa.mp3.icecast.magma.edge-access.net/sc_rad37',
+      urlFallback: 'http://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad37',
+      urlLogo: null,
+      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires', genero: 'Clásica', esDestacada: true,
+      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ARGENTINA — Deportes
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // La Red — HLS Akamai directo (AM 910, deportes y noticias)
+    {
+      id: 'ar-lared',
+      nombre: 'La Red',
+      descripcion: 'Deportes y noticias · AM 910',
+      urlStream: 'https://strive-sdn-lsdlive-live.akamaized.net/live_passthrough_static/amlared/playlist/manifest/gotardisz/audio/1770918776/livestream1.m3u8',
+      urlFallback: 'https://playerservices.streamtheworld.com/api/livestream-redirect/LARED_SC',
+      urlLogo: null,
+      pais: 'AR', paisNombre: 'Argentina', paisEmoji: '🇦🇷',
+      ciudad: 'Buenos Aires', genero: 'Deportes', esDestacada: false,
+      categoriaId: 'cat-deportes', categoria: 'Deportes', categoriaEmoji: '⚽',
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ISRAEL
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // [B] ByNetCDN — streams HTTPS directos MP3, HTTP 200 verificado
     {
       id: 'il-glz',
       nombre: 'Galei Tzahal',
@@ -352,17 +353,32 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Tel Aviv', genero: 'General', esDestacada: true,
       categoriaId: 'cat-general', categoria: 'General', categoriaEmoji: '📻',
     },
+    // CORRECCIÓN: URL correcta es glglz_mp3 (no galgalatz_mp3 — da HTTP 404)
     {
       id: 'il-galgalatz',
       nombre: 'Galgalatz',
-      descripcion: 'Hits internacionales y música israelí',
-      urlStream: 'https://glzwizzlv.bynetcdn.com/galgalatz_mp3',
-      urlFallback: 'https://glzwizzlv.bynetcdn.com/galgalatz_aac',
+      descripcion: 'Hits internacionales y música israelí · FM 91.8',
+      urlStream: 'https://glzwizzlv.bynetcdn.com/glglz_mp3',
+      urlFallback: 'https://glzwizzlv.bynetcdn.com/glz_mp3',
       urlLogo: null,
       pais: 'IL', paisNombre: 'Israel', paisEmoji: '🇮🇱',
       ciudad: 'Tel Aviv', genero: 'Pop', esDestacada: true,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
     },
+    // Kan Gimel — primera radio israelí dedicada exclusivamente a música hebrea
+    // CDN oficial KAN como primario; ByNetCDN (Kan 88) como fallback
+    {
+      id: 'il-kan-gimel',
+      nombre: 'Kan Gimel',
+      descripcion: 'Música hebrea israelí · KAN',
+      urlStream: 'https://kanliveicy.media.kan.org.il/icy/kangimmel_mp3',
+      urlFallback: 'https://kan88wizzlv.bynetcdn.com/kan88_mp3',
+      urlLogo: null,
+      pais: 'IL', paisNombre: 'Israel', paisEmoji: '🇮🇱',
+      ciudad: 'Jerusalén', genero: 'Música israelí', esDestacada: true,
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
+    },
+    // Kan 88 — rock, jazz y alternativo israelí
     {
       id: 'il-kan88',
       nombre: 'Kan 88',
@@ -371,9 +387,10 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       urlFallback: 'https://kan88wizzlv.bynetcdn.com/kan88_aac',
       urlLogo: null,
       pais: 'IL', paisNombre: 'Israel', paisEmoji: '🇮🇱',
-      ciudad: 'Jerusalén', genero: 'Rock/Jazz', esDestacada: true,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
+      ciudad: 'Jerusalén', genero: 'Rock/Jazz', esDestacada: false,
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
     },
+    // Kan Bet — noticias y actualidad en hebreo
     {
       id: 'il-kan-bet',
       nombre: 'Kan Bet',
@@ -385,6 +402,19 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Jerusalén', genero: 'Noticias', esDestacada: false,
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
+    // Kol HaMuzika — canal de música clásica y orquestal del servicio público KAN
+    {
+      id: 'il-kol-hamusica',
+      nombre: 'Kol HaMuzika',
+      descripcion: 'Música clásica y orquestal · KAN',
+      urlStream: 'https://kanliveicy.media.kan.org.il/icy/kankolhamusica_mp3',
+      urlFallback: null,
+      urlLogo: null,
+      pais: 'IL', paisNombre: 'Israel', paisEmoji: '🇮🇱',
+      ciudad: 'Jerusalén', genero: 'Clásica', esDestacada: false,
+      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
+    },
+    // Kan Reka — radio en árabe, servicio público israelí
     {
       id: 'il-reka',
       nombre: 'Kan Reka',
@@ -397,8 +427,11 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       categoriaId: 'cat-general', categoria: 'General', categoriaEmoji: '📻',
     },
 
-    // ── ESTADOS UNIDOS ───────────────────────────────────────────────────────
-    // [N] NPR — stream oficial, muy estable
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ESTADOS UNIDOS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // [N] NPR — stream oficial Icecast, muy estable
     {
       id: 'us-npr',
       nombre: 'NPR News',
@@ -410,18 +443,20 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Washington', genero: 'Noticias', esDestacada: true,
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
-    // [S] SomaFM — todos los streams son directos Icecast, sin redirects, muy estables
+    // [S] SomaFM — todos los streams son Icecast directo, sin redirects, muy estables
+    // Illinois Street Lounge — era Sinatra, lounge vintage, exotica (ideal adultos mayores)
     {
-      id: 'us-soma-groove',
-      nombre: 'Groove Salad',
-      descripcion: 'Ambient y chillout · SomaFM',
-      urlStream: 'https://ice6.somafm.com/groovesalad-128-mp3',
-      urlFallback: 'https://ice4.somafm.com/groovesalad-128-mp3',
+      id: 'us-soma-illstreet',
+      nombre: 'Illinois Street Lounge',
+      descripcion: 'Lounge vintage, era Sinatra y exotica · SomaFM',
+      urlStream: 'https://ice6.somafm.com/illstreet-128-mp3',
+      urlFallback: 'https://ice4.somafm.com/illstreet-128-mp3',
       urlLogo: null,
       pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
-      ciudad: 'San Francisco', genero: 'Ambient', esDestacada: true,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
+      ciudad: 'San Francisco', genero: 'Lounge/Vintage', esDestacada: true,
+      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
     },
+    // Jazz & Blues — jazz y blues clásico
     {
       id: 'us-soma-jazz',
       nombre: 'Jazz & Blues',
@@ -431,19 +466,9 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       urlLogo: null,
       pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
       ciudad: 'San Francisco', genero: 'Jazz', esDestacada: true,
-      categoriaId: 'cat-clasica', categoria: 'Clásica y jazz', categoriaEmoji: '🎼',
+      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
     },
-    {
-      id: 'us-soma-lush',
-      nombre: 'Lush',
-      descripcion: 'Downtempo e indie · SomaFM',
-      urlStream: 'https://ice6.somafm.com/lush-128-mp3',
-      urlFallback: 'https://ice4.somafm.com/lush-128-mp3',
-      urlLogo: null,
-      pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
-      ciudad: 'San Francisco', genero: 'Indie', esDestacada: false,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
-    },
+    // Clásica Relajante — música clásica instrumental
     {
       id: 'us-soma-clasica',
       nombre: 'Clásica Relajante',
@@ -452,31 +477,68 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       urlFallback: 'https://ice4.somafm.com/classicalmix-128-mp3',
       urlLogo: null,
       pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
-      ciudad: 'San Francisco', genero: 'Clásica', esDestacada: false,
-      categoriaId: 'cat-clasica', categoria: 'Clásica y jazz', categoriaEmoji: '🎼',
+      ciudad: 'San Francisco', genero: 'Clásica', esDestacada: true,
+      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
     },
-    // 1.FM — streams Icecast directos, décadas de música
+    // Sonic Universe — jazz ecléctico y avant-garde
     {
-      id: 'us-1fm-60s70s',
-      nombre: '60s & 70s',
-      descripcion: 'Los mejores clásicos de los 60 y 70',
-      urlStream: 'https://prmstrm.1.fm:8000/60s_70s',
-      urlFallback: 'https://prmstrm.1.fm:8000/70s',
+      id: 'us-soma-sonicuniverse',
+      nombre: 'Sonic Universe',
+      descripcion: 'Jazz ecléctico · SomaFM',
+      urlStream: 'https://ice6.somafm.com/sonicuniverse-128-mp3',
+      urlFallback: 'https://ice4.somafm.com/sonicuniverse-128-mp3',
       urlLogo: null,
       pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
-      ciudad: 'Internacional', genero: 'Oldies', esDestacada: false,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
+      ciudad: 'San Francisco', genero: 'Jazz', esDestacada: false,
+      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
     },
+    // Secret Agent — lounge espía estilo 007, big band de los 60s
     {
-      id: 'us-1fm-80s',
-      nombre: '80s Hits',
-      descripcion: 'Los mejores hits de los años 80',
-      urlStream: 'https://prmstrm.1.fm:8000/80s_90s',
-      urlFallback: 'https://prmstrm.1.fm:8000/80s',
+      id: 'us-soma-secret',
+      nombre: 'Secret Agent',
+      descripcion: 'Lounge y big band estilo 007 · SomaFM',
+      urlStream: 'https://ice6.somafm.com/secretagent-128-mp3',
+      urlFallback: 'https://ice4.somafm.com/secretagent-128-mp3',
       urlLogo: null,
       pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
-      ciudad: 'Internacional', genero: 'Oldies', esDestacada: false,
-      categoriaId: 'cat-musica', categoria: 'Música popular', categoriaEmoji: '🎵',
+      ciudad: 'San Francisco', genero: 'Lounge/Spy Jazz', esDestacada: false,
+      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
+    },
+    // Seven Inch Soul — soul vintage de los 50s–70s en discos 45 RPM originales
+    {
+      id: 'us-soma-7soul',
+      nombre: 'Soul Vintage',
+      descripcion: 'Soul clásico de los 50s–70s en vinyl · SomaFM',
+      urlStream: 'https://ice6.somafm.com/7soul-128-mp3',
+      urlFallback: 'https://ice4.somafm.com/7soul-128-mp3',
+      urlLogo: null,
+      pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
+      ciudad: 'San Francisco', genero: 'Soul/R&B', esDestacada: false,
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
+    },
+    // Left Coast 70s — rock melódico de los 70s
+    {
+      id: 'us-soma-seventies',
+      nombre: '70s Radio',
+      descripcion: 'Rock melódico y soft rock de los 70s · SomaFM',
+      urlStream: 'https://ice6.somafm.com/seventies-128-mp3',
+      urlFallback: 'https://ice4.somafm.com/seventies-128-mp3',
+      urlLogo: null,
+      pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
+      ciudad: 'San Francisco', genero: 'Rock/70s', esDestacada: false,
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
+    },
+    // Groove Salad — ambient y chill out
+    {
+      id: 'us-soma-groove',
+      nombre: 'Groove Salad',
+      descripcion: 'Ambient y chillout · SomaFM',
+      urlStream: 'https://ice6.somafm.com/groovesalad-128-mp3',
+      urlFallback: 'https://ice4.somafm.com/groovesalad-128-mp3',
+      urlLogo: null,
+      pais: 'US', paisNombre: 'Estados Unidos', paisEmoji: '🇺🇸',
+      ciudad: 'San Francisco', genero: 'Ambient', esDestacada: false,
+      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
     },
   ],
 };
