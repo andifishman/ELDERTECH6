@@ -3,6 +3,7 @@ export interface RadioStation {
   nombre: string;
   descripcion: string | null;
   urlStream: string;
+  urlFallback: string | null;   // URL alternativa si la principal falla
   urlLogo: string | null;
   pais: string;
   paisNombre: string | null;
