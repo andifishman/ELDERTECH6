@@ -75,3 +75,13 @@ ELDERTECH6/
 4. **expo-speech** para TTS — soporte nativo iOS/Android en español
 5. **Fallback de radios** hardcodeado para desarrollo sin Supabase
 6. **ORG_ID** por env var en dev — en producción vendrá del perfil autenticado
+
+## Sistema de Radio — Contexto importante
+**Leer `.claude/RADIO_RESEARCH.md` antes de tocar cualquier cosa de radio.**
+
+Resumen ejecutivo:
+- La DB tiene 37 radios (actualizada 2026-05-26), columna `url_fallback` agregada
+- La mayoría de "fallas" son artefactos de testing en Windows, NO problemas reales en Android
+- 6 radios StreamTheWorld/Triton sí fallan en Android (Aspen, Blue, Metro, Rock&Pop, AM750, D Sports)
+- NO migrar a React Native Track Player — Expo AV es correcto para este caso
+- Fix pendiente: función `resolveStreamTheWorld(mount)` para resolver URLs dinámicas de Triton
