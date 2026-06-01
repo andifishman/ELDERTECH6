@@ -3,7 +3,6 @@ import * as Speech from 'expo-speech';
 import { useState } from 'react';
 import {
   Dimensions,
-  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -100,11 +99,7 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
           <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/images/logo-puente.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <Text style={styles.logoIcon}>🌉</Text>
             <Text style={styles.logoText}>ElderTech</Text>
           </View>
           <TouchableOpacity
@@ -262,7 +257,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoIcon: { fontSize: 32, marginRight: 12 },
-  logoImage: { width: 48, height: 48, marginRight: 4 },
   logoText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 34 },
   avatarBtn: {
     width: 40,
