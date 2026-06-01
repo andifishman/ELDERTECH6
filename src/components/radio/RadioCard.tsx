@@ -7,10 +7,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useRadioPlayer } from '@/context/RadioContext';
+import { useFavoritos } from '@/hooks/useFavoritos';
 import type { RadioStation } from '@/types/radio.types';
 
 interface RadioCardProps {
@@ -20,13 +22,21 @@ interface RadioCardProps {
 
 export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
   const { alternar, radioActual, estado } = useRadioPlayer();
+  const { esFavorito } = useFavoritos();
   const esActiva = radioActual?.id === radio.id;
   const cargando = esActiva && estado === 'loading';
   const reproduciendo = esActiva && estado === 'playing';
   const hayError = esActiva && estado === 'error';
+  const esFav = esFavorito(radio.id);
 
   return (
-    <View style={[styles.card, reproduciendo && styles.cardActiva]}>
+    <TouchableOpacity
+      style={[styles.card, reproduciendo && styles.cardActiva]}
+      onPress={() => router.push(`/mas/radio/${radio.id}`)}
+      activeOpacity={0.85}
+      accessibilityLabel={`Ver detalle de ${radio.nombre}`}
+      accessibilityRole="button"
+    >
       {/* Ícono / emoji de categoría */}
       <View style={[styles.iconoContainer, reproduciendo && styles.iconoContainerActivo]}>
         <Text style={styles.icono}>{radio.categoriaEmoji ?? '📻'}</Text>
@@ -38,8 +48,8 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
           <Text style={[styles.nombre, reproduciendo && styles.nombreActivo]} numberOfLines={1}>
             {radio.nombre}
           </Text>
-          {radio.esDestacada && !reproduciendo && (
-            <Text style={styles.destacadaBadge}>⭐</Text>
+          {esFav && (
+            <Ionicons name="heart" size={16} color="#FF6B6B" />
           )}
         </View>
 
@@ -70,10 +80,13 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
         </View>
       </View>
 
-      {/* Botón play / stop — único elemento interactivo */}
+      {/* Botón play / stop */}
       <TouchableOpacity
         style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}
-        onPress={() => alternar(radio)}
+        onPress={(e) => {
+          e.stopPropagation?.();
+          alternar(radio);
+        }}
         activeOpacity={0.75}
         accessibilityLabel={reproduciendo ? `Detener ${radio.nombre}` : `Reproducir ${radio.nombre}`}
         accessibilityRole="button"
@@ -89,7 +102,7 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
           />
         )}
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -153,9 +166,6 @@ const styles = StyleSheet.create({
   },
   nombreActivo: {
     color: Colors.radio.playButton,
-  },
-  destacadaBadge: {
-    fontSize: 14,
   },
   descripcion: {
     fontSize: Typography.size.sm,

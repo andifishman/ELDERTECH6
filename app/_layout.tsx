@@ -18,7 +18,6 @@ export default function RootLayout() {
             <Stack.Screen name="horarios/[id]" />
             <Stack.Screen name="mas/index" />
             <Stack.Screen name="mas/clima" />
-            <Stack.Screen name="mas/radio" />
           </Stack>
         </RadioProvider>
       </QueryProvider>

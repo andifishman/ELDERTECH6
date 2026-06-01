@@ -48,8 +48,8 @@ const URL_OVERRIDES: Record<string, Pick<RadioStation, 'urlStream' | 'urlFallbac
   },
   // Continental — edge01 → edge05 (hostname actualizado)
   'Radio Continental': {
-    urlStream: 'https://edge05.radiohdvivo.com/continental',
-    urlFallback: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC',
+    urlStream: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC',
+    urlFallback: 'https://edge05.radiohdvivo.com/continental',
   },
   // [STW] La Red — URL de Akamai rotó, StreamTheWorld más estable
   'La Red': {
@@ -61,28 +61,28 @@ const URL_OVERRIDES: Record<string, Pick<RadioStation, 'urlStream' | 'urlFallbac
     urlStream: 'https://unlimited2-ar.dps.live/cnn-ar/aac/icecast.audio',
     urlFallback: null,
   },
-  // [KAN] Kan Gimmel — kanliveicy.media.kan.org.il falló → kanapi oficial
+  // [KAN] Kan Gimmel — usar ICY directo que es más compatible con React Native Audio
   'Kan Gimel': {
-    urlStream: 'https://kanapi.media.kan.org.il/Players/ByPlayer/V1/ipbc/kan-gimmel/hls-live',
-    urlFallback: 'https://kanliveicy.media.kan.org.il/icy/kangimmel_mp3',
+    urlStream: 'https://kanliveicy.media.kan.org.il/icy/kangimmel_mp3',
+    urlFallback: 'https://glzwizzlv.bynetcdn.com/glz_mp3',
   },
   'Kan Gimmel': {
-    urlStream: 'https://kanapi.media.kan.org.il/Players/ByPlayer/V1/ipbc/kan-gimmel/hls-live',
-    urlFallback: 'https://kanliveicy.media.kan.org.il/icy/kangimmel_mp3',
+    urlStream: 'https://kanliveicy.media.kan.org.il/icy/kangimmel_mp3',
+    urlFallback: 'https://glzwizzlv.bynetcdn.com/glz_mp3',
   },
-  // [KAN] Kan Bet — migrar a Akamai CDN más estable
+  // [KAN] Kan Bet — ICY directo
   'Kan Bet': {
-    urlStream: 'https://kanapi.akamaized.net/Players/ByPlayer/V1/ipbc/kan-bet/hls-live',
-    urlFallback: 'https://kanbwizzlv.bynetcdn.com/kanb_mp3',
+    urlStream: 'https://kanbwizzlv.bynetcdn.com/kanb_mp3',
+    urlFallback: 'https://kanliveicy.media.kan.org.il/icy/kanbet_mp3',
   },
-  // [KAN] Kol HaMuzika — migrar a Akamai CDN
+  // [KAN] Kol HaMuzika — ICY directo
   'Kol HaMuzika': {
-    urlStream: 'https://kanapi.akamaized.net/Players/ByPlayer/V1/ipbc/kan-kol-hamusica/hls-live',
-    urlFallback: 'https://kanliveicy.media.kan.org.il/icy/kankolhamusica_mp3',
+    urlStream: 'https://kanliveicy.media.kan.org.il/icy/kankolhamusica_mp3',
+    urlFallback: null,
   },
   'Kol Hamuzika': {
-    urlStream: 'https://kanapi.akamaized.net/Players/ByPlayer/V1/ipbc/kan-kol-hamusica/hls-live',
-    urlFallback: 'https://kanliveicy.media.kan.org.il/icy/kankolhamusica_mp3',
+    urlStream: 'https://kanliveicy.media.kan.org.il/icy/kankolhamusica_mp3',
+    urlFallback: null,
   },
   // SomaFM eliminó classicalmix, somaside y tangonation → reemplazos
   'Clásica Relajante': {
@@ -255,18 +255,9 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Buenos Aires', genero: 'Noticias', esDestacada: true,
       categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
     },
-    // Continental — edge05 actualizado
-    {
-      id: 'ar-continental',
-      nombre: 'Radio Continental',
-      descripcion: 'Noticias y actualidad · AM 590',
-      urlStream: 'https://edge05.radiohdvivo.com/continental',
-      urlFallback: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC',
-      urlLogo: null,
-      pais: 'AR', paisNombre: 'Español', paisEmoji: '🇦🇷',
-      ciudad: 'Buenos Aires', genero: 'Noticias', esDestacada: true,
-      categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
-    },
+    // Continental — ELIMINADA: URLs HLS no compatibles con expo-av en React Native
+    // (STW CONTINENTAL_SC y edge05 fallan en Android)
+
     // [STW] La Red AM 910
     {
       id: 'ar-lared',
@@ -513,18 +504,9 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Tel Aviv', genero: 'Pop', esDestacada: true,
       categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
     },
-    // [KAN] Kan Gimel — primera radio israelí dedicada a música hebrea
-    {
-      id: 'il-kan-gimel',
-      nombre: 'Kan Gimel',
-      descripcion: 'Música hebrea israelí · KAN',
-      urlStream: 'https://kanapi.media.kan.org.il/Players/ByPlayer/V1/ipbc/kan-gimmel/hls-live',
-      urlFallback: 'https://kanliveicy.media.kan.org.il/icy/kangimmel_mp3',
-      urlLogo: null,
-      pais: 'IL', paisNombre: 'Hebreo', paisEmoji: '🇮🇱',
-      ciudad: 'Jerusalén', genero: 'Música israelí', esDestacada: true,
-      categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
-    },
+    // [KAN] Kan Gimel — ELIMINADA: URL HLS KAN no compatible con expo-av en React Native
+    // (kanliveicy.media.kan.org.il falla en Android)
+
     // [B] Kan 88 — rock, jazz y alternativo israelí
     {
       id: 'il-kan88',
@@ -537,30 +519,11 @@ export const RADIO_DATA_FALLBACK: RadioData = {
       ciudad: 'Jerusalén', genero: 'Rock/Jazz', esDestacada: false,
       categoriaId: 'cat-musica', categoria: 'Música', categoriaEmoji: '🎵',
     },
-    // [KAN] Kan Bet — noticias y actualidad en hebreo
-    {
-      id: 'il-kan-bet',
-      nombre: 'Kan Bet',
-      descripcion: 'Noticias y actualidad en hebreo',
-      urlStream: 'https://kanapi.akamaized.net/Players/ByPlayer/V1/ipbc/kan-bet/hls-live',
-      urlFallback: 'https://kanbwizzlv.bynetcdn.com/kanb_mp3',
-      urlLogo: null,
-      pais: 'IL', paisNombre: 'Hebreo', paisEmoji: '🇮🇱',
-      ciudad: 'Jerusalén', genero: 'Noticias', esDestacada: false,
-      categoriaId: 'cat-noticias', categoria: 'Noticias', categoriaEmoji: '📰',
-    },
-    // [KAN] Kol HaMuzika — música clásica y orquestal, servicio público KAN
-    {
-      id: 'il-kol-hamusica',
-      nombre: 'Kol HaMuzika',
-      descripcion: 'Música clásica y orquestal · KAN',
-      urlStream: 'https://kanapi.akamaized.net/Players/ByPlayer/V1/ipbc/kan-kol-hamusica/hls-live',
-      urlFallback: 'https://kanliveicy.media.kan.org.il/icy/kankolhamusica_mp3',
-      urlLogo: null,
-      pais: 'IL', paisNombre: 'Hebreo', paisEmoji: '🇮🇱',
-      ciudad: 'Jerusalén', genero: 'Clásica', esDestacada: false,
-      categoriaId: 'cat-clasica', categoria: 'Clásica', categoriaEmoji: '🎻',
-    },
+    // [KAN] Kan Bet — ELIMINADA: URL HLS KAN no compatible con expo-av en React Native
+    // (kanbwizzlv.bynetcdn.com y kanliveicy fallan en Android)
+
+    // [KAN] Kol HaMuzika — ELIMINADA: URL HLS KAN no compatible con expo-av en React Native
+    // (kanliveicy.media.kan.org.il/icy/kankolhamusica_mp3 falla en Android)
 
     // ═══════════════════════════════════════════════════════════════════════════
     // INGLÉS (US) — Noticias
