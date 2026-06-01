@@ -68,6 +68,24 @@ ELDERTECH6/
 - Perfil de usuario / residente
 - Notificaciones de actividades
 
+## Skills disponibles — usar siempre cuando aplique
+
+El proyecto tiene skills locales en `.claude/skills/`. Invocarlas con `/nombre-skill` antes de implementar cuando aplique:
+
+| Skills prioritarias para este proyecto | Cuándo |
+|---|---|
+| `/mobile-design` | Diseñar o revisar pantallas RN |
+| `/frontend-design` | Componentes UI, estilos |
+| `/senior-frontend` | Lógica compleja, hooks, contextos |
+| `/senior-backend` | Servicios Supabase, queries |
+| `/ui-design-system` | Tokens de diseño, colores, tipografía |
+| `/ui-ux-pro-max` | UX para adultos mayores |
+| `/accessibility-auditor` | Accesibilidad (botones 48pt, texto 17px) |
+| `/figma-implement-design` | Implementar diseños de Figma |
+| `/mermaid-diagrams` | Diagramas de arquitectura o flujo |
+
+**Regla**: Al comenzar una tarea de código → revisar si alguna skill aplica → invocarla primero.
+
 ## Decisiones técnicas clave
 1. **Open-Meteo** para clima — gratis, sin API key, buena cobertura
 2. **expo-av** para radio — streaming de audio con soporte background

@@ -13,7 +13,14 @@
       "Bash(curl -sI --max-time 5 \"https://glzwizzlv.bynetcdn.com/glglz_mp3\")",
       "WebFetch(domain:www.argentinetangoradio.com)",
       "Bash(curl -v --max-time 8 \"https://kanliveicy.media.kan.org.il/icy/kangimmel_mp3\")",
-      "WebFetch(domain:streema.com)"
+      "WebFetch(domain:streema.com)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('react-native-worklets-core/plugin'\\)\")",
+      "WebFetch(domain:somafm.com)",
+      "WebFetch(domain:iradioforum.net)",
+      "WebFetch(domain:www.kan.org.il)",
+      "WebFetch(domain:www.radios-argentinas.org)",
+      "WebFetch(domain:community.roonlabs.com)"
     ]
   }
 }

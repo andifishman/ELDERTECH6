@@ -2,7 +2,7 @@
 
 ## ¿Qué es este proyecto?
 Aplicación móvil para adultos mayores en residencias geriátricas.
-Stack: **React Native + Expo SDK 52 + TypeScript + Supabase**.
+Stack: **React Native + Expo SDK 54 + TypeScript + Supabase**.
 
 ## Carpeta de skills
 Toda la documentación del proyecto para Claude está en `.claude/`:
