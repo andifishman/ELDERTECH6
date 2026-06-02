@@ -21,12 +21,17 @@ const STREAM_HEADERS = {
 };
 
 // Tiempo máximo de espera antes de intentar el fallback (ms)
-// 5s es suficiente — si un stream directo no responde en 5s, está caído
 const FALLBACK_TIMEOUT_MS = 5000;
+
+// Paso de volumen al presionar + / −  (10%)
+const VOLUMEN_PASO = 0.1;
 
 interface RadioContextValue {
   radioActual: RadioStation | null;
   estado: RadioPlayerState;
+  volumen: number;                          // 0.0 – 1.0
+  subirVolumen: () => void;
+  bajarVolumen: () => void;
   reproducir: (radio: RadioStation) => Promise<void>;
   detener: () => Promise<void>;
   alternar: (radio: RadioStation) => Promise<void>;
@@ -40,6 +45,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [radioActual, setRadioActual] = useState<RadioStation | null>(null);
   const [estado, setEstado] = useState<RadioPlayerState>('idle');
+  const [volumen, setVolumen] = useState<number>(1.0); // arranca al máximo
 
   useEffect(() => {
     mountedRef.current = true;
@@ -71,6 +77,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   }
 
   /**
+   * Aplica el volumen actual al Sound activo.
+   */
+  async function _aplicarVolumen(v: number) {
+    if (soundRef.current) {
+      await soundRef.current.setVolumeAsync(v).catch(() => null);
+    }
+  }
+
+  /**
    * Intenta cargar y reproducir una URL de stream.
    * Devuelve true si tuvo éxito, false si falló.
    */
@@ -87,7 +102,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
       const { sound } = await Audio.Sound.createAsync(
         { uri: url, headers: STREAM_HEADERS },
-        { shouldPlay: true, isLooping: false },
+        { shouldPlay: true, isLooping: false, volume: volumen },
         (status) => {
           if (!mountedRef.current) return;
           if (!status.isLoaded) {
@@ -97,7 +112,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           if (status.isPlaying) {
-            _limpiarTimer(); // Cancelar fallback — está reproduciendo OK
+            _limpiarTimer();
             onPlayingCallback();
           }
           if (status.didJustFinish) {
@@ -114,6 +129,26 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // ── Controles de volumen ───────────────────────────────────────────────────
+
+  const subirVolumen = useCallback(() => {
+    setVolumen((prev) => {
+      const nuevo = Math.min(1, parseFloat((prev + VOLUMEN_PASO).toFixed(1)));
+      _aplicarVolumen(nuevo);
+      return nuevo;
+    });
+  }, []);
+
+  const bajarVolumen = useCallback(() => {
+    setVolumen((prev) => {
+      const nuevo = Math.max(0, parseFloat((prev - VOLUMEN_PASO).toFixed(1)));
+      _aplicarVolumen(nuevo);
+      return nuevo;
+    });
+  }, []);
+
+  // ── Reproductor ────────────────────────────────────────────────────────────
+
   const detener = useCallback(async () => {
     await _limpiarSonido();
     if (mountedRef.current) {
@@ -123,20 +158,17 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const reproducir = useCallback(async (radio: RadioStation) => {
-    // Detener reproducción anterior
     await _limpiarSonido();
 
     if (!mountedRef.current) return;
     setEstado('loading');
     setRadioActual(radio);
 
-    // ── Intento 1: URL principal ──────────────────────────────────────────
     const exito = await _intentarReproducir(radio.urlStream, () => {
       if (mountedRef.current) setEstado('playing');
     });
 
     if (!exito) {
-      // URL principal falló inmediatamente → intentar fallback si existe
       if (radio.urlFallback) {
         console.log(`[Radio] URL principal falló, intentando fallback: ${radio.urlFallback}`);
         const exitoFallback = await _intentarReproducir(radio.urlFallback, () => {
@@ -157,19 +189,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // ── Fallback por timeout ──────────────────────────────────────────────
-    // Si después de FALLBACK_TIMEOUT_MS el estado sigue en 'loading',
-    // significa que el stream no respondió → intentar fallback
     if (radio.urlFallback) {
       fallbackTimerRef.current = setTimeout(async () => {
         if (!mountedRef.current) return;
-        // Solo actuar si todavía estamos en loading (no llegó a playing)
-        setEstado((prev) => {
-          if (prev !== 'loading') return prev; // Ya está reproduciendo, no hacer nada
-          return prev;
-        });
 
-        // Verificar estado actual
         const statusActual = await soundRef.current?.getStatusAsync().catch(() => null);
         const estaReproduciendo = statusActual?.isLoaded && (statusActual as any).isPlaying;
 
@@ -189,7 +212,8 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         }
       }, FALLBACK_TIMEOUT_MS);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [volumen]);
 
   const alternar = useCallback(async (radio: RadioStation) => {
     if (radioActual?.id === radio.id && estado === 'playing') {
@@ -200,7 +224,9 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   }, [radioActual, estado, reproducir, detener]);
 
   return (
-    <RadioContext.Provider value={{ radioActual, estado, reproducir, detener, alternar }}>
+    <RadioContext.Provider
+      value={{ radioActual, estado, volumen, subirVolumen, bajarVolumen, reproducir, detener, alternar }}
+    >
       {children}
     </RadioContext.Provider>
   );

@@ -31,7 +31,7 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.card, reproduciendo && styles.cardActiva]}
+      style={[styles.card, reproduciendo && styles.cardActiva, esFav && !reproduciendo && styles.cardFavorita]}
       onPress={() => router.push(`/mas/radio/${radio.id}`)}
       activeOpacity={0.85}
       accessibilityLabel={`Ver detalle de ${radio.nombre}`}
@@ -49,7 +49,9 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
             {radio.nombre}
           </Text>
           {esFav && (
-            <Ionicons name="heart" size={16} color="#FF6B6B" />
+            <View style={styles.favBadge}>
+              <Ionicons name="heart" size={18} color="#fff" />
+            </View>
           )}
         </View>
 
@@ -132,6 +134,10 @@ const styles = StyleSheet.create({
     elevation: 3,
     shadowOpacity: 0.15,
   },
+  cardFavorita: {
+    borderColor: '#FF6B6B',
+    backgroundColor: '#FFF5F5',
+  },
   iconoContainer: {
     width: 56,
     height: 56,
@@ -155,6 +161,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
+  },
+  favBadge: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 12,
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 
   // Nombre de la radio — grande y legible

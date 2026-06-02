@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { RadioCard } from '@/components/radio/RadioCard';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
@@ -19,13 +18,9 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { RadioStation } from '@/types/radio.types';
 
-// Tabs de la pantalla
-type TabActiva = 'todas' | 'favoritos';
-
 export default function RadioScreen() {
   const { data, isLoading, error, refetch } = useRadioData();
   const { favoritos, esFavorito } = useFavoritos();
-  const [tabActiva, setTabActiva] = useState<TabActiva>('todas');
   const [idiomaFiltro, setIdiomaFiltro] = useState<string | null>(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null);
   const categoriaScrollRef = useRef<ScrollView>(null);
@@ -38,21 +33,15 @@ export default function RadioScreen() {
     { codigo: 'US',  nombre: 'Inglés',  emoji: '🇺🇸' },
   ];
 
-  // Radios filtradas con favoritos primero
+  // Radios filtradas con favoritos siempre primero
   const radiosFiltradas = useMemo<RadioStation[]>(() => {
     let result = data?.radios ?? [];
     if (idiomaFiltro) result = result.filter((r) => r.pais === idiomaFiltro);
     if (categoriaFiltro) result = result.filter((r) => r.categoriaId === categoriaFiltro);
-    // Favoritos primero
     const favs = result.filter((r) => esFavorito(r.id));
     const resto = result.filter((r) => !esFavorito(r.id));
     return [...favs, ...resto];
   }, [data, idiomaFiltro, categoriaFiltro, favoritos]);
-
-  // Solo las favoritas
-  const radiosFavoritas = useMemo<RadioStation[]>(() => {
-    return (data?.radios ?? []).filter((r) => esFavorito(r.id));
-  }, [data, favoritos]);
 
   const handleSeleccionarIdioma = (codigo: string | null) => {
     setIdiomaFiltro(codigo);
@@ -84,7 +73,7 @@ export default function RadioScreen() {
 
   const catActual = categorias.find((c) => c.id === categoriaFiltro) ?? categorias[0];
 
-  const catScrollLeft  = () => {
+  const catScrollLeft = () => {
     const next = Math.max(0, catScrollX.current - 90);
     categoriaScrollRef.current?.scrollTo({ x: next, animated: true });
   };
@@ -97,185 +86,90 @@ export default function RadioScreen() {
       <AppHeader
         titulo="Radio"
         mostrarVolver
-        textoHablar="Radio. Tocá una radio para escucharla en vivo. Podés marcar tus favoritas con el corazón para encontrarlas más rápido."
+        textoHablar="Radio. Tocá una radio para escucharla en vivo. Las que marcaste con corazón aparecen primero."
       />
 
-      {/* ── Tabs: Todas / Favoritos ───────────────────────────── */}
-      <View style={styles.tabsRow}>
-        <TouchableOpacity
-          style={[styles.tab, tabActiva === 'todas' && styles.tabActiva]}
-          onPress={() => setTabActiva('todas')}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tabActiva === 'todas' }}
-        >
-          <Text style={[styles.tabTexto, tabActiva === 'todas' && styles.tabTextoActivo]}>
-            📻  Todas
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, tabActiva === 'favoritos' && styles.tabActiva]}
-          onPress={() => setTabActiva('favoritos')}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tabActiva === 'favoritos' }}
-        >
-          <Ionicons
-            name="heart"
-            size={16}
-            color={tabActiva === 'favoritos' ? Colors.text.onDark : '#FF6B6B'}
-            style={{ marginRight: 4 }}
-          />
-          <Text style={[styles.tabTexto, tabActiva === 'favoritos' && styles.tabTextoActivo]}>
-            Favoritos
-          </Text>
-          {radiosFavoritas.length > 0 && (
-            <View style={[styles.tabBadge, tabActiva === 'favoritos' && styles.tabBadgeActivo]}>
-              <Text style={[styles.tabBadgeTexto, tabActiva === 'favoritos' && styles.tabBadgeTextoActivo]}>
-                {radiosFavoritas.length}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+      {/* Filtro de idioma */}
+      <View style={styles.filterSection}>
+        <Text style={styles.filterLabel}>IDIOMA</Text>
+        <View style={styles.idiomaRow}>
+          {IDIOMAS_FIJOS.map((idioma) => (
+            <IdiomaChip
+              key={idioma.codigo ?? '__todas__'}
+              emoji={idioma.emoji}
+              label={idioma.nombre}
+              activa={idiomaFiltro === idioma.codigo}
+              onPress={() => handleSeleccionarIdioma(idioma.codigo)}
+            />
+          ))}
+        </View>
       </View>
 
-      {/* ── TAB FAVORITOS ─────────────────────────────────────── */}
-      {tabActiva === 'favoritos' ? (
-        <FlatList
-          data={radiosFavoritas}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <RadioCard radio={item} mostrarPais />}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <View style={styles.favInfoBanner}>
-              <Ionicons name="heart" size={20} color="#FF6B6B" />
-              <Text style={styles.favInfoTexto}>
-                Tus radios favoritas aparecen aquí y también primero en la lista general
-              </Text>
-            </View>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="heart-outline" size={64} color={Colors.ui.border} />
-              <Text style={styles.emptyText}>Todavía no tenés favoritos</Text>
-              <Text style={styles.emptySubText}>
-                Entrá a una radio y tocá el corazón ❤️ para agregarla a favoritos
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyBtn}
-                onPress={() => setTabActiva('todas')}
-                accessibilityRole="button"
-                accessibilityLabel="Ver todas las radios"
-              >
-                <Text style={styles.emptyBtnText}>Ver todas las radios</Text>
-              </TouchableOpacity>
-            </View>
-          }
-        />
-      ) : (
-        /* ── TAB TODAS ──────────────────────────────────────── */
-        <>
-          {/* Filtro de idioma */}
-          <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Idioma</Text>
-            <View style={styles.idiomaRow}>
-              {IDIOMAS_FIJOS.map((idioma) => (
-                <IdiomaChip
-                  key={idioma.codigo ?? '__todas__'}
-                  emoji={idioma.emoji}
-                  label={idioma.nombre}
-                  activa={idiomaFiltro === idioma.codigo}
-                  onPress={() => handleSeleccionarIdioma(idioma.codigo)}
-                />
-              ))}
-            </View>
-          </View>
+      {/* Filtro de categoría */}
+      <View style={styles.categoriaSection}>
+        <Text style={styles.filterLabel}>CATEGORÍA</Text>
+        <View style={styles.filterRow}>
+          <TouchableOpacity style={styles.arrowBtn} onPress={catScrollLeft} accessibilityLabel="Desplazar izquierda">
+            <Text style={styles.arrowText}>◀</Text>
+          </TouchableOpacity>
+          <ScrollView
+            ref={categoriaScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriaChipsRow}
+            decelerationRate="fast"
+            style={styles.filterScroll}
+            onScroll={(e) => { catScrollX.current = e.nativeEvent.contentOffset.x; }}
+            scrollEventThrottle={16}
+          >
+            {categorias.map((cat) => (
+              <CategoriaChip
+                key={cat.id ?? '__todas__'}
+                emoji={cat.emoji}
+                label={cat.nombre}
+                activa={categoriaFiltro === cat.id}
+                onPress={() => setCategoriaFiltro(cat.id)}
+              />
+            ))}
+          </ScrollView>
+          <TouchableOpacity style={styles.arrowBtn} onPress={catScrollRight} accessibilityLabel="Desplazar derecha">
+            <Text style={styles.arrowText}>▶</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-          {/* Filtro de categoría */}
-          <View style={styles.categoriaSection}>
-            <Text style={styles.filterLabel}>Categoría</Text>
-            <View style={styles.filterRow}>
-              <TouchableOpacity style={styles.arrowBtn} onPress={catScrollLeft} accessibilityLabel="Desplazar izquierda">
-                <Text style={styles.arrowText}>◀</Text>
-              </TouchableOpacity>
-              <ScrollView
-                ref={categoriaScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoriaChipsRow}
-                decelerationRate="fast"
-                style={styles.filterScroll}
-                onScroll={(e) => { catScrollX.current = e.nativeEvent.contentOffset.x; }}
-                scrollEventThrottle={16}
-              >
-                {categorias.map((cat) => (
-                  <CategoriaChip
-                    key={cat.id ?? '__todas__'}
-                    emoji={cat.emoji}
-                    label={cat.nombre}
-                    activa={categoriaFiltro === cat.id}
-                    onPress={() => setCategoriaFiltro(cat.id)}
-                  />
-                ))}
-              </ScrollView>
-              <TouchableOpacity style={styles.arrowBtn} onPress={catScrollRight} accessibilityLabel="Desplazar derecha">
-                <Text style={styles.arrowText}>▶</Text>
-              </TouchableOpacity>
-            </View>
+      <FlatList
+        data={radiosFiltradas}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <RadioCard radio={item} mostrarPais={idiomaFiltro === null} />
+        )}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.resultadosBanner}>
+            <Text style={styles.resultadosEmoji}>{catActual.emoji}</Text>
+            <Text style={styles.resultadosNombre}>{catActual.nombre}</Text>
+            <Text style={styles.resultadosCount}>
+              {radiosFiltradas.length} {radiosFiltradas.length === 1 ? 'radio' : 'radios'}
+            </Text>
           </View>
-
-          <FlatList
-            data={radiosFiltradas}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <RadioCard radio={item} mostrarPais={idiomaFiltro === null} />
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <>
-                {/* Banner de favoritos si hay alguno */}
-                {radiosFiltradas.some((r) => esFavorito(r.id)) && (
-                  <View style={styles.favInfoBanner}>
-                    <Ionicons name="heart" size={18} color="#FF6B6B" />
-                    <Text style={styles.favInfoTexto}>
-                      Las radios con ❤️ aparecen primero. Tocá una radio para marcarla como favorita.
-                    </Text>
-                  </View>
-                )}
-                {!radiosFiltradas.some((r) => esFavorito(r.id)) && (
-                  <View style={styles.favHintBanner}>
-                    <Ionicons name="heart-outline" size={18} color={Colors.text.hint} />
-                    <Text style={styles.favHintTexto}>
-                      Tocá una radio y presioná ❤️ para agregarla a favoritos. Aparecerá primero en la lista.
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.resultadosBanner}>
-                  <Text style={styles.resultadosEmoji}>{catActual.emoji}</Text>
-                  <Text style={styles.resultadosNombre}>{catActual.nombre}</Text>
-                  <Text style={styles.resultadosCount}>
-                    {radiosFiltradas.length} {radiosFiltradas.length === 1 ? 'radio' : 'radios'}
-                  </Text>
-                </View>
-              </>
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyEmoji}>📻</Text>
-                <Text style={styles.emptyText}>No hay radios en esta categoría</Text>
-                <TouchableOpacity
-                  style={styles.emptyBtn}
-                  onPress={() => { setIdiomaFiltro(null); setCategoriaFiltro(null); }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ver todas las radios"
-                >
-                  <Text style={styles.emptyBtnText}>Ver todas las radios</Text>
-                </TouchableOpacity>
-              </View>
-            }
-          />
-        </>
-      )}
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyEmoji}>📻</Text>
+            <Text style={styles.emptyText}>No hay radios en esta categoría</Text>
+            <TouchableOpacity
+              style={styles.emptyBtn}
+              onPress={() => { setIdiomaFiltro(null); setCategoriaFiltro(null); }}
+              accessibilityRole="button"
+              accessibilityLabel="Ver todas las radios"
+            >
+              <Text style={styles.emptyBtnText}>Ver todas las radios</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       <NowPlayingBar />
     </View>
@@ -341,101 +235,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.ui.background,
-  },
-
-  // ── Tabs
-  tabsRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.ui.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.ui.border,
-    paddingHorizontal: Spacing.screen.horizontal,
-    paddingTop: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
-    gap: 4,
-  },
-  tabActiva: {
-    borderBottomColor: Colors.brand.greenDark,
-    backgroundColor: Colors.brand.greenDark + '15',
-    borderRadius: Spacing.radius.sm,
-  },
-  tabTexto: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.text.secondary,
-  },
-  tabTextoActivo: {
-    color: Colors.brand.greenDark,
-    fontWeight: Typography.weight.bold,
-  },
-  tabBadge: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  tabBadgeActivo: {
-    backgroundColor: Colors.brand.greenDark,
-  },
-  tabBadgeTexto: {
-    fontSize: 11,
-    fontWeight: Typography.weight.bold,
-    color: Colors.text.onDark,
-  },
-  tabBadgeTextoActivo: {
-    color: Colors.text.onDark,
-  },
-
-  // ── Banner de favoritos
-  favInfoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginHorizontal: Spacing.screen.horizontal,
-    marginBottom: Spacing.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    backgroundColor: '#FFF0F0',
-    borderRadius: Spacing.radius.lg,
-    borderWidth: 1,
-    borderColor: '#FFCDD2',
-  },
-  favInfoTexto: {
-    flex: 1,
-    fontSize: Typography.size.sm,
-    color: '#C62828',
-    lineHeight: 20,
-  },
-  favHintBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginHorizontal: Spacing.screen.horizontal,
-    marginBottom: Spacing.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    backgroundColor: Colors.ui.surface,
-    borderRadius: Spacing.radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.ui.border,
-  },
-  favHintTexto: {
-    flex: 1,
-    fontSize: Typography.size.sm,
-    color: Colors.text.hint,
-    lineHeight: 20,
   },
 
   // ── Secciones de filtro
@@ -594,13 +393,6 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textAlign: 'center',
     fontWeight: Typography.weight.semibold,
-  },
-  emptySubText: {
-    fontSize: Typography.size.md,
-    color: Colors.text.hint,
-    textAlign: 'center',
-    lineHeight: 26,
-    paddingHorizontal: Spacing.lg,
   },
   emptyBtn: {
     marginTop: Spacing.sm,
