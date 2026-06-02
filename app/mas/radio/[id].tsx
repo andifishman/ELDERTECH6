@@ -34,7 +34,7 @@ export default function RadioDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { data } = useRadioData();
-  const { radioActual, estado, reproducir, detener } = useRadioPlayer();
+  const { radioActual, estado, volumen, subirVolumen, bajarVolumen, reproducir, detener } = useRadioPlayer();
   const { toggleFavorito, esFavorito } = useFavoritos();
   const { agregarAlHistorial } = useHistorialRadio();
 
@@ -290,6 +290,50 @@ export default function RadioDetalleScreen() {
               ? '❤️ Esta radio aparece primero en tu lista'
               : 'Las radios favoritas aparecen primero en la lista'}
           </Text>
+
+          {/* ── Control de volumen ── */}
+          <View style={styles.volumenContainer}>
+            <Text style={styles.volumenTitulo}>🔊 Volumen</Text>
+            <View style={styles.volumenRow}>
+              <TouchableOpacity
+                style={[styles.volBtn, volumen <= 0 && styles.volBtnDeshabilitado]}
+                onPress={bajarVolumen}
+                disabled={volumen <= 0}
+                accessibilityLabel="Bajar volumen"
+                accessibilityRole="button"
+              >
+                <Text style={styles.volBtnTexto}>−</Text>
+              </TouchableOpacity>
+
+              {/* Barra de nivel con 10 segmentos */}
+              <View style={styles.volBarContainer}>
+                {Array.from({ length: 10 }).map((_, i) => {
+                  const activo = i < Math.round(volumen * 10);
+                  const color = i < 6 ? '#4CAF50' : i < 8 ? '#FFC107' : '#F44336';
+                  return (
+                    <View
+                      key={i}
+                      style={[
+                        styles.volSegmento,
+                        activo ? { backgroundColor: color } : styles.volSegmentoVacio,
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.volBtn, volumen >= 1 && styles.volBtnDeshabilitado]}
+                onPress={subirVolumen}
+                disabled={volumen >= 1}
+                accessibilityLabel="Subir volumen"
+                accessibilityRole="button"
+              >
+                <Text style={styles.volBtnTexto}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.volumenPorcentaje}>{Math.round(volumen * 100)}%</Text>
+          </View>
         </View>
 
         {/* ── Radios similares ── */}
@@ -680,5 +724,75 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     color: Colors.text.onDark,
     fontWeight: Typography.weight.semibold,
+  },
+
+  // ── Volumen
+  volumenContainer: {
+    alignItems: 'center',
+    gap: Spacing.sm,
+    width: '100%',
+    paddingHorizontal: Spacing.screen.horizontal,
+    paddingVertical: Spacing.lg,
+    backgroundColor: Colors.ui.surface,
+    borderRadius: Spacing.radius.xl,
+    marginHorizontal: Spacing.screen.horizontal,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+  },
+  volumenTitulo: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
+  },
+  volumenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  volBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.brand.greenDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    flexShrink: 0,
+  },
+  volBtnDeshabilitado: {
+    backgroundColor: Colors.ui.disabled,
+    elevation: 0,
+  },
+  volBtnTexto: {
+    fontSize: 36,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+    lineHeight: 40,
+  },
+  volBarContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'flex-end',
+    height: 36,
+  },
+  volSegmento: {
+    flex: 1,
+    borderRadius: 3,
+    height: '100%',
+  },
+  volSegmentoVacio: {
+    backgroundColor: Colors.ui.border,
+  },
+  volumenPorcentaje: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.secondary,
   },
 });
