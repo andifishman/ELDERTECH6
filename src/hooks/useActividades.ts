@@ -1,7 +1,9 @@
+//hooks de react-query para cargar actividades desde supabase
 import { useQuery } from '@tanstack/react-query';
 import { getActividadesPorFecha, getActividadById } from '@/services/actividadesService';
 import { toSupabaseDate } from '@/utils/dateUtils';
 
+//carga las actividades de un día específico; se vuelve a buscar si cambia la fecha
 export function useActividades(fecha: Date) {
   return useQuery({
     queryKey: ['actividades', toSupabaseDate(fecha)],
@@ -11,6 +13,7 @@ export function useActividades(fecha: Date) {
   });
 }
 
+//carga el detalle de una actividad por id; no corre si id es null
 export function useActividad(id: string | null) {
   return useQuery({
     queryKey: ['actividad', id],

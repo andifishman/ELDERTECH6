@@ -1,3 +1,4 @@
+//tipos de todas las tablas de supabase usadas en el proyecto — generados manualmente
 // Tipos generados manualmente a partir del schema Supabase de ElderTech
 // Cuando tengas el proyecto Supabase creado, reemplazá con:
 // npx supabase gen types typescript --project-id <tu-project-id> > src/types/database.types.ts

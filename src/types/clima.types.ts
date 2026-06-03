@@ -1,3 +1,4 @@
+//tipos TypeScript usados en el módulo de Clima — servicio, hooks y pantallas
 /**
  * clima.types.ts
  * ──────────────

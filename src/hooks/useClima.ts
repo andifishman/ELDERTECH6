@@ -23,7 +23,7 @@ import type { ConfiguracionClima } from '@/types/database.types';
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchClimaOrg() {
-  // 1. Intentar leer la configuración de clima de la organización en Supabase
+  //consulta la configuración de ciudad guardada para esta organización
   const { data, error } = await supabase
     .from('configuracion_clima')
     .select('*')

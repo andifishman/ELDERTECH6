@@ -1,3 +1,4 @@
+//servicio que consulta las actividades desde supabase
 import { supabase, ORG_ID } from './supabase';
 import type { ActividadCompleta } from '@/types/database.types';
 import { toSupabaseDate } from '@/utils/dateUtils';
@@ -9,6 +10,7 @@ import { toSupabaseDate } from '@/utils/dateUtils';
 export async function getActividadesPorFecha(fecha: Date): Promise<ActividadCompleta[]> {
   const fechaStr = toSupabaseDate(fecha);
 
+  //consulta actividades del día con sus relaciones
   const { data, error } = await supabase
     .from('actividades')
     .select(`
@@ -30,6 +32,7 @@ export async function getActividadesPorFecha(fecha: Date): Promise<ActividadComp
  * Trae una actividad por ID con todos sus joins.
  */
 export async function getActividadById(id: string): Promise<ActividadCompleta | null> {
+  //busca una actividad específica por su id
   const { data, error } = await supabase
     .from('actividades')
     .select(`
