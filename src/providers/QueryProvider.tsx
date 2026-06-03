@@ -1,6 +1,8 @@
+//configura react-query para toda la app con caché de 5 minutos y 2 reintentos por defecto
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+//instancia global del cliente de react-query con opciones por defecto
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

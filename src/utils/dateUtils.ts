@@ -1,3 +1,4 @@
+//utilidades para formatear fechas, horas y calcular días — usadas en horarios y clima
 const DIAS_LETRA = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 const DIAS_COMPLETO = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = [
@@ -6,23 +7,23 @@ const MESES = [
 ];
 const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-/** "Lunes, 7 de abril de 2026" */
+//devuelve la fecha en formato largo: "Lunes, 7 de abril de 2026"
 export function formatFechaLarga(fecha: Date): string {
   const dia = DIAS_COMPLETO[fecha.getDay()];
   return `${capitalizar(dia)}, ${fecha.getDate()} de ${MESES[fecha.getMonth()]} de ${fecha.getFullYear()}`;
 }
 
-/** "7 de abril de 2026" */
+//devuelve la fecha en formato corto: "7 de abril de 2026"
 export function formatFechaCorta(fecha: Date): string {
   return `${fecha.getDate()} de ${MESES[fecha.getMonth()]} de ${fecha.getFullYear()}`;
 }
 
-/** Letra del día: 'L', 'M', 'M', 'J', 'V', 'S', 'D' */
+//devuelve la letra inicial del día: 'L', 'M', 'M', 'J', 'V', 'S', 'D'
 export function getDiaLetra(fecha: Date): string {
   return DIAS_LETRA[fecha.getDay()];
 }
 
-/** Nombre corto para pronóstico: 'Hoy', 'Mañana', 'Lun', 'Mar', ... */
+//devuelve 'Hoy', 'Mañana' o el nombre corto del día para el pronóstico del clima
 export function getLabelDia(fecha: Date, referencia: Date): string {
   if (esMismodia(fecha, referencia)) return 'Hoy';
   const manana = new Date(referencia);

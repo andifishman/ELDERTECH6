@@ -25,6 +25,7 @@ import { supabase } from './supabase';
 import type { RadioStation, CategoriaRadio, PaisRadio, RadioData } from '@/types/radio.types';
 import { PAIS_LABELS, PAIS_FLAGS } from '@/types/radio.types';
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // URL overrides — se aplican sobre los datos de Supabase para corregir
 // streams desactualizados sin necesidad de tocar la DB.
@@ -108,8 +109,10 @@ const URL_OVERRIDES: Record<string, Pick<RadioStation, 'urlStream' | 'urlFallbac
 // Carga desde Supabase con URL overrides aplicados
 // ─────────────────────────────────────────────────────────────────────────────
 
+//carga radios, categorías y países desde supabase en paralelo
 export async function getRadioData(): Promise<RadioData> {
   const [radiosRes, categoriasRes, paisesRes] = await Promise.all([
+    //trae todas las radios activas con su categoría y datos del país
     supabase
       .from('radios')
       .select(`
@@ -120,11 +123,13 @@ export async function getRadioData(): Promise<RadioData> {
       .eq('activo', true)
       .order('es_destacada', { ascending: false })
       .order('nombre', { ascending: true }),
+    //trae las categorías activas ordenadas por campo orden
     supabase
       .from('categorias_radio')
       .select('id, nombre, emoji, orden')
       .eq('activo', true)
       .order('orden'),
+    //trae los países activos ordenados por campo orden
     supabase
       .from('paises_radio')
       .select('id, codigo, nombre, emoji_bandera, orden')
@@ -136,6 +141,7 @@ export async function getRadioData(): Promise<RadioData> {
   if (categoriasRes.error) throw new Error(`Error al cargar categorías: ${categoriasRes.error.message}`);
   if (paisesRes.error) throw new Error(`Error al cargar países: ${paisesRes.error.message}`);
 
+  //mapea los datos crudos de supabase al tipo RadioStation y aplica overrides
   const radios: RadioStation[] = (radiosRes.data ?? []).map((r: any) => {
     const base: RadioStation = {
       id: r.id,

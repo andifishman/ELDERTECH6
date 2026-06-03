@@ -1,3 +1,4 @@
+//tipos TypeScript para el módulo de radio: estaciones, categorías, países y estado del reproductor
 export interface RadioStation {
   id: string;
   nombre: string;

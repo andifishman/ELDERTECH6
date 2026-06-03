@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -397,9 +397,20 @@ export default function ClimaScreen() {
 /**
  * CiudadSelector
  * ──────────────
- * Muestra todas las ciudades como chips que se envuelven en múltiples filas.
- * El botón "Agregar ciudad" siempre está al final.
+ * Layout fijo de 3 filas:
+ *   Fila 1: ciudades en posiciones pares  (0, 2, 4...)
+ *   Fila 2: ciudades en posiciones impares (1, 3, 5...) — si no hay, queda vacia
+ *   Fila 3: boton "Agregar ciudad" solo
+ *
+ * Caso pocas ciudades (todas caben en fila 1):
+ *   Fila 1: ciudades
+ *   Fila 2: boton "Agregar ciudad"  (la fila 3 desaparece)
+ *
+ * Las flechas < > aparecen cuando hay mas ciudades de las que entran visualmente.
  */
+const CHIP_WIDTH = 130;
+const CHIPS_PER_PAGE = 3;
+
 function CiudadSelector({
   ciudades,
   ciudadActiva,
@@ -411,36 +422,103 @@ function CiudadSelector({
   onSeleccionar: (c: CiudadGuardada) => void;
   onAgregar: () => void;
 }) {
+  const scrollRef = useRef<ScrollView>(null);
+  const [offset, setOffset] = useState(0);
+
+  const fila1 = ciudades.filter((_, i) => i % 2 === 0);
+  const fila2 = ciudades.filter((_, i) => i % 2 !== 0);
+
+  // Hay segunda fila de ciudades cuando al menos hay 2 ciudades
+  const hayFila2Ciudades = fila2.length > 0;
+
+  const maxOffset = Math.max(0, Math.ceil(ciudades.length / 2) - CHIPS_PER_PAGE);
+  const scrollPx = CHIP_WIDTH + 8;
+
+  const irAtras = () => {
+    const next = Math.max(0, offset - 1);
+    setOffset(next);
+    scrollRef.current?.scrollTo({ x: next * scrollPx, animated: true });
+  };
+
+  const irAdelante = () => {
+    const next = Math.min(maxOffset, offset + 1);
+    setOffset(next);
+    scrollRef.current?.scrollTo({ x: next * scrollPx, animated: true });
+  };
+
+  const renderChip = (ciudad: CiudadGuardada) => {
+    const activa = ciudad.id === ciudadActiva.id;
+    return (
+      <TouchableOpacity
+        key={ciudad.id}
+        style={[styles.ciudadTab, activa && styles.ciudadTabActiva]}
+        onPress={() => onSeleccionar(ciudad)}
+        accessibilityLabel={`Ver clima de ${ciudad.nombre}`}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: activa }}
+      >
+        <Text style={[styles.ciudadTabTexto, activa && styles.ciudadTabTextoActivo]}>
+          {ciudad.nombre}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const botonAgregar = (
+    <TouchableOpacity
+      style={styles.addBtn}
+      onPress={onAgregar}
+      accessibilityLabel="Agregar ciudad"
+      accessibilityRole="button"
+    >
+      <Ionicons name="add" size={18} color={Colors.text.secondary} />
+      <Text style={styles.addBtnTexto}>Agregar ciudad</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.ciudadesBar}>
-      {ciudades.map((ciudad) => {
-        const activa = ciudad.id === ciudadActiva.id;
-        return (
-          <TouchableOpacity
-            key={ciudad.id}
-            style={[styles.ciudadTab, activa && styles.ciudadTabActiva]}
-            onPress={() => onSeleccionar(ciudad)}
-            accessibilityLabel={`Ver clima de ${ciudad.nombre}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: activa }}
-          >
-            <Text style={[styles.ciudadTabTexto, activa && styles.ciudadTabTextoActivo]}>
-              {ciudad.nombre}
-            </Text>
+      {/* Flechas + area de scroll */}
+      <View style={styles.ciudadesScrollWrapper}>
+        {offset > 0 && (
+          <TouchableOpacity style={styles.ciudadArrow} onPress={irAtras} accessibilityLabel="Anterior">
+            <Ionicons name="chevron-back" size={20} color={Colors.text.secondary} />
           </TouchableOpacity>
-        );
-      })}
+        )}
 
-      {/* Botón "Agregar ciudad" — siempre al final */}
-      <TouchableOpacity
-        style={styles.addBtn}
-        onPress={onAgregar}
-        accessibilityLabel="Agregar ciudad"
-        accessibilityRole="button"
-      >
-        <Ionicons name="add" size={18} color={Colors.text.secondary} />
-        <Text style={styles.addBtnTexto}>Agregar ciudad</Text>
-      </TouchableOpacity>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          scrollEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          style={styles.ciudadesScrollArea}
+          contentContainerStyle={styles.ciudadesScrollContent}
+        >
+          <View style={styles.ciudadesDosFila}>
+            {/* Fila 1: siempre ciudades */}
+            <View style={styles.ciudadesFilaRow}>
+              {fila1.map(renderChip)}
+            </View>
+            {/* Fila 2: ciudades impares (si hay) o boton agregar (si pocas) */}
+            {hayFila2Ciudades && (
+              <View style={styles.ciudadesFilaRow}>
+                {fila2.map(renderChip)}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {offset < maxOffset && (
+          <TouchableOpacity style={styles.ciudadArrow} onPress={irAdelante} accessibilityLabel="Siguiente">
+            <Ionicons name="chevron-forward" size={20} color={Colors.text.secondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Fila de "Agregar ciudad" siempre al fondo */}
+      <View style={styles.ciudadesFilaAgregar}>
+        {botonAgregar}
+      </View>
     </View>
   );
 }
@@ -495,23 +573,49 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ui.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.ui.border,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
+    flexDirection: 'column',
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    gap: Spacing.xs,
   },
-  /** Botón de flecha — ya no se usa, se mantiene por compatibilidad */
+  /** Fila con flechas + scroll de ciudades */
+  ciudadesScrollWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  /** Fila exclusiva del boton Agregar ciudad */
+  ciudadesFilaAgregar: {
+    flexDirection: 'row',
+    paddingLeft: Spacing.xs,
+  },
+  /** Flechas de navegacion */
   ciudadArrow: {
-    width: 32,
-    height: 44,
+    width: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
+    alignSelf: 'stretch',
   },
   ciudadArrowPlaceholder: {
-    width: 0,
+    width: 28,
+  },
+  /** Area de scroll horizontal (deshabilitado — se controla con flechas) */
+  ciudadesScrollArea: {
+    flex: 1,
+  },
+  ciudadesScrollContent: {
+    flexGrow: 1,
+  },
+  /** Contenedor de las 2 filas de chips */
+  ciudadesDosFila: {
+    flexDirection: 'column',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+  },
+  /** Una fila de chips */
+  ciudadesFilaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   ciudadesRow: {
     flexDirection: 'row',

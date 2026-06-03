@@ -5,11 +5,11 @@
     "version": "1.0.0",
     "scheme": "eldertech",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo-puente.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/logo-puente.png",
       "resizeMode": "contain",
       "backgroundColor": "#1B5E3B"
     },
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo-puente.png",
         "backgroundColor": "#1B5E3B"
       },
       "package": "com.eldertech.app"
@@ -27,7 +27,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/logo-puente.png"
     },
     "plugins": [
       "expo-router",

@@ -1,3 +1,4 @@
+//paleta de colores centralizada del proyecto ElderTech — diseño de Figma
 // Design tokens extraídos del Figma ElderTech y capturas de referencia
 export const Colors = {
   // Marca principal

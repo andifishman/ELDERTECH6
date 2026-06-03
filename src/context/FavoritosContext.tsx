@@ -1,11 +1,4 @@
-/**
- * FavoritosContext.tsx
- * ─────────────────────
- * Estado global de radios favoritas.
- * Al ser un contexto compartido, cualquier pantalla que llame
- * toggleFavorito actualiza inmediatamente la lista en todas las
- * pantallas (index, detalle, etc.).
- */
+//contexto global para guardar y consultar radios favoritas en AsyncStorage
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,10 +15,12 @@ interface FavoritosContextValue {
 const FavoritosContext = createContext<FavoritosContextValue | null>(null);
 
 export function FavoritosProvider({ children }: { children: React.ReactNode }) {
+  //lista de ids de radios marcadas como favoritas
   const [favoritos, setFavoritos] = useState<string[]>([]);
+  //true mientras se lee el AsyncStorage por primera vez
   const [cargando, setCargando] = useState(true);
 
-  // Cargar desde AsyncStorage al montar
+  //carga los favoritos guardados desde AsyncStorage al montar el provider
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
@@ -38,6 +33,7 @@ export function FavoritosProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setCargando(false));
   }, []);
 
+  //agrega o quita una radio de favoritos y persiste el cambio en AsyncStorage
   const toggleFavorito = useCallback((radioId: string) => {
     setFavoritos((prev) => {
       const esFav = prev.includes(radioId);
@@ -53,6 +49,7 @@ export function FavoritosProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  //devuelve true si el id dado está en la lista de favoritos
   const esFavorito = useCallback(
     (radioId: string) => favoritos.includes(radioId),
     [favoritos],
