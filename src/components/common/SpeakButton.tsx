@@ -1,3 +1,4 @@
+//botón de texto a voz — lee el texto en voz alta al tocar; soporta variantes de estilo y tamaño
 import React, { useState, useCallback } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

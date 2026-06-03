@@ -1,3 +1,4 @@
+//header reutilizable con título centrado, botón volver (izquierda) y botón escuchar (derecha)
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +33,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
 
+  //si hay handler propio lo usa, sino navega hacia atrás o a home
   function handleVolver() {
     if (onVolver) {
       onVolver();
@@ -42,6 +44,7 @@ export function AppHeader({
     }
   }
 
+  //lee en voz alta el título + subtítulo, o el texto personalizado si se pasó
   function handleHablar() {
     const texto = textoHablar ?? `${titulo}. ${subtitulo ?? ''}`;
     hablar(texto);

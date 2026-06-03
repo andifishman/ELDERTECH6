@@ -1,3 +1,4 @@
+//componentes de estado: spinner mientras carga y mensaje de error cuando falla
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/Colors';

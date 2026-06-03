@@ -61,6 +61,15 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
           </Text>
         ) : null}
 
+        {/* texto de ayuda — explica que la tarjeta lleva al detalle y el botón verde reproduce */}
+        <Text style={styles.ayuda}>
+          {reproduciendo
+            ? '🟢 Sonando ahora — tocá el botón rojo para parar'
+            : cargando
+            ? '⏳ Conectando...'
+            : '▶ Tocá el botón verde para escuchar'}
+        </Text>
+
         <View style={styles.badgesRow}>
           {radio.categoriaEmoji && radio.categoria ? (
             <View style={styles.badge}>
@@ -185,6 +194,12 @@ const styles = StyleSheet.create({
   descripcion: {
     fontSize: Typography.size.sm,
     color: Colors.text.secondary,
+  },
+  //texto de ayuda debajo de la descripción
+  ayuda: {
+    fontSize: Typography.size.xs,
+    color: Colors.text.hint,
+    marginTop: 2,
   },
   badgesRow: {
     flexDirection: 'row',

@@ -143,7 +143,7 @@ export default function RadioDetalleScreen() {
   // ── Render principal ───────────────────────────────────────────────────────
   return (
     <View style={styles.root}>
-      {/* ── Header verde con volver + nombre + favorito ── */}
+      {/* ── Header verde con volver + nombre ── */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.headerBtn}
@@ -158,18 +158,8 @@ export default function RadioDetalleScreen() {
           {radio.nombre}
         </Text>
 
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => toggleFavorito(radio.id)}
-          accessibilityLabel={esFav ? `Quitar ${radio.nombre} de favoritos` : `Agregar ${radio.nombre} a favoritos`}
-          accessibilityRole="button"
-        >
-          <Ionicons
-            name={esFav ? 'heart' : 'heart-outline'}
-            size={26}
-            color={esFav ? '#FF6B6B' : Colors.text.onDark}
-          />
-        </TouchableOpacity>
+        {/* espacio vacío para mantener el título centrado */}
+        <View style={styles.headerBtnPlaceholder} />
       </View>
 
       <ScrollView
@@ -256,6 +246,11 @@ export default function RadioDetalleScreen() {
 
           {/* Texto de estado debajo del botón */}
           <Text style={styles.estadoTexto}>{playBtnLabel}</Text>
+          {cargando && (
+            <Text style={styles.estadoSubtexto}>
+              Estamos conectando la radio, por favor esperá unos segundos...
+            </Text>
+          )}
 
           {/* Mensaje de error */}
           {hayError && (
@@ -271,7 +266,7 @@ export default function RadioDetalleScreen() {
           <TouchableOpacity
             style={[styles.favBtn, esFav && styles.favBtnActivo]}
             onPress={() => toggleFavorito(radio.id)}
-            accessibilityLabel={esFav ? `Quitar ${radio.nombre} de favoritos` : `Agregar ${radio.nombre} a favoritos`}
+            accessibilityLabel={esFav ? `Eliminar ${radio.nombre} de favoritos` : `Agregar ${radio.nombre} a favoritos`}
             accessibilityRole="button"
           >
             <Ionicons
@@ -280,7 +275,7 @@ export default function RadioDetalleScreen() {
               color={esFav ? '#FF6B6B' : Colors.text.secondary}
             />
             <Text style={[styles.favBtnTexto, esFav && styles.favBtnTextoActivo]}>
-              {esFav ? 'En favoritos' : 'Agregar a favoritos'}
+              {esFav ? 'Eliminar de favoritos' : 'Agregar a favoritos'}
             </Text>
           </TouchableOpacity>
 
@@ -293,7 +288,10 @@ export default function RadioDetalleScreen() {
 
           {/* ── Control de volumen ── */}
           <View style={styles.volumenContainer}>
-            <Text style={styles.volumenTitulo}>🔊 Volumen</Text>
+            <Text style={styles.volumenTitulo}>🔊 Volumen de la radio</Text>
+            <Text style={styles.volumenSubtitulo}>
+              Usá los botones para subir o bajar el volumen
+            </Text>
             <View style={styles.volumenRow}>
               <TouchableOpacity
                 style={[styles.volBtn, volumen <= 0 && styles.volBtnDeshabilitado]}
@@ -303,6 +301,7 @@ export default function RadioDetalleScreen() {
                 accessibilityRole="button"
               >
                 <Text style={styles.volBtnTexto}>−</Text>
+                <Text style={styles.volBtnLabel}>Bajar</Text>
               </TouchableOpacity>
 
               {/* Barra de nivel con 10 segmentos */}
@@ -330,6 +329,7 @@ export default function RadioDetalleScreen() {
                 accessibilityRole="button"
               >
                 <Text style={styles.volBtnTexto}>+</Text>
+                <Text style={styles.volBtnLabel}>Subir</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.volumenPorcentaje}>{Math.round(volumen * 100)}%</Text>
@@ -438,6 +438,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  //placeholder transparente para centrar el título cuando no hay botón derecho
+  headerBtnPlaceholder: {
+    width: 48,
+    height: 48,
     flexShrink: 0,
   },
   headerTitulo: {
@@ -571,6 +577,13 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.semibold,
     color: Colors.text.secondary,
+  },
+  estadoSubtexto: {
+    fontSize: Typography.size.sm,
+    color: Colors.text.hint,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.xxl,
+    lineHeight: 22,
   },
   errorBadge: {
     flexDirection: 'row',
@@ -743,6 +756,11 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
+  },
+  volumenSubtitulo: {
+    fontSize: Typography.size.sm,
+    color: Colors.text.hint,
+    textAlign: 'center',
   },
   volumenRow: {
     flexDirection: 'row',
