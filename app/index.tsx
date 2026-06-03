@@ -1,3 +1,4 @@
+//pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useState } from 'react';
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
+//datos de cada botón del menú: ícono, texto, color y audio de descripción
 const menuItems = [
   {
     id: 'horarios',

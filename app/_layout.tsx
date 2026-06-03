@@ -1,3 +1,4 @@
+//layout raíz de la app — envuelve todo con providers globales y define las rutas del stack
 import 'react-native-gesture-handler';
 import React from 'react';
 import { Stack } from 'expo-router';
@@ -7,6 +8,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
 
+//todos los providers se anidan aquí para que cualquier pantalla tenga acceso
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
