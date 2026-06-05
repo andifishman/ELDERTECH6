@@ -109,6 +109,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: Spacing.header,
     paddingTop: Spacing.md,   // espacio extra entre el safe area y los botones
+    gap: Spacing.md,          // más separación entre botones y título
   },
   // Contenedor lateral más ancho para acomodar botones más grandes
   sideContainer: {

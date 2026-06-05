@@ -152,7 +152,7 @@ export default function HomeScreen() {
               onPress={() => speak(menuItems[0].audio)}
               activeOpacity={0.7}
             >
-              <Text style={styles.audioBtnText}>🔊  Escuchar descripción</Text>
+              <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -279,15 +279,16 @@ const styles = StyleSheet.create({
     fontSize: 46,
     marginLeft: 16,
   },
+  // Botón de usuario — mismo tamaño que los botones del AppHeader
   avatarBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarIcon: { fontSize: 20, color: '#FFFFFF' },
+  avatarIcon: { fontSize: 28, color: '#FFFFFF' },
 
   // Welcome
   welcomeSection: {
@@ -335,16 +336,19 @@ const styles = StyleSheet.create({
   largeCardSub: { fontSize: 16, color: 'rgba(255,255,255,0.85)' },
   largeCardBottom: { padding: 12, paddingTop: 4 },
 
-  // Audio button (shared)
+  // Botón Escuchar — rectangular redondeado, fondo gris claro, texto azul
   audioBtn: {
-    backgroundColor: 'rgba(0,0,0,0.12)',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
     width: '100%',
   },
-  audioBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  audioBtnText: { fontSize: 16, fontWeight: '700', color: '#3D5AFE' },
 
   // Medium Cards
   mediumRow: {

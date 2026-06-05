@@ -16,7 +16,7 @@
  *  - Mensajes claros cuando no hay actividades o se llega al límite
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -26,6 +26,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/common/AppHeader';
 import { DaySelector } from '@/components/horarios/DaySelector';
@@ -60,19 +61,27 @@ function generarVentana(hoy: Date, diasAtras: number, diasAdelante: number): Dat
 export default function HorariosScreen() {
   const hoy = new Date();
 
-  // ── Ventana dinámica de días ──
-  // Empieza con 2 días atrás + hoy + 6 días adelante = 9 días visibles
-  // Se expande de a 7 cuando el usuario llega al borde del carrusel
   const [diasAtras, setDiasAtras] = useState(2);
   const [diasAdelante, setDiasAdelante] = useState(6);
   const ventana = generarVentana(hoy, diasAtras, diasAdelante);
-
-  // Día actualmente seleccionado — determina qué actividades se muestran
   const [diaSeleccionado, setDiaSeleccionado] = useState(hoy);
-
-  // Control del modal que aparece cuando se llega al límite de días
   const [mostrarModalLimite, setMostrarModalLimite] = useState(false);
   const [mensajeLimite, setMensajeLimite] = useState('');
+
+  // Ref y estado para el botón de scroll
+  const flatListRef = useRef<FlatList>(null);
+  const [scrollY, setScrollY] = useState(0);
+  const [listaAltura, setListaAltura] = useState(0);
+  const [contenidoAltura, setContenidoAltura] = useState(0);
+
+  // Baja un paso equivalente al 80% de la altura visible
+  function bajarScroll() {
+    const paso = listaAltura * 0.8;
+    flatListRef.current?.scrollToOffset({ offset: scrollY + paso, animated: true });
+  }
+
+  // Muestra la flecha solo si hay contenido por debajo del viewport
+  const hayMasAbajo = contenidoAltura > listaAltura && scrollY + listaAltura < contenidoAltura - 10;
 
   // Hook de React Query — carga las actividades del día seleccionado desde Supabase
   const { data: actividades, isLoading, error, refetch } = useActividades(diaSeleccionado);
@@ -115,7 +124,7 @@ export default function HorariosScreen() {
     <View style={styles.root}>
       {/* ── Encabezado de pantalla ── */}
       <AppHeader
-        titulo="Horarios del Día"
+        titulo="Horarios"
         mostrarVolver
         textoHablar={`Horarios del Día. ${fechaLarga}`}
         backgroundColor={Colors.brand.red}
@@ -159,19 +168,40 @@ export default function HorariosScreen() {
             </Text>
           </View>
         ) : (
-          // Lista de tarjetas de actividades
-          <FlatList
-            data={actividades}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: ActividadCompleta }) => (
-              <ActividadCard
-                actividad={item}
-                onPress={() => router.push(`/horarios/${item.id}`)}
-              />
+          // Lista de tarjetas de actividades con botón flotante de scroll
+          <View style={styles.listaWrapper}>
+            <FlatList
+              ref={flatListRef}
+              data={actividades}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }: { item: ActividadCompleta }) => (
+                <ActividadCard
+                  actividad={item}
+                  onPress={() => router.push(`/horarios/${item.id}`)}
+                />
+              )}
+              contentContainerStyle={styles.listaContent}
+              showsVerticalScrollIndicator={false}
+              onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
+              scrollEventThrottle={16}
+              onLayout={(e) => setListaAltura(e.nativeEvent.layout.height)}
+              onContentSizeChange={(_, h) => setContenidoAltura(h)}
+            />
+
+            {/* Botón flotante de flecha — solo visible si hay más contenido abajo */}
+            {hayMasAbajo && (
+              <TouchableOpacity
+                style={styles.flechaBtn}
+                onPress={bajarScroll}
+                activeOpacity={0.85}
+                accessibilityLabel="Bajar para ver más actividades"
+                accessibilityRole="button"
+              >
+                <Ionicons name="chevron-down" size={32} color="#222" />
+                <Text style={styles.flechaTexto}>Bajar</Text>
+              </TouchableOpacity>
             )}
-            contentContainerStyle={styles.listaContent}
-            showsVerticalScrollIndicator={false}
-          />
+          </View>
         )}
       </View>
 
@@ -238,6 +268,11 @@ const styles = StyleSheet.create({
   listaContainer: {
     flex: 1,
   },
+  // Wrapper relativo para posicionar el botón flotante sobre la lista
+  listaWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
   listaContent: {
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xxxl,
@@ -259,6 +294,32 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 28,
+  },
+
+  // Botón flotante de flecha — sutil, color claro con transparencia
+  flechaBtn: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    left: '50%',
+    marginLeft: -44,
+    width: 88,
+    paddingVertical: 12,
+    borderRadius: 28,
+    backgroundColor: 'rgba(224, 218, 218, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  flechaTexto: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.bold,
+    color: '#222',
   },
 
   // Modal de límite de días
