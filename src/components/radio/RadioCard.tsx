@@ -32,19 +32,15 @@ export function RadioCard({ radio, mostrarPais = false, sinMargen = false }: Rad
   const esFav = esFavorito(radio.id);
 
   return (
-    <TouchableOpacity
-      style={[styles.card, sinMargen && styles.cardSinMargen, reproduciendo && styles.cardActiva, esFav && !reproduciendo && styles.cardFavorita]}
-      onPress={() => router.push(`/mas/radio/${radio.id}`)}
-      activeOpacity={0.85}
-      accessibilityLabel={`Ver detalle de ${radio.nombre}`}
-      accessibilityRole="button"
-    >
+    // La card es un View simple — no se puede tocar para navegar
+    <View style={[styles.card, sinMargen && styles.cardSinMargen, reproduciendo && styles.cardActiva, esFav && !reproduciendo && styles.cardFavorita]}>
+
       {/* Ícono / emoji de categoría */}
       <View style={[styles.iconoContainer, reproduciendo && styles.iconoContainerActivo]}>
         <Text style={styles.icono}>{radio.categoriaEmoji ?? '📻'}</Text>
       </View>
 
-      {/* Info */}
+      {/* Info — solo texto, no navegable */}
       <View style={styles.info}>
         <View style={styles.nombreRow}>
           <Text style={[styles.nombre, reproduciendo && styles.nombreActivo]} numberOfLines={1}>
@@ -85,37 +81,51 @@ export function RadioCard({ radio, mostrarPais = false, sinMargen = false }: Rad
         </View>
       </View>
 
-      {/* Botón play / stop — cuadrado redondeado con ícono + texto */}
-      <TouchableOpacity
-        style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}
-        onPress={(e) => {
-          e.stopPropagation?.();
-          alternar(radio);
-        }}
-        activeOpacity={0.75}
-        accessibilityLabel={reproduciendo ? `Detener ${radio.nombre}` : `Reproducir ${radio.nombre}`}
-        accessibilityRole="button"
-        accessibilityState={{ selected: reproduciendo }}
-      >
-        {cargando ? (
-          <ActivityIndicator size="small" color={Colors.text.onDark} />
-        ) : (
-          <Ionicons
-            name={reproduciendo ? 'stop' : 'play'}
-            size={24}
-            color={Colors.text.onDark}
-          />
-        )}
-        <Text style={styles.playBtnTexto}>
-          {cargando ? '...' : reproduciendo ? 'Detener' : 'Escuchar'}
-        </Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
+      {/* Columna de botones: Escuchar arriba, Entrar abajo */}
+      <View style={styles.botonesCol}>
+
+        {/* Botón Escuchar / Detener */}
+        <TouchableOpacity
+          style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}
+          onPress={() => alternar(radio)}
+          activeOpacity={0.75}
+          accessibilityLabel={reproduciendo ? `Detener ${radio.nombre}` : `Escuchar ${radio.nombre}`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: reproduciendo }}
+        >
+          {cargando ? (
+            <ActivityIndicator size="small" color={Colors.text.onDark} />
+          ) : (
+            <Ionicons
+              name={reproduciendo ? 'stop' : 'play'}
+              size={24}
+              color={Colors.text.onDark}
+            />
+          )}
+          <Text style={styles.playBtnTexto}>
+            {cargando ? '...' : reproduciendo ? 'Detener' : 'Escuchar radio'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Botón Entrar — lleva al detalle de la radio */}
+        <TouchableOpacity
+          style={styles.entrarBtn}
+          onPress={() => router.push(`/mas/radio/${radio.id}`)}
+          activeOpacity={0.75}
+          accessibilityLabel={`Ver detalle de ${radio.nombre}`}
+          accessibilityRole="button"
+        >
+          <Ionicons name="chevron-forward" size={20} color={Colors.text.onDark} />
+          <Text style={styles.entrarBtnTexto}>Entrar</Text>
+        </TouchableOpacity>
+
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Tarjeta más alta para facilitar el toque
+  // Tarjeta — ya no es tocable, solo es contenedor visual
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -181,10 +191,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-
-  // Nombre de la radio — grande y legible
   nombre: {
-    fontSize: Typography.size.lg,     // subido de md(18) a lg(20)
+    fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
     flex: 1,
@@ -193,7 +201,7 @@ const styles = StyleSheet.create({
     color: Colors.radio.playButton,
   },
   descripcion: {
-    fontSize: Typography.size.md,     // subido de sm(15) a md(18), siempre menor que el título
+    fontSize: Typography.size.md,
     color: Colors.text.secondary,
     lineHeight: 24,
   },
@@ -222,11 +230,19 @@ const styles = StyleSheet.create({
   badgeErrorText: {
     color: Colors.brand.red,
   },
-  // Botón cuadrado redondeado con ícono + texto adentro, igual al estilo de vol Bajar/Subir
+
+  // Columna con los dos botones apilados verticalmente
+  botonesCol: {
+    flexDirection: 'column',
+    gap: Spacing.sm,
+    flexShrink: 0,
+  },
+
+  // Botón Escuchar radio — cuadrado redondeado verde
   playBtn: {
     width: 72,
     height: 72,
-    borderRadius: 18,
+    borderRadius: 16,
     backgroundColor: Colors.radio.playButton,
     alignItems: 'center',
     justifyContent: 'center',
@@ -235,16 +251,37 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
-    gap: 3,
-    flexShrink: 0,
+    gap: 2,
   },
   playBtnActivo: {
     backgroundColor: Colors.brand.red,
   },
-  // Texto "Escuchar" / "Detener" dentro del botón en blanco
   playBtnTexto: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.semibold,
+    fontSize: 13,
+    fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
+    textAlign: 'center',
+  },
+
+  // Botón Entrar — mismo tamaño que Escuchar radio
+  entrarBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: Colors.brand.blueDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    gap: 2,
+  },
+  entrarBtnTexto: {
+    fontSize: 13,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+    textAlign: 'center',
   },
 });
