@@ -3,9 +3,11 @@ import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useState } from 'react';
 import {
+  BackHandler,
   Dimensions,
   Image,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -226,7 +228,14 @@ export default function HomeScreen() {
             <View style={styles.modalBtns}>
               <TouchableOpacity
                 style={styles.modalBtnDanger}
-                onPress={() => setShowLogout(false)}
+                onPress={() => {
+                  // En web cierra la pestaña del browser, en Android cierra la app
+                  if (Platform.OS === 'web') {
+                    window.close();
+                  } else {
+                    BackHandler.exitApp();
+                  }
+                }}
               >
                 <Text style={styles.modalBtnDangerText}>Salir</Text>
               </TouchableOpacity>

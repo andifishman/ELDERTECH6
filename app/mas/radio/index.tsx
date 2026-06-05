@@ -253,11 +253,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   filterLabel: {
-    fontSize: Typography.size.xs,
+    // Título de sección grande para adultos mayores
+    fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
-    color: Colors.text.hint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    color: Colors.text.primary,
+    letterSpacing: 0.5,
     marginBottom: Spacing.xs,
     paddingHorizontal: Spacing.screen.horizontal,
   },

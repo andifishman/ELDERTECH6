@@ -18,9 +18,11 @@ import type { RadioStation } from '@/types/radio.types';
 interface RadioCardProps {
   radio: RadioStation;
   mostrarPais?: boolean;
+  /** Si es true, elimina el marginHorizontal de la card (para usarla dentro de contenedores con padding propio) */
+  sinMargen?: boolean;
 }
 
-export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
+export function RadioCard({ radio, mostrarPais = false, sinMargen = false }: RadioCardProps) {
   const { alternar, radioActual, estado } = useRadioPlayer();
   const { esFavorito } = useFavoritos();
   const esActiva = radioActual?.id === radio.id;
@@ -31,7 +33,7 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.card, reproduciendo && styles.cardActiva, esFav && !reproduciendo && styles.cardFavorita]}
+      style={[styles.card, sinMargen && styles.cardSinMargen, reproduciendo && styles.cardActiva, esFav && !reproduciendo && styles.cardFavorita]}
       onPress={() => router.push(`/mas/radio/${radio.id}`)}
       activeOpacity={0.85}
       accessibilityLabel={`Ver detalle de ${radio.nombre}`}
@@ -56,19 +58,11 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
         </View>
 
         {radio.descripcion ? (
-          <Text style={styles.descripcion} numberOfLines={1}>
+          // Sin límite de líneas para que se lea la descripción completa
+          <Text style={styles.descripcion}>
             {radio.descripcion}
           </Text>
         ) : null}
-
-        {/* texto de ayuda — explica que la tarjeta lleva al detalle y el botón verde reproduce */}
-        <Text style={styles.ayuda}>
-          {reproduciendo
-            ? '🟢 Sonando ahora — tocá el botón rojo para parar'
-            : cargando
-            ? '⏳ Conectando...'
-            : '▶ Tocá el botón verde para escuchar'}
-        </Text>
 
         <View style={styles.badgesRow}>
           {radio.categoriaEmoji && radio.categoria ? (
@@ -91,7 +85,7 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
         </View>
       </View>
 
-      {/* Botón play / stop */}
+      {/* Botón play / stop — cuadrado redondeado con ícono + texto */}
       <TouchableOpacity
         style={[styles.playBtn, reproduciendo && styles.playBtnActivo]}
         onPress={(e) => {
@@ -104,14 +98,17 @@ export function RadioCard({ radio, mostrarPais = false }: RadioCardProps) {
         accessibilityState={{ selected: reproduciendo }}
       >
         {cargando ? (
-          <ActivityIndicator size="large" color={Colors.text.onDark} />
+          <ActivityIndicator size="small" color={Colors.text.onDark} />
         ) : (
           <Ionicons
             name={reproduciendo ? 'stop' : 'play'}
-            size={26}
+            size={24}
             color={Colors.text.onDark}
           />
         )}
+        <Text style={styles.playBtnTexto}>
+          {cargando ? '...' : reproduciendo ? 'Detener' : 'Escuchar'}
+        </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -136,6 +133,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
+  },
+  // Sin margen horizontal — para usar dentro de contenedores que ya tienen padding
+  cardSinMargen: {
+    marginHorizontal: 0,
   },
   cardActiva: {
     borderColor: Colors.radio.playButton,
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
 
   // Nombre de la radio — grande y legible
   nombre: {
-    fontSize: Typography.size.md,
+    fontSize: Typography.size.lg,     // subido de md(18) a lg(20)
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
     flex: 1,
@@ -192,14 +193,9 @@ const styles = StyleSheet.create({
     color: Colors.radio.playButton,
   },
   descripcion: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.md,     // subido de sm(15) a md(18), siempre menor que el título
     color: Colors.text.secondary,
-  },
-  //texto de ayuda debajo de la descripción
-  ayuda: {
-    fontSize: Typography.size.xs,
-    color: Colors.text.hint,
-    marginTop: 2,
+    lineHeight: 24,
   },
   badgesRow: {
     flexDirection: 'row',
@@ -226,10 +222,11 @@ const styles = StyleSheet.create({
   badgeErrorText: {
     color: Colors.brand.red,
   },
+  // Botón cuadrado redondeado con ícono + texto adentro, igual al estilo de vol Bajar/Subir
   playBtn: {
-    width: Spacing.touch.comfortable,
-    height: Spacing.touch.comfortable,
-    borderRadius: Spacing.touch.comfortable / 2,
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     backgroundColor: Colors.radio.playButton,
     alignItems: 'center',
     justifyContent: 'center',
@@ -238,8 +235,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
+    gap: 3,
+    flexShrink: 0,
   },
   playBtnActivo: {
     backgroundColor: Colors.brand.red,
+  },
+  // Texto "Escuchar" / "Detener" dentro del botón en blanco
+  playBtnTexto: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.onDark,
   },
 });

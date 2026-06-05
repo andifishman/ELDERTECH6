@@ -41,6 +41,7 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     ruta: '/mas/radio',
     textoHablar: 'Radio. Escuchá radios en vivo.',
   },
+  
 ];
 
 // Opciones próximamente — aparecen abajo de la línea, bloqueadas y tachadas
@@ -52,7 +53,7 @@ const OPCIONES_PROXIMAMENTE: OpcionMenu[] = [
     descripcion: 'Divertite con ElderTech',
     ruta: '/mas/juegos',
     textoHablar: 'Juegos. Divertite con ElderTech.',
-    proximamente: true,
+    proximamente: false,
   },
 ];
 
