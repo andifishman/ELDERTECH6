@@ -23,6 +23,8 @@ import { useRadioPlayer } from '@/context/RadioContext';
 import { useFavoritos } from '@/hooks/useFavoritos';
 import { useHistorialRadio } from '@/hooks/useHistorialRadio';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
+import { RadioCard } from '@/components/radio/RadioCard';
+import { hablar } from '@/utils/tts';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -143,23 +145,30 @@ export default function RadioDetalleScreen() {
   // ── Render principal ───────────────────────────────────────────────────────
   return (
     <View style={styles.root}>
-      {/* ── Header verde con volver + nombre ── */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      {/* ── Header verde con volver + nombre + botón escuchar descripción ── */}
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <TouchableOpacity
           style={styles.headerBtn}
           onPress={() => router.back()}
           accessibilityLabel="Volver a la lista de radios"
           accessibilityRole="button"
         >
-          <Ionicons name="arrow-back" size={26} color={Colors.text.onDark} />
+          <Ionicons name="arrow-back" size={28} color={Colors.text.onDark} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitulo} numberOfLines={1}>
           {radio.nombre}
         </Text>
 
-        {/* espacio vacío para mantener el título centrado */}
-        <View style={styles.headerBtnPlaceholder} />
+        {/* Botón escuchar descripción de la radio */}
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => hablar(`${radio.nombre}. ${radio.descripcion ?? ''}`)}
+          accessibilityLabel="Escuchar descripción de la radio"
+          accessibilityRole="button"
+        >
+          <Ionicons name="volume-high" size={26} color={Colors.text.onDark} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -216,7 +225,7 @@ export default function RadioDetalleScreen() {
           </View>
         </View>
 
-        {/* ── Botón de reproducción GIGANTE ── */}
+        {/* ── Botón de reproducción GIGANTE — circular con ícono + texto adentro ── */}
         <View style={styles.playerSection}>
           <TouchableOpacity
             style={[styles.playBtn, { backgroundColor: playBtnColor }]}
@@ -228,7 +237,7 @@ export default function RadioDetalleScreen() {
                 ? 'Conectando a la radio, por favor espere'
                 : reproduciendo
                 ? `Detener ${radio.nombre}`
-                : `Reproducir ${radio.nombre}`
+                : `Escuchar ${radio.nombre}`
             }
             accessibilityRole="button"
             accessibilityState={{ disabled: cargando, selected: reproduciendo }}
@@ -242,15 +251,13 @@ export default function RadioDetalleScreen() {
                 color={Colors.text.onDark}
               />
             )}
+            {/* Texto dentro del círculo */}
+            <Text style={styles.playBtnLabel}>
+              {cargando ? 'Conectando...' : reproduciendo ? 'Detener' : 'Escuchar'}
+            </Text>
           </TouchableOpacity>
 
-          {/* Texto de estado debajo del botón */}
-          <Text style={styles.estadoTexto}>{playBtnLabel}</Text>
-          {cargando && (
-            <Text style={styles.estadoSubtexto}>
-              Estamos conectando la radio, por favor esperá unos segundos...
-            </Text>
-          )}
+          {/* Texto "conectando" eliminado */}
 
           {/* Mensaje de error */}
           {hayError && (
@@ -279,19 +286,11 @@ export default function RadioDetalleScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Texto explicativo */}
-          <Text style={styles.favExplicacion}>
-            {esFav
-              ? '❤️ Esta radio aparece primero en tu lista'
-              : 'Las radios favoritas aparecen primero en la lista'}
-          </Text>
+          {/* Texto explicativo eliminado */}
 
           {/* ── Control de volumen ── */}
           <View style={styles.volumenContainer}>
             <Text style={styles.volumenTitulo}>🔊 Volumen de la radio</Text>
-            <Text style={styles.volumenSubtitulo}>
-              Usá los botones para subir o bajar el volumen
-            </Text>
             <View style={styles.volumenRow}>
               <TouchableOpacity
                 style={[styles.volBtn, volumen <= 0 && styles.volBtnDeshabilitado]}
@@ -300,6 +299,7 @@ export default function RadioDetalleScreen() {
                 accessibilityLabel="Bajar volumen"
                 accessibilityRole="button"
               >
+                {/* Símbolo y etiqueta dentro del botón, ambos en blanco */}
                 <Text style={styles.volBtnTexto}>−</Text>
                 <Text style={styles.volBtnLabel}>Bajar</Text>
               </TouchableOpacity>
@@ -328,6 +328,7 @@ export default function RadioDetalleScreen() {
                 accessibilityLabel="Subir volumen"
                 accessibilityRole="button"
               >
+                {/* Símbolo y etiqueta dentro del botón, ambos en blanco */}
                 <Text style={styles.volBtnTexto}>+</Text>
                 <Text style={styles.volBtnLabel}>Subir</Text>
               </TouchableOpacity>
@@ -336,12 +337,12 @@ export default function RadioDetalleScreen() {
           </View>
         </View>
 
-        {/* ── Radios similares ── */}
+        {/* ── Radios similares — usa el mismo RadioCard de la lista principal ── */}
         {similares.length > 0 && (
           <View style={styles.similaresSection}>
             <Text style={styles.similaresTitulo}>Radios similares</Text>
             {similares.map((sim) => (
-              <RadioSimilarCard key={sim.id} radio={sim} />
+              <RadioCard key={sim.id} radio={sim} mostrarPais sinMargen />
             ))}
           </View>
         )}
@@ -432,23 +433,23 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   headerBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(0,0,0,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  //placeholder transparente para centrar el título cuando no hay botón derecho
+  //placeholder eliminado — ahora hay botón de voz a la derecha
   headerBtnPlaceholder: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     flexShrink: 0,
   },
   headerTitulo: {
     flex: 1,
-    fontSize: Typography.size.xl,
+    fontSize: 32,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
     textAlign: 'center',
@@ -561,10 +562,11 @@ const styles = StyleSheet.create({
     gap: Spacing.lg,
     backgroundColor: Colors.ui.background,
   },
+  // Botón circular grande con ícono + texto "Escuchar" adentro
   playBtn: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -572,6 +574,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
+    gap: 4,
+  },
+  // Texto "Escuchar" / "Detener" dentro del círculo
+  playBtnLabel: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
   },
   estadoTexto: {
     fontSize: Typography.size.lg,
@@ -635,11 +644,12 @@ const styles = StyleSheet.create({
   // ── Radios similares
   similaresSection: {
     paddingHorizontal: Spacing.screen.horizontal,
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.sm, // reducido — antes era Spacing.lg
     gap: Spacing.md,
   },
   similaresTitulo: {
-    fontSize: Typography.size.lg,
+    // Título grande para adultos mayores
+    fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
     marginBottom: Spacing.xs,
@@ -770,9 +780,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   volBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    // Botón rectangular redondeado para que quepan símbolo + texto "Bajar"/"Subir"
+    width: 80,
+    height: 80,
+    borderRadius: 20,
     backgroundColor: Colors.brand.greenDark,
     alignItems: 'center',
     justifyContent: 'center',
@@ -782,16 +793,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     flexShrink: 0,
+    gap: 2,
   },
   volBtnDeshabilitado: {
     backgroundColor: Colors.ui.disabled,
     elevation: 0,
   },
   volBtnTexto: {
-    fontSize: 36,
+    // Símbolo + / − grande en blanco
+    fontSize: 32,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
-    lineHeight: 40,
+    lineHeight: 34,
+  },
+  volBtnLabel: {
+    // Texto "Bajar" / "Subir" dentro del botón, en blanco
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.onDark,
   },
   volBarContainer: {
     flex: 1,
@@ -809,8 +828,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ui.border,
   },
   volumenPorcentaje: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.text.secondary,
+    // Grande y bold para que sea fácil de leer
+    fontSize: Typography.size.xxl,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
   },
 });

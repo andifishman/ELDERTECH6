@@ -224,11 +224,13 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   fechaEmoji: {
-    fontSize: 20,
+    fontSize: 26,
   },
   fechaTexto: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
+    // Texto grande para que sea fácil de leer y ocupe todo el ancho disponible
+    flex: 1,
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
   },
 
