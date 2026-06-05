@@ -61,23 +61,16 @@ export function RadioCard({ radio, mostrarPais = false, sinMargen = false }: Rad
         ) : null}
 
         <View style={styles.badgesRow}>
-          {radio.categoriaEmoji && radio.categoria ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{radio.categoria}</Text>
-            </View>
-          ) : null}
-          {mostrarPais && radio.paisEmoji ? (
-            <View style={[styles.badge, styles.badgePais]}>
-              <Text style={styles.badgeText}>
-                {radio.paisEmoji} {radio.paisNombre}
-              </Text>
-            </View>
-          ) : null}
-          {hayError ? (
-            <View style={[styles.badge, styles.badgeError]}>
+          {(() => {
+            const partes: string[] = [];
+            if (radio.categoriaEmoji && radio.categoria) partes.push(radio.categoria);
+            if (mostrarPais && radio.paisEmoji) partes.push(`${radio.paisEmoji} ${radio.paisNombre}`);
+            if (hayError) return (
               <Text style={[styles.badgeText, styles.badgeErrorText]}>Sin señal</Text>
-            </View>
-          ) : null}
+            );
+            if (partes.length === 0) return null;
+            return <Text style={styles.badgeText} numberOfLines={1}>{partes.join(' · ')}</Text>;
+          })()}
         </View>
       </View>
 
@@ -206,25 +199,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 2,
+    marginTop: 4,
   },
-  badge: {
-    backgroundColor: Colors.ui.background,
-    borderRadius: Spacing.radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgePais: {
-    backgroundColor: '#E8F0FF',
-  },
+  badge: {},
+  badgePais: {},
   badgeError: {
     backgroundColor: '#FFEBEE',
   },
   badgeText: {
-    fontSize: Typography.size.xs,
+    fontSize: Typography.size.sm,
     color: Colors.text.secondary,
   },
   badgeErrorText: {

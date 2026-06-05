@@ -74,8 +74,8 @@ const menuItems = [
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
 function getFechaHoy() {
@@ -83,8 +83,7 @@ function getFechaHoy() {
   const diaSemana = DIAS[hoy.getDay()];
   const diaMes = hoy.getDate();
   const mes = MESES[hoy.getMonth()];
-  const anio = hoy.getFullYear();
-  return `${diaSemana} ${diaMes} de ${mes} de ${anio}`;
+  return `${diaSemana} ${diaMes} de ${mes}`;
 }
 
 export default function HomeScreen() {
@@ -122,7 +121,7 @@ export default function HomeScreen() {
 
       {/* Welcome Section */}
       <View style={styles.welcomeSection}>
-        <Text style={styles.welcome}>Hola, hoy es {fecha}</Text>
+        <Text style={styles.welcome} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Hoy es {fecha}</Text>
       </View>
 
       {/* Menu Grid */}
@@ -296,7 +295,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 8,
   },
-  welcome: { color: '#2E3A59', fontSize: 22, fontWeight: 'bold', marginBottom: 2 },
+  welcome: { color: '#2E3A59', fontSize: 26, fontWeight: 'bold', marginBottom: 2 },
 
   // Grid
   grid: { padding: 16, paddingTop: 4 },
