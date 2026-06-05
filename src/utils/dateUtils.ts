@@ -7,10 +7,10 @@ const MESES = [
 ];
 const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-//devuelve la fecha en formato largo: "Lunes, 7 de abril de 2026"
+//devuelve la fecha en formato largo: "Lunes, 7 de Junio"
 export function formatFechaLarga(fecha: Date): string {
   const dia = DIAS_COMPLETO[fecha.getDay()];
-  return `${capitalizar(dia)}, ${fecha.getDate()} de ${MESES[fecha.getMonth()]} de ${fecha.getFullYear()}`;
+  return `${capitalizar(dia)}, ${fecha.getDate()} de ${capitalizar(MESES[fecha.getMonth()])}`;
 }
 
 //devuelve la fecha en formato corto: "7 de abril de 2026"

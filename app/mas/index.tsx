@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors } from '@/constants/Colors';
@@ -74,20 +75,35 @@ export default function MasScreen() {
       >
         {/* ── Opciones disponibles ── */}
         {OPCIONES_ACTIVAS.map((opcion) => (
-          <TouchableOpacity
+          <View
             key={opcion.id}
             style={styles.opcionCard}
-            onPress={() => router.push(opcion.ruta as any)}
-            activeOpacity={0.8}
-            accessibilityLabel={opcion.titulo}
-            accessibilityRole="button"
           >
-            <View style={styles.emojiContainer}>
-              <Text style={styles.opcionEmoji}>{opcion.emoji}</Text>
+            {/* Fila superior: emoji + título */}
+            <View style={styles.cardTop}>
+              <View style={styles.emojiContainer}>
+                <Text style={styles.opcionEmoji}>{opcion.emoji}</Text>
+              </View>
+              <Text style={styles.opcionTitulo} numberOfLines={1}>{opcion.titulo}</Text>
             </View>
-            <Text style={styles.opcionTitulo}>{opcion.titulo}</Text>
-            <SpeakButton texto={opcion.textoHablar} size="lg" />
-          </TouchableOpacity>
+
+            {/* Fila inferior: Ver más + Escuchar */}
+            <View style={styles.cardBottom}>
+              <TouchableOpacity
+                style={styles.verMasBtn}
+                onPress={() => router.push(opcion.ruta as any)}
+                activeOpacity={0.8}
+                accessibilityLabel={`Ver más sobre ${opcion.titulo}`}
+                accessibilityRole="button"
+              >
+                <Ionicons name="chevron-forward" size={20} color={Colors.text.onDark} />
+                <Text style={styles.verMasTexto}>Ver más</Text>
+              </TouchableOpacity>
+              <View style={styles.escucharWrapper}>
+                <SpeakButton texto={opcion.textoHablar} variante="escuchar" />
+              </View>
+            </View>
+          </View>
         ))}
 
         {/* ── Línea roja separadora ── */}
@@ -142,19 +158,29 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
   },
   opcionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     backgroundColor: Colors.ui.surface,
     borderRadius: Spacing.radius.lg,
-    paddingVertical: Spacing.xl,
+    paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
-    gap: Spacing.lg,
+    gap: Spacing.md,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
+  },
+  // Fila superior: emoji + título
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  // Fila inferior: Ver más + Escuchar — repartidos en dos mitades iguales
+  cardBottom: {
+    flexDirection: 'row',
+    gap: Spacing.md,
   },
   opcionLeft: {
     flex: 1,
@@ -163,8 +189,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   emojiContainer: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: Spacing.radius.md,
     backgroundColor: Colors.ui.background,
     alignItems: 'center',
@@ -172,7 +198,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   opcionEmoji: {
-    fontSize: 36,
+    fontSize: 32,
   },
   opcionInfo: {
     flex: 1,
@@ -187,6 +213,31 @@ const styles = StyleSheet.create({
   opcionDescripcion: {
     fontSize: Typography.size.sm,
     color: Colors.text.secondary,
+  },
+  // Botón "Ver más" — mitad izquierda, verde del header
+  verMasBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Colors.brand.greenDark,
+    elevation: 2,
+    shadowColor: Colors.brand.greenDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  verMasTexto: {
+    fontSize: 17,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+  },
+  // Wrapper para que el SpeakButton ocupe la mitad restante
+  escucharWrapper: {
+    flex: 1,
   },
   proximamenteLabel: {
     fontSize: Typography.size.xs,
