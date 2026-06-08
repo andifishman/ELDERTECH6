@@ -30,9 +30,10 @@ function s(size: number, min?: number): number {
 interface ActividadCardProps {
   actividad: ActividadCompleta;
   onPress: () => void;
+  recomendada?: boolean;
 }
 
-export function ActividadCard({ actividad, onPress }: ActividadCardProps) {
+export function ActividadCard({ actividad, onPress, recomendada = false }: ActividadCardProps) {
   const esTurnoMañana = esMañana(actividad.hora_inicio);
   const colorBadge = esTurnoMañana ? Colors.activity.morning : Colors.activity.afternoon;
   const emoji = actividad.emoji_icono ?? actividad.tipo_actividad?.emoji ?? '📋';
@@ -47,7 +48,14 @@ export function ActividadCard({ actividad, onPress }: ActividadCardProps) {
   ].filter(Boolean).join(' ');
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, recomendada && styles.cardRecomendada]}>
+
+      {/* ── Badge "Recomendado para vos" ── */}
+      {recomendada && (
+        <View style={styles.badgeRecomendada}>
+          <Text style={styles.badgeTexto}>⭐ Recomendado para vos</Text>
+        </View>
+      )}
 
       {/* ── Fila superior: hora + emoji + nombre ── */}
       <View style={styles.filaTop}>
@@ -179,5 +187,22 @@ const styles = StyleSheet.create({
   btnTexto: {
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
+  },
+
+  cardRecomendada: {
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
+  badgeRecomendada: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: Spacing.radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  badgeTexto: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.bold,
+    color: '#92400E',
   },
 });

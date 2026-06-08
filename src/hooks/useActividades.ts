@@ -1,19 +1,32 @@
-//hooks de react-query para cargar actividades desde supabase
 import { useQuery } from '@tanstack/react-query';
-import { getActividadesPorFecha, getActividadById } from '@/services/actividadesService';
+import {
+  getActividadesPorFecha,
+  getActividadesPersonalizadas,
+  getActividadById,
+} from '@/services/actividadesService';
+import { useAuth } from '@/context/AuthContext';
 import { toSupabaseDate } from '@/utils/dateUtils';
 
-//carga las actividades de un día específico; se vuelve a buscar si cambia la fecha
 export function useActividades(fecha: Date) {
+  const { profile, isLoading: authLoading } = useAuth();
+
+  const residenteId = profile?.residente?.id ?? null;
+  // Sort for stable queryKey regardless of order returned from DB
+  const misInteresesIds = [...(profile?.residente_interes_ids ?? [])].sort();
+  const miPiso = profile?.residente?.piso ?? null;
+
   return useQuery({
-    queryKey: ['actividades', toSupabaseDate(fecha)],
-    queryFn: () => getActividadesPorFecha(fecha),
-    staleTime: 5 * 60 * 1000, // 5 min — los horarios no cambian frecuentemente
+    queryKey: ['actividades', toSupabaseDate(fecha), residenteId, misInteresesIds.join(','), miPiso],
+    queryFn: () =>
+      residenteId
+        ? getActividadesPersonalizadas(fecha, misInteresesIds, miPiso)
+        : getActividadesPorFecha(fecha),
+    enabled: !authLoading,
+    staleTime: 5 * 60 * 1000,
     retry: 2,
   });
 }
 
-//carga el detalle de una actividad por id; no corre si id es null
 export function useActividad(id: string | null) {
   return useQuery({
     queryKey: ['actividad', id],

@@ -134,6 +134,7 @@ export interface Actividad {
   hora_fin: string | null;
   es_recurrente: boolean;
   patron_recurrencia: PatronRecurrencia | null;
+  pisos_objetivo: string[] | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -149,6 +150,15 @@ export interface ActividadCompleta extends Actividad {
   tipo_actividad: TipoActividad;
   ubicacion: Ubicacion | null;
   responsable: Responsable | null;
+}
+
+// Actividad con prioridad personalizada para la pantalla de Horarios
+export type PrioridadActividad = 1 | 2 | 3;
+
+export interface ActividadConPrioridad extends ActividadCompleta {
+  actividad_intereses: Array<{ interes_id: string }>;
+  prioridad: PrioridadActividad;
+  recomendada: boolean;
 }
 
 // ─── Clima ───────────────────────────────────────────────────────────────────

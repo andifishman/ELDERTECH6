@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -91,6 +92,7 @@ export default function HomeScreen() {
   const [showLogout, setShowLogout] = useState(false);
   const insets = useSafeAreaInsets();
   const fecha = getFechaHoy();
+  const { profile } = useAuth();
 
   const speak = (text: string) => {
     Speech.stop();
@@ -111,10 +113,18 @@ export default function HomeScreen() {
             <Text style={styles.logoText}>ElderTech</Text>
           </View>
           <TouchableOpacity
-            onPress={() => setShowLogout(true)}
+            onPress={() => router.push('/profile')}
             style={styles.avatarBtn}
+            accessibilityLabel="Mi perfil"
           >
-            <Text style={styles.avatarIcon}>👤</Text>
+            {profile?.residente?.foto_url ? (
+              <Image
+                source={{ uri: profile.residente.foto_url }}
+                style={{ width: 44, height: 44, borderRadius: 22 }}
+              />
+            ) : (
+              <Text style={styles.avatarIcon}>👤</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
