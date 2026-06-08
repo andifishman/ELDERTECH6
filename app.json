@@ -37,6 +37,19 @@
         {
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ElderTech necesita acceso a tus fotos para que puedas elegir una foto de perfil.",
+          "cameraPermission": "ElderTech necesita acceso a la cámara para que puedas tomar una foto de perfil."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "ElderTech necesita acceso a tus contactos para que puedas agregar fácilmente a tu familia y amigos."
+        }
       ]
     ],
     "experiments": {

@@ -201,6 +201,8 @@ export interface RadioConCategoria extends Radio {
 export interface TipoContacto {
   id: string;
   nombre: string;
+  emoji: string | null;
+  orden: number;
 }
 
 export interface Contacto {
@@ -212,10 +214,102 @@ export interface Contacto {
   telefono: string;
   whatsapp_disponible: boolean;
   foto_url: string | null;
+  origen_contacto: 'dispositivo' | 'manual';
+  contacto_device_id: string | null;
+  favorito: boolean;
+  orden: number;
+  activo: boolean;
   notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactoConTipo extends Contacto {
+  tipo_contacto: TipoContacto | null;
+}
+
+// Datos mínimos para mostrar en la lista
+export interface ContactoResumen {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  telefono: string;
+  whatsapp_disponible: boolean;
+  foto_url: string | null;
+  favorito: boolean;
+  orden: number;
+  tipo_contacto: TipoContacto | null;
+}
+
+// Payload para crear/actualizar un contacto
+export interface ContactoUpsert {
+  residente_id: string;
+  nombre: string;
+  apellido?: string | null;
+  telefono: string;
+  whatsapp_disponible?: boolean;
+  foto_url?: string | null;
+  origen_contacto?: 'dispositivo' | 'manual';
+  contacto_device_id?: string | null;
+  favorito?: boolean;
+  orden?: number;
+  tipo_contacto_id?: string | null;
+  notas?: string | null;
+}
+
+// ─── Tutoriales ──────────────────────────────────────────────────────────────
+
+export type FormatoTutorial = 'video' | 'guia';
+
+export interface CategoriaTutorial {
+  id: string;
+  nombre: string;
+  emoji: string | null;
+  orden: number;
+  activo: boolean;
+}
+
+export interface Tutorial {
+  id: string;
+  categoria_id: string | null;
+  titulo: string;
+  descripcion: string | null;
+  formato: FormatoTutorial;
+  url_video: string | null;
+  duracion_segundos: number | null;
+  thumbnail_url: string | null;
+  lo_que_aprenderas: string[] | null;
   orden: number;
   activo: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export interface PasoTutorial {
+  id: string;
+  tutorial_id: string;
+  orden: number;
+  titulo: string | null;
+  descripcion: string | null;
+  imagen_url: string | null;
+}
+
+export interface ProgresoTutorial {
+  id: string;
+  residente_id: string;
+  tutorial_id: string;
+  favorito: boolean;
+  completado: boolean;
+  segundos_vistos: number;
+  ultima_vista: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Tutorial con categoria y progreso del residente (para lista)
+export interface TutorialConProgreso extends Tutorial {
+  categoria: CategoriaTutorial | null;
+  progreso: ProgresoTutorial | null;
 }
 
 // ─── Artículos ───────────────────────────────────────────────────────────────
