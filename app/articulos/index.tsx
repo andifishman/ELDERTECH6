@@ -37,7 +37,6 @@ export default function TutorialesScreen() {
     categoriaSeleccionada,
   );
 
-  // Filtrado local por búsqueda
   const tutorialesFiltrados = useMemo(() => {
     if (!busqueda.trim()) return tutoriales;
     const q = busqueda.toLowerCase().trim();
@@ -51,90 +50,55 @@ export default function TutorialesScreen() {
 
   const handleTutorialPress = useCallback(
     (tutorial: TutorialConProgreso) => {
-      router.push({
-        pathname: '/articulos/[id]',
-        params: { id: tutorial.id },
-      });
+      router.push({ pathname: '/articulos/[id]', params: { id: tutorial.id } });
     },
     [router],
   );
 
   const handleCategoriaPress = useCallback((cat: CategoriaTutorial) => {
-    // "Todo" = null (sin filtro)
     setCategoriaSeleccionada(cat.nombre === 'Todo' ? null : cat.id);
     setBusqueda('');
   }, []);
 
-  const renderTutorial = useCallback(
-    ({ item }: { item: TutorialConProgreso }) => (
-      <TutorialCard tutorial={item} onPress={() => handleTutorialPress(item)} />
-    ),
-    [handleTutorialPress],
-  );
-
-  // Categoría activa (para resaltar el chip seleccionado)
   const categoriaActivaNombre = categoriaSeleccionada
     ? (categorias.find((c) => c.id === categoriaSeleccionada)?.nombre ?? '')
     : 'Todo';
 
-  return (
-    <View style={styles.flex}>
-      <AppHeader
-        titulo="Tutoriales"
-        mostrarVolver
-        backgroundColor={Colors.brand.purple}
-        textoHablar={`Tutoriales. Acá podés aprender a usar el celular paso a paso. ${
-          tutorialesFiltrados.length > 0
-            ? `Hay ${tutorialesFiltrados.length} tutorial${tutorialesFiltrados.length !== 1 ? 'es' : ''} disponible${tutorialesFiltrados.length !== 1 ? 's' : ''}.`
-            : 'No hay tutoriales disponibles con ese filtro.'
-        }`}
-      />
+  // Header del FlatList: chips de categoría + buscador
+  const ListHeader = (
+    <View>
+      {/* Chips de categoría */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoriasList}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
+      >
+        {categorias.map((cat) => {
+          const activa = cat.nombre === categoriaActivaNombre;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={[styles.categoriaChip, activa && styles.categoriaChipActivo]}
+              onPress={() => handleCategoriaPress(cat)}
+              activeOpacity={0.75}
+              accessibilityLabel={`Filtrar por ${cat.nombre}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activa }}
+            >
+              {cat.emoji ? <Text style={styles.categoriaEmoji}>{cat.emoji}</Text> : null}
+              <Text style={[styles.categoriaTexto, activa && styles.categoriaTextoActivo]}>
+                {cat.nombre}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
-      {/* ─── Barra de categorías ─── */}
-      <View style={styles.categoriasWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriasList}
-          keyboardShouldPersistTaps="handled"
-        >
-          {categorias.map((cat) => {
-            const activa = cat.nombre === categoriaActivaNombre;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[styles.categoriaChip, activa && styles.categoriaChipActivo]}
-                onPress={() => handleCategoriaPress(cat)}
-                activeOpacity={0.75}
-                accessibilityLabel={`Filtrar por ${cat.nombre}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: activa }}
-              >
-                {cat.emoji ? (
-                  <Text style={styles.categoriaEmoji}>{cat.emoji}</Text>
-                ) : null}
-                <Text
-                  style={[
-                    styles.categoriaTexto,
-                    activa && styles.categoriaTextoActivo,
-                  ]}
-                >
-                  {cat.nombre}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* ─── Buscador ─── */}
+      {/* Buscador */}
       <View style={styles.buscadorWrapper}>
-        <Ionicons
-          name="search"
-          size={22}
-          color={Colors.text.secondary}
-          style={styles.buscadorIcon}
-        />
+        <Ionicons name="search" size={20} color={Colors.text.secondary} style={styles.buscadorIcon} />
         <TextInput
           style={styles.buscador}
           placeholder="Buscar tutorial..."
@@ -157,7 +121,25 @@ export default function TutorialesScreen() {
         )}
       </View>
 
-      {/* ─── Lista ─── */}
+      {/* Contador */}
+      {tutorialesFiltrados.length > 0 && (
+        <Text style={styles.resultados}>
+          {tutorialesFiltrados.length} tutorial{tutorialesFiltrados.length !== 1 ? 'es' : ''}
+          {categoriaActivaNombre !== 'Todo' ? ` · ${categoriaActivaNombre}` : ''}
+        </Text>
+      )}
+    </View>
+  );
+
+  return (
+    <View style={styles.flex}>
+      <AppHeader
+        titulo="Tutoriales"
+        mostrarVolver
+        backgroundColor={Colors.brand.purple}
+        textoHablar="Tutoriales. Acá podés aprender a usar el celular paso a paso."
+      />
+
       {isLoading ? (
         <View style={styles.centrado}>
           <ActivityIndicator size="large" color={Colors.brand.purple} />
@@ -175,13 +157,14 @@ export default function TutorialesScreen() {
         <FlatList
           data={tutorialesFiltrados}
           keyExtractor={(item) => item.id}
-          renderItem={renderTutorial}
-          contentContainerStyle={[
-            styles.lista,
-            { paddingBottom: insets.bottom + 32 },
-          ]}
+          renderItem={({ item }) => (
+            <TutorialCard tutorial={item} onPress={() => handleTutorialPress(item)} />
+          )}
+          ListHeaderComponent={ListHeader}
+          contentContainerStyle={[styles.lista, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           ListEmptyComponent={
             <View style={styles.vacio}>
               <Text style={styles.vacioEmoji}>📚</Text>
@@ -191,14 +174,6 @@ export default function TutorialesScreen() {
                   : 'No hay tutoriales en esta categoría aún'}
               </Text>
             </View>
-          }
-          ListHeaderComponent={
-            tutorialesFiltrados.length > 0 ? (
-              <Text style={styles.resultados}>
-                {tutorialesFiltrados.length} tutorial{tutorialesFiltrados.length !== 1 ? 'es' : ''}
-                {categoriaActivaNombre !== 'Todo' ? ` · ${categoriaActivaNombre}` : ''}
-              </Text>
-            ) : null
           }
         />
       )}
@@ -210,35 +185,33 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Colors.ui.background },
 
   // Categorías
-  categoriasWrapper: {
+  categoriasList: {
+    paddingHorizontal: Spacing.screen.horizontal,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.sm,
     backgroundColor: Colors.ui.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.ui.border,
   },
-  categoriasList: {
-    paddingHorizontal: Spacing.screen.horizontal,
-    paddingVertical: Spacing.md,
-    gap: Spacing.sm,
-  },
   categoriaChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    gap: 5,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: Spacing.radius.full,
     backgroundColor: Colors.ui.background,
     borderWidth: 1.5,
     borderColor: Colors.ui.border,
-    minHeight: Spacing.touch.min,
+    minHeight: 36,
   },
   categoriaChipActivo: {
     backgroundColor: Colors.brand.purple,
     borderColor: Colors.brand.purple,
   },
-  categoriaEmoji: { fontSize: 17 },
+  categoriaEmoji: { fontSize: 15 },
   categoriaTexto: {
-    fontSize: Typography.size.md,
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.text.secondary,
   },
@@ -251,19 +224,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ui.surface,
     borderRadius: Spacing.radius.lg,
     marginHorizontal: Spacing.screen.horizontal,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.sm,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
     paddingHorizontal: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.ui.border,
-    minHeight: Spacing.touch.comfortable,
+    height: 44,
   },
   buscadorIcon: { marginRight: Spacing.sm },
   buscador: {
     flex: 1,
     fontSize: Typography.size.md,
     color: Colors.text.primary,
-    paddingVertical: Spacing.md,
   },
 
   // Lista
@@ -275,11 +247,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.text.secondary,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.xs,
     paddingLeft: Spacing.xs,
   },
 
-  // Estado vacío / error
+  // Estados
   centrado: {
     flex: 1,
     alignItems: 'center',
@@ -287,7 +260,7 @@ const styles = StyleSheet.create({
     gap: Spacing.lg,
     paddingHorizontal: Spacing.xxxl,
   },
-  estadoEmoji: { fontSize: 64 },
+  estadoEmoji: { fontSize: 56 },
   estadoTitulo: {
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.semibold,
@@ -296,11 +269,11 @@ const styles = StyleSheet.create({
   },
   vacio: {
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: 60,
     paddingHorizontal: Spacing.xxxl,
     gap: Spacing.lg,
   },
-  vacioEmoji: { fontSize: 80 },
+  vacioEmoji: { fontSize: 64 },
   vacioTitulo: {
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.semibold,
@@ -317,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.radius.lg,
     paddingHorizontal: Spacing.xxxl,
     paddingVertical: Spacing.lg,
-    minHeight: Spacing.touch.comfortable,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },

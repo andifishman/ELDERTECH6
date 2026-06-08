@@ -83,23 +83,24 @@ export default function ProfileScreen() {
 
   async function uploadPhoto(uri: string) {
     if (!residente || !session?.user.id) return;
-    // 1. Mostrar la foto localmente de inmediato (optimistic)
     setLocalPhotoUri(uri);
     updateLocalProfile({ foto_url: uri });
     setSaving(true);
     setPhotoError(null);
     try {
-      // 2. Subir en background
       const url = await uploadAndGetPhotoUrl(session.user.id, uri);
       await updateProfile(residente.id, { foto_url: url });
-      // 3. Reemplazar con la URL definitiva de Supabase (con cache-buster)
       updateLocalProfile({ foto_url: url });
       setLocalPhotoUri(null);
-    } catch {
-      // Revertir si falló
+    } catch (e: any) {
       setLocalPhotoUri(null);
       updateLocalProfile({ foto_url: residente.foto_url ?? undefined });
-      setPhotoError('No se pudo actualizar la foto. Intentá de nuevo.');
+      const msg = e?.message ?? '';
+      if (msg.includes('Bucket not found') || msg.includes('bucket')) {
+        setPhotoError('El almacenamiento de fotos no está configurado. Contactá al administrador.');
+      } else {
+        setPhotoError('No se pudo actualizar la foto. Intentá de nuevo.');
+      }
     } finally {
       setSaving(false);
     }

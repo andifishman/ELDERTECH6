@@ -325,28 +325,27 @@ export async function takePhoto(): Promise<string | null> {
 }
 
 async function uploadProfilePhoto(userId: string, uri: string): Promise<string> {
-  const ext = uri.split('?')[0].endsWith('.png') ? 'png' : 'jpg';
+  const ext = uri.split('?')[0].split('.').pop()?.toLowerCase() === 'png' ? 'png' : 'jpg';
   const path = `${userId}/avatar.${ext}`;
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
 
-  // En web usamos Blob directamente — mucho más rápido que ArrayBuffer
-  let body: Blob | ArrayBuffer;
-  try {
-    const response = await fetch(uri);
-    body = await response.blob();
-  } catch {
-    // Fallback a ArrayBuffer si blob no está disponible
-    const response = await fetch(uri);
-    body = await response.arrayBuffer();
-  }
+  // En Android, fetch() puede fallar con content:// URIs.
+  // XMLHttpRequest maneja correctamente tanto content:// como file:// en RN.
+  const blob: Blob = await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = () => resolve(xhr.response);
+    xhr.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    xhr.responseType = 'blob';
+    xhr.open('GET', uri, true);
+    xhr.send(null);
+  });
 
   const { error } = await supabase.storage
     .from('fotos-perfil')
-    .upload(path, body, { contentType, upsert: true });
+    .upload(path, blob, { contentType, upsert: true });
 
   if (error) throw error;
 
-  // Agregar cache-buster para que el browser no muestre la foto vieja
   const { data } = supabase.storage.from('fotos-perfil').getPublicUrl(path);
   return `${data.publicUrl}?t=${Date.now()}`;
 }

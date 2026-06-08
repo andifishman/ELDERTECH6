@@ -79,7 +79,7 @@ export const TutorialCard = memo(function TutorialCard({
         </View>
 
         {/* Título */}
-        <Text style={styles.titulo} numberOfLines={2}>
+        <Text style={styles.titulo} numberOfLines={1}>
           {tutorial.titulo}
         </Text>
 
@@ -114,25 +114,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.ui.surface,
-    borderRadius: Spacing.radius.xl,
-    marginBottom: Spacing.md,
+    borderRadius: Spacing.radius.lg,
+    marginBottom: Spacing.sm,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-    minHeight: 100,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+    height: 72,
   },
   thumbContainer: {
     position: 'relative',
-    width: 100,
-    alignSelf: 'stretch',
+    width: 72,
+    height: 72,
+    flexShrink: 0,
   },
   thumb: {
-    width: 100,
-    height: '100%' as any,
-    minHeight: 100,
+    width: 72,
+    height: 72,
   },
   thumbPlaceholder: {
     backgroundColor: '#E8F5E9',
@@ -159,24 +159,25 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    gap: 5,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    gap: 2,
+    justifyContent: 'center',
   },
   categoriaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   categoriaEmoji: {
-    fontSize: 13,
+    fontSize: 11,
   },
   categoriaNombre: {
     fontSize: Typography.size.xs,
     fontWeight: Typography.weight.semibold,
     color: Colors.brand.greenDark,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
     flex: 1,
   },
   favStar: {
@@ -186,10 +187,10 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
-    lineHeight: 24,
+    lineHeight: 20,
   },
   formato: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.xs,
     color: Colors.text.secondary,
     fontWeight: Typography.weight.medium,
   },

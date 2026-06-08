@@ -56,6 +56,19 @@ export default function TutorialDetalleScreen() {
   const guardarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pasoActual, setPasoActual] = useState(0);
 
+  // Configurar modo audio para video (sin grabar, reproduce en silencioso iOS)
+  useEffect(() => {
+    if (tutorial?.formato === 'video') {
+      import('expo-av').then(({ Audio }) => {
+        Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+        }).catch(() => null);
+      });
+    }
+  }, [tutorial?.formato]);
+
   useEffect(() => {
     if (residenteId && id) progreso.registrar.mutate();
   }, [residenteId, id]);
@@ -144,6 +157,8 @@ export default function TutorialDetalleScreen() {
               onPlaybackStatusUpdate={handlePlaybackStatus}
               useNativeControls
               shouldPlay={false}
+              isLooping={false}
+              progressUpdateIntervalMillis={500}
             />
             {/* Barra de progreso fina debajo */}
             <View style={styles.videoBarra}>

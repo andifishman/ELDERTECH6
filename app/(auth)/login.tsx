@@ -62,7 +62,11 @@ export default function LoginScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>ElderTech</Text>
+              <Image
+                source={require('../../assets/images/logo-puente.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.title}>Iniciá sesión</Text>
             <Text style={styles.subtitle}>Ingresá tu usuario o email y tu contraseña</Text>
@@ -146,15 +150,15 @@ const styles = StyleSheet.create({
   logoContainer: {
     backgroundColor: Colors.brand.greenDark,
     paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.sm,
-    borderRadius: Spacing.radius.md,
+    paddingVertical: Spacing.md,
+    borderRadius: Spacing.radius.xl,
     marginBottom: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  logoText: {
-    fontSize: Typography.size.xl,
-    fontWeight: Typography.weight.bold,
-    color: Colors.text.onDark,
-    letterSpacing: 1,
+  logoImage: {
+    width: 160,
+    height: 100,
   },
   title: {
     fontSize: Typography.size.xxl,

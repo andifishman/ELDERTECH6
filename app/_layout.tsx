@@ -1,13 +1,15 @@
 import 'react-native-gesture-handler';
-import React, { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import React from 'react';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Linking from 'expo-linking';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
+<<<<<<< Updated upstream
+=======
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { supabase } from '@/services/supabase';
@@ -87,13 +89,29 @@ function DeepLinkHandler() {
 
   return null;
 }
+>>>>>>> Stashed changes
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryProvider>
+<<<<<<< Updated upstream
+        <FavoritosProvider>
+        <RadioProvider>
+          <StatusBar style="light" />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="horarios/index" />
+            <Stack.Screen name="horarios/[id]" />
+            <Stack.Screen name="mas/index" />
+            <Stack.Screen name="mas/clima" />
+          </Stack>
+        </RadioProvider>
+        </FavoritosProvider>
+=======
         <AuthProvider>
           <FavoritosProvider>
+            <AsistenteConfigProvider>
             <RadioProvider>
               <NavigationGuard>
                 <DeepLinkHandler />
@@ -107,14 +125,20 @@ export default function RootLayout() {
                     <Stack.Screen name="horarios/[id]" />
                     <Stack.Screen name="mas/index" />
                     <Stack.Screen name="mas/clima" />
+                    <Stack.Screen name="asistente/index" />
+                    <Stack.Screen name="asistente/chat" />
+                    <Stack.Screen name="asistente/historial" />
+                    <Stack.Screen name="asistente/ajustes" />
                   </Stack>
                   {/* Barra de radio persistente — visible en todas las pantallas cuando hay audio activo */}
                   <NowPlayingBar />
                 </View>
               </NavigationGuard>
             </RadioProvider>
+            </AsistenteConfigProvider>
           </FavoritosProvider>
         </AuthProvider>
+>>>>>>> Stashed changes
       </QueryProvider>
     </SafeAreaProvider>
   );
