@@ -1,5 +1,5 @@
+//sistema de espaciado con base 4px y tamaños táctiles mínimos de 48px para adultos mayores
 // Sistema de espaciado — base 4px
-// Táctil: mínimo 48px para elementos interactivos (adultos mayores)
 export const Spacing = {
   xs: 4,
   sm: 8,

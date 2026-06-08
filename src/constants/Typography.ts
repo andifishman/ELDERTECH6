@@ -1,5 +1,5 @@
+//escala tipográfica optimizada para adultos mayores — tamaños mínimos accesibles
 // Escala tipográfica optimizada para adultos mayores
-// Tamaños mínimos: body 18px, labels 16px, headings 22px+
 export const Typography = {
   // Tamaños
   size: {

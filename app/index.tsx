@@ -1,19 +1,25 @@
+//pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useState } from 'react';
 import {
+  BackHandler,
   Dimensions,
+  Image,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
+//datos de cada botón del menú: ícono, texto, color y audio de descripción
 const menuItems = [
   {
     id: 'horarios',
@@ -69,8 +75,8 @@ const menuItems = [
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
 function getFechaHoy() {
@@ -78,8 +84,7 @@ function getFechaHoy() {
   const diaSemana = DIAS[hoy.getDay()];
   const diaMes = hoy.getDate();
   const mes = MESES[hoy.getMonth()];
-  const anio = hoy.getFullYear();
-  return `${diaSemana} ${diaMes} de ${mes} de ${anio}`;
+  return `${diaSemana} ${diaMes} de ${mes}`;
 }
 
 export default function HomeScreen() {
@@ -87,6 +92,7 @@ export default function HomeScreen() {
   const [showLogout, setShowLogout] = useState(false);
   const insets = useSafeAreaInsets();
   const fecha = getFechaHoy();
+  const { profile } = useAuth();
 
   const speak = (text: string) => {
     Speech.stop();
@@ -99,27 +105,40 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>🌉</Text>
+            <Image
+              source={require('../assets/images/logo-puente.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={styles.logoText}>ElderTech</Text>
           </View>
           <TouchableOpacity
-            onPress={() => setShowLogout(true)}
+            onPress={() => router.push('/profile')}
             style={styles.avatarBtn}
+            accessibilityLabel="Mi perfil"
           >
-            <Text style={styles.avatarIcon}>👤</Text>
+            {profile?.residente?.foto_url ? (
+              <Image
+                source={{ uri: profile.residente.foto_url }}
+                style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 2, borderColor: '#FFFFFF' }}
+              />
+            ) : (
+              <Text style={styles.avatarIcon}>👤</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Welcome Section */}
       <View style={styles.welcomeSection}>
-        <Text style={styles.welcome}>Hola, hoy es {fecha}</Text>
+        <Text style={styles.welcome} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Hoy es {fecha}</Text>
       </View>
 
       {/* Menu Grid */}
       <ScrollView
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
       >
         {/* Large Horarios Card */}
         <TouchableOpacity
@@ -127,25 +146,19 @@ export default function HomeScreen() {
           onPress={() => router.push('/horarios')}
           activeOpacity={0.8}
         >
-          <View style={[styles.largeCardTopBar, { backgroundColor: menuItems[0].iconBg }]} />
-          <View style={styles.largeCardContent}>
-            <View style={[styles.largeIconCircle, { backgroundColor: menuItems[0].iconBg }]}>
+          <View style={styles.largeCardInner}>
+            <View style={[styles.iconCircle, { backgroundColor: menuItems[0].iconBg }]}>
               <Text style={styles.largeCardIcon}>{menuItems[0].icon}</Text>
             </View>
-            <View style={styles.largeCardText}>
-              <Text style={styles.largeCardLabel}>{menuItems[0].label}</Text>
-              <Text style={styles.largeCardSub}>{menuItems[0].subtitle}</Text>
-            </View>
+            <Text style={styles.largeCardLabel}>{menuItems[0].label}</Text>
           </View>
-          <View style={styles.largeCardBottom}>
-            <TouchableOpacity
-              style={styles.audioBtn}
-              onPress={() => speak(menuItems[0].audio)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.audioBtnText}>🔊  Escuchar descripción</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.audioBtn}
+            onPress={() => speak(menuItems[0].audio)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
+          </TouchableOpacity>
         </TouchableOpacity>
 
         {/* Medium Cards — fila 1 */}
@@ -157,23 +170,19 @@ export default function HomeScreen() {
               onPress={() => router.push(`/${item.id}` as any)}
               activeOpacity={0.8}
             >
-              <View style={[styles.mediumCardTopBar, { backgroundColor: item.iconBg }]} />
               <View style={styles.mediumCardInner}>
-                <View style={[styles.mediumIconCircle, { backgroundColor: item.iconBg }]}>
+                <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
                   <Text style={styles.mediumCardIcon}>{item.icon}</Text>
                 </View>
                 <Text style={styles.mediumCardLabel}>{item.label}</Text>
-                <Text style={styles.mediumCardSub}>{item.subtitle}</Text>
               </View>
-              <View style={styles.mediumCardBottom}>
-                <TouchableOpacity
-                  style={styles.audioBtn}
-                  onPress={() => speak(item.audio)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.audioBtn}
+                onPress={() => speak(item.audio)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
           ))}
         </View>
@@ -187,23 +196,19 @@ export default function HomeScreen() {
               onPress={() => router.push(`/${item.id}` as any)}
               activeOpacity={0.8}
             >
-              <View style={[styles.mediumCardTopBar, { backgroundColor: item.iconBg }]} />
               <View style={styles.mediumCardInner}>
-                <View style={[styles.mediumIconCircle, { backgroundColor: item.iconBg }]}>
+                <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
                   <Text style={styles.mediumCardIcon}>{item.icon}</Text>
                 </View>
                 <Text style={styles.mediumCardLabel}>{item.label}</Text>
-                <Text style={styles.mediumCardSub}>{item.subtitle}</Text>
               </View>
-              <View style={styles.mediumCardBottom}>
-                <TouchableOpacity
-                  style={styles.audioBtn}
-                  onPress={() => speak(item.audio)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.audioBtn}
+                onPress={() => speak(item.audio)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
           ))}
         </View>
@@ -219,7 +224,14 @@ export default function HomeScreen() {
             <View style={styles.modalBtns}>
               <TouchableOpacity
                 style={styles.modalBtnDanger}
-                onPress={() => setShowLogout(false)}
+                onPress={() => {
+                  // En web cierra la pestaña del browser, en Android cierra la app
+                  if (Platform.OS === 'web') {
+                    window.close();
+                  } else {
+                    BackHandler.exitApp();
+                  }
+                }}
               >
                 <Text style={styles.modalBtnDangerText}>Salir</Text>
               </TouchableOpacity>
@@ -243,30 +255,36 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: '#4CAF50',
-    paddingBottom: 6,
-    paddingHorizontal: 20,
+    paddingBottom: 12,
+    paddingHorizontal: 8,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  logoImage: { width: 80, height: 80, marginRight: -8 },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 4,
   },
-  logoIcon: { fontSize: 32, marginRight: 12 },
-  logoText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 34 },
+  logoText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 46,
+    marginLeft: 8,
+  },
+  // Botón de usuario — mismo tamaño que los botones del AppHeader
   avatarBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 4,
   },
-  avatarIcon: { fontSize: 20, color: '#FFFFFF' },
+  avatarIcon: { fontSize: 28, color: '#FFFFFF' },
 
   // Welcome
   welcomeSection: {
@@ -274,90 +292,80 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 8,
   },
-  welcome: { color: '#2E3A59', fontSize: 22, fontWeight: 'bold', marginBottom: 2 },
+  welcome: { color: '#2E3A59', fontSize: 26, fontWeight: 'bold', marginBottom: 2 },
 
   // Grid
-  grid: { padding: 16, paddingTop: 4 },
+  grid: { padding: 14, paddingTop: 4, gap: 12 },
+
+  // Shared icon circle
+  iconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
 
   // Large Card (Horarios)
   largeCard: {
-    borderRadius: 20,
-    marginBottom: 14,
-    overflow: 'hidden',
+    borderRadius: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 5,
-    minHeight: 175,
+    padding: 16,
+    paddingBottom: 14,
     flexDirection: 'column',
-    justifyContent: 'space-between',
   },
-  largeCardTopBar: { height: 6, width: '100%' },
-  largeCardContent: {
+  largeCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 8,
+    gap: 14,
+    marginBottom: 14,
   },
-  largeIconCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  largeCardIcon: { fontSize: 32 },
-  largeCardText: { flex: 1 },
-  largeCardLabel: { fontSize: 28, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 4 },
-  largeCardSub: { fontSize: 16, color: 'rgba(255,255,255,0.85)' },
-  largeCardBottom: { padding: 12, paddingTop: 4 },
+  largeCardIcon: { fontSize: 30 },
+  largeCardLabel: { fontSize: 30, fontWeight: 'bold', color: '#FFFFFF' },
 
-  // Audio button (shared)
+  // Botón Escuchar — rectangular redondeado, fondo blanco, texto azul
   audioBtn: {
-    backgroundColor: 'rgba(0,0,0,0.12)',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
-  audioBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  audioBtnText: { fontSize: 16, fontWeight: '700', color: '#3D5AFE' },
 
   // Medium Cards
   mediumRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    gap: 12,
   },
   mediumCard: {
-    width: '48%',
-    borderRadius: 20,
-    overflow: 'hidden',
+    flex: 1,
+    borderRadius: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 5,
-    minHeight: 230,
+    minHeight: 210,
+    padding: 16,
+    paddingBottom: 14,
     flexDirection: 'column',
     justifyContent: 'space-between',
   },
-  mediumCardTopBar: { height: 6, width: '100%' },
-  mediumCardInner: { padding: 14, paddingBottom: 6, flex: 1 },
-  mediumIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+  mediumCardInner: {
+    flex: 1,
+    marginBottom: 12,
   },
-  mediumCardIcon: { fontSize: 24 },
-  mediumCardLabel: { fontSize: 22, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 4, marginTop: 6 },
-  mediumCardSub: { fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 19 },
-  mediumCardBottom: { padding: 12, paddingTop: 0, width: '100%' },
+  mediumCardIcon: { fontSize: 26 },
+  mediumCardLabel: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginTop: 4 },
 
   // Modal
   modalOverlay: {

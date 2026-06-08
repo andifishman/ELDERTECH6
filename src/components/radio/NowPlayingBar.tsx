@@ -62,15 +62,16 @@ export function NowPlayingBar() {
         ) : null}
       </View>
 
-      {/* Botón detener */}
+      {/* Botón pausar — cuadrado redondeado con ícono + texto "Pausar" adentro */}
       <TouchableOpacity
         style={styles.stopBtn}
         onPress={detener}
-        accessibilityLabel="Detener radio"
+        accessibilityLabel="Pausar radio"
         accessibilityRole="button"
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="stop" size={22} color={Colors.text.onDark} />
+        <Ionicons name="stop" size={26} color={Colors.text.onDark} />
+        <Text style={styles.stopBtnTexto}>Pausar</Text>
       </TouchableOpacity>
     </View>
   );
@@ -78,14 +79,10 @@ export function NowPlayingBar() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: Colors.radio.nowPlayingBg,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.lg,
     paddingHorizontal: Spacing.lg,
     gap: Spacing.md,
     elevation: 10,
@@ -95,23 +92,23 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   indicadorWrapper: {
-    width: 16,
-    height: 16,
+    width: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   indicador: {
     position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#4CAF50',
   },
   indicadorPulso: {
     position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: 'rgba(76,175,80,0.35)',
   },
   indicadorError: {
@@ -119,29 +116,37 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   estadoLabel: {
-    fontSize: 10,
+    fontSize: Typography.size.sm,   // subido de 10 a sm(15)
     fontWeight: Typography.weight.bold,
     color: 'rgba(255,255,255,0.65)',
     letterSpacing: 1.2,
   },
   nombre: {
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size.xl,   // subido de lg(20) a xl(24)
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
   },
   detalle: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.md,   // subido de sm(15) a md(18)
     color: Colors.text.onDarkSecondary,
   },
+  // Botón cuadrado redondeado con ícono + "Pausar" adentro
   stopBtn: {
-    width: Spacing.touch.comfortable,
-    height: Spacing.touch.comfortable,
-    borderRadius: Spacing.touch.comfortable / 2,
+    width: 80,
+    height: 80,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 3,
+    flexShrink: 0,
+  },
+  stopBtnTexto: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.onDark,
   },
 });

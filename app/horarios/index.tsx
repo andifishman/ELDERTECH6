@@ -16,7 +16,7 @@
  *  - Mensajes claros cuando no hay actividades o se llega al límite
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -26,6 +26,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/common/AppHeader';
 import { DaySelector } from '@/components/horarios/DaySelector';
@@ -36,7 +37,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { formatFechaLarga } from '@/utils/dateUtils';
-import type { ActividadCompleta } from '@/types/database.types';
+import type { ActividadCompleta, ActividadConPrioridad } from '@/types/database.types';
 
 /** Máximo de días que se pueden cargar hacia adelante o atrás desde hoy */
 const MAX_DIAS_FUTURO = 30;
@@ -60,19 +61,51 @@ function generarVentana(hoy: Date, diasAtras: number, diasAdelante: number): Dat
 export default function HorariosScreen() {
   const hoy = new Date();
 
-  // ── Ventana dinámica de días ──
-  // Empieza con 2 días atrás + hoy + 6 días adelante = 9 días visibles
-  // Se expande de a 7 cuando el usuario llega al borde del carrusel
-  const [diasAtras, setDiasAtras] = useState(2);
-  const [diasAdelante, setDiasAdelante] = useState(6);
+  const [diasAtras, setDiasAtras] = useState(0);
+  const [diasAdelante, setDiasAdelante] = useState(0);
   const ventana = generarVentana(hoy, diasAtras, diasAdelante);
-
-  // Día actualmente seleccionado — determina qué actividades se muestran
   const [diaSeleccionado, setDiaSeleccionado] = useState(hoy);
-
-  // Control del modal que aparece cuando se llega al límite de días
   const [mostrarModalLimite, setMostrarModalLimite] = useState(false);
   const [mensajeLimite, setMensajeLimite] = useState('');
+
+  // Ref y estado para el botón de scroll
+  const flatListRef = useRef<FlatList>(null);
+  const [scrollY, setScrollY] = useState(0);
+  const [listaAltura, setListaAltura] = useState(0);
+  const [contenidoAltura, setContenidoAltura] = useState(0);
+
+  // Baja un paso equivalente al 80% de la altura visible
+  function bajarScroll() {
+    const paso = listaAltura * 0.8;
+    flatListRef.current?.scrollToOffset({ offset: scrollY + paso, animated: true });
+  }
+
+  // Muestra la flecha solo si hay contenido por debajo del viewport
+  const hayMasAbajo = contenidoAltura > listaAltura && scrollY + listaAltura < contenidoAltura - 10;
+
+  /**
+   * Cada vez que el usuario cambia de día, revisamos si está cerca del borde de la ventana.
+   * Si queda 1 día o menos de margen en alguna dirección, expandimos automáticamente
+   * la ventana 7 días más (sin esperar a que toque la flecha en el límite).
+   * Así el usuario nunca "frena" — los días nuevos ya están disponibles.
+   */
+  React.useEffect(() => {
+    const diffFuturo = Math.round(
+      (hoy.getTime() + diasAdelante * 86400000 - diaSeleccionado.getTime()) / 86400000
+    );
+    const diffPasado = Math.round(
+      (diaSeleccionado.getTime() - (hoy.getTime() - diasAtras * 86400000)) / 86400000
+    );
+
+    // Si queda 1 día o menos al final de la ventana, expandir hacia adelante
+    if (diffFuturo <= 1 && diasAdelante < MAX_DIAS_FUTURO) {
+      setDiasAdelante((prev) => Math.min(prev + 7, MAX_DIAS_FUTURO));
+    }
+    // Si queda 1 día o menos al inicio de la ventana, expandir hacia atrás
+    if (diffPasado <= 1 && diasAtras < MAX_DIAS_PASADO) {
+      setDiasAtras((prev) => Math.min(prev + 7, MAX_DIAS_PASADO));
+    }
+  }, [diaSeleccionado, diasAtras, diasAdelante]);
 
   // Hook de React Query — carga las actividades del día seleccionado desde Supabase
   const { data: actividades, isLoading, error, refetch } = useActividades(diaSeleccionado);
@@ -115,7 +148,7 @@ export default function HorariosScreen() {
     <View style={styles.root}>
       {/* ── Encabezado de pantalla ── */}
       <AppHeader
-        titulo="Horarios del Día"
+        titulo="Horarios"
         mostrarVolver
         textoHablar={`Horarios del Día. ${fechaLarga}`}
         backgroundColor={Colors.brand.red}
@@ -159,19 +192,41 @@ export default function HorariosScreen() {
             </Text>
           </View>
         ) : (
-          // Lista de tarjetas de actividades
-          <FlatList
-            data={actividades}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: ActividadCompleta }) => (
-              <ActividadCard
-                actividad={item}
-                onPress={() => router.push(`/horarios/${item.id}`)}
-              />
+          // Lista de tarjetas de actividades con botón flotante de scroll
+          <View style={styles.listaWrapper}>
+            <FlatList
+              ref={flatListRef}
+              data={actividades}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }: { item: ActividadCompleta }) => (
+                <ActividadCard
+                  actividad={item}
+                  onPress={() => router.push(`/horarios/${item.id}`)}
+                  recomendada={(item as ActividadConPrioridad).recomendada ?? false}
+                />
+              )}
+              contentContainerStyle={styles.listaContent}
+              showsVerticalScrollIndicator={false}
+              onScroll={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
+              scrollEventThrottle={16}
+              onLayout={(e) => setListaAltura(e.nativeEvent.layout.height)}
+              onContentSizeChange={(_, h) => setContenidoAltura(h)}
+            />
+
+            {/* Botón flotante de flecha — solo visible si hay más contenido abajo */}
+            {hayMasAbajo && (
+              <TouchableOpacity
+                style={styles.flechaBtn}
+                onPress={bajarScroll}
+                activeOpacity={0.85}
+                accessibilityLabel="Bajar para ver más actividades"
+                accessibilityRole="button"
+              >
+                <Ionicons name="chevron-down" size={32} color="#222" />
+                <Text style={styles.flechaTexto}>Bajar</Text>
+              </TouchableOpacity>
             )}
-            contentContainerStyle={styles.listaContent}
-            showsVerticalScrollIndicator={false}
-          />
+          </View>
         )}
       </View>
 
@@ -224,17 +279,24 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   fechaEmoji: {
-    fontSize: 20,
+    fontSize: 26,
   },
   fechaTexto: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
+    // Texto grande para que sea fácil de leer y ocupe todo el ancho disponible
+    flex: 1,
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
   },
 
   // Contenedor de la lista de actividades
   listaContainer: {
     flex: 1,
+  },
+  // Wrapper relativo para posicionar el botón flotante sobre la lista
+  listaWrapper: {
+    flex: 1,
+    position: 'relative',
   },
   listaContent: {
     paddingTop: Spacing.lg,
@@ -257,6 +319,32 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 28,
+  },
+
+  // Botón flotante de flecha — sutil, color claro con transparencia
+  flechaBtn: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    left: '50%',
+    marginLeft: -44,
+    width: 88,
+    paddingVertical: 12,
+    borderRadius: 28,
+    backgroundColor: 'rgba(224, 218, 218, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  flechaTexto: {
+    fontSize: Typography.size.sm,
+    fontWeight: Typography.weight.bold,
+    color: '#222',
   },
 
   // Modal de límite de días

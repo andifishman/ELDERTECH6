@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { AppHeader } from '@/components/common/AppHeader';
 import { RadioCard } from '@/components/radio/RadioCard';
-import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { LoadingState, ErrorState } from '@/components/common/LoadingState';
 import { useRadioData } from '@/hooks/useRadio';
+import { useFavoritos } from '@/hooks/useFavoritos';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -19,15 +19,38 @@ import type { RadioStation } from '@/types/radio.types';
 
 export default function RadioScreen() {
   const { data, isLoading, error, refetch } = useRadioData();
+  const { favoritos, esFavorito } = useFavoritos();
   const [idiomaFiltro, setIdiomaFiltro] = useState<string | null>(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null);
+  const categoriaScrollRef = useRef<ScrollView>(null);
+  const catScrollX = useRef(0);
 
+  const IDIOMAS_FIJOS = [
+    { codigo: null,  nombre: 'Todos',   emoji: '🌐' },
+    { codigo: 'AR',  nombre: 'Español', emoji: '🇦🇷' },
+    { codigo: 'IL',  nombre: 'Hebreo',  emoji: '🇮🇱' },
+    { codigo: 'US',  nombre: 'Inglés',  emoji: '🇺🇸' },
+  ];
+
+  const ORDEN_IDIOMA: Record<string, number> = { AR: 0, IL: 1, US: 2 };
+
+  // Radios filtradas con favoritos siempre primero
   const radiosFiltradas = useMemo<RadioStation[]>(() => {
     let result = data?.radios ?? [];
     if (idiomaFiltro) result = result.filter((r) => r.pais === idiomaFiltro);
     if (categoriaFiltro) result = result.filter((r) => r.categoriaId === categoriaFiltro);
-    return result;
-  }, [data, idiomaFiltro, categoriaFiltro]);
+    // Ordenar por idioma: Español → Hebreo → Inglés (solo en vista "Todos")
+    if (!idiomaFiltro) {
+      result = [...result].sort((a, b) => {
+        const oA = ORDEN_IDIOMA[a.pais ?? ''] ?? 99;
+        const oB = ORDEN_IDIOMA[b.pais ?? ''] ?? 99;
+        return oA - oB;
+      });
+    }
+    const favs = result.filter((r) => esFavorito(r.id));
+    const resto = result.filter((r) => !esFavorito(r.id));
+    return [...favs, ...resto];
+  }, [data, idiomaFiltro, categoriaFiltro, favoritos]);
 
   const handleSeleccionarIdioma = (codigo: string | null) => {
     setIdiomaFiltro(codigo);
@@ -52,11 +75,6 @@ export default function RadioScreen() {
     );
   }
 
-  const idiomas = [
-    { codigo: null,  nombre: 'Todas',  emoji: '🌐' },
-    ...data.paises.map((p) => ({ codigo: p.codigo, nombre: p.nombre, emoji: p.emojiBandera ?? '🌐' })),
-  ];
-
   const categorias = [
     { id: null, nombre: 'Todas', emoji: '📻' },
     ...data.categorias.map((c) => ({ id: c.id, nombre: c.nombre, emoji: c.emoji ?? '📻' })),
@@ -64,24 +82,27 @@ export default function RadioScreen() {
 
   const catActual = categorias.find((c) => c.id === categoriaFiltro) ?? categorias[0];
 
+  const catScrollLeft = () => {
+    const next = Math.max(0, catScrollX.current - 90);
+    categoriaScrollRef.current?.scrollTo({ x: next, animated: true });
+  };
+  const catScrollRight = () =>
+    categoriaScrollRef.current?.scrollBy?.({ x: 90, animated: true }) ??
+    categoriaScrollRef.current?.scrollTo({ x: catScrollX.current + 90, animated: true });
+
   return (
     <View style={styles.root}>
       <AppHeader
         titulo="Radio"
         mostrarVolver
-        textoHablar="Radio. Tocá una radio para escucharla en vivo. Deslizá los filtros para cambiar de idioma o tipo de música."
+        textoHablar="Radio. Tocá una radio para escucharla en vivo. Las que marcaste con corazón aparecen primero."
       />
 
-      {/* ── Filtro de idioma ─────────────────────────────────── */}
+      {/* Filtro de idioma */}
       <View style={styles.filterSection}>
-        <Text style={styles.filterLabel}>Idioma</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-          decelerationRate="fast"
-        >
-          {idiomas.map((idioma) => (
+        <Text style={styles.filterLabel}>IDIOMA</Text>
+        <View style={styles.idiomaRow}>
+          {IDIOMAS_FIJOS.map((idioma) => (
             <IdiomaChip
               key={idioma.codigo ?? '__todas__'}
               emoji={idioma.emoji}
@@ -90,31 +111,42 @@ export default function RadioScreen() {
               onPress={() => handleSeleccionarIdioma(idioma.codigo)}
             />
           ))}
-        </ScrollView>
+        </View>
       </View>
 
-      {/* ── Filtro de categoría (scroll libre, sin flechas) ──── */}
+      {/* Filtro de categoría */}
       <View style={styles.categoriaSection}>
-        <Text style={styles.filterLabel}>Categoría</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriaChipsRow}
-          decelerationRate="fast"
-        >
-          {categorias.map((cat) => (
-            <CategoriaChip
-              key={cat.id ?? '__todas__'}
-              emoji={cat.emoji}
-              label={cat.nombre}
-              activa={categoriaFiltro === cat.id}
-              onPress={() => setCategoriaFiltro(cat.id)}
-            />
-          ))}
-        </ScrollView>
+        <Text style={styles.filterLabel}>CATEGORÍA</Text>
+        <View style={styles.filterRow}>
+          <TouchableOpacity style={styles.arrowBtn} onPress={catScrollLeft} accessibilityLabel="Desplazar izquierda">
+            <Text style={styles.arrowText}>◀</Text>
+          </TouchableOpacity>
+          <ScrollView
+            ref={categoriaScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriaChipsRow}
+            decelerationRate="fast"
+            style={styles.filterScroll}
+            onScroll={(e) => { catScrollX.current = e.nativeEvent.contentOffset.x; }}
+            scrollEventThrottle={16}
+          >
+            {categorias.map((cat) => (
+              <CategoriaChip
+                key={cat.id ?? '__todas__'}
+                emoji={cat.emoji}
+                label={cat.nombre}
+                activa={categoriaFiltro === cat.id}
+                onPress={() => setCategoriaFiltro(cat.id)}
+              />
+            ))}
+          </ScrollView>
+          <TouchableOpacity style={styles.arrowBtn} onPress={catScrollRight} accessibilityLabel="Desplazar derecha">
+            <Text style={styles.arrowText}>▶</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ── Lista de radios ───────────────────────────────────── */}
       <FlatList
         data={radiosFiltradas}
         keyExtractor={(item) => item.id}
@@ -147,8 +179,6 @@ export default function RadioScreen() {
           </View>
         }
       />
-
-      <NowPlayingBar />
     </View>
   );
 }
@@ -230,50 +260,70 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   filterLabel: {
-    fontSize: Typography.size.xs,
+    // Título de sección grande para adultos mayores
+    fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
-    color: Colors.text.hint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    color: Colors.text.primary,
+    letterSpacing: 0.5,
     marginBottom: Spacing.xs,
     paddingHorizontal: Spacing.screen.horizontal,
   },
-
-  // ── Idioma chips
-  chipsRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.screen.horizontal,
-  },
-  idiomaChip: {
+  filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  filterScroll: {
+    flex: 1,
+  },
+  arrowBtn: {
+    width: 36,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 8,
+    marginHorizontal: 2,
+  },
+  arrowText: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+    fontWeight: 'bold' as const,
+  },
+
+  // ── Idioma chips
+  idiomaRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.screen.horizontal,
     gap: 6,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
+  },
+  idiomaChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
     borderRadius: Spacing.radius.full,
     backgroundColor: Colors.ui.background,
     borderWidth: 1.5,
     borderColor: Colors.ui.border,
-    minHeight: 48,
+    minHeight: 40,
   },
   idiomaChipActiva: {
     backgroundColor: Colors.brand.greenDark,
     borderColor: Colors.brand.greenDark,
   },
-  idiomaEmoji: {
-    fontSize: 18,
-  },
+  idiomaEmoji: { fontSize: 14 },
   idiomaLabel: {
-    fontSize: Typography.size.md,
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.text.secondary,
   },
-  idiomaLabelActiva: {
-    color: Colors.text.onDark,
-  },
+  idiomaLabelActiva: { color: Colors.text.onDark },
 
-  // ── Categoría chips (más grandes, swipe libre)
+  // ── Categoría chips
   categoriaChipsRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -296,9 +346,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.blueDark,
     borderColor: Colors.brand.blueDark,
   },
-  categoriaEmoji: {
-    fontSize: 26,
-  },
+  categoriaEmoji: { fontSize: 26 },
   categoriaLabel: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.bold,
@@ -306,9 +354,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 72,
   },
-  categoriaLabelActiva: {
-    color: Colors.text.onDark,
-  },
+  categoriaLabelActiva: { color: Colors.text.onDark },
 
   // ── Resultados banner
   resultadosBanner: {
@@ -322,9 +368,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.blueDark,
     borderRadius: Spacing.radius.lg,
   },
-  resultadosEmoji: {
-    fontSize: 22,
-  },
+  resultadosEmoji: { fontSize: 22 },
   resultadosNombre: {
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
@@ -350,13 +394,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.screen.horizontal,
     gap: Spacing.md,
   },
-  emptyEmoji: {
-    fontSize: 56,
-  },
+  emptyEmoji: { fontSize: 56 },
   emptyText: {
     fontSize: Typography.size.lg,
     color: Colors.text.secondary,
     textAlign: 'center',
+    fontWeight: Typography.weight.semibold,
   },
   emptyBtn: {
     marginTop: Spacing.sm,

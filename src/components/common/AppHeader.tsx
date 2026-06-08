@@ -1,3 +1,4 @@
+//header reutilizable con título centrado, botón volver (izquierda) y botón escuchar (derecha)
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +33,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
 
+  //si hay handler propio lo usa, sino navega hacia atrás o a home
   function handleVolver() {
     if (onVolver) {
       onVolver();
@@ -42,6 +44,7 @@ export function AppHeader({
     }
   }
 
+  //lee en voz alta el título + subtítulo, o el texto personalizado si se pasó
   function handleHablar() {
     const texto = textoHablar ?? `${titulo}. ${subtitulo ?? ''}`;
     hablar(texto);
@@ -60,7 +63,7 @@ export function AppHeader({
               accessibilityRole="button"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="arrow-back" size={24} color={Colors.text.onDark} />
+              <Ionicons name="arrow-back" size={28} color={Colors.text.onDark} />
             </TouchableOpacity>
           )}
         </View>
@@ -87,7 +90,7 @@ export function AppHeader({
               accessibilityRole="button"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="volume-high" size={22} color={Colors.text.onDark} />
+              <Ionicons name="volume-high" size={26} color={Colors.text.onDark} />
             </TouchableOpacity>
           )}
         </View>
@@ -98,31 +101,36 @@ export function AppHeader({
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.xl,  // aumentado para igualar el espacio arriba/abajo
     paddingHorizontal: Spacing.lg,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: Spacing.header,
+    paddingTop: Spacing.md,   // espacio extra entre el safe area y los botones
+    gap: Spacing.md,          // más separación entre botones y título
   },
+  // Contenedor lateral más ancho para acomodar botones más grandes
   sideContainer: {
-    width: 48,
+    width: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Botón volver — más grande para adultos mayores
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(0,0,0,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Botón escuchar — más grande para adultos mayores
   speakButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: Colors.speak.onDarkBg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -131,12 +139,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  // Título más grande — accesible para adultos mayores
   titulo: {
     ...Typography.styles.screenTitle,
+    fontSize: 28,
   },
   tituloGrande: {
-    fontSize: 32,
-    fontWeight: '500' as const,
+    fontSize: 36,
+    fontWeight: '600' as const,
   },
   subtitulo: {
     ...Typography.styles.screenSubtitle,

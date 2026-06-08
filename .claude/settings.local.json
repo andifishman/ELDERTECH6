@@ -20,7 +20,19 @@
       "WebFetch(domain:iradioforum.net)",
       "WebFetch(domain:www.kan.org.il)",
       "WebFetch(domain:www.radios-argentinas.org)",
-      "WebFetch(domain:community.roonlabs.com)"
+      "WebFetch(domain:community.roonlabs.com)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__apply_migration",
+      "Bash(npx expo *)",
+      "Bash(npx tsc *)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(cd \"/c/Users/49192387/Downloads/ELDERTECH6\" && ls node_modules | grep expo-image 2>/dev/null || echo \"not installed\")",
+      "Read(//c/c/Users/49192387/Downloads/ELDERTECH6/**)",
+      "Bash(ls \"/c/Users/49192387/.claude/projects/c--Users-49192387-Downloads-ELDERTECH6/memory/\" 2>/dev/null || echo \"empty\")",
+      "Read(//c/Users/49192387/.claude/projects/c--Users-49192387-Downloads-ELDERTECH6/**)",
+      "Bash(node -e \"const p = require\\('./node_modules/expo-image-picker/package.json'\\); console.log\\(p.version\\)\")"
     ]
   }
 }
