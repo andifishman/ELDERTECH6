@@ -1,3 +1,4 @@
+//tipos de todas las tablas de supabase usadas en el proyecto — generados manualmente
 // Tipos generados manualmente a partir del schema Supabase de ElderTech
 // Cuando tengas el proyecto Supabase creado, reemplazá con:
 // npx supabase gen types typescript --project-id <tu-project-id> > src/types/database.types.ts
@@ -69,15 +70,17 @@ export interface Interes {
 export interface Residente {
   id: string;
   organizacion_id: string;
-  sector_id: string;
-  habitacion_id: string | null;
   nombre: string;
   apellido: string;
   fecha_nacimiento: string | null;
   foto_url: string | null;
   nivel_dificultad: NivelDificultad;
+  piso: string | null;
+  habitacion: string | null;
   email: string | null;
   telefono: string | null;
+  notas: string | null;
+  fecha_ingreso: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -133,6 +136,7 @@ export interface Actividad {
   hora_fin: string | null;
   es_recurrente: boolean;
   patron_recurrencia: PatronRecurrencia | null;
+  pisos_objetivo: string[] | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -148,6 +152,16 @@ export interface ActividadCompleta extends Actividad {
   tipo_actividad: TipoActividad;
   ubicacion: Ubicacion | null;
   responsable: Responsable | null;
+}
+
+// Actividad con prioridad personalizada para la pantalla de Horarios
+// 1=interés+piso  2=solo interés  3=general (todos)  4=sin coincidencia
+export type PrioridadActividad = 1 | 2 | 3 | 4;
+
+export interface ActividadConPrioridad extends ActividadCompleta {
+  actividad_intereses: Array<{ interes_id: string }>;
+  prioridad: PrioridadActividad;
+  recomendada: boolean;
 }
 
 // ─── Clima ───────────────────────────────────────────────────────────────────
