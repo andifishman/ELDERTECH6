@@ -73,7 +73,7 @@ export function useClima() {
   return useQuery({
     queryKey: ['clima', 'org', ORG_ID],
     queryFn: fetchClimaOrg,
-    staleTime: 30 * 60 * 1000, // 30 minutos — el clima no cambia tan seguido
+    staleTime: 0, // siempre refrescar al enfocar la query
     retry: 2,
     refetchOnWindowFocus: false,
   });
@@ -98,7 +98,7 @@ export function useClimaCiudad(ciudad: CiudadGuardada | null) {
       return getClima(ciudad.nombre, ciudad.lat, ciudad.lon, ciudad.timezone, ciudad.pais);
     },
     enabled: !!ciudad, // Solo ejecutar si hay una ciudad seleccionada
-    staleTime: 30 * 60 * 1000,
+    staleTime: 0, // siempre refrescar al enfocar la query
     retry: 2,
     refetchOnWindowFocus: false,
   });

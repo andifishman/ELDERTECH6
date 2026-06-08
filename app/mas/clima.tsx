@@ -78,6 +78,11 @@ export default function ClimaScreen() {
     ? climaNatal
     : climaCiudad;
 
+  // Refrescar siempre que cambia la ciudad activa
+  useEffect(() => {
+    refetch();
+  }, [ciudadActiva.id]);
+
   // ── Cargar ciudades guardadas desde AsyncStorage al iniciar la pantalla ──
   useEffect(() => {
     async function cargarCiudades() {

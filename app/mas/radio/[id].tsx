@@ -22,7 +22,6 @@ import { useRadioData } from '@/hooks/useRadio';
 import { useRadioPlayer } from '@/context/RadioContext';
 import { useFavoritos } from '@/hooks/useFavoritos';
 import { useHistorialRadio } from '@/hooks/useHistorialRadio';
-import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { RadioCard } from '@/components/radio/RadioCard';
 import { hablar } from '@/utils/tts';
 import { Colors } from '@/constants/Colors';
@@ -348,10 +347,7 @@ export default function RadioDetalleScreen() {
         )}
 
         {/* Espacio para la NowPlayingBar */}
-        <View style={{ height: 90 }} />
       </ScrollView>
-
-      <NowPlayingBar />
     </View>
   );
 }

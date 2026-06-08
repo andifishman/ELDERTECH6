@@ -61,8 +61,8 @@ function generarVentana(hoy: Date, diasAtras: number, diasAdelante: number): Dat
 export default function HorariosScreen() {
   const hoy = new Date();
 
-  const [diasAtras, setDiasAtras] = useState(2);
-  const [diasAdelante, setDiasAdelante] = useState(6);
+  const [diasAtras, setDiasAtras] = useState(0);
+  const [diasAdelante, setDiasAdelante] = useState(0);
   const ventana = generarVentana(hoy, diasAtras, diasAdelante);
   const [diaSeleccionado, setDiaSeleccionado] = useState(hoy);
   const [mostrarModalLimite, setMostrarModalLimite] = useState(false);
@@ -82,6 +82,30 @@ export default function HorariosScreen() {
 
   // Muestra la flecha solo si hay contenido por debajo del viewport
   const hayMasAbajo = contenidoAltura > listaAltura && scrollY + listaAltura < contenidoAltura - 10;
+
+  /**
+   * Cada vez que el usuario cambia de día, revisamos si está cerca del borde de la ventana.
+   * Si queda 1 día o menos de margen en alguna dirección, expandimos automáticamente
+   * la ventana 7 días más (sin esperar a que toque la flecha en el límite).
+   * Así el usuario nunca "frena" — los días nuevos ya están disponibles.
+   */
+  React.useEffect(() => {
+    const diffFuturo = Math.round(
+      (hoy.getTime() + diasAdelante * 86400000 - diaSeleccionado.getTime()) / 86400000
+    );
+    const diffPasado = Math.round(
+      (diaSeleccionado.getTime() - (hoy.getTime() - diasAtras * 86400000)) / 86400000
+    );
+
+    // Si queda 1 día o menos al final de la ventana, expandir hacia adelante
+    if (diffFuturo <= 1 && diasAdelante < MAX_DIAS_FUTURO) {
+      setDiasAdelante((prev) => Math.min(prev + 7, MAX_DIAS_FUTURO));
+    }
+    // Si queda 1 día o menos al inicio de la ventana, expandir hacia atrás
+    if (diffPasado <= 1 && diasAtras < MAX_DIAS_PASADO) {
+      setDiasAtras((prev) => Math.min(prev + 7, MAX_DIAS_PASADO));
+    }
+  }, [diaSeleccionado, diasAtras, diasAdelante]);
 
   // Hook de React Query — carga las actividades del día seleccionado desde Supabase
   const { data: actividades, isLoading, error, refetch } = useActividades(diaSeleccionado);

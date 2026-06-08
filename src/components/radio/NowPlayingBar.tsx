@@ -79,14 +79,10 @@ export function NowPlayingBar() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: Colors.radio.nowPlayingBg,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Spacing.lg,       // más alto que antes
+    paddingTop: Spacing.lg,
     paddingHorizontal: Spacing.lg,
     gap: Spacing.md,
     elevation: 10,
