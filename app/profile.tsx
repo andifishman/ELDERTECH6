@@ -32,13 +32,15 @@ import type { Interes, CiudadFamiliar } from '@/types/auth.types';
 const FLAG: Record<string, string> = { AR: '🇦🇷', IL: '🇮🇱', US: '🇺🇸' };
 
 export default function ProfileScreen() {
-  const { profile, refreshProfile, session } = useAuth();
+  const { profile, refreshProfile, updateLocalProfile, session } = useAuth();
   const residente = profile?.residente;
   const perfil = profile?.perfil;
 
   const [saving, setSaving] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null); // optimistic preview
 
   const [intereses, setIntereses] = useState<Interes[]>([]);
   const [ciudades, setCiudades] = useState<CiudadFamiliar[]>([]);
@@ -69,34 +71,28 @@ export default function ProfileScreen() {
 
   async function handleChangePhoto() {
     if (!residente || !session?.user.id) return;
-    Alert.alert('Foto de perfil', 'Elegí cómo querés actualizar tu foto', [
-      {
-        text: 'Tomar foto',
-        onPress: async () => {
-          const uri = await takePhoto();
-          if (uri) uploadPhoto(uri);
-        },
-      },
-      {
-        text: 'Elegir de galería',
-        onPress: async () => {
-          const uri = await pickImage();
-          if (uri) uploadPhoto(uri);
-        },
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    setShowPhotoModal(true);
   }
 
   async function uploadPhoto(uri: string) {
     if (!residente || !session?.user.id) return;
+    // 1. Mostrar la foto localmente de inmediato (optimistic)
+    setLocalPhotoUri(uri);
+    updateLocalProfile({ foto_url: uri });
     setSaving(true);
+    setPhotoError(null);
     try {
+      // 2. Subir en background
       const url = await uploadAndGetPhotoUrl(session.user.id, uri);
       await updateProfile(residente.id, { foto_url: url });
-      await refreshProfile();
+      // 3. Reemplazar con la URL definitiva de Supabase (con cache-buster)
+      updateLocalProfile({ foto_url: url });
+      setLocalPhotoUri(null);
     } catch {
-      Alert.alert('Error', 'No se pudo actualizar la foto.');
+      // Revertir si falló
+      setLocalPhotoUri(null);
+      updateLocalProfile({ foto_url: residente.foto_url ?? undefined });
+      setPhotoError('No se pudo actualizar la foto. Intentá de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -108,9 +104,9 @@ export default function ProfileScreen() {
 
   async function confirmarLogout() {
     setShowLogoutModal(false);
-    setLoggingOut(true);
+    // Navegar a login de inmediato, sin esperar al guard
+    router.replace('/(auth)/login');
     try { await logout(); } catch {}
-    // NavigationGuard handles redirect once session is null
   }
 
   if (!profile) {
@@ -145,8 +141,8 @@ export default function ProfileScreen() {
         {/* Avatar + name */}
         <View style={styles.avatarSection}>
           <TouchableOpacity onPress={handleChangePhoto} disabled={saving}>
-            {residente?.foto_url ? (
-              <Image source={{ uri: residente.foto_url }} style={styles.avatar} />
+            {(localPhotoUri ?? residente?.foto_url) ? (
+              <Image source={{ uri: (localPhotoUri ?? residente!.foto_url)! }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Ionicons name="person" size={48} color={Colors.ui.disabled} />
@@ -228,12 +224,57 @@ export default function ProfileScreen() {
         <LoadingButton
           title="Cerrar sesión"
           onPress={handleLogout}
-          loading={loggingOut}
+          loading={false}
           variant="outline"
           style={styles.logoutButton}
           textStyle={{ color: Colors.brand.red }}
         />
       </ScrollView>
+
+      {/* Modal de foto de perfil */}
+      <Modal
+        visible={showPhotoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalEmoji}>📷</Text>
+            <Text style={styles.modalTitle}>Foto de perfil</Text>
+            <Text style={styles.modalMessage}>Elegí cómo querés actualizar tu foto</Text>
+            {photoError && (
+              <Text style={styles.modalError}>{photoError}</Text>
+            )}
+            <TouchableOpacity
+              style={styles.modalBtnSalir}
+              onPress={async () => {
+                setShowPhotoModal(false);
+                const uri = await takePhoto();
+                if (uri) uploadPhoto(uri);
+              }}
+            >
+              <Text style={styles.modalBtnSalirTexto}>📸  Tomar foto</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalBtnSalir, { backgroundColor: Colors.brand.greenDark }]}
+              onPress={async () => {
+                setShowPhotoModal(false);
+                const uri = await pickImage();
+                if (uri) uploadPhoto(uri);
+              }}
+            >
+              <Text style={styles.modalBtnSalirTexto}>🖼️  Elegir de galería</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalBtnCancelar}
+              onPress={() => { setShowPhotoModal(false); setPhotoError(null); }}
+            >
+              <Text style={styles.modalBtnCancelarTexto}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de confirmación de cierre de sesión */}
       <Modal
@@ -327,7 +368,12 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: Colors.text.onDark,
+    borderColor: '#ffffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   avatarPlaceholder: {
     width: 100,
@@ -507,5 +553,10 @@ const styles = StyleSheet.create({
   modalBtnCancelarTexto: {
     fontSize: Typography.size.lg,
     color: Colors.text.secondary,
+  },
+  modalError: {
+    fontSize: Typography.size.sm,
+    color: Colors.brand.red,
+    textAlign: 'center',
   },
 });

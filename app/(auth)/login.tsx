@@ -40,10 +40,10 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(username, password);
-      // AuthContext + root layout handle the redirect
+      // Navegar de inmediato — el perfil carga en background en AuthContext
+      router.replace('/');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al iniciar sesión.');
-    } finally {
       setLoading(false);
     }
   }

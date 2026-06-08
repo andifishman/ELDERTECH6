@@ -10,22 +10,38 @@ export async function login(
   password: string,
 ): Promise<void> {
   const input = usernameOrEmail.trim();
-  let email: string;
 
+  // Si parece un email, ir directo sin resolver username
   if (input.includes('@')) {
-    email = input.toLowerCase();
-  } else {
-    const { data: resolved, error: lookupError } = await supabase.rpc(
-      'get_email_by_username',
-      { p_username: input },
-    );
-    if (lookupError || !resolved) {
-      throw new Error('Usuario no encontrado. Revisá el nombre de usuario.');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: input.toLowerCase(),
+      password,
+    });
+    if (error) {
+      if (error.message.includes('Invalid login credentials')) {
+        throw new Error('Usuario o contraseña incorrectos. Intentá de nuevo.');
+      }
+      if (error.message.includes('Email not confirmed')) {
+        throw new Error('Necesitás confirmar tu email antes de ingresar. Revisá tu casilla de correo.');
+      }
+      throw new Error(error.message);
     }
-    email = resolved;
+    return;
   }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  // Es un username — resolver a email
+  const { data: resolved, error: lookupError } = await supabase.rpc(
+    'get_email_by_username',
+    { p_username: input },
+  );
+  if (lookupError || !resolved) {
+    throw new Error('Usuario no encontrado. Revisá el nombre de usuario.');
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: resolved,
+    password,
+  });
   if (error) {
     if (error.message.includes('Invalid login credentials')) {
       throw new Error('Usuario o contraseña incorrectos. Intentá de nuevo.');
@@ -148,9 +164,11 @@ export async function logout(): Promise<void> {
 // ─── Profile ─────────────────────────────────────────────────────────────────
 
 export async function getProfile(): Promise<AuthProfile | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Usar getUser() para validar con el servidor (más seguro que solo la sesión local)
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return null;
 
+  // Fetch perfil + (residente + intereses) en paralelo donde sea posible
   const { data: perfil, error: perfilError } = await supabase
     .from('perfiles_usuario')
     .select('*')
@@ -159,19 +177,50 @@ export async function getProfile(): Promise<AuthProfile | null> {
 
   if (perfilError || !perfil) return null;
 
-  let residente = null;
-  let residente_interes_ids: string[] = [];
-
-  if (perfil.residente_id) {
-    const [{ data: resData }, { data: interesesData }] = await Promise.all([
-      supabase.from('residentes').select('*').eq('id', perfil.residente_id).single(),
-      supabase.from('residente_intereses').select('interes_id').eq('residente_id', perfil.residente_id),
-    ]);
-    residente = resData;
-    residente_interes_ids = (interesesData ?? []).map((r: { interes_id: string }) => r.interes_id);
+  if (!perfil.residente_id) {
+    return { perfil, residente: null, residente_interes_ids: [] };
   }
 
-  return { perfil, residente, residente_interes_ids };
+  // Residente e intereses en paralelo — antes eran secuenciales
+  const [{ data: residente }, { data: interesesData }] = await Promise.all([
+    supabase.from('residentes').select('*').eq('id', perfil.residente_id).single(),
+    supabase.from('residente_intereses').select('interes_id').eq('residente_id', perfil.residente_id),
+  ]);
+
+  return {
+    perfil,
+    residente: residente ?? null,
+    residente_interes_ids: (interesesData ?? []).map((r: { interes_id: string }) => r.interes_id),
+  };
+}
+
+/**
+ * Versión rápida: usa el userId de la sesión ya disponible localmente
+ * sin hacer un roundtrip extra a getUser(). Para el background refresh.
+ */
+export async function getProfileForUser(userId: string): Promise<AuthProfile | null> {
+  const { data: perfil, error: perfilError } = await supabase
+    .from('perfiles_usuario')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (perfilError || !perfil) return null;
+
+  if (!perfil.residente_id) {
+    return { perfil, residente: null, residente_interes_ids: [] };
+  }
+
+  const [{ data: residente }, { data: interesesData }] = await Promise.all([
+    supabase.from('residentes').select('*').eq('id', perfil.residente_id).single(),
+    supabase.from('residente_intereses').select('interes_id').eq('residente_id', perfil.residente_id),
+  ]);
+
+  return {
+    perfil,
+    residente: residente ?? null,
+    residente_interes_ids: (interesesData ?? []).map((r: { interes_id: string }) => r.interes_id),
+  };
 }
 
 export async function updateProfile(
@@ -257,21 +306,30 @@ export async function takePhoto(): Promise<string | null> {
 }
 
 async function uploadProfilePhoto(userId: string, uri: string): Promise<string> {
-  const arrayBuffer = await fetch(uri).then((r) => r.arrayBuffer());
-  const ext = uri.endsWith('.png') ? 'png' : 'jpg';
+  const ext = uri.split('?')[0].endsWith('.png') ? 'png' : 'jpg';
   const path = `${userId}/avatar.${ext}`;
+  const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
+  // En web usamos Blob directamente — mucho más rápido que ArrayBuffer
+  let body: Blob | ArrayBuffer;
+  try {
+    const response = await fetch(uri);
+    body = await response.blob();
+  } catch {
+    // Fallback a ArrayBuffer si blob no está disponible
+    const response = await fetch(uri);
+    body = await response.arrayBuffer();
+  }
 
   const { error } = await supabase.storage
     .from('fotos-perfil')
-    .upload(path, arrayBuffer, {
-      contentType: `image/${ext === 'png' ? 'png' : 'jpeg'}`,
-      upsert: true,
-    });
+    .upload(path, body, { contentType, upsert: true });
 
   if (error) throw error;
 
+  // Agregar cache-buster para que el browser no muestre la foto vieja
   const { data } = supabase.storage.from('fotos-perfil').getPublicUrl(path);
-  return data.publicUrl;
+  return `${data.publicUrl}?t=${Date.now()}`;
 }
 
 export async function uploadAndGetPhotoUrl(

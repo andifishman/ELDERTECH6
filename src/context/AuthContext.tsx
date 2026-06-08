@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
-import { getProfile } from '@/services/authService';
+import { getProfile, getProfileForUser } from '@/services/authService';
 import type { AuthProfile } from '@/types/auth.types';
 
 const cacheKey = (uid: string) => `@et_profile_v1_${uid}`;
@@ -27,6 +27,7 @@ interface AuthContextValue {
   profile: AuthProfile | null;
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
+  updateLocalProfile: (updates: Partial<AuthProfile['residente']>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextValue>({
   profile: null,
   isLoading: true,
   refreshProfile: async () => {},
+  updateLocalProfile: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const uid = currentUidRef.current;
     if (!uid) return;
     try {
-      const p = await getProfile();
+      const p = await getProfileForUser(uid);
       if (p) {
         setProfile(p);
         writeCache(uid, p);
@@ -54,54 +56,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
+  // Actualiza campos del residente localmente sin ir a Supabase
+  const updateLocalProfile = useCallback((updates: Partial<AuthProfile['residente']>) => {
+    setProfile((prev) => {
+      if (!prev) return prev;
+      const updated: AuthProfile = {
+        ...prev,
+        residente: prev.residente ? { ...prev.residente, ...updates } : prev.residente,
+      };
+      const uid = currentUidRef.current;
+      if (uid) writeCache(uid, updated);
+      return updated;
+    });
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
     async function init() {
-      // Step 1: get session from local storage (fast, no network)
-      let s: Session | null = null;
+      // Timeout de seguridad — si algo falla, nunca quedarse en loading para siempre
+      const safetyTimer = setTimeout(() => {
+        if (mounted) setIsLoading(false);
+      }, 8000);
+
       try {
-        const { data } = await supabase.auth.getSession();
-        s = data.session;
-      } catch {}
+        // Step 1: get session from local storage (fast, no network)
+        let s: Session | null = null;
+        try {
+          const { data } = await supabase.auth.getSession();
+          s = data.session;
+        } catch {}
 
-      if (!mounted) return;
-      setSession(s);
-
-      if (s?.user.id) {
-        const uid = s.user.id;
-        currentUidRef.current = uid;
-
-        // Step 2: load cache immediately — show app with no spinner
-        const cached = await readCache(uid);
         if (!mounted) return;
+        setSession(s);
 
-        if (cached) {
-          setProfile(cached);
-          setIsLoading(false); // App visible instantly
-          // Step 3: background refresh — no spinner, silent update
-          getProfile()
-            .then(fresh => {
-              if (!mounted || !fresh) return;
-              setProfile(fresh);
-              writeCache(uid, fresh);
-            })
-            .catch(() => {});
+        if (s?.user.id) {
+          const uid = s.user.id;
+          currentUidRef.current = uid;
+
+          // Step 2: load cache immediately — show app with no spinner
+          const cached = await readCache(uid);
+          if (!mounted) return;
+
+          if (cached) {
+            setProfile(cached);
+            setIsLoading(false); // App visible instantly
+            // Step 3: background refresh usando userId ya conocido — sin roundtrip extra
+            getProfileForUser(uid)
+              .then(fresh => {
+                if (!mounted || !fresh) return;
+                setProfile(fresh);
+                writeCache(uid, fresh);
+              })
+              .catch(() => {});
+          } else {
+            // First login ever — fetch con getProfileForUser para evitar getUser() extra
+            try {
+              const p = await getProfileForUser(uid);
+              if (mounted) {
+                setProfile(p);
+                if (p) writeCache(uid, p);
+              }
+            } catch {}
+            if (mounted) setIsLoading(false);
+          }
         } else {
-          // First login ever — fetch once and cache
-          try {
-            const p = await getProfile();
-            if (mounted) {
-              setProfile(p);
-              if (p) writeCache(uid, p);
-            }
-          } catch {}
-          if (mounted) setIsLoading(false);
+          currentUidRef.current = null;
+          setProfile(null);
+          setIsLoading(false);
         }
-      } else {
-        currentUidRef.current = null;
-        setProfile(null);
-        setIsLoading(false);
+      } finally {
+        clearTimeout(safetyTimer);
       }
     }
 
@@ -128,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (s?.user.id) {
           currentUidRef.current = s.user.id;
           try {
-            const p = await getProfile();
+            const p = await getProfileForUser(s.user.id);
             if (mounted) {
               setProfile(p);
               if (p) writeCache(s.user.id, p);
@@ -151,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, profile, isLoading, refreshProfile }}>
+    <AuthContext.Provider value={{ session, profile, isLoading, refreshProfile, updateLocalProfile }}>
       {children}
     </AuthContext.Provider>
   );
