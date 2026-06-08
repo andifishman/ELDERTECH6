@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { AppHeader } from '@/components/common/AppHeader';
 import { RadioCard } from '@/components/radio/RadioCard';
-import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { LoadingState, ErrorState } from '@/components/common/LoadingState';
 import { useRadioData } from '@/hooks/useRadio';
 import { useFavoritos } from '@/hooks/useFavoritos';
@@ -33,11 +32,21 @@ export default function RadioScreen() {
     { codigo: 'US',  nombre: 'Inglés',  emoji: '🇺🇸' },
   ];
 
+  const ORDEN_IDIOMA: Record<string, number> = { AR: 0, IL: 1, US: 2 };
+
   // Radios filtradas con favoritos siempre primero
   const radiosFiltradas = useMemo<RadioStation[]>(() => {
     let result = data?.radios ?? [];
     if (idiomaFiltro) result = result.filter((r) => r.pais === idiomaFiltro);
     if (categoriaFiltro) result = result.filter((r) => r.categoriaId === categoriaFiltro);
+    // Ordenar por idioma: Español → Hebreo → Inglés (solo en vista "Todos")
+    if (!idiomaFiltro) {
+      result = [...result].sort((a, b) => {
+        const oA = ORDEN_IDIOMA[a.pais ?? ''] ?? 99;
+        const oB = ORDEN_IDIOMA[b.pais ?? ''] ?? 99;
+        return oA - oB;
+      });
+    }
     const favs = result.filter((r) => esFavorito(r.id));
     const resto = result.filter((r) => !esFavorito(r.id));
     return [...favs, ...resto];
@@ -170,8 +179,6 @@ export default function RadioScreen() {
           </View>
         }
       />
-
-      <NowPlayingBar />
     </View>
   );
 }

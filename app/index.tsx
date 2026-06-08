@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   avatarIcon: { fontSize: 28, color: '#FFFFFF' },
 
