@@ -95,6 +95,10 @@ export default function RootLayout() {
                     <Stack.Screen name="horarios/[id]" />
                     <Stack.Screen name="mas/index" />
                     <Stack.Screen name="mas/clima" />
+                    <Stack.Screen name="llamar/index" />
+                    <Stack.Screen name="llamar/[id]" />
+                    <Stack.Screen name="articulos/index" />
+                    <Stack.Screen name="articulos/[id]" />
                   </Stack>
                   {/* Barra de radio persistente — visible en todas las pantallas cuando hay audio activo */}
                   <NowPlayingBar />

@@ -1,0 +1,243 @@
+// Servicio de contactos — CRUD completo en Supabase para el módulo Llamar
+import { supabase } from './supabase';
+import type {
+  ContactoResumen,
+  ContactoUpsert,
+  TipoContacto,
+} from '@/types/database.types';
+
+const CONTACTO_SELECT = `
+  id,
+  nombre,
+  apellido,
+  telefono,
+  whatsapp_disponible,
+  foto_url,
+  favorito,
+  orden,
+  tipo_contacto:tipos_contacto(id, nombre, emoji, orden)
+`;
+
+// ─── Lectura ──────────────────────────────────────────────────────────────────
+
+/**
+ * Devuelve todos los contactos activos de un residente.
+ * Orden: favoritos primero → orden ASC → nombre ASC
+ */
+export async function getContactos(
+  residenteId: string,
+): Promise<ContactoResumen[]> {
+  const { data, error } = await supabase
+    .from('contactos')
+    .select(CONTACTO_SELECT)
+    .eq('residente_id', residenteId)
+    .eq('activo', true)
+    .order('favorito', { ascending: false })
+    .order('orden', { ascending: true })
+    .order('nombre', { ascending: true });
+
+  if (error) throw new Error(`Error al cargar contactos: ${error.message}`);
+  return (data ?? []) as ContactoResumen[];
+}
+
+/**
+ * Devuelve solo los contactos marcados como favoritos.
+ */
+export async function getContactosFavoritos(
+  residenteId: string,
+): Promise<ContactoResumen[]> {
+  const { data, error } = await supabase
+    .from('contactos')
+    .select(CONTACTO_SELECT)
+    .eq('residente_id', residenteId)
+    .eq('activo', true)
+    .eq('favorito', true)
+    .order('orden', { ascending: true });
+
+  if (error) throw new Error(`Error al cargar favoritos: ${error.message}`);
+  return (data ?? []) as ContactoResumen[];
+}
+
+/**
+ * Devuelve todos los tipos de contacto disponibles.
+ */
+export async function getTiposContacto(): Promise<TipoContacto[]> {
+  const { data, error } = await supabase
+    .from('tipos_contacto')
+    .select('id, nombre, emoji, orden')
+    .order('orden', { ascending: true });
+
+  if (error) throw new Error(`Error al cargar tipos: ${error.message}`);
+  return (data ?? []) as TipoContacto[];
+}
+
+// ─── Escritura ────────────────────────────────────────────────────────────────
+
+/**
+ * Agrega un nuevo contacto.
+ * Si el contacto ya existe (mismo contacto_device_id), no lo duplica.
+ */
+export async function agregarContacto(
+  payload: ContactoUpsert,
+): Promise<ContactoResumen> {
+  // Si viene del dispositivo, verificar si ya existe por device_id
+  if (payload.contacto_device_id) {
+    const { data: existente } = await supabase
+      .from('contactos')
+      .select('id')
+      .eq('residente_id', payload.residente_id)
+      .eq('contacto_device_id', payload.contacto_device_id)
+      .eq('activo', true)
+      .maybeSingle();
+
+    if (existente) {
+      throw new Error('Este contacto ya está en tu lista.');
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('contactos')
+    .insert({
+      ...payload,
+      activo: true,
+      whatsapp_disponible: payload.whatsapp_disponible ?? true,
+      favorito: payload.favorito ?? false,
+      orden: payload.orden ?? 0,
+      origen_contacto: payload.origen_contacto ?? 'manual',
+    })
+    .select(CONTACTO_SELECT)
+    .single();
+
+  if (error) throw new Error(`Error al guardar contacto: ${error.message}`);
+  return data as ContactoResumen;
+}
+
+/**
+ * Actualiza un contacto existente (favorito, whatsapp, foto, etc.)
+ */
+export async function actualizarContacto(
+  id: string,
+  updates: Partial<ContactoUpsert>,
+): Promise<void> {
+  const { error } = await supabase
+    .from('contactos')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) throw new Error(`Error al actualizar contacto: ${error.message}`);
+}
+
+/**
+ * Marca/desmarca un contacto como favorito.
+ */
+export async function toggleFavorito(
+  id: string,
+  favorito: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from('contactos')
+    .update({ favorito, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) throw new Error(`Error al actualizar favorito: ${error.message}`);
+}
+
+/**
+ * Elimina un contacto (soft delete — pone activo = false).
+ */
+export async function eliminarContacto(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('contactos')
+    .update({ activo: false, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) throw new Error(`Error al eliminar contacto: ${error.message}`);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Normaliza un número de teléfono argentino al formato internacional.
+ * Ej: "011-4567-8901" → "+541145678901"
+ * Ej: "15-6789-0123" → "+5491167890123"
+ * Números que ya tienen "+" se devuelven sin cambios.
+ */
+export function normalizarTelefono(telefono: string): string {
+  // Solo dígitos
+  let clean = telefono.replace(/\D/g, '');
+
+  // Ya tiene código de país
+  if (telefono.startsWith('+')) return telefono.replace(/\s|-/g, '');
+
+  // Argentina — agregar +54
+  if (clean.startsWith('0')) clean = clean.substring(1); // quitar el 0 inicial
+  if (clean.startsWith('9')) {
+    return `+54${clean}`;
+  }
+  // Celulares argentinos necesitan "9" entre +54 y el área
+  if (clean.length === 10) {
+    return `+549${clean}`;
+  }
+  // Si ya tiene 11 dígitos (54...)
+  if (clean.length >= 11 && clean.startsWith('54')) {
+    return `+${clean}`;
+  }
+
+  return `+${clean}`;
+}
+
+/**
+ * Formatea un número argentino para mostrar en la UI.
+ *
+ * Casos:
+ *   +5491145678901  → +54 9 11 4567-8901  (celular CABA, con 9)
+ *   +541145678901   → +54 11 4567-8901    (fijo CABA, sin 9)
+ *   +5492215678901  → +54 9 221 567-8901  (celular interior, área 3 dígitos)
+ *   +542215678901   → +54 221 567-8901    (fijo interior)
+ */
+export function formatearTelefono(telefono: string): string {
+  const clean = telefono.replace(/[\s\-()]/g, '');
+
+  if (!clean.startsWith('+54')) return telefono;
+
+  const sinPais = clean.substring(3); // quita "+54"
+
+  // Celular argentino: empieza con 9
+  if (sinPais.startsWith('9')) {
+    const sinNueve = sinPais.substring(1); // quita el "9"
+
+    // CABA / GBA: código de área 2 dígitos (11, 15 → 8 dígitos de abonado)
+    if (sinNueve.startsWith('11') || sinNueve.startsWith('15')) {
+      const area = sinNueve.substring(0, 2);
+      const num  = sinNueve.substring(2);
+      return `+54 9 ${area} ${num.substring(0, 4)}-${num.substring(4)}`;
+    }
+
+    // Interior: código de área 3 dígitos (221, 351, etc. → 7 dígitos de abonado)
+    const area = sinNueve.substring(0, 3);
+    const num  = sinNueve.substring(3);
+    if (num.length === 7) {
+      return `+54 9 ${area} ${num.substring(0, 3)}-${num.substring(3)}`;
+    }
+
+    // Genérico con 9
+    return `+54 9 ${sinNueve}`;
+  }
+
+  // Fijo argentino (sin 9)
+  // CABA: área 2 dígitos
+  if (sinPais.startsWith('11') || sinPais.startsWith('15')) {
+    const area = sinPais.substring(0, 2);
+    const num  = sinPais.substring(2);
+    return `+54 ${area} ${num.substring(0, 4)}-${num.substring(4)}`;
+  }
+
+  // Interior fijo: área 3 dígitos
+  if (sinPais.length >= 10) {
+    const area = sinPais.substring(0, 3);
+    const num  = sinPais.substring(3);
+    return `+54 ${area} ${num.substring(0, 3)}-${num.substring(3)}`;
+  }
+
+  return telefono;
+}
