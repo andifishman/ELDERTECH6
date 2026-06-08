@@ -22,12 +22,12 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    // Let verify-email manage its own exit navigation
     const isVerifyEmail = segments[1] === 'verify-email';
+    const isResetPassword = segments[1] === 'reset-password';
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
-    } else if (session && inAuthGroup && !isVerifyEmail) {
+    } else if (session && inAuthGroup && !isVerifyEmail && !isResetPassword) {
       router.replace('/');
     }
   }, [session, isLoading, segments]);
@@ -57,8 +57,9 @@ function DeepLinkHandler() {
       await supabase.auth.setSession({ access_token, refresh_token });
       if (type === 'signup' || type === 'email') {
         router.replace('/(auth)/verify-email');
+      } else if (type === 'recovery') {
+        router.replace('/(auth)/reset-password');
       }
-      // type === 'recovery' is handled by onAuthStateChange → PASSWORD_RECOVERY event
     }
   }
 
@@ -71,6 +72,17 @@ function DeepLinkHandler() {
     // App in background, deep link received
     const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
     return () => sub.remove();
+  }, []);
+
+  // En web, Supabase detecta el token del hash de la URL automáticamente
+  // y dispara PASSWORD_RECOVERY antes de que el URL handler lo capture
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        router.replace('/(auth)/reset-password');
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   return null;
@@ -95,10 +107,6 @@ export default function RootLayout() {
                     <Stack.Screen name="horarios/[id]" />
                     <Stack.Screen name="mas/index" />
                     <Stack.Screen name="mas/clima" />
-                    <Stack.Screen name="llamar/index" />
-                    <Stack.Screen name="llamar/[id]" />
-                    <Stack.Screen name="articulos/index" />
-                    <Stack.Screen name="articulos/[id]" />
                   </Stack>
                   {/* Barra de radio persistente — visible en todas las pantallas cuando hay audio activo */}
                   <NowPlayingBar />

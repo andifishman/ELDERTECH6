@@ -70,15 +70,17 @@ export interface Interes {
 export interface Residente {
   id: string;
   organizacion_id: string;
-  sector_id: string;
-  habitacion_id: string | null;
   nombre: string;
   apellido: string;
   fecha_nacimiento: string | null;
   foto_url: string | null;
   nivel_dificultad: NivelDificultad;
+  piso: string | null;
+  habitacion: string | null;
   email: string | null;
   telefono: string | null;
+  notas: string | null;
+  fecha_ingreso: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;
@@ -153,7 +155,8 @@ export interface ActividadCompleta extends Actividad {
 }
 
 // Actividad con prioridad personalizada para la pantalla de Horarios
-export type PrioridadActividad = 1 | 2 | 3;
+// 1=interés+piso  2=solo interés  3=general (todos)  4=sin coincidencia
+export type PrioridadActividad = 1 | 2 | 3 | 4;
 
 export interface ActividadConPrioridad extends ActividadCompleta {
   actividad_intereses: Array<{ interes_id: string }>;

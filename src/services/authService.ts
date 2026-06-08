@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import * as Linking from 'expo-linking';
 import { supabase, ORG_ID } from './supabase';
 import type { RegisterFormData, AuthProfile, Interes, CiudadFamiliar } from '@/types/auth.types';
 import type { NivelDificultad } from '@/types/database.types';
@@ -79,10 +80,23 @@ export async function registerUser(data: RegisterFormData): Promise<void> {
   }
 
   if (!authData.user) {
-    throw new Error('Error al crear la cuenta. Intentá de nuevo.');
+    throw new Error('Este email ya está registrado.');
   }
 
   const userId = authData.user.id;
+
+  // Supabase no lanza error cuando el email ya existe pero no está confirmado —
+  // simplemente reenvía el email de confirmación y devuelve el mismo usuario.
+  // Detectamos este caso verificando si ya existe un perfil para ese user ID.
+  const { data: existingProfile } = await supabase
+    .from('perfiles_usuario')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (existingProfile) {
+    throw new Error('Este email ya está registrado. Si aún no confirmaste tu cuenta, revisá tu correo.');
+  }
 
   // 2. Upload photo if provided
   let foto_url: string | null = null;
@@ -142,10 +156,15 @@ export async function requestPasswordReset(usernameOrEmail: string): Promise<voi
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'eldertech://reset-password',
+    redirectTo: Linking.createURL('reset-password'),
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.message.toLowerCase().includes('rate limit')) {
+      throw new Error('Enviamos demasiados emails recientemente. Esperá unos minutos e intentá de nuevo.');
+    }
+    throw new Error(error.message);
+  }
 }
 
 export async function updatePassword(newPassword: string): Promise<void> {

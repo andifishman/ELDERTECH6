@@ -20,14 +20,16 @@ import { Spacing } from '@/constants/Spacing';
 
 export default function ForgotPasswordScreen() {
   const [value, setValue] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
   async function handleSend() {
-    setError(null);
+    setFieldError(null);
+    setApiError(null);
     if (!value.trim()) {
-      setError('Ingresá tu nombre de usuario o email.');
+      setFieldError('Ingresá tu nombre de usuario o email.');
       return;
     }
 
@@ -36,7 +38,7 @@ export default function ForgotPasswordScreen() {
       await requestPasswordReset(value);
       setSent(true);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'No se pudo enviar el email.');
+      setApiError(e instanceof Error ? e.message : 'No se pudo enviar el email.');
     } finally {
       setLoading(false);
     }
@@ -96,9 +98,9 @@ export default function ForgotPasswordScreen() {
             Ingresá tu nombre de usuario o email y te enviaremos un link para crear una nueva contraseña.
           </Text>
 
-          {error && (
+          {apiError && (
             <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{error}</Text>
+              <Text style={styles.errorBannerText}>{apiError}</Text>
             </View>
           )}
 
@@ -107,7 +109,7 @@ export default function ForgotPasswordScreen() {
             value={value}
             onChangeText={setValue}
             placeholder="María García o maria@email.com"
-            error={error}
+            error={fieldError}
             autoCapitalize="none"
             returnKeyType="send"
             onSubmitEditing={handleSend}

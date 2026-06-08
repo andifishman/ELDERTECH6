@@ -38,6 +38,7 @@ export default function ProfileScreen() {
 
   const [saving, setSaving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null); // optimistic preview
@@ -47,6 +48,12 @@ export default function ProfileScreen() {
   const [residenteIntereses, setResidenteIntereses] = useState<string[]>([]);
   const [residenteCiudades, setResidenteCiudades] = useState<string[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(true);
+
+  useEffect(() => {
+    if (isLoggingOut && !session) {
+      router.replace('/(auth)/login');
+    }
+  }, [isLoggingOut, session]);
 
   useEffect(() => {
     if (!residente) return;
@@ -104,8 +111,7 @@ export default function ProfileScreen() {
 
   async function confirmarLogout() {
     setShowLogoutModal(false);
-    // Navegar a login de inmediato, sin esperar al guard
-    router.replace('/(auth)/login');
+    setIsLoggingOut(true);
     try { await logout(); } catch {}
   }
 
