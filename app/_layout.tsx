@@ -1,13 +1,12 @@
 import 'react-native-gesture-handler';
-import React from 'react';
-import { Stack } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
-<<<<<<< Updated upstream
-=======
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
 import { ActivityIndicator, View } from 'react-native';
@@ -66,18 +65,13 @@ function DeepLinkHandler() {
   }
 
   useEffect(() => {
-    // App opened from a deep link while killed
     Linking.getInitialURL().then((url) => {
       if (url) handleUrl(url);
     });
-
-    // App in background, deep link received
     const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
     return () => sub.remove();
   }, []);
 
-  // En web, Supabase detecta el token del hash de la URL automáticamente
-  // y dispara PASSWORD_RECOVERY antes de que el URL handler lo capture
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -89,56 +83,39 @@ function DeepLinkHandler() {
 
   return null;
 }
->>>>>>> Stashed changes
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryProvider>
-<<<<<<< Updated upstream
-        <FavoritosProvider>
-        <RadioProvider>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="horarios/index" />
-            <Stack.Screen name="horarios/[id]" />
-            <Stack.Screen name="mas/index" />
-            <Stack.Screen name="mas/clima" />
-          </Stack>
-        </RadioProvider>
-        </FavoritosProvider>
-=======
         <AuthProvider>
           <FavoritosProvider>
             <AsistenteConfigProvider>
-            <RadioProvider>
-              <NavigationGuard>
-                <DeepLinkHandler />
-                <StatusBar style="light" />
-                <View style={{ flex: 1 }}>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="profile" />
-                    <Stack.Screen name="horarios/index" />
-                    <Stack.Screen name="horarios/[id]" />
-                    <Stack.Screen name="mas/index" />
-                    <Stack.Screen name="mas/clima" />
-                    <Stack.Screen name="asistente/index" />
-                    <Stack.Screen name="asistente/chat" />
-                    <Stack.Screen name="asistente/historial" />
-                    <Stack.Screen name="asistente/ajustes" />
-                  </Stack>
-                  {/* Barra de radio persistente — visible en todas las pantallas cuando hay audio activo */}
-                  <NowPlayingBar />
-                </View>
-              </NavigationGuard>
-            </RadioProvider>
+              <RadioProvider>
+                <NavigationGuard>
+                  <DeepLinkHandler />
+                  <StatusBar style="light" />
+                  <View style={{ flex: 1 }}>
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="(auth)" />
+                      <Stack.Screen name="index" />
+                      <Stack.Screen name="profile" />
+                      <Stack.Screen name="horarios/index" />
+                      <Stack.Screen name="horarios/[id]" />
+                      <Stack.Screen name="mas/index" />
+                      <Stack.Screen name="mas/clima" />
+                      <Stack.Screen name="asistente/index" />
+                      <Stack.Screen name="asistente/chat" />
+                      <Stack.Screen name="asistente/historial" />
+                      <Stack.Screen name="asistente/ajustes" />
+                    </Stack>
+                    <NowPlayingBar />
+                  </View>
+                </NavigationGuard>
+              </RadioProvider>
             </AsistenteConfigProvider>
           </FavoritosProvider>
         </AuthProvider>
->>>>>>> Stashed changes
       </QueryProvider>
     </SafeAreaProvider>
   );
