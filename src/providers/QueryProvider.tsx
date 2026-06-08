@@ -8,6 +8,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 2,
       staleTime: 5 * 60 * 1000,
+      networkMode: 'always', // React Native: navigator.onLine is unreliable, never pause queries
     },
   },
 });

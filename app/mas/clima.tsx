@@ -19,10 +19,23 @@ import { AppHeader } from '@/components/common/AppHeader';
 import { LoadingState, ErrorState } from '@/components/common/LoadingState';
 import { useClima, useClimaCiudad } from '@/hooks/useClima';
 import { buscarCiudades } from '@/services/climaService';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/services/supabase';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { PronosticoDia, GeocodingResult, CiudadGuardada } from '@/types/clima.types';
+
+const PAIS_NOMBRE: Record<string, string> = {
+  AR: 'Argentina',
+  IL: 'Israel',
+  US: 'Estados Unidos',
+  ES: 'España',
+  IT: 'Italia',
+  FR: 'Francia',
+  DE: 'Alemania',
+  BR: 'Brasil',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constantes
@@ -46,6 +59,9 @@ const CIUDAD_NATAL: CiudadGuardada = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ClimaScreen() {
+  const { profile } = useAuth();
+  const residenteId = profile?.residente?.id ?? null;
+
   /** Lista completa de ciudades (natal + las que agregó el usuario) */
   const [ciudades, setCiudades] = useState<CiudadGuardada[]>([CIUDAD_NATAL]);
 
@@ -83,22 +99,49 @@ export default function ClimaScreen() {
     refetch();
   }, [ciudadActiva.id]);
 
-  // ── Cargar ciudades guardadas desde AsyncStorage al iniciar la pantalla ──
+  // ── Cargar ciudades: AsyncStorage primero; si vacío y hay sesión, semillar con ciudades familiares ──
   useEffect(() => {
     async function cargarCiudades() {
       try {
         const json = await AsyncStorage.getItem(STORAGE_KEY);
         if (json) {
           const guardadas: CiudadGuardada[] = JSON.parse(json);
-          // La ciudad natal siempre va primera, luego las guardadas
           setCiudades([CIUDAD_NATAL, ...guardadas.filter((c) => !c.esNatal)]);
+          return;
         }
-      } catch {
-        // Si falla la lectura del storage, se usa solo la ciudad natal
+      } catch {}
+
+      // Primera vez: si el usuario tiene familiares, pre-cargar sus ciudades
+      if (residenteId) {
+        try {
+          const { data } = await supabase
+            .from('residente_ciudades_familiares')
+            .select('ciudad_familiar:ciudades_familiares(id, nombre, pais_codigo, lat, lon, timezone)')
+            .eq('residente_id', residenteId);
+
+          const familiares: CiudadGuardada[] = (data ?? [])
+            .map((row: any) => row.ciudad_familiar)
+            .filter((c: any) => c?.lat && c?.lon && c?.timezone)
+            .map((c: any) => ({
+              id: `fam_${c.id}`,
+              nombre: c.nombre,
+              pais: c.pais_codigo,
+              paisNombre: PAIS_NOMBRE[c.pais_codigo] ?? c.pais_codigo,
+              lat: c.lat,
+              lon: c.lon,
+              timezone: c.timezone,
+              esNatal: false,
+            }));
+
+          if (familiares.length > 0) {
+            setCiudades([CIUDAD_NATAL, ...familiares]);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(familiares));
+          }
+        } catch {}
       }
     }
     cargarCiudades();
-  }, []);
+  }, [residenteId]);
 
   /** Guarda la lista de ciudades en AsyncStorage (excluye la natal que es fija) */
   const persistirCiudades = useCallback(async (lista: CiudadGuardada[]) => {

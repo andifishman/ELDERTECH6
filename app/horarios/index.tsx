@@ -37,7 +37,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { formatFechaLarga } from '@/utils/dateUtils';
-import type { ActividadCompleta } from '@/types/database.types';
+import type { ActividadCompleta, ActividadConPrioridad } from '@/types/database.types';
 
 /** Máximo de días que se pueden cargar hacia adelante o atrás desde hoy */
 const MAX_DIAS_FUTURO = 30;
@@ -202,6 +202,7 @@ export default function HorariosScreen() {
                 <ActividadCard
                   actividad={item}
                   onPress={() => router.push(`/horarios/${item.id}`)}
+                  recomendada={(item as ActividadConPrioridad).recomendada ?? false}
                 />
               )}
               contentContainerStyle={styles.listaContent}
