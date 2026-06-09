@@ -173,14 +173,16 @@ export default function ChatAsistenteScreen() {
 
         // Leer la respuesta en voz
         leerTexto(msgAsistente.contenido);
-      } catch (err) {
-        // Error — reemplazar cargando con mensaje de error
+      } catch (err: any) {
+        // Mostrar el error real para poder diagnosticar
+        const errorMsg = err?.message ?? String(err);
+        console.error('[Asistente] Error:', errorMsg);
         setMensajes((prev) =>
           prev.map((m) =>
             m.id === msgAsistenteId
               ? {
                   ...m,
-                  contenido: 'No pude procesar su consulta. Verifique su conexión e intente nuevamente.',
+                  contenido: `Error: ${errorMsg}`,
                   cargando: false,
                 }
               : m,
