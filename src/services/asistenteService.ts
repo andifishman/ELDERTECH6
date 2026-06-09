@@ -11,7 +11,7 @@ import type {
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
 
 // Máximo de mensajes anteriores que se mandan como contexto a Gemini
 const MAX_CONTEXTO = 10;
@@ -62,14 +62,15 @@ export async function consultarGemini(
     throw new Error('Falta EXPO_PUBLIC_GEMINI_API_KEY en el .env');
   }
 
-  // Armar el array de contents con el historial + mensaje actual
+  // Armar el array de contents: system prompt como primer mensaje + historial + pregunta actual
   const contents: MensajeContexto[] = [
+    { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+    { role: 'model', parts: [{ text: 'Entendido. Estoy listo para ayudar.' }] },
     ...historial.slice(-MAX_CONTEXTO),
     { role: 'user', parts: [{ text: mensajeUsuario }] },
   ];
 
   const body = {
-    system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents,
     generationConfig: {
       temperature: 0.7,
