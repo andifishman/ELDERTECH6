@@ -58,18 +58,28 @@ export default function ChatAsistenteScreen() {
   // ── Inicializar sesión ────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!residenteId) return;
+    if (!residenteId) {
+      // Sin residente autenticado — usar sesión local temporal
+      setSesionId('local_' + Date.now());
+      if (preguntaInicial) {
+        setTimeout(() => enviar(preguntaInicial, 'local_' + Date.now()), 300);
+      }
+      return;
+    }
     crearSesion.mutate(residenteId, {
       onSuccess: (sesion) => {
         setSesionId(sesion.id);
-        // Si viene con una pregunta inicial (desde FAQ), enviarla
         if (preguntaInicial) {
           setTimeout(() => enviar(preguntaInicial, sesion.id), 300);
         }
       },
       onError: () => {
-        Alert.alert('Error', 'No se pudo iniciar la conversación. Revisá tu conexión.');
-        router.back();
+        // Las tablas pueden no existir todavía — funcionar en modo local igualmente
+        const localId = 'local_' + Date.now();
+        setSesionId(localId);
+        if (preguntaInicial) {
+          setTimeout(() => enviar(preguntaInicial, localId), 300);
+        }
       },
     });
   }, [residenteId]);

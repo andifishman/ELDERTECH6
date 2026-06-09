@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: Spacing.section,
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.xxxl,
   },
   logoContainer: {

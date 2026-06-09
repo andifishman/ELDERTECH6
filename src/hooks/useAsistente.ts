@@ -97,17 +97,23 @@ export function useEnviarMensaje() {
       historial,
       esPrimerMensaje,
     }: EnviarMensajeParams) => {
-      // 1. Guardar mensaje del usuario
-      const msgUsuario = await guardarMensaje(sesionId, residenteId, 'usuario', pregunta);
+      const esLocal = sesionId.startsWith('local_');
+
+      // 1. Guardar mensaje del usuario (solo si sesión real)
+      const msgUsuario = esLocal
+        ? { id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString() }
+        : await guardarMensaje(sesionId, residenteId, 'usuario', pregunta);
 
       // 2. Consultar Gemini
       const respuesta = await consultarGemini(pregunta, historial);
 
-      // 3. Guardar respuesta del asistente
-      const msgAsistente = await guardarMensaje(sesionId, residenteId, 'asistente', respuesta);
+      // 3. Guardar respuesta del asistente (solo si sesión real)
+      const msgAsistente = esLocal
+        ? { id: 'a_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'asistente' as const, contenido: respuesta, es_favorito: false, created_at: new Date().toISOString() }
+        : await guardarMensaje(sesionId, residenteId, 'asistente', respuesta);
 
-      // 4. Si es el primer mensaje, generar título de la sesión
-      if (esPrimerMensaje) {
+      // 4. Título de sesión (solo si sesión real y primer mensaje)
+      if (!esLocal && esPrimerMensaje) {
         const titulo = pregunta.length > 40 ? pregunta.slice(0, 40) + '...' : pregunta;
         await actualizarTituloSesion(sesionId, titulo);
       }
