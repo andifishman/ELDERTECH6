@@ -10,6 +10,7 @@ import {
   toggleFavoritoMensaje,
   consultarGemini,
   actualizarTituloSesion,
+  generarTituloSesion,
 } from '@/services/asistenteService';
 import type { MensajeContexto } from '@/types/asistente.types';
 
@@ -114,14 +115,45 @@ export function useEnviarMensaje() {
 
       // 4. Título de sesión (solo si sesión real y primer mensaje)
       if (!esLocal && esPrimerMensaje) {
-        const titulo = pregunta.length > 40 ? pregunta.slice(0, 40) + '...' : pregunta;
+        // Genera un título descriptivo con IA; cae a truncado si Gemini falla
+        const titulo = await generarTituloSesion(pregunta);
         await actualizarTituloSesion(sesionId, titulo);
+        qc.invalidateQueries({ queryKey: ['sesiones_asistente'] });
       }
 
       return { msgUsuario, msgAsistente };
     },
     onSuccess: (_, { sesionId }) => {
       qc.invalidateQueries({ queryKey: ['mensajes_asistente', sesionId] });
+    },
+  });
+}
+
+// ─── Títulos retroactivos ─────────────────────────────────────────────────────
+
+/**
+ * Para sesiones sin título, recupera el primer mensaje del usuario
+ * y genera un título con IA. Se llama desde la pantalla de historial.
+ */
+export function useGenerarTitulosFaltantes(residenteId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (sesiones: import('@/types/asistente.types').SesionAsistente[]) => {
+      const sinTitulo = sesiones.filter((s) => !s.titulo);
+      for (const sesion of sinTitulo) {
+        try {
+          const mensajes = await getMensajesDeSesion(sesion.id);
+          const primerMensajeUsuario = mensajes.find((m) => m.rol === 'usuario');
+          if (!primerMensajeUsuario) continue;
+          const titulo = await generarTituloSesion(primerMensajeUsuario.contenido);
+          await actualizarTituloSesion(sesion.id, titulo);
+        } catch {
+          // Ignorar errores individuales — no bloquear el resto
+        }
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sesiones_asistente', residenteId] });
     },
   });
 }

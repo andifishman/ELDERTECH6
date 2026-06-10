@@ -51,6 +51,45 @@ Para hacer una videollamada por WhatsApp:
 // ─── Gemini IA ────────────────────────────────────────────────────────────────
 
 /**
+ * Genera un título corto y descriptivo para una sesión de chat
+ * a partir del primer mensaje del usuario. Usa Gemini para producir
+ * un título natural en lugar de simplemente truncar el texto.
+ * Si Gemini falla, devuelve el texto truncado como fallback.
+ */
+export async function generarTituloSesion(primerMensaje: string): Promise<string> {
+  // Fallback siempre disponible
+  const fallback =
+    primerMensaje.length > 40
+      ? primerMensaje.slice(0, 40).trimEnd() + '…'
+      : primerMensaje;
+
+  if (!GEMINI_API_KEY) return fallback;
+
+  try {
+    const prompt = `Generá un título corto (máximo 5 palabras) para una conversación que empieza con esta pregunta: "${primerMensaje}". Solo respondé con el título, sin comillas ni puntuación al final.`;
+
+    const body = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 20 },
+    };
+
+    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) return fallback;
+
+    const data = await res.json();
+    const titulo = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    return titulo.length > 0 ? titulo : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Llama a Gemini 1.5 Flash con el historial de la conversación.
  * Devuelve la respuesta como string o lanza un error.
  */

@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { useAuth } from '@/context/AuthContext';
-import { useSesionesRecientes, useMensajesFavoritos } from '@/hooks/useAsistente';
+import { useSesionesRecientes, useMensajesFavoritos, useGenerarTitulosFaltantes } from '@/hooks/useAsistente';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -27,6 +27,16 @@ export default function HistorialAsistenteScreen() {
 
   const { data: sesiones = [], isLoading } = useSesionesRecientes(residenteId);
   const { data: favoritos = [] } = useMensajesFavoritos(residenteId);
+  const generarTitulos = useGenerarTitulosFaltantes(residenteId);
+
+  // Generar títulos retroactivos para sesiones que no tienen uno
+  React.useEffect(() => {
+    if (sesiones.length > 0 && sesiones.some((s) => !s.titulo)) {
+      generarTitulos.mutate(sesiones);
+    }
+  // Solo se ejecuta cuando cambia la lista de sesiones
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesiones]);
 
   function formatearFecha(iso: string): string {
     const d = new Date(iso);
@@ -90,7 +100,8 @@ export default function HistorialAsistenteScreen() {
                   <TouchableOpacity
                     key={sesion.id}
                     style={styles.sesionCard}
-                    accessibilityLabel={`Conversación del ${formatearFecha(sesion.created_at)}`}
+                    onPress={() => router.push({ pathname: '/asistente/chat', params: { sesionId: sesion.id } })}
+                    accessibilityLabel={`Conversación: ${sesion.titulo ?? formatearFecha(sesion.created_at)}`}
                     accessibilityRole="button"
                     activeOpacity={0.8}
                   >

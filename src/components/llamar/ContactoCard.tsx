@@ -1,4 +1,5 @@
-// Tarjeta de contacto para la lista principal — foto + nombre + botón favorito
+// Tarjeta de contacto — foto cuadrada completa + nombre abajo
+// Los botones de acción están en la pantalla de detalle
 import React, { memo } from 'react';
 import {
   View,
@@ -6,12 +7,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { ContactoResumen } from '@/types/database.types';
+
+const SCREEN_W = Dimensions.get('window').width;
+const TILE_SIZE = (SCREEN_W - Spacing.screen.horizontal * 2 - Spacing.lg) / 2;
 
 interface ContactoCardProps {
   contacto: ContactoResumen;
@@ -28,147 +33,121 @@ export const ContactoCard = memo(function ContactoCard({
     ? `${contacto.nombre} ${contacto.apellido}`
     : contacto.nombre;
 
-  const iniciales = contacto.nombre.charAt(0).toUpperCase() +
+  const iniciales =
+    contacto.nombre.charAt(0).toUpperCase() +
     (contacto.apellido ? contacto.apellido.charAt(0).toUpperCase() : '');
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.tile, { width: TILE_SIZE }]}
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={0.8}
       accessibilityLabel={`Ver contacto ${nombreCompleto}`}
       accessibilityRole="button"
     >
-      {/* Foto o iniciales */}
-      <View style={styles.avatarWrapper}>
+      {/* ── Foto / iniciales — ocupa todo el cuadrado ── */}
+      <View style={styles.fotoWrapper}>
         {contacto.foto_url ? (
           <Image
             source={{ uri: contacto.foto_url }}
-            style={styles.avatar}
+            style={styles.foto}
             accessibilityLabel={`Foto de ${nombreCompleto}`}
           />
         ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarIniciales}>{iniciales}</Text>
+          <View style={styles.fotoFallback}>
+            <Text style={styles.iniciales}>{iniciales}</Text>
           </View>
         )}
-        {/* Badge de tipo de contacto */}
-        {contacto.tipo_contacto?.emoji ? (
-          <View style={styles.tipoBadge}>
-            <Text style={styles.tipoEmoji}>{contacto.tipo_contacto.emoji}</Text>
-          </View>
-        ) : null}
+
+        {/* Estrella favorito — esquina superior derecha */}
+        <TouchableOpacity
+          style={styles.favBtn}
+          onPress={(e) => { e.stopPropagation(); onToggleFavorito(contacto.id, !contacto.favorito); }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel={contacto.favorito ? 'Quitar de favoritos' : 'Marcar como favorito'}
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name={contacto.favorito ? 'star' : 'star-outline'}
+            size={26}
+            color={contacto.favorito ? '#FFC107' : 'rgba(255,255,255,0.7)'}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Nombre */}
-      <View style={styles.info}>
-        <Text style={styles.nombre} numberOfLines={2}>
+      {/* ── Nombre debajo ── */}
+      <View style={styles.nombreWrapper}>
+        <Text style={styles.nombre} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
           {nombreCompleto}
         </Text>
-        {contacto.tipo_contacto?.nombre ? (
-          <Text style={styles.tipo}>{contacto.tipo_contacto.nombre}</Text>
-        ) : null}
       </View>
-
-      {/* Estrella favorito */}
-      <TouchableOpacity
-        style={styles.favBtn}
-        onPress={() => onToggleFavorito(contacto.id, !contacto.favorito)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityLabel={
-          contacto.favorito ? 'Quitar de favoritos' : 'Marcar como favorito'
-        }
-        accessibilityRole="button"
-      >
-        <Ionicons
-          name={contacto.favorito ? 'star' : 'star-outline'}
-          size={28}
-          color={contacto.favorito ? '#FFC107' : Colors.ui.border}
-        />
-      </TouchableOpacity>
     </TouchableOpacity>
   );
 });
 
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  tile: {
     backgroundColor: Colors.ui.surface,
     borderRadius: Spacing.radius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
-    marginBottom: Spacing.md,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-    minHeight: Spacing.touch.large,
-    gap: Spacing.lg,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  avatarWrapper: {
+
+  // Foto cuadrada que ocupa todo el ancho del tile
+  fotoWrapper: {
+    width: '100%',
+    aspectRatio: 1,
     position: 'relative',
-    width: 72,
-    height: 72,
   },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.ui.border,
+  foto: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  avatarFallback: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  fotoFallback: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#66BB6A',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarIniciales: {
-    fontSize: Typography.size.xl,
-    fontWeight: Typography.weight.bold,
+  iniciales: {
+    fontSize: 58,
+    fontWeight: Typography.weight.heavy,
     color: Colors.text.onDark,
+    letterSpacing: 2,
   },
-  tipoBadge: {
+
+  // Estrella favorito flotando sobre la foto
+  favBtn: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: Colors.ui.surface,
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.30)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  tipoEmoji: {
-    fontSize: 14,
-  },
-  info: {
-    flex: 1,
-    gap: 4,
+
+  // Nombre
+  nombreWrapper: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    minHeight: 56,
+    justifyContent: 'center',
   },
   nombre: {
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.bold,
+    fontSize: Typography.size.xl,    // 24px
+    fontWeight: Typography.weight.heavy,
     color: Colors.text.primary,
-    lineHeight: 26,
-  },
-  tipo: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.text.secondary,
-  },
-  favBtn: {
-    width: Spacing.touch.min,
-    height: Spacing.touch.min,
-    alignItems: 'center',
-    justifyContent: 'center',
+    textAlign: 'center',
+    lineHeight: 30,
   },
 });

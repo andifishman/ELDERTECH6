@@ -113,7 +113,7 @@ export default function LlamarScreen() {
     favoritoMutation.mutate({ id, favorito: nuevoValor });
   }, [favoritoMutation]);
 
-  // Render de cada tarjeta
+  // Render de cada tile
   const renderContacto = useCallback(({ item }: { item: ContactoResumen }) => (
     <ContactoCard
       contacto={item}
@@ -121,16 +121,6 @@ export default function LlamarScreen() {
       onToggleFavorito={handleToggleFavorito}
     />
   ), [handleContactoPress, handleToggleFavorito]);
-
-  // Separador visual entre favoritos y el resto
-  const renderSeparador = useCallback(({ leadingItem }: { leadingItem: ContactoResumen }) => {
-    const idx = contactos.indexOf(leadingItem);
-    const siguiente = contactos[idx + 1];
-    if (leadingItem.favorito && siguiente && !siguiente.favorito) {
-      return <View style={styles.separador} />;
-    }
-    return null;
-  }, [contactos]);
 
   // ─── Estados de UI ────────────────────────────────────────────────────────
 
@@ -221,7 +211,8 @@ export default function LlamarScreen() {
         data={contactos}
         keyExtractor={(item) => item.id}
         renderItem={renderContacto}
-        ItemSeparatorComponent={renderSeparador}
+        numColumns={2}
+        columnWrapperStyle={styles.columnas}
         contentContainerStyle={[
           styles.lista,
           { paddingBottom: insets.bottom + 32 },
@@ -273,18 +264,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.screen.horizontal,
     paddingTop: Spacing.lg,
   },
+  columnas: {
+    gap: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
   encabezadoLista: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
     color: Colors.text.secondary,
     marginBottom: Spacing.md,
     paddingLeft: Spacing.xs,
-  },
-  separador: {
-    height: 1,
-    backgroundColor: Colors.ui.border,
-    marginVertical: Spacing.md,
-    marginHorizontal: Spacing.xs,
   },
   // Estado vacío
   vacio: {

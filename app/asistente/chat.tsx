@@ -56,25 +56,50 @@ export default function ChatAsistenteScreen() {
   const toggleFavorito = useToggleFavoritoMensaje();
 
   // ── Inicializar sesión ────────────────────────────────────────────────────
+  // Ref para evitar inicializar dos veces si residenteId cambia mientras carga
+  const sesionIniciadaRef = useRef(false);
 
   useEffect(() => {
+    // Si ya iniciamos sesión, no volver a hacerlo
+    if (sesionIniciadaRef.current) return;
+
+    // Timeout de seguridad: si en 8s no hubo respuesta de Supabase, caer a modo local
+    const safetyTimer = setTimeout(() => {
+      if (!sesionIniciadaRef.current) {
+        sesionIniciadaRef.current = true;
+        const localId = 'local_' + Date.now();
+        setSesionId(localId);
+        if (preguntaInicial) {
+          setTimeout(() => enviar(preguntaInicial, localId), 300);
+        }
+      }
+    }, 8000);
+
     if (!residenteId) {
       // Sin residente autenticado — usar sesión local temporal
-      setSesionId('local_' + Date.now());
+      clearTimeout(safetyTimer);
+      sesionIniciadaRef.current = true;
+      const localId = 'local_' + Date.now();
+      setSesionId(localId);
       if (preguntaInicial) {
-        setTimeout(() => enviar(preguntaInicial, 'local_' + Date.now()), 300);
+        setTimeout(() => enviar(preguntaInicial, localId), 300);
       }
       return;
     }
+
     crearSesion.mutate(residenteId, {
       onSuccess: (sesion) => {
+        clearTimeout(safetyTimer);
+        sesionIniciadaRef.current = true;
         setSesionId(sesion.id);
         if (preguntaInicial) {
           setTimeout(() => enviar(preguntaInicial, sesion.id), 300);
         }
       },
-      onError: () => {
-        // Las tablas pueden no existir todavía — funcionar en modo local igualmente
+      onError: (err) => {
+        clearTimeout(safetyTimer);
+        sesionIniciadaRef.current = true;
+        console.warn('[Asistente] crearSesion falló, modo local:', err);
         const localId = 'local_' + Date.now();
         setSesionId(localId);
         if (preguntaInicial) {
@@ -82,6 +107,10 @@ export default function ChatAsistenteScreen() {
         }
       },
     });
+
+    return () => clearTimeout(safetyTimer);
+  // Solo volver a correr si residenteId pasa de null a un valor real por primera vez
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [residenteId]);
 
   // ── Scroll al último mensaje ──────────────────────────────────────────────
