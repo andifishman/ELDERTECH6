@@ -51,10 +51,17 @@ export default function ProfileScreen() {
 
 
   useEffect(() => {
+<<<<<<< HEAD
     if (!residente) return;
     // Los intereses del residente ya vienen en profile.residente_interes_ids
     // Solo necesitamos los catálogos y las ciudades del residente
     setResidenteIntereses(profile?.residente_interes_ids ?? []);
+=======
+    if (!residente) {
+      setLoadingExtra(false);
+      return;
+    }
+>>>>>>> 112803bbb5f6e282b767d63155a773516eb07f6b
     Promise.all([
       getIntereses(),
       getCiudadesFamiliares(),
@@ -309,7 +316,14 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
     <View style={styles.infoRow}>
       <Ionicons name={icon as any} size={20} color={Colors.text.secondary} />
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text
+        style={styles.infoValue}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -351,7 +365,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
     textAlign: 'center',
@@ -448,7 +462,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     fontWeight: Typography.weight.medium,
     textAlign: 'right',
-    maxWidth: '60%',
+    maxWidth: '70%',
   },
   chips: {
     flexDirection: 'row',

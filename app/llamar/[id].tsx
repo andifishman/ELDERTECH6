@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   foto: {
     width: 160,
     height: 160,
-    borderRadius: 80,
+    borderRadius: 20,
     borderWidth: 4,
     borderColor: Colors.ui.surface,
     shadowColor: '#000',
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   fotoFallback: {
     width: 160,
     height: 160,
-    borderRadius: 80,
+    borderRadius: 20,
     backgroundColor: '#66BB6A',
     alignItems: 'center',
     justifyContent: 'center',

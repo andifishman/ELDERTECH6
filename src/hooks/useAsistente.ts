@@ -16,11 +16,26 @@ import type { MensajeContexto } from '@/types/asistente.types';
 
 // ─── FAQ ─────────────────────────────────────────────────────────────────────
 
+// Datos iniciales del FAQ — se muestran instantáneamente mientras Supabase responde
+const FAQ_PLACEHOLDER: import('@/types/asistente.types').FaqAsistente[] = [
+  { id: '1', pregunta: '¿Cómo mando un mensaje por WhatsApp?', categoria: 'whatsapp', emoji: '💬', orden: 1, activo: true },
+  { id: '2', pregunta: '¿Cómo hago una videollamada?',         categoria: 'llamadas', emoji: '📹', orden: 2, activo: true },
+  { id: '3', pregunta: '¿Cómo veo mis fotos?',                 categoria: 'fotos',    emoji: '📷', orden: 3, activo: true },
+  { id: '4', pregunta: '¿Cómo subo el volumen?',               categoria: 'celular',  emoji: '🔊', orden: 4, activo: true },
+  { id: '5', pregunta: '¿Cómo hago una llamada telefónica?',   categoria: 'llamadas', emoji: '📞', orden: 5, activo: true },
+  { id: '6', pregunta: '¿Cómo conecto el WiFi?',               categoria: 'internet', emoji: '📶', orden: 6, activo: true },
+  { id: '7', pregunta: '¿Cómo uso el clima en la app?',        categoria: 'eldertech', emoji: '🌤️', orden: 7, activo: true },
+  { id: '8', pregunta: '¿Cómo escucho la radio?',              categoria: 'eldertech', emoji: '📻', orden: 8, activo: true },
+  { id: '9', pregunta: '¿Cómo agrando la letra del celular?',  categoria: 'celular',  emoji: '🔍', orden: 9, activo: true },
+  { id: '10', pregunta: '¿Cómo cargo la batería correctamente?', categoria: 'celular', emoji: '🔋', orden: 10, activo: true },
+];
+
 export function useFaq() {
   return useQuery({
     queryKey: ['faq_asistente'],
     queryFn: getFaq,
     staleTime: 1000 * 60 * 60, // 1h — el FAQ cambia poco
+    placeholderData: FAQ_PLACEHOLDER,
   });
 }
 

@@ -30,6 +30,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { MensajeLocal, MensajeContexto } from '@/types/asistente.types';
+import { getMensajesDeSesion } from '@/services/asistenteService';
 
 // ID temporal para mensajes locales mientras cargan
 let tempId = 0;
@@ -43,10 +44,12 @@ export default function ChatAsistenteScreen() {
   const residenteId = profile?.residente?.id ?? null;
   const { config } = useAsistenteConfig();
 
-  const [sesionId, setSesionId] = useState<string | null>(null);
+  // Si venimos del historial ya tenemos sesionId; si es nueva, se crea al primer envío
+  const [sesionId, setSesionId] = useState<string | null>(sesionIdParam ?? null);
   const [mensajes, setMensajes] = useState<MensajeLocal[]>([]);
   const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [cargandoHistorial, setCargandoHistorial] = useState(!!sesionIdParam);
 
   const flatRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -56,10 +59,39 @@ export default function ChatAsistenteScreen() {
   const enviarMensaje = useEnviarMensaje();
   const toggleFavorito = useToggleFavoritoMensaje();
 
+  // ── Cargar mensajes si venimos del historial ──────────────────────────────
+  useEffect(() => {
+    if (!sesionIdParam) return;
+    getMensajesDeSesion(sesionIdParam)
+      .then((msgs) => {
+        const locales: MensajeLocal[] = msgs.map((m) => ({
+          id: m.id,
+          rol: m.rol,
+          contenido: m.contenido,
+          es_favorito: m.es_favorito,
+          created_at: m.created_at,
+        }));
+        setMensajes(locales);
+        // Reconstruir historial de contexto para Gemini
+        historialRef.current = msgs.map((m) => ({
+          role: m.rol === 'usuario' ? 'user' : 'model',
+          parts: [{ text: m.contenido }],
+        }));
+      })
+      .catch(() => {/* si falla, se muestra el chat vacío */})
+      .finally(() => setCargandoHistorial(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesionIdParam]);
+
   // ── Inicializar sesión ────────────────────────────────────────────────────
   const sesionIniciadaRef = useRef(false);
 
+  // ── Disparar pregunta inicial si viene del FAQ ────────────────────────────
+  // La sesión se crea de forma lazy dentro de `enviar` al primer envío
+  const preguntaInicialEnviadaRef = useRef(false);
+
   useEffect(() => {
+<<<<<<< HEAD
     if (sesionIniciadaRef.current) return;
 
     // Caso 1: Abriendo sesión existente desde el historial
@@ -108,6 +140,18 @@ export default function ChatAsistenteScreen() {
     });
 
     return () => clearTimeout(safetyTimer);
+=======
+    // Si venimos del historial, no hay pregunta inicial que disparar
+    if (sesionIdParam) return;
+    if (!preguntaInicial) return;
+    if (preguntaInicialEnviadaRef.current) return;
+    // Esperar a que residenteId esté disponible antes de enviar
+    if (!residenteId) return;
+    preguntaInicialEnviadaRef.current = true;
+    const t = setTimeout(() => enviar(preguntaInicial), 300);
+    return () => clearTimeout(t);
+  // Se re-ejecuta cuando residenteId pasa de null a un valor real
+>>>>>>> 112803bbb5f6e282b767d63155a773516eb07f6b
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [residenteId]);
 
@@ -162,9 +206,36 @@ export default function ChatAsistenteScreen() {
 
   const enviar = useCallback(
     async (texto: string, sid?: string) => {
+<<<<<<< HEAD
       const currentSesionId = sid ?? sesionId;
       const esLocalSession = currentSesionId?.startsWith('local_') ?? false;
       if (!texto.trim() || !currentSesionId || (!residenteId && !esLocalSession) || enviando) return;
+=======
+      if (!texto.trim() || enviando) return;
+
+      // Creación lazy de sesión: si no hay sesionId aún, crear ahora
+      let currentSesionId = sid ?? sesionId;
+      if (!currentSesionId) {
+        if (!residenteId) {
+          currentSesionId = 'local_' + Date.now();
+          setSesionId(currentSesionId);
+          sesionIniciadaRef.current = true;
+        } else {
+          try {
+            const nuevaSesion = await crearSesion.mutateAsync(residenteId);
+            currentSesionId = nuevaSesion.id;
+            setSesionId(currentSesionId);
+            sesionIniciadaRef.current = true;
+          } catch {
+            currentSesionId = 'local_' + Date.now();
+            setSesionId(currentSesionId);
+            sesionIniciadaRef.current = true;
+          }
+        }
+      }
+
+      if (!residenteId) return;
+>>>>>>> 112803bbb5f6e282b767d63155a773516eb07f6b
 
       Keyboard.dismiss();
       setInput('');
@@ -283,7 +354,7 @@ export default function ChatAsistenteScreen() {
     [scale, leerTexto, handleToggleFavorito],
   );
 
-  const puedeEnviar = input.trim().length > 0 && !!sesionId && !enviando;
+  const puedeEnviar = input.trim().length > 0 && !enviando;
 
   return (
     <View style={styles.root}>
@@ -300,12 +371,7 @@ export default function ChatAsistenteScreen() {
 
         <View style={styles.headerInfo}>
           <Text style={styles.headerAvatar}>🤖</Text>
-          <View>
-            <Text style={styles.headerTitulo}>Asistente</Text>
-            <Text style={styles.headerSubtitulo}>
-              {enviando ? 'Escribiendo...' : 'En línea'}
-            </Text>
-          </View>
+          <Text style={styles.headerTitulo}>Asistente</Text>
         </View>
 
         {/* Ajustes de voz */}
@@ -325,7 +391,7 @@ export default function ChatAsistenteScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-        {!sesionId ? (
+        {cargandoHistorial ? (
           <View style={styles.centrado}>
             <ActivityIndicator size="large" color={Colors.brand.blueDark} />
             <Text style={styles.iniciandoTexto}>Iniciando conversación...</Text>
@@ -503,15 +569,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  headerAvatar: { fontSize: 32 },
+  headerAvatar: { fontSize: 36 },
   headerTitulo: {
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
-  },
-  headerSubtitulo: {
-    fontSize: Typography.size.xs,
-    color: 'rgba(255,255,255,0.75)',
   },
 
   // Lista
