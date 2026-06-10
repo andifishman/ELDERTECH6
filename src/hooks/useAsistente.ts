@@ -31,6 +31,7 @@ export function useSesionesRecientes(residenteId: string | null) {
     queryKey: ['sesiones_asistente', residenteId],
     queryFn: () => getSesionesRecientes(residenteId!),
     enabled: !!residenteId,
+    staleTime: 1000 * 30,
   });
 }
 
@@ -59,6 +60,7 @@ export function useMensajesFavoritos(residenteId: string | null) {
     queryKey: ['mensajes_favoritos', residenteId],
     queryFn: () => getMensajesFavoritos(residenteId!),
     enabled: !!residenteId,
+    staleTime: 1000 * 30,
   });
 }
 

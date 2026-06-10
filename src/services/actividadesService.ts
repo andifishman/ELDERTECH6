@@ -96,10 +96,7 @@ export async function getActividadesPersonalizadas(
       return { ...a, prioridad, recomendada } satisfies ActividadConPrioridad;
     });
 
-  return resultado.sort((a, b) => {
-    if (a.prioridad !== b.prioridad) return a.prioridad - b.prioridad;
-    return a.hora_inicio.localeCompare(b.hora_inicio);
-  });
+  return resultado.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 }
 
 export async function getActividadById(id: string): Promise<ActividadCompleta | null> {

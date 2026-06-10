@@ -45,8 +45,8 @@ export interface ConfigVoz {
   leerRespuestas: boolean;
 }
 
-// Contexto de conversación para la IA (últimos N mensajes)
+// Contexto de conversación para la IA (formato OpenAI / Groq)
 export interface MensajeContexto {
-  role: 'user' | 'model';
-  parts: [{ text: string }];
+  role: 'user' | 'assistant';
+  content: string;
 }

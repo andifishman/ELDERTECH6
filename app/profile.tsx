@@ -49,29 +49,22 @@ export default function ProfileScreen() {
   const [residenteCiudades, setResidenteCiudades] = useState<string[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(true);
 
-  useEffect(() => {
-    if (isLoggingOut && !session) {
-      router.replace('/(auth)/login');
-    }
-  }, [isLoggingOut, session]);
 
   useEffect(() => {
     if (!residente) return;
+    // Los intereses del residente ya vienen en profile.residente_interes_ids
+    // Solo necesitamos los catálogos y las ciudades del residente
+    setResidenteIntereses(profile?.residente_interes_ids ?? []);
     Promise.all([
       getIntereses(),
       getCiudadesFamiliares(),
       supabase
-        .from('residente_intereses')
-        .select('interes_id')
-        .eq('residente_id', residente.id),
-      supabase
         .from('residente_ciudades_familiares')
         .select('ciudad_familiar_id')
         .eq('residente_id', residente.id),
-    ]).then(([ints, ciud, { data: riData }, { data: rcData }]) => {
+    ]).then(([ints, ciud, { data: rcData }]) => {
       setIntereses(ints);
       setCiudades(ciud);
-      setResidenteIntereses(riData?.map((r) => r.interes_id) ?? []);
       setResidenteCiudades(rcData?.map((r) => r.ciudad_familiar_id) ?? []);
     }).finally(() => setLoadingExtra(false));
   }, [residente]);
@@ -114,6 +107,7 @@ export default function ProfileScreen() {
     setShowLogoutModal(false);
     setIsLoggingOut(true);
     try { await logout(); } catch {}
+    router.replace('/(auth)/login');
   }
 
   if (!profile) {
@@ -231,7 +225,7 @@ export default function ProfileScreen() {
         <LoadingButton
           title="Cerrar sesión"
           onPress={handleLogout}
-          loading={false}
+          loading={isLoggingOut}
           variant="outline"
           style={styles.logoutButton}
           textStyle={{ color: Colors.brand.red }}

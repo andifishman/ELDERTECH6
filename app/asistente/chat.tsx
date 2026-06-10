@@ -25,6 +25,7 @@ import * as Speech from 'expo-speech';
 import { useAuth } from '@/context/AuthContext';
 import { useAsistenteConfig, getFontScale, getSpeechRate } from '@/context/AsistenteConfigContext';
 import { useCrearSesion, useEnviarMensaje, useToggleFavoritoMensaje } from '@/hooks/useAsistente';
+import { getMensajesDeSesion } from '@/services/asistenteService';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -35,7 +36,7 @@ let tempId = 0;
 const nextTempId = () => `temp_${++tempId}`;
 
 export default function ChatAsistenteScreen() {
-  const { pregunta: preguntaInicial } = useLocalSearchParams<{ pregunta?: string }>();
+  const { pregunta: preguntaInicial, sesionId: sesionIdParam } = useLocalSearchParams<{ pregunta?: string; sesionId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
@@ -56,45 +57,45 @@ export default function ChatAsistenteScreen() {
   const toggleFavorito = useToggleFavoritoMensaje();
 
   // ── Inicializar sesión ────────────────────────────────────────────────────
-  // Ref para evitar inicializar dos veces si residenteId cambia mientras carga
   const sesionIniciadaRef = useRef(false);
 
   useEffect(() => {
-    // Si ya iniciamos sesión, no volver a hacerlo
     if (sesionIniciadaRef.current) return;
 
-    // Timeout de seguridad: si en 8s no hubo respuesta de Supabase, caer a modo local
+    // Caso 1: Abriendo sesión existente desde el historial
+    if (sesionIdParam) {
+      sesionIniciadaRef.current = true;
+      setSesionId(sesionIdParam);
+      return;
+    }
+
+    // Caso 2: Safety timer — si Supabase no responde en 8s, caer a modo local
     const safetyTimer = setTimeout(() => {
       if (!sesionIniciadaRef.current) {
         sesionIniciadaRef.current = true;
         const localId = 'local_' + Date.now();
         setSesionId(localId);
-        if (preguntaInicial) {
-          setTimeout(() => enviar(preguntaInicial, localId), 300);
-        }
+        if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, localId), 300);
       }
     }, 8000);
 
+    // Caso 3: Sin residente autenticado — sesión local temporal
     if (!residenteId) {
-      // Sin residente autenticado — usar sesión local temporal
       clearTimeout(safetyTimer);
       sesionIniciadaRef.current = true;
       const localId = 'local_' + Date.now();
       setSesionId(localId);
-      if (preguntaInicial) {
-        setTimeout(() => enviar(preguntaInicial, localId), 300);
-      }
+      if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, localId), 300);
       return;
     }
 
+    // Caso 4: Crear nueva sesión en Supabase
     crearSesion.mutate(residenteId, {
       onSuccess: (sesion) => {
         clearTimeout(safetyTimer);
         sesionIniciadaRef.current = true;
         setSesionId(sesion.id);
-        if (preguntaInicial) {
-          setTimeout(() => enviar(preguntaInicial, sesion.id), 300);
-        }
+        if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, sesion.id), 300);
       },
       onError: (err) => {
         clearTimeout(safetyTimer);
@@ -102,16 +103,38 @@ export default function ChatAsistenteScreen() {
         console.warn('[Asistente] crearSesion falló, modo local:', err);
         const localId = 'local_' + Date.now();
         setSesionId(localId);
-        if (preguntaInicial) {
-          setTimeout(() => enviar(preguntaInicial, localId), 300);
-        }
+        if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, localId), 300);
       },
     });
 
     return () => clearTimeout(safetyTimer);
-  // Solo volver a correr si residenteId pasa de null a un valor real por primera vez
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [residenteId]);
+
+  // ── Cargar mensajes de sesión existente (historial) ───────────────────────
+  // residenteId en deps porque RLS necesita auth cargado; si auth llega tarde,
+  // el effect se re-ejecuta cuando residenteId cambia de null a valor real.
+  useEffect(() => {
+    if (!sesionIdParam || !sesionId || !residenteId) return;
+    getMensajesDeSesion(sesionId)
+      .then((msgs) => {
+        setMensajes(
+          msgs.map((m) => ({
+            id: m.id,
+            rol: m.rol,
+            contenido: m.contenido,
+            es_favorito: m.es_favorito,
+            created_at: m.created_at,
+          })),
+        );
+        historialRef.current = msgs.map((m) => ({
+          role: m.rol === 'usuario' ? ('user' as const) : ('assistant' as const),
+          content: m.contenido,
+        }));
+      })
+      .catch((err) => console.warn('[Asistente] Error cargando historial:', err));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesionId, residenteId]);
 
   // ── Scroll al último mensaje ──────────────────────────────────────────────
 
@@ -140,7 +163,8 @@ export default function ChatAsistenteScreen() {
   const enviar = useCallback(
     async (texto: string, sid?: string) => {
       const currentSesionId = sid ?? sesionId;
-      if (!texto.trim() || !currentSesionId || !residenteId || enviando) return;
+      const esLocalSession = currentSesionId?.startsWith('local_') ?? false;
+      if (!texto.trim() || !currentSesionId || (!residenteId && !esLocalSession) || enviando) return;
 
       Keyboard.dismiss();
       setInput('');
@@ -171,17 +195,17 @@ export default function ChatAsistenteScreen() {
       try {
         const { msgAsistente } = await enviarMensaje.mutateAsync({
           sesionId: currentSesionId,
-          residenteId,
+          residenteId: residenteId ?? '',
           pregunta: texto.trim(),
           historial: historialRef.current,
-          esPrimerMensaje: mensajes.length === 0,
+          // No generar título si estamos viendo una sesión del historial
+          esPrimerMensaje: mensajes.length === 0 && !sesionIdParam,
         });
 
-        // Actualizar historial de contexto para Gemini
         historialRef.current = [
           ...historialRef.current,
-          { role: 'user', parts: [{ text: texto.trim() }] },
-          { role: 'model', parts: [{ text: msgAsistente.contenido }] },
+          { role: 'user' as const, content: texto.trim() },
+          { role: 'assistant' as const, content: msgAsistente.contenido },
         ];
 
         // Reemplazar el placeholder de carga con la respuesta real

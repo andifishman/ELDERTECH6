@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { useAuth } from '@/context/AuthContext';
-import { useSesionesRecientes, useMensajesFavoritos, useGenerarTitulosFaltantes } from '@/hooks/useAsistente';
+import { useSesionesRecientes, useMensajesFavoritos } from '@/hooks/useAsistente';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -27,16 +27,6 @@ export default function HistorialAsistenteScreen() {
 
   const { data: sesiones = [], isLoading } = useSesionesRecientes(residenteId);
   const { data: favoritos = [] } = useMensajesFavoritos(residenteId);
-  const generarTitulos = useGenerarTitulosFaltantes(residenteId);
-
-  // Generar títulos retroactivos para sesiones que no tienen uno
-  React.useEffect(() => {
-    if (sesiones.length > 0 && sesiones.some((s) => !s.titulo)) {
-      generarTitulos.mutate(sesiones);
-    }
-  // Solo se ejecuta cuando cambia la lista de sesiones
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sesiones]);
 
   function formatearFecha(iso: string): string {
     const d = new Date(iso);
@@ -75,12 +65,20 @@ export default function HistorialAsistenteScreen() {
                 <>
                   <Text style={styles.seccionTitulo}>⭐ Respuestas guardadas</Text>
                   {favoritos.slice(0, 5).map((msg) => (
-                    <View key={msg.id} style={styles.favCard}>
+                    <TouchableOpacity
+                      key={msg.id}
+                      style={styles.favCard}
+                      activeOpacity={0.7}
+                      onPress={() => router.push({ pathname: '/asistente/chat', params: { sesionId: msg.sesion_id } })}
+                      accessibilityRole="button"
+                      accessibilityLabel="Ver conversación con esta respuesta guardada"
+                    >
                       <Ionicons name="star" size={20} color="#FFC107" style={{ flexShrink: 0 }} />
                       <Text style={styles.favTexto} numberOfLines={3}>
                         {msg.contenido}
                       </Text>
-                    </View>
+                      <Ionicons name="chevron-forward" size={18} color={Colors.text.hint} style={{ flexShrink: 0 }} />
+                    </TouchableOpacity>
                   ))}
                 </>
               )}

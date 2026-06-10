@@ -287,14 +287,13 @@ const styles = StyleSheet.create({
   historialBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.ui.surface,
+    backgroundColor: '#E3F2FD',
     borderRadius: Spacing.radius.lg,
     padding: Spacing.lg,
     gap: Spacing.md,
     minHeight: Spacing.touch.comfortable,
     borderWidth: 1,
     borderColor: '#BBDEFB',
-    backgroundColor: '#E3F2FD',
   },
   historialInfo: { flex: 1 },
   historialTexto: {
