@@ -29,23 +29,26 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { MensajeLocal, MensajeContexto } from '@/types/asistente.types';
+import { getMensajesDeSesion } from '@/services/asistenteService';
 
 // ID temporal para mensajes locales mientras cargan
 let tempId = 0;
 const nextTempId = () => `temp_${++tempId}`;
 
 export default function ChatAsistenteScreen() {
-  const { pregunta: preguntaInicial } = useLocalSearchParams<{ pregunta?: string }>();
+  const { pregunta: preguntaInicial, sesionId: sesionIdParam } = useLocalSearchParams<{ pregunta?: string; sesionId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
   const { config } = useAsistenteConfig();
 
-  const [sesionId, setSesionId] = useState<string | null>(null);
+  // Si venimos del historial ya tenemos sesionId; si es nueva, se crea al primer envío
+  const [sesionId, setSesionId] = useState<string | null>(sesionIdParam ?? null);
   const [mensajes, setMensajes] = useState<MensajeLocal[]>([]);
   const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [cargandoHistorial, setCargandoHistorial] = useState(!!sesionIdParam);
 
   const flatRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -55,61 +58,49 @@ export default function ChatAsistenteScreen() {
   const enviarMensaje = useEnviarMensaje();
   const toggleFavorito = useToggleFavoritoMensaje();
 
+  // ── Cargar mensajes si venimos del historial ──────────────────────────────
+  useEffect(() => {
+    if (!sesionIdParam) return;
+    getMensajesDeSesion(sesionIdParam)
+      .then((msgs) => {
+        const locales: MensajeLocal[] = msgs.map((m) => ({
+          id: m.id,
+          rol: m.rol,
+          contenido: m.contenido,
+          es_favorito: m.es_favorito,
+          created_at: m.created_at,
+        }));
+        setMensajes(locales);
+        // Reconstruir historial de contexto para Gemini
+        historialRef.current = msgs.map((m) => ({
+          role: m.rol === 'usuario' ? 'user' : 'model',
+          parts: [{ text: m.contenido }],
+        }));
+      })
+      .catch(() => {/* si falla, se muestra el chat vacío */})
+      .finally(() => setCargandoHistorial(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesionIdParam]);
+
   // ── Inicializar sesión ────────────────────────────────────────────────────
   // Ref para evitar inicializar dos veces si residenteId cambia mientras carga
   const sesionIniciadaRef = useRef(false);
 
+  // ── Disparar pregunta inicial si viene del FAQ ────────────────────────────
+  // La sesión se crea de forma lazy dentro de `enviar` al primer envío
+  const preguntaInicialEnviadaRef = useRef(false);
+
   useEffect(() => {
-    // Si ya iniciamos sesión, no volver a hacerlo
-    if (sesionIniciadaRef.current) return;
-
-    // Timeout de seguridad: si en 8s no hubo respuesta de Supabase, caer a modo local
-    const safetyTimer = setTimeout(() => {
-      if (!sesionIniciadaRef.current) {
-        sesionIniciadaRef.current = true;
-        const localId = 'local_' + Date.now();
-        setSesionId(localId);
-        if (preguntaInicial) {
-          setTimeout(() => enviar(preguntaInicial, localId), 300);
-        }
-      }
-    }, 8000);
-
-    if (!residenteId) {
-      // Sin residente autenticado — usar sesión local temporal
-      clearTimeout(safetyTimer);
-      sesionIniciadaRef.current = true;
-      const localId = 'local_' + Date.now();
-      setSesionId(localId);
-      if (preguntaInicial) {
-        setTimeout(() => enviar(preguntaInicial, localId), 300);
-      }
-      return;
-    }
-
-    crearSesion.mutate(residenteId, {
-      onSuccess: (sesion) => {
-        clearTimeout(safetyTimer);
-        sesionIniciadaRef.current = true;
-        setSesionId(sesion.id);
-        if (preguntaInicial) {
-          setTimeout(() => enviar(preguntaInicial, sesion.id), 300);
-        }
-      },
-      onError: (err) => {
-        clearTimeout(safetyTimer);
-        sesionIniciadaRef.current = true;
-        console.warn('[Asistente] crearSesion falló, modo local:', err);
-        const localId = 'local_' + Date.now();
-        setSesionId(localId);
-        if (preguntaInicial) {
-          setTimeout(() => enviar(preguntaInicial, localId), 300);
-        }
-      },
-    });
-
-    return () => clearTimeout(safetyTimer);
-  // Solo volver a correr si residenteId pasa de null a un valor real por primera vez
+    // Si venimos del historial, no hay pregunta inicial que disparar
+    if (sesionIdParam) return;
+    if (!preguntaInicial) return;
+    if (preguntaInicialEnviadaRef.current) return;
+    // Esperar a que residenteId esté disponible antes de enviar
+    if (!residenteId) return;
+    preguntaInicialEnviadaRef.current = true;
+    const t = setTimeout(() => enviar(preguntaInicial), 300);
+    return () => clearTimeout(t);
+  // Se re-ejecuta cuando residenteId pasa de null a un valor real
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [residenteId]);
 
@@ -139,8 +130,30 @@ export default function ChatAsistenteScreen() {
 
   const enviar = useCallback(
     async (texto: string, sid?: string) => {
-      const currentSesionId = sid ?? sesionId;
-      if (!texto.trim() || !currentSesionId || !residenteId || enviando) return;
+      if (!texto.trim() || enviando) return;
+
+      // Creación lazy de sesión: si no hay sesionId aún, crear ahora
+      let currentSesionId = sid ?? sesionId;
+      if (!currentSesionId) {
+        if (!residenteId) {
+          currentSesionId = 'local_' + Date.now();
+          setSesionId(currentSesionId);
+          sesionIniciadaRef.current = true;
+        } else {
+          try {
+            const nuevaSesion = await crearSesion.mutateAsync(residenteId);
+            currentSesionId = nuevaSesion.id;
+            setSesionId(currentSesionId);
+            sesionIniciadaRef.current = true;
+          } catch {
+            currentSesionId = 'local_' + Date.now();
+            setSesionId(currentSesionId);
+            sesionIniciadaRef.current = true;
+          }
+        }
+      }
+
+      if (!residenteId) return;
 
       Keyboard.dismiss();
       setInput('');
@@ -259,7 +272,7 @@ export default function ChatAsistenteScreen() {
     [scale, leerTexto, handleToggleFavorito],
   );
 
-  const puedeEnviar = input.trim().length > 0 && !!sesionId && !enviando;
+  const puedeEnviar = input.trim().length > 0 && !enviando;
 
   return (
     <View style={styles.root}>
@@ -276,12 +289,7 @@ export default function ChatAsistenteScreen() {
 
         <View style={styles.headerInfo}>
           <Text style={styles.headerAvatar}>🤖</Text>
-          <View>
-            <Text style={styles.headerTitulo}>Asistente</Text>
-            <Text style={styles.headerSubtitulo}>
-              {enviando ? 'Escribiendo...' : 'En línea'}
-            </Text>
-          </View>
+          <Text style={styles.headerTitulo}>Asistente</Text>
         </View>
 
         {/* Ajustes de voz */}
@@ -301,7 +309,7 @@ export default function ChatAsistenteScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-        {!sesionId ? (
+        {cargandoHistorial ? (
           <View style={styles.centrado}>
             <ActivityIndicator size="large" color={Colors.brand.blueDark} />
             <Text style={styles.iniciandoTexto}>Iniciando conversación...</Text>
@@ -479,15 +487,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  headerAvatar: { fontSize: 32 },
+  headerAvatar: { fontSize: 36 },
   headerTitulo: {
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
-  },
-  headerSubtitulo: {
-    fontSize: Typography.size.xs,
-    color: 'rgba(255,255,255,0.75)',
   },
 
   // Lista

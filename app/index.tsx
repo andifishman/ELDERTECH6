@@ -120,7 +120,7 @@ export default function HomeScreen() {
             {profile?.residente?.foto_url ? (
               <Image
                 source={{ uri: profile.residente.foto_url }}
-                style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 2, borderColor: '#FFFFFF' }}
+                style={{ width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: '#FFFFFF' }}
               />
             ) : (
               <Text style={styles.avatarIcon}>👤</Text>
@@ -277,9 +277,9 @@ const styles = StyleSheet.create({
   },
   // Botón de usuario — mismo tamaño que los botones del AppHeader
   avatarBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 4,

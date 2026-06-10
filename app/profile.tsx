@@ -56,7 +56,10 @@ export default function ProfileScreen() {
   }, [isLoggingOut, session]);
 
   useEffect(() => {
-    if (!residente) return;
+    if (!residente) {
+      setLoadingExtra(false);
+      return;
+    }
     Promise.all([
       getIntereses(),
       getCiudadesFamiliares(),
@@ -315,7 +318,14 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
     <View style={styles.infoRow}>
       <Ionicons name={icon as any} size={20} color={Colors.text.secondary} />
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text
+        style={styles.infoValue}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -357,7 +367,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
     textAlign: 'center',
@@ -454,7 +464,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     fontWeight: Typography.weight.medium,
     textAlign: 'right',
-    maxWidth: '60%',
+    maxWidth: '70%',
   },
   chips: {
     flexDirection: 'row',

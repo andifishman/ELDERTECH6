@@ -148,24 +148,21 @@ export default function AsistenteScreen() {
 
 function FaqCard({ item, onPress }: { item: FaqAsistente; onPress: () => void }) {
   return (
-    <TouchableOpacity
-      style={styles.faqCard}
-      onPress={onPress}
-      activeOpacity={0.8}
-      accessibilityLabel={item.pregunta}
-      accessibilityRole="button"
-    >
+    <View style={styles.faqCard}>
       <Text style={styles.faqEmoji}>{item.emoji}</Text>
       <Text style={styles.faqPregunta} numberOfLines={3}>
         {item.pregunta}
       </Text>
-      <Ionicons
-        name="arrow-forward-circle"
-        size={22}
-        color={Colors.brand.blueDark}
-        style={styles.faqFlecha}
-      />
-    </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.faqBotonIr}
+        onPress={onPress}
+        activeOpacity={0.8}
+        accessibilityLabel={`Ir a: ${item.pregunta}`}
+        accessibilityRole="button"
+      >
+        <Text style={styles.faqBotonIrTexto}>Ir</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -281,7 +278,22 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.semibold,
     lineHeight: 24,
   },
-  faqFlecha: { flexShrink: 0 },
+  faqBotonIr: {
+    backgroundColor: Colors.brand.blueDark,
+    borderRadius: Spacing.radius.lg,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    minWidth: 72,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  faqBotonIrTexto: {
+    color: Colors.text.onDark,
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+  },
 
   // Historial
   historialBtn: {
