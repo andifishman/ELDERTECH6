@@ -329,16 +329,23 @@ async function uploadProfilePhoto(userId: string, uri: string): Promise<string> 
   const path = `${userId}/avatar.${ext}`;
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
 
-  // En Android, fetch() puede fallar con content:// URIs.
-  // XMLHttpRequest maneja correctamente tanto content:// como file:// en RN.
-  const blob: Blob = await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.onload = () => resolve(xhr.response);
-    xhr.onerror = () => reject(new Error('No se pudo leer la imagen'));
-    xhr.responseType = 'blob';
-    xhr.open('GET', uri, true);
-    xhr.send(null);
-  });
+  let blob: Blob;
+
+  // En web, expo-image-picker devuelve blob: o data: — fetch() las maneja bien
+  // En nativo, usamos XMLHttpRequest para content:// y file:// URIs
+  if (uri.startsWith('blob:') || uri.startsWith('data:') || uri.startsWith('http')) {
+    const response = await fetch(uri);
+    blob = await response.blob();
+  } else {
+    blob = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = () => resolve(xhr.response);
+      xhr.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      xhr.responseType = 'blob';
+      xhr.open('GET', uri, true);
+      xhr.send(null);
+    });
+  }
 
   const { error } = await supabase.storage
     .from('fotos-perfil')

@@ -7,16 +7,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Dimensions,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { ContactoResumen } from '@/types/database.types';
-
-const SCREEN_W = Dimensions.get('window').width;
-const TILE_SIZE = (SCREEN_W - Spacing.screen.horizontal * 2 - Spacing.lg) / 2;
 
 interface ContactoCardProps {
   contacto: ContactoResumen;
@@ -29,6 +27,9 @@ export const ContactoCard = memo(function ContactoCard({
   onPress,
   onToggleFavorito,
 }: ContactoCardProps) {
+  const { width: screenW } = useWindowDimensions();
+  const tileSize = (Math.min(screenW, 480) - Spacing.screen.horizontal * 2 - Spacing.lg) / 2;
+
   const nombreCompleto = contacto.apellido
     ? `${contacto.nombre} ${contacto.apellido}`
     : contacto.nombre;
@@ -37,51 +38,57 @@ export const ContactoCard = memo(function ContactoCard({
     contacto.nombre.charAt(0).toUpperCase() +
     (contacto.apellido ? contacto.apellido.charAt(0).toUpperCase() : '');
 
+  // En web, TouchableOpacity se renderiza como <button>.
+  // Para evitar nested buttons, la estrella de favorito va FUERA del TouchableOpacity
+  // posicionada absolutamente sobre el tile con zIndex.
   return (
-    <TouchableOpacity
-      style={[styles.tile, { width: TILE_SIZE }]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      accessibilityLabel={`Ver contacto ${nombreCompleto}`}
-      accessibilityRole="button"
-    >
-      {/* ── Foto / iniciales — ocupa todo el cuadrado ── */}
-      <View style={styles.fotoWrapper}>
-        {contacto.foto_url ? (
-          <Image
-            source={{ uri: contacto.foto_url }}
-            style={styles.foto}
-            accessibilityLabel={`Foto de ${nombreCompleto}`}
-          />
-        ) : (
-          <View style={styles.fotoFallback}>
-            <Text style={styles.iniciales}>{iniciales}</Text>
-          </View>
-        )}
+    <View style={[styles.tile, { width: tileSize }]}>
+      {/* Área principal clickeable */}
+      <TouchableOpacity
+        style={styles.tileInner}
+        onPress={onPress}
+        activeOpacity={0.8}
+        accessibilityLabel={`Ver contacto ${nombreCompleto}`}
+        accessibilityRole="button"
+      >
+        {/* Foto / iniciales */}
+        <View style={styles.fotoWrapper}>
+          {contacto.foto_url ? (
+            <Image
+              source={{ uri: contacto.foto_url }}
+              style={styles.foto}
+              accessibilityLabel={`Foto de ${nombreCompleto}`}
+            />
+          ) : (
+            <View style={styles.fotoFallback}>
+              <Text style={styles.iniciales}>{iniciales}</Text>
+            </View>
+          )}
+        </View>
 
-        {/* Estrella favorito — esquina superior derecha */}
-        <TouchableOpacity
-          style={styles.favBtn}
-          onPress={(e) => { e.stopPropagation(); onToggleFavorito(contacto.id, !contacto.favorito); }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityLabel={contacto.favorito ? 'Quitar de favoritos' : 'Marcar como favorito'}
-          accessibilityRole="button"
-        >
-          <Ionicons
-            name={contacto.favorito ? 'star' : 'star-outline'}
-            size={26}
-            color={contacto.favorito ? '#FFC107' : 'rgba(255,255,255,0.7)'}
-          />
-        </TouchableOpacity>
-      </View>
+        {/* Nombre debajo */}
+        <View style={styles.nombreWrapper}>
+          <Text style={styles.nombre} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
+            {nombreCompleto}
+          </Text>
+        </View>
+      </TouchableOpacity>
 
-      {/* ── Nombre debajo ── */}
-      <View style={styles.nombreWrapper}>
-        <Text style={styles.nombre} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
-          {nombreCompleto}
-        </Text>
-      </View>
-    </TouchableOpacity>
+      {/* Estrella favorito — posicionada absolutamente sobre el tile, FUERA del button */}
+      <TouchableOpacity
+        style={styles.favBtn}
+        onPress={() => onToggleFavorito(contacto.id, !contacto.favorito)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityLabel={contacto.favorito ? 'Quitar de favoritos' : 'Marcar como favorito'}
+        accessibilityRole="button"
+      >
+        <Ionicons
+          name={contacto.favorito ? 'star' : 'star-outline'}
+          size={26}
+          color={contacto.favorito ? '#FFC107' : 'rgba(255,255,255,0.7)'}
+        />
+      </TouchableOpacity>
+    </View>
   );
 });
 
@@ -95,13 +102,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+    // position relative para que el favBtn absoluto se posicione dentro
+    ...Platform.select({ web: { position: 'relative' as const } }),
+  },
+  tileInner: {
+    width: '100%',
   },
 
   // Foto cuadrada que ocupa todo el ancho del tile
   fotoWrapper: {
     width: '100%',
     aspectRatio: 1,
-    position: 'relative',
   },
   foto: {
     width: '100%',
@@ -122,7 +133,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
 
-  // Estrella favorito flotando sobre la foto
+  // Estrella favorito — posición absoluta sobre la foto, fuera del TouchableOpacity principal
   favBtn: {
     position: 'absolute',
     top: Spacing.sm,
@@ -133,6 +144,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.30)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
   },
 
   // Nombre
@@ -144,7 +156,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   nombre: {
-    fontSize: Typography.size.xl,    // 24px
+    fontSize: Typography.size.xl,
     fontWeight: Typography.weight.heavy,
     color: Colors.text.primary,
     textAlign: 'center',

@@ -141,21 +141,27 @@ export default function ProfileScreen() {
       >
         {/* Avatar + name */}
         <View style={styles.avatarSection}>
-          <TouchableOpacity onPress={handleChangePhoto} disabled={saving}>
-            {(localPhotoUri ?? residente?.foto_url) ? (
-              <Image source={{ uri: (localPhotoUri ?? residente!.foto_url)! }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={48} color={Colors.ui.disabled} />
-              </View>
-            )}
-            <View style={styles.cameraBadge}>
-              {saving ? (
-                <ActivityIndicator size={14} color={Colors.text.onDark} />
-              ) : (
-                <Ionicons name="camera" size={16} color={Colors.text.onDark} />
-              )}
+          {(localPhotoUri ?? residente?.foto_url) ? (
+            <Image source={{ uri: (localPhotoUri ?? residente!.foto_url)! }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={48} color={Colors.ui.disabled} />
             </View>
+          )}
+          <TouchableOpacity
+            style={styles.fotoBtn}
+            onPress={handleChangePhoto}
+            disabled={saving}
+            accessibilityLabel="Cambiar foto de perfil"
+          >
+            {saving ? (
+              <ActivityIndicator size={16} color={Colors.text.onDark} />
+            ) : (
+              <Ionicons name="camera" size={18} color={Colors.text.onDark} />
+            )}
+            <Text style={styles.fotoBtnTexto}>
+              {saving ? 'Subiendo...' : 'Cambiar foto'}
+            </Text>
           </TouchableOpacity>
 
           <Text style={styles.fullName}>
@@ -391,21 +397,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
+  fotoBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.text.onDark,
+    gap: Spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: Spacing.radius.full,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  fotoBtnTexto: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.onDark,
   },
   fullName: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
     fontSize: Typography.size.xl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,

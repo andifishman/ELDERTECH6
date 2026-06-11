@@ -12,6 +12,8 @@ import {
   Alert,
   ScrollView,
   Platform,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,8 +22,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { formatearTelefono } from '@/services/contactosService';
-import { hablar } from '@/utils/tts';// ─────────────────────────────────────────────────────────────────────────────
+import { formatearTelefono, actualizarContacto, uploadFotoContacto } from '@/services/contactosService';
+import { pickImage, takePhoto } from '@/services/authService';
+import { hablar } from '@/utils/tts';
+import { useAuth } from '@/context/AuthContext';// ─────────────────────────────────────────────────────────────────────────────
 // ESTRATEGIA DE RETORNO A LA APP
 // ─────────────────────────────────────────────────────────────────────────────
 //
@@ -59,6 +63,8 @@ export default function ContactoDetalleScreen() {
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
+  const residenteId = profile?.residente?.id ?? null;
 
   const nombreCompleto = params.apellido
     ? `${params.nombre} ${params.apellido}`
@@ -70,6 +76,40 @@ export default function ContactoDetalleScreen() {
   const iniciales =
     (params.nombre?.charAt(0) ?? '').toUpperCase() +
     (params.apellido?.charAt(0) ?? '').toUpperCase();
+
+  // ─── Foto del contacto ────────────────────────────────────────────────────
+  const [fotoUri, setFotoUri] = React.useState<string | null>(params.foto_url ?? null);
+  const [subiendoFoto, setSubiendoFoto] = React.useState(false);
+  const [showFotoModal, setShowFotoModal] = React.useState(false);
+  const [fotoError, setFotoError] = React.useState<string | null>(null);
+
+  async function handleUploadFoto(uri: string) {
+    if (!params.id) return;
+    setFotoUri(uri);           // preview optimista instantáneo
+    setSubiendoFoto(true);
+    setFotoError(null);
+    try {
+      const url = await uploadFotoContacto(params.id, uri);
+      await actualizarContacto(params.id, { 
+        foto_url: url,
+        ...(residenteId ? { residente_id: residenteId } : {}),
+      });
+      setFotoUri(url);
+    } catch (e: any) {
+      // Mantener el preview local aunque falle el upload remoto
+      const msg = e?.message ?? String(e);
+      console.error('[Contacto] Error al subir foto:', msg);
+      if (msg.includes('Bucket not found') || msg.includes('bucket')) {
+        setFotoError('El almacenamiento de fotos no está configurado.');
+      } else if (msg.includes('security') || msg.includes('policy') || msg.includes('RLS')) {
+        setFotoError('Sin permisos para subir fotos. Revisá las políticas del bucket.');
+      } else {
+        setFotoError(`Error: ${msg}`);
+      }
+    } finally {
+      setSubiendoFoto(false);
+    }
+  }
 
   // ─── Retorno automático via AppState ────────────────────────────────────────
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
@@ -226,9 +266,9 @@ export default function ContactoDetalleScreen() {
       >
         {/* Foto grande */}
         <View style={styles.fotoContainer}>
-          {params.foto_url ? (
+          {fotoUri ? (
             <Image
-              source={{ uri: params.foto_url }}
+              source={{ uri: fotoUri }}
               style={styles.foto}
               accessibilityLabel={`Foto de ${nombreCompleto}`}
             />
@@ -236,6 +276,24 @@ export default function ContactoDetalleScreen() {
             <View style={styles.fotoFallback}>
               <Text style={styles.fotoIniciales}>{iniciales}</Text>
             </View>
+          )}
+          <TouchableOpacity
+            style={styles.fotoBtn}
+            onPress={() => { setFotoError(null); setShowFotoModal(true); }}
+            disabled={subiendoFoto}
+            accessibilityLabel="Agregar o cambiar foto del contacto"
+          >
+            {subiendoFoto ? (
+              <ActivityIndicator size={16} color="#388E3C" />
+            ) : (
+              <Ionicons name="camera" size={18} color="#388E3C" />
+            )}
+            <Text style={styles.fotoBtnTexto}>
+              {subiendoFoto ? 'Subiendo...' : fotoUri ? 'Cambiar foto' : 'Agregar foto'}
+            </Text>
+          </TouchableOpacity>
+          {fotoError && (
+            <Text style={styles.fotoErrorText}>{fotoError}</Text>
           )}
         </View>
 
@@ -305,6 +363,42 @@ export default function ContactoDetalleScreen() {
         </View>
       </ScrollView>
 
+      {/* Modal para elegir foto del contacto */}
+      <Modal visible={showFotoModal} transparent animationType="fade" onRequestClose={() => setShowFotoModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalEmoji}>📷</Text>
+            <Text style={styles.modalTitulo}>Foto de {nombreCompleto}</Text>
+            {fotoError && <Text style={styles.fotoErrorText}>{fotoError}</Text>}
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={async () => {
+                setShowFotoModal(false);
+                const uri = await takePhoto();
+                if (uri) handleUploadFoto(uri);
+              }}
+            >
+              <Ionicons name="camera" size={22} color={Colors.text.onDark} />
+              <Text style={styles.modalBtnTexto}>Tomar foto</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalBtn, { backgroundColor: Colors.brand.greenDark }]}
+              onPress={async () => {
+                setShowFotoModal(false);
+                const uri = await pickImage();
+                if (uri) handleUploadFoto(uri);
+              }}
+            >
+              <Ionicons name="images" size={22} color={Colors.text.onDark} />
+              <Text style={styles.modalBtnTexto}>Elegir de galería</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalBtnCancelar} onPress={() => setShowFotoModal(false)}>
+              <Text style={styles.modalBtnCancelarTexto}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Banner de retorno — aparece cuando la app vuelve al primer plano */}
       {mostrarBannerRetorno && (
         <View style={[styles.bannerRetorno, { bottom: insets.bottom + 16 }]}>
@@ -367,7 +461,30 @@ const styles = StyleSheet.create({
   },
   // Foto
   fotoContainer: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.sm,
+    alignItems: 'center',
+  },
+  fotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Spacing.radius.full,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: '#388E3C',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  fotoBtnTexto: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.semibold,
+    color: '#388E3C',
   },
   foto: {
     width: 160,
@@ -398,6 +515,66 @@ const styles = StyleSheet.create({
     fontSize: 64,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
+  },
+  fotoErrorText: {
+    fontSize: Typography.size.sm,
+    color: Colors.brand.red,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    maxWidth: 220,
+  },
+  // Modal foto
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.screen.horizontal,
+  },
+  modalBox: {
+    backgroundColor: Colors.ui.surface,
+    borderRadius: 20,
+    padding: Spacing.xxl,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    gap: Spacing.md,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  modalEmoji: { fontSize: 48 },
+  modalTitulo: {
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
+    textAlign: 'center',
+  },
+  modalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+    backgroundColor: '#66BB6A',
+    borderRadius: Spacing.radius.lg,
+    paddingVertical: Spacing.lg,
+    width: '100%',
+  },
+  modalBtnTexto: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+  },
+  modalBtnCancelar: {
+    paddingVertical: Spacing.md,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalBtnCancelarTexto: {
+    fontSize: Typography.size.md,
+    color: Colors.text.secondary,
   },
   // Nombre y teléfono
   nombre: {

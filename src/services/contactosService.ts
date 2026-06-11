@@ -241,3 +241,43 @@ export function formatearTelefono(telefono: string): string {
 
   return telefono;
 }
+
+/**
+ * Sube una foto para un contacto y devuelve la URL pública.
+ * Usa compresión alta (quality 0.5) para carga rápida.
+ */
+export async function uploadFotoContacto(
+  contactoId: string,
+  uri: string,
+): Promise<string> {
+  const ext = uri.split('?')[0].split('.').pop()?.toLowerCase() === 'png' ? 'png' : 'jpg';
+  const path = `contactos/${contactoId}.${ext}`;
+  const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
+  let blob: Blob;
+
+  // En web, expo-image-picker devuelve una URL blob: o data: — fetch() las maneja bien
+  // En nativo, usamos XMLHttpRequest para content:// y file:// URIs
+  if (uri.startsWith('blob:') || uri.startsWith('data:') || uri.startsWith('http')) {
+    const response = await fetch(uri);
+    blob = await response.blob();
+  } else {
+    blob = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = () => resolve(xhr.response);
+      xhr.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      xhr.responseType = 'blob';
+      xhr.open('GET', uri, true);
+      xhr.send(null);
+    });
+  }
+
+  const { error } = await supabase.storage
+    .from('fotos-perfil')
+    .upload(path, blob, { contentType, upsert: true });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('fotos-perfil').getPublicUrl(path);
+  return `${data.publicUrl}?t=${Date.now()}`;
+}
