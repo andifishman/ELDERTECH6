@@ -1,6 +1,11 @@
 // Contexto de configuración del Asistente — velocidad de voz y tamaño de texto
-import React, { createContext, useContext, useState, useCallback } from 'react';
+// Persiste en AsyncStorage: para adultos mayores, perder la config en cada
+// apertura de la app es una regresión de accesibilidad real.
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ConfigVoz } from '@/types/asistente.types';
+
+const STORAGE_KEY = 'eldertech_asistente_config_v1';
 
 interface AsistenteConfigContextValue {
   config: ConfigVoz;
@@ -22,19 +27,49 @@ const AsistenteConfigContext = createContext<AsistenteConfigContextValue>({
   toggleLeerRespuestas: () => {},
 });
 
+function persistir(config: ConfigVoz) {
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(config)).catch((err) =>
+    console.warn('[AsistenteConfig] Error al guardar:', err),
+  );
+}
+
 export function AsistenteConfigProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<ConfigVoz>(defaultConfig);
 
+  // Cargar la configuración guardada al montar el provider
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as Partial<ConfigVoz>;
+        // Merge con defaults por si el shape cambió entre versiones
+        setConfig({ ...defaultConfig, ...parsed });
+      })
+      .catch((err) => console.warn('[AsistenteConfig] Error al cargar:', err));
+  }, []);
+
   const setVelocidad = useCallback((v: ConfigVoz['velocidad']) => {
-    setConfig((prev) => ({ ...prev, velocidad: v }));
+    setConfig((prev) => {
+      const nuevo = { ...prev, velocidad: v };
+      persistir(nuevo);
+      return nuevo;
+    });
   }, []);
 
   const setTamanoTexto = useCallback((t: ConfigVoz['tamanoTexto']) => {
-    setConfig((prev) => ({ ...prev, tamanoTexto: t }));
+    setConfig((prev) => {
+      const nuevo = { ...prev, tamanoTexto: t };
+      persistir(nuevo);
+      return nuevo;
+    });
   }, []);
 
   const toggleLeerRespuestas = useCallback(() => {
-    setConfig((prev) => ({ ...prev, leerRespuestas: !prev.leerRespuestas }));
+    setConfig((prev) => {
+      const nuevo = { ...prev, leerRespuestas: !prev.leerRespuestas };
+      persistir(nuevo);
+      return nuevo;
+    });
   }, []);
 
   return (

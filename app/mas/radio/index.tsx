@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,16 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { RadioStation } from '@/types/radio.types';
 
+// Constantes a nivel de módulo — no recrearlas en cada render
+const IDIOMAS_FIJOS = [
+  { codigo: null,  nombre: 'Todos',   emoji: '🌐' },
+  { codigo: 'AR',  nombre: 'Español', emoji: '🇦🇷' },
+  { codigo: 'IL',  nombre: 'Hebreo',  emoji: '🇮🇱' },
+  { codigo: 'US',  nombre: 'Inglés',  emoji: '🇺🇸' },
+];
+
+const ORDEN_IDIOMA: Record<string, number> = { AR: 0, IL: 1, US: 2 };
+
 export default function RadioScreen() {
   const { data, isLoading, error, refetch } = useRadioData();
   const { favoritos, esFavorito } = useFavoritos();
@@ -24,15 +34,6 @@ export default function RadioScreen() {
   const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null);
   const categoriaScrollRef = useRef<ScrollView>(null);
   const catScrollX = useRef(0);
-
-  const IDIOMAS_FIJOS = [
-    { codigo: null,  nombre: 'Todos',   emoji: '🌐' },
-    { codigo: 'AR',  nombre: 'Español', emoji: '🇦🇷' },
-    { codigo: 'IL',  nombre: 'Hebreo',  emoji: '🇮🇱' },
-    { codigo: 'US',  nombre: 'Inglés',  emoji: '🇺🇸' },
-  ];
-
-  const ORDEN_IDIOMA: Record<string, number> = { AR: 0, IL: 1, US: 2 };
 
   // Radios filtradas con favoritos siempre primero
   const radiosFiltradas = useMemo<RadioStation[]>(() => {
@@ -50,7 +51,14 @@ export default function RadioScreen() {
     const favs = result.filter((r) => esFavorito(r.id));
     const resto = result.filter((r) => !esFavorito(r.id));
     return [...favs, ...resto];
-  }, [data, idiomaFiltro, categoriaFiltro, favoritos]);
+  }, [data, idiomaFiltro, categoriaFiltro, favoritos, esFavorito]);
+
+  const renderRadio = useCallback(
+    ({ item }: { item: RadioStation }) => (
+      <RadioCard radio={item} mostrarPais={idiomaFiltro === null} />
+    ),
+    [idiomaFiltro],
+  );
 
   const handleSeleccionarIdioma = (codigo: string | null) => {
     setIdiomaFiltro(codigo);
@@ -87,7 +95,6 @@ export default function RadioScreen() {
     categoriaScrollRef.current?.scrollTo({ x: next, animated: true });
   };
   const catScrollRight = () =>
-    categoriaScrollRef.current?.scrollBy?.({ x: 90, animated: true }) ??
     categoriaScrollRef.current?.scrollTo({ x: catScrollX.current + 90, animated: true });
 
   return (
@@ -150,9 +157,7 @@ export default function RadioScreen() {
       <FlatList
         data={radiosFiltradas}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <RadioCard radio={item} mostrarPais={idiomaFiltro === null} />
-        )}
+        renderItem={renderRadio}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={

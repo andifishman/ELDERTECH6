@@ -8,8 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import { toSupabaseDate } from '@/utils/dateUtils';
 import { useEffect } from 'react';
 
-// Función helper para armar la queryKey de un día dado
-function actividadesKey(fecha: Date, residenteId: string | null, interesesKey: string, piso: string | null) {
+// Función helper para armar la queryKey de un día dado (exportada para prefetch)
+export function actividadesKey(fecha: Date, residenteId: string | null, interesesKey: string, piso: string | null) {
   return ['actividades', toSupabaseDate(fecha), residenteId, interesesKey, piso];
 }
 
@@ -26,6 +26,9 @@ export function useActividades(fecha: Date) {
     residenteId
       ? getActividadesPersonalizadas(d, misInteresesIds, miPiso)
       : getActividadesPorFecha(d);
+
+  // Key estable del día (Date cambia de identidad en cada render)
+  const fechaKey = toSupabaseDate(fecha);
 
   // Prefetch día anterior y siguiente para que al cambiar sea instantáneo
   useEffect(() => {
@@ -45,7 +48,8 @@ export function useActividades(fecha: Date) {
       queryFn: () => fetchFn(manana),
       staleTime: 30 * 60 * 1000,
     });
-  }, [toSupabaseDate(fecha), residenteId, interesesKey, miPiso, authLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fechaKey, residenteId, interesesKey, miPiso, authLoading]);
 
   return useQuery({
     queryKey: actividadesKey(fecha, residenteId, interesesKey, miPiso),

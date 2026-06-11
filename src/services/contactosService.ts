@@ -18,6 +18,20 @@ const CONTACTO_SELECT = `
   tipo_contacto:tipos_contacto(id, nombre, emoji, orden)
 `;
 
+// El join de Supabase puede devolver tipo_contacto como array — normalizar a objeto/null
+type ContactoRow = Omit<ContactoResumen, 'tipo_contacto'> & {
+  tipo_contacto: TipoContacto | TipoContacto[] | null;
+};
+
+function mapContactoRow(row: ContactoRow): ContactoResumen {
+  return {
+    ...row,
+    tipo_contacto: Array.isArray(row.tipo_contacto)
+      ? row.tipo_contacto[0] ?? null
+      : row.tipo_contacto,
+  };
+}
+
 // ─── Lectura ──────────────────────────────────────────────────────────────────
 
 /**
@@ -37,7 +51,7 @@ export async function getContactos(
     .order('nombre', { ascending: true });
 
   if (error) throw new Error(`Error al cargar contactos: ${error.message}`);
-  return (data ?? []) as ContactoResumen[];
+  return ((data ?? []) as unknown as ContactoRow[]).map(mapContactoRow);
 }
 
 /**
@@ -55,7 +69,7 @@ export async function getContactosFavoritos(
     .order('orden', { ascending: true });
 
   if (error) throw new Error(`Error al cargar favoritos: ${error.message}`);
-  return (data ?? []) as ContactoResumen[];
+  return ((data ?? []) as unknown as ContactoRow[]).map(mapContactoRow);
 }
 
 /**
@@ -109,7 +123,7 @@ export async function agregarContacto(
     .single();
 
   if (error) throw new Error(`Error al guardar contacto: ${error.message}`);
-  return data as ContactoResumen;
+  return mapContactoRow(data as unknown as ContactoRow);
 }
 
 /**
@@ -206,8 +220,9 @@ export function formatearTelefono(telefono: string): string {
   if (sinPais.startsWith('9')) {
     const sinNueve = sinPais.substring(1); // quita el "9"
 
-    // CABA / GBA: código de área 2 dígitos (11, 15 → 8 dígitos de abonado)
-    if (sinNueve.startsWith('11') || sinNueve.startsWith('15')) {
+    // CABA / GBA: código de área 2 dígitos (11 → 8 dígitos de abonado)
+    // Nota: "15" es prefijo local de celular, nunca aparece después de +54 9
+    if (sinNueve.startsWith('11')) {
       const area = sinNueve.substring(0, 2);
       const num  = sinNueve.substring(2);
       return `+54 9 ${area} ${num.substring(0, 4)}-${num.substring(4)}`;
@@ -226,7 +241,7 @@ export function formatearTelefono(telefono: string): string {
 
   // Fijo argentino (sin 9)
   // CABA: área 2 dígitos
-  if (sinPais.startsWith('11') || sinPais.startsWith('15')) {
+  if (sinPais.startsWith('11')) {
     const area = sinPais.substring(0, 2);
     const num  = sinPais.substring(2);
     return `+54 ${area} ${num.substring(0, 4)}-${num.substring(4)}`;

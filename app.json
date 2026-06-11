@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.eldertech.app"
+      "bundleIdentifier": "com.eldertech.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"],
+        "LSApplicationQueriesSchemes": ["whatsapp", "tel"]
+      }
     },
     "android": {
       "adaptiveIcon": {

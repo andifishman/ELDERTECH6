@@ -58,30 +58,6 @@ export default function ChatAsistenteScreen() {
   const enviarMensaje = useEnviarMensaje();
   const toggleFavorito = useToggleFavoritoMensaje();
 
-  // ── Cargar mensajes si venimos del historial ──────────────────────────────
-  useEffect(() => {
-    if (!sesionIdParam) return;
-    getMensajesDeSesion(sesionIdParam)
-      .then((msgs) => {
-        const locales: MensajeLocal[] = msgs.map((m) => ({
-          id: m.id,
-          rol: m.rol,
-          contenido: m.contenido,
-          es_favorito: m.es_favorito,
-          created_at: m.created_at,
-        }));
-        setMensajes(locales);
-        // Reconstruir historial de contexto para Gemini
-        historialRef.current = msgs.map((m) => ({
-          role: m.rol === 'usuario' ? ('user' as const) : ('assistant' as const),
-          content: m.contenido,
-        }));
-      })
-      .catch(() => {/* si falla, se muestra el chat vacío */})
-      .finally(() => setCargandoHistorial(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sesionIdParam]);
-
   // ── Inicializar sesión ────────────────────────────────────────────────────
   const sesionIniciadaRef = useRef(false);
 
@@ -124,7 +100,8 @@ export default function ChatAsistenteScreen() {
           content: m.contenido,
         }));
       })
-      .catch((err) => console.warn('[Asistente] Error cargando historial:', err));
+      .catch((err) => console.warn('[Asistente] Error cargando historial:', err))
+      .finally(() => setCargandoHistorial(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sesionId, residenteId]);
 
@@ -240,16 +217,15 @@ export default function ChatAsistenteScreen() {
 
         // Leer la respuesta en voz
         leerTexto(msgAsistente.contenido);
-      } catch (err: any) {
-        // Mostrar el error real para poder diagnosticar
-        const errorMsg = err?.message ?? String(err);
-        console.error('[Asistente] Error:', errorMsg);
+      } catch (err) {
+        // El detalle técnico va al log; al usuario, un mensaje amable
+        console.error('[Asistente] Error:', err instanceof Error ? err.message : err);
         setMensajes((prev) =>
           prev.map((m) =>
             m.id === msgAsistenteId
               ? {
                   ...m,
-                  contenido: `Error: ${errorMsg}`,
+                  contenido: 'No pude responderte ahora. Esperá un momento y probá de nuevo.',
                   cargando: false,
                 }
               : m,

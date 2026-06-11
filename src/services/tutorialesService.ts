@@ -93,15 +93,28 @@ export async function getTutorialesConProgreso(
   })) as TutorialConProgreso[];
 }
 
-export async function getTutorialById(id: string): Promise<Tutorial | null> {
+/**
+ * Detalle de un tutorial con el progreso del residente incluido.
+ * El join devuelve progreso como array — se aplana al registro del residente.
+ */
+export async function getTutorialById(
+  id: string,
+  residenteId: string | null,
+): Promise<TutorialConProgreso | null> {
   const { data, error } = await supabase
     .from('tutoriales')
-    .select(TUTORIAL_SELECT)
+    .select(`${TUTORIAL_SELECT}, progreso:progreso_tutorial(*)`)
     .eq('id', id)
     .single();
 
   if (error) throw new Error(`Error al cargar tutorial: ${error.message}`);
-  return data as Tutorial | null;
+  if (!data) return null;
+
+  const progreso = Array.isArray(data.progreso)
+    ? ((data.progreso as ProgresoTutorial[]).find((p) => p.residente_id === residenteId) ?? null)
+    : null;
+
+  return { ...data, progreso } as TutorialConProgreso;
 }
 
 /**

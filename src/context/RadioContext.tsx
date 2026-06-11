@@ -1,6 +1,6 @@
 //contexto global del reproductor de radio con manejo de fallback automático
 
-import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Audio } from 'expo-av';
 import type { RadioStation, RadioPlayerState } from '@/types/radio.types';
 
@@ -39,6 +39,8 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const [estado, setEstado] = useState<RadioPlayerState>('idle');
   //nivel de volumen entre 0 y 1
   const [volumen, setVolumen] = useState<number>(1.0); // arranca al máximo
+  //espejo en ref para que reproducir() no dependa del estado (callbacks estables)
+  const volumenRef = useRef(1.0);
 
   //limpia el sonido y los timers cuando el provider se desmonta
   useEffect(() => {
@@ -96,7 +98,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
       const { sound } = await Audio.Sound.createAsync(
         { uri: url, headers: STREAM_HEADERS },
-        { shouldPlay: true, isLooping: false, volume: volumen },
+        { shouldPlay: true, isLooping: false, volume: volumenRef.current },
         (status) => {
           if (!mountedRef.current) return;
           if (!status.isLoaded) {
@@ -129,6 +131,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const subirVolumen = useCallback(() => {
     setVolumen((prev) => {
       const nuevo = Math.min(1, parseFloat((prev + VOLUMEN_PASO).toFixed(1)));
+      volumenRef.current = nuevo;
       _aplicarVolumen(nuevo);
       return nuevo;
     });
@@ -138,6 +141,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const bajarVolumen = useCallback(() => {
     setVolumen((prev) => {
       const nuevo = Math.max(0, parseFloat((prev - VOLUMEN_PASO).toFixed(1)));
+      volumenRef.current = nuevo;
       _aplicarVolumen(nuevo);
       return nuevo;
     });
@@ -191,8 +195,8 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       fallbackTimerRef.current = setTimeout(async () => {
         if (!mountedRef.current) return;
 
-        const statusActual = await soundRef.current?.getStatusAsync().catch(() => null);
-        const estaReproduciendo = statusActual?.isLoaded && (statusActual as any).isPlaying;
+        const statusActual = (await soundRef.current?.getStatusAsync().catch(() => null)) ?? null;
+        const estaReproduciendo = statusActual !== null && statusActual.isLoaded && statusActual.isPlaying;
 
         if (!estaReproduciendo && mountedRef.current) {
           console.log(`[Radio] Timeout — intentando fallback: ${radio.urlFallback}`);
@@ -210,8 +214,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         }
       }, FALLBACK_TIMEOUT_MS);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [volumen]);
+  }, []);
 
   //si la radio ya está sonando la detiene; si no, la reproduce
   const alternar = useCallback(async (radio: RadioStation) => {
@@ -222,10 +225,14 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [radioActual, estado, reproducir, detener]);
 
+  // Memoizado para no re-renderizar a todos los consumidores en cada render del provider
+  const value = useMemo(
+    () => ({ radioActual, estado, volumen, subirVolumen, bajarVolumen, reproducir, detener, alternar }),
+    [radioActual, estado, volumen, subirVolumen, bajarVolumen, reproducir, detener, alternar],
+  );
+
   return (
-    <RadioContext.Provider
-      value={{ radioActual, estado, volumen, subirVolumen, bajarVolumen, reproducir, detener, alternar }}
-    >
+    <RadioContext.Provider value={value}>
       {children}
     </RadioContext.Provider>
   );

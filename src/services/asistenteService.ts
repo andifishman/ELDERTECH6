@@ -1,4 +1,4 @@
-// Servicio del Asistente — IA (Gemini) + Supabase
+// Servicio del Asistente — IA (Groq vía Edge Function) + Supabase
 import { supabase } from './supabase';
 import type {
   SesionAsistente,
@@ -9,7 +9,9 @@ import type {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '';
+// Solo para desarrollo sin Edge Function desplegada — NO incluir en builds de
+// producción: todo lo EXPO_PUBLIC_* queda expuesto en el bundle del cliente.
+const GROQ_DEV_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
@@ -60,21 +62,46 @@ Usuario: ¿Qué es un "chad"?
 Respuesta: "Chad" es una palabra de internet que se usa para describir a alguien seguro de sí mismo, exitoso o admirable. Los jóvenes la usan como elogio, como decir "ese chico es un crack".`;
 }
 
-// ─── Groq IA ─────────────────────────────────────────────────────────────────
+// ─── IA (Groq) ───────────────────────────────────────────────────────────────
 
-async function llamarGroq(
+/** Extrae el texto de una respuesta con formato OpenAI/Groq. */
+function extraerTexto(data: unknown): string {
+  const d = data as { choices?: Array<{ message?: { content?: string } }> } | null;
+  return d?.choices?.[0]?.message?.content?.trim() ?? '';
+}
+
+/**
+ * Llama a la IA. Primero intenta la Edge Function `asistente` (la API key
+ * vive como secret del servidor). Si no está desplegada y existe una key
+ * local de desarrollo, cae a la llamada directa a Groq.
+ */
+async function llamarIA(
   messages: Array<{ role: string; content: string }>,
   maxTokens = 400,
 ): Promise<string> {
-  if (!GROQ_API_KEY) {
-    throw new Error('Falta EXPO_PUBLIC_GROQ_API_KEY en el .env');
+  // 1. Camino seguro: Edge Function
+  try {
+    const { data, error } = await supabase.functions.invoke('asistente', {
+      body: { messages, max_tokens: maxTokens },
+    });
+    if (!error) {
+      const texto = extraerTexto(data);
+      if (texto) return texto;
+    }
+  } catch {
+    // Edge Function no disponible — probar fallback de desarrollo
+  }
+
+  // 2. Fallback de desarrollo: llamada directa (solo si hay key en .env)
+  if (!GROQ_DEV_API_KEY) {
+    throw new Error('El asistente no está disponible en este momento.');
   }
 
   const res = await fetch(GROQ_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${GROQ_API_KEY}`,
+      Authorization: `Bearer ${GROQ_DEV_API_KEY}`,
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
@@ -86,13 +113,13 @@ async function llamarGroq(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Groq error ${res.status}: ${err}`);
+    console.warn(`[Asistente] Groq error ${res.status}: ${err}`);
+    throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
   }
 
-  const data = await res.json();
-  const texto = data?.choices?.[0]?.message?.content ?? '';
-  if (!texto) throw new Error('Groq no devolvió respuesta');
-  return texto.trim();
+  const texto = extraerTexto(await res.json());
+  if (!texto) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+  return texto;
 }
 
 export async function generarTituloSesion(primerMensaje: string): Promise<string> {
@@ -101,10 +128,8 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
       ? primerMensaje.slice(0, 40).trimEnd() + '…'
       : primerMensaje;
 
-  if (!GROQ_API_KEY) return fallback;
-
   try {
-    const titulo = await llamarGroq(
+    const titulo = await llamarIA(
       [{ role: 'user', content: `Generá un título corto (máximo 5 palabras) para una conversación que empieza con: "${primerMensaje}". Solo el título, sin comillas ni puntuación al final.` }],
       20,
     );
@@ -114,7 +139,7 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
   }
 }
 
-export async function consultarGemini(
+export async function consultarIA(
   mensajeUsuario: string,
   historial: MensajeContexto[],
 ): Promise<string> {
@@ -123,7 +148,7 @@ export async function consultarGemini(
     ...historial.slice(-MAX_CONTEXTO),
     { role: 'user', content: mensajeUsuario },
   ];
-  return llamarGroq(messages, 400);
+  return llamarIA(messages, 400);
 }
 
 // ─── Sesiones ─────────────────────────────────────────────────────────────────

@@ -9,13 +9,13 @@ import {
 } from '@/services/contactosService';
 import type { ContactoResumen, ContactoUpsert } from '@/types/database.types';
 
-const QUERY_KEY = (residenteId: string) => ['contactos', residenteId];
+export const contactosKey = (residenteId: string) => ['contactos', residenteId];
 
 // ─── Query principal ──────────────────────────────────────────────────────────
 
 export function useContactos(residenteId: string | null | undefined) {
   return useQuery({
-    queryKey: QUERY_KEY(residenteId ?? ''),
+    queryKey: contactosKey(residenteId ?? ''),
     queryFn: () => getContactos(residenteId!),
     enabled: !!residenteId,
     staleTime: 1000 * 60 * 5, // 5 minutos — contactos no cambian seguido
@@ -33,7 +33,7 @@ export function useAgregarContacto(residenteId: string) {
     onSuccess: (nuevoContacto) => {
       // Actualización optimista: agregar el nuevo contacto al caché
       queryClient.setQueryData<ContactoResumen[]>(
-        QUERY_KEY(residenteId),
+        contactosKey(residenteId),
         (old = []) => {
           // Favoritos primero, luego por orden
           const updated = [...old, nuevoContacto];
@@ -54,11 +54,11 @@ export function useEliminarContacto(residenteId: string) {
     mutationFn: (id: string) => eliminarContacto(id),
     onMutate: async (id) => {
       // Optimistic update: quitar de la lista inmediatamente
-      await queryClient.cancelQueries({ queryKey: QUERY_KEY(residenteId) });
-      const snapshot = queryClient.getQueryData<ContactoResumen[]>(QUERY_KEY(residenteId));
+      await queryClient.cancelQueries({ queryKey: contactosKey(residenteId) });
+      const snapshot = queryClient.getQueryData<ContactoResumen[]>(contactosKey(residenteId));
 
       queryClient.setQueryData<ContactoResumen[]>(
-        QUERY_KEY(residenteId),
+        contactosKey(residenteId),
         (old = []) => old.filter((c) => c.id !== id),
       );
 
@@ -67,7 +67,7 @@ export function useEliminarContacto(residenteId: string) {
     onError: (_err, _id, context) => {
       // Revertir si falla
       if (context?.snapshot) {
-        queryClient.setQueryData(QUERY_KEY(residenteId), context.snapshot);
+        queryClient.setQueryData(contactosKey(residenteId), context.snapshot);
       }
     },
   });
@@ -80,11 +80,11 @@ export function useToggleFavorito(residenteId: string) {
     mutationFn: ({ id, favorito }: { id: string; favorito: boolean }) =>
       toggleFavorito(id, favorito),
     onMutate: async ({ id, favorito }) => {
-      await queryClient.cancelQueries({ queryKey: QUERY_KEY(residenteId) });
-      const snapshot = queryClient.getQueryData<ContactoResumen[]>(QUERY_KEY(residenteId));
+      await queryClient.cancelQueries({ queryKey: contactosKey(residenteId) });
+      const snapshot = queryClient.getQueryData<ContactoResumen[]>(contactosKey(residenteId));
 
       queryClient.setQueryData<ContactoResumen[]>(
-        QUERY_KEY(residenteId),
+        contactosKey(residenteId),
         (old = []) =>
           old
             .map((c) => (c.id === id ? { ...c, favorito } : c))
@@ -98,7 +98,7 @@ export function useToggleFavorito(residenteId: string) {
     },
     onError: (_err, _vars, context) => {
       if (context?.snapshot) {
-        queryClient.setQueryData(QUERY_KEY(residenteId), context.snapshot);
+        queryClient.setQueryData(contactosKey(residenteId), context.snapshot);
       }
     },
   });
@@ -111,7 +111,7 @@ export function useActualizarContacto(residenteId: string) {
     mutationFn: ({ id, updates }: { id: string; updates: Partial<ContactoUpsert> }) =>
       actualizarContacto(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY(residenteId) });
+      queryClient.invalidateQueries({ queryKey: contactosKey(residenteId) });
     },
   });
 }

@@ -1,5 +1,5 @@
 // Hooks de React Query para el módulo Tutoriales
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   getCategoriasTutorial,
   getTutorialesConProgreso,
@@ -12,11 +12,13 @@ import {
 } from '@/services/tutorialesService';
 
 // ─── Keys ─────────────────────────────────────────────────────────────────────
-const KEYS = {
+// Exportadas para que el prefetch del Home use exactamente las mismas
+export const KEYS = {
   categorias: ['tutoriales', 'categorias'] as const,
   lista: (residenteId: string, catId?: string | null) =>
     ['tutoriales', 'lista', residenteId, catId ?? 'all'] as const,
-  detalle: (id: string) => ['tutoriales', 'detalle', id] as const,
+  detalle: (id: string, residenteId: string | null) =>
+    ['tutoriales', 'detalle', id, residenteId ?? ''] as const,
   pasos: (id: string) => ['tutoriales', 'pasos', id] as const,
   relacionados: (id: string, catId: string | null) =>
     ['tutoriales', 'relacionados', id, catId ?? ''] as const,
@@ -42,13 +44,18 @@ export function useTutoriales(
     queryFn: () => getTutorialesConProgreso(residenteId!, categoriaId),
     enabled: !!residenteId,
     staleTime: 1000 * 60 * 5,
+    // Al cambiar de categoría muestra la lista anterior mientras carga la nueva
+    placeholderData: keepPreviousData,
   });
 }
 
-export function useTutorialDetalle(id: string | null | undefined) {
+export function useTutorialDetalle(
+  id: string | null | undefined,
+  residenteId: string | null,
+) {
   return useQuery({
-    queryKey: KEYS.detalle(id ?? ''),
-    queryFn: () => getTutorialById(id!),
+    queryKey: KEYS.detalle(id ?? '', residenteId),
+    queryFn: () => getTutorialById(id!, residenteId),
     enabled: !!id,
     staleTime: 1000 * 60 * 10,
   });

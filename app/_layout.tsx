@@ -25,9 +25,11 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const isVerifyEmail = segments[1] === 'verify-email';
-    const isResetPassword = segments[1] === 'reset-password';
+    // Con typedRoutes, segments es una unión de tuplas — indexar [1] no tipa
+    const [grupo, pantalla] = segments as string[];
+    const inAuthGroup = grupo === '(auth)';
+    const isVerifyEmail = pantalla === 'verify-email';
+    const isResetPassword = pantalla === 'reset-password';
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');

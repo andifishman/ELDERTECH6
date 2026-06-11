@@ -22,7 +22,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { formatearTelefono, actualizarContacto, uploadFotoContacto } from '@/services/contactosService';
+import { formatearTelefono, uploadFotoContacto } from '@/services/contactosService';
+import { useActualizarContacto } from '@/hooks/useContactos';
 import { pickImage, takePhoto } from '@/services/authService';
 import { hablar } from '@/utils/tts';
 import { useAuth } from '@/context/AuthContext';// ─────────────────────────────────────────────────────────────────────────────
@@ -65,6 +66,9 @@ export default function ContactoDetalleScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
+  // Mutación de React Query: al actualizar invalida el caché de la lista de
+  // contactos, así la foto nueva aparece al volver a la pantalla Llamar
+  const actualizarMutation = useActualizarContacto(residenteId ?? '');
 
   const nombreCompleto = params.apellido
     ? `${params.nombre} ${params.apellido}`
@@ -90,22 +94,19 @@ export default function ContactoDetalleScreen() {
     setFotoError(null);
     try {
       const url = await uploadFotoContacto(params.id, uri);
-      await actualizarContacto(params.id, { 
-        foto_url: url,
-        ...(residenteId ? { residente_id: residenteId } : {}),
+      await actualizarMutation.mutateAsync({
+        id: params.id,
+        updates: {
+          foto_url: url,
+          ...(residenteId ? { residente_id: residenteId } : {}),
+        },
       });
       setFotoUri(url);
-    } catch (e: any) {
-      // Mantener el preview local aunque falle el upload remoto
-      const msg = e?.message ?? String(e);
-      console.error('[Contacto] Error al subir foto:', msg);
-      if (msg.includes('Bucket not found') || msg.includes('bucket')) {
-        setFotoError('El almacenamiento de fotos no está configurado.');
-      } else if (msg.includes('security') || msg.includes('policy') || msg.includes('RLS')) {
-        setFotoError('Sin permisos para subir fotos. Revisá las políticas del bucket.');
-      } else {
-        setFotoError(`Error: ${msg}`);
-      }
+    } catch (e) {
+      // Mantener el preview local aunque falle el upload remoto.
+      // El detalle técnico va al log; al usuario, un mensaje simple.
+      console.error('[Contacto] Error al subir foto:', e instanceof Error ? e.message : e);
+      setFotoError('No se pudo guardar la foto. Probá de nuevo más tarde.');
     } finally {
       setSubiendoFoto(false);
     }
@@ -149,21 +150,11 @@ export default function ContactoDetalleScreen() {
   }, []);
 
   // ─── Llamada telefónica ────────────────────────────────────────────────────
+  // No usar canOpenURL: en Android 11+ devuelve false sin <queries> en el
+  // manifest aunque el teléfono pueda llamar. Intentar abrir y capturar el error.
   const handleLlamar = useCallback(async () => {
     const tel = params.telefono;
     if (!tel) return;
-
-    const url = `tel:${tel}`;
-    const puedeAbrir = await Linking.canOpenURL(url);
-
-    if (!puedeAbrir) {
-      Alert.alert(
-        'No disponible',
-        'Este dispositivo no puede realizar llamadas.',
-        [{ text: 'Aceptar' }],
-      );
-      return;
-    }
 
     // Hablar el nombre antes de llamar — útil para adultos mayores
     hablar(`Llamando a ${nombreCompleto}`);
@@ -172,10 +163,14 @@ export default function ContactoDetalleScreen() {
     setMostrarBannerRetorno(false);
 
     try {
-      await Linking.openURL(url);
+      await Linking.openURL(`tel:${tel}`);
     } catch {
       accionPendienteRef.current = null;
-      Alert.alert('Error', 'No se pudo iniciar la llamada. Intentá de nuevo.');
+      Alert.alert(
+        'No disponible',
+        'Este dispositivo no puede realizar llamadas.',
+        [{ text: 'Aceptar' }],
+      );
     }
   }, [params.telefono, nombreCompleto]);
 
@@ -200,21 +195,21 @@ export default function ContactoDetalleScreen() {
     setMostrarBannerRetorno(false);
 
     try {
-      // Intentar esquema nativo primero (abre directo la app)
-      const puedeNativo = await Linking.canOpenURL(urlNativa);
-      if (puedeNativo) {
-        await Linking.openURL(urlNativa);
-      } else {
+      // Esquema nativo primero (abre directo la app).
+      // No usar canOpenURL: en Android 11+ miente sin <queries> en el manifest.
+      await Linking.openURL(urlNativa);
+    } catch {
+      try {
         // Fallback a URL web (si WhatsApp no está instalado, abre whatsapp.com)
         await Linking.openURL(urlWa);
+      } catch {
+        accionPendienteRef.current = null;
+        Alert.alert(
+          'WhatsApp no disponible',
+          'No se pudo abrir WhatsApp. Verificá que esté instalado.',
+          [{ text: 'Aceptar' }],
+        );
       }
-    } catch {
-      accionPendienteRef.current = null;
-      Alert.alert(
-        'WhatsApp no disponible',
-        'No se pudo abrir WhatsApp. Verificá que esté instalado.',
-        [{ text: 'Aceptar' }],
-      );
     }
   }, [params.telefono, nombreCompleto]);
 

@@ -54,16 +54,6 @@ export function SeleccionarContactoModal({
   const [permisoDenegado, setPermisoDenegado] = useState(false);
   const [cargado, setCargado] = useState(false);
 
-  // Cargar contactos cuando el modal se abre
-  useEffect(() => {
-    if (visible && !cargado) {
-      cargarContactos();
-    }
-    if (!visible) {
-      setBusqueda('');
-    }
-  }, [visible]);
-
   const cargarContactos = useCallback(async () => {
     setCargando(true);
     setPermisoDenegado(false);
@@ -116,6 +106,16 @@ export function SeleccionarContactoModal({
       setCargando(false);
     }
   }, []);
+
+  // Cargar contactos cuando el modal se abre
+  useEffect(() => {
+    if (visible && !cargado) {
+      cargarContactos();
+    }
+    if (!visible) {
+      setBusqueda('');
+    }
+  }, [visible, cargado, cargarContactos]);
 
   // Filtrado por búsqueda
   const contactosFiltrados = useMemo(() => {

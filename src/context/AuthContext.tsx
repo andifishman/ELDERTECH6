@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
-import { getProfile, getProfileForUser } from '@/services/authService';
+import { getProfileForUser } from '@/services/authService';
 import type { AuthProfile } from '@/types/auth.types';
 
 const cacheKey = (uid: string) => `@et_profile_v1_${uid}`;
@@ -10,7 +10,12 @@ const cacheKey = (uid: string) => `@et_profile_v1_${uid}`;
 async function readCache(uid: string): Promise<AuthProfile | null> {
   try {
     const raw = await AsyncStorage.getItem(cacheKey(uid));
-    return raw ? (JSON.parse(raw) as AuthProfile) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthProfile;
+    // Validación mínima del shape: si cambia AuthProfile, subir la versión
+    // de cacheKey (_v1_ → _v2_) para invalidar cachés viejos automáticamente
+    if (!parsed?.perfil?.id) return null;
+    return parsed;
   } catch { return null; }
 }
 

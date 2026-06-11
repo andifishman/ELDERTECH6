@@ -54,9 +54,6 @@ export async function login(
   }
 }
 
-/** @deprecated Usar login() — acepta usuario O email */
-export const loginWithUsername = login;
-
 // ─── Register ────────────────────────────────────────────────────────────────
 
 export async function registerUser(data: RegisterFormData): Promise<void> {
@@ -182,42 +179,46 @@ export async function logout(): Promise<void> {
 
 // ─── Profile ─────────────────────────────────────────────────────────────────
 
-export async function getProfile(): Promise<AuthProfile | null> {
-  // Usar getUser() para validar con el servidor (más seguro que solo la sesión local)
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) return null;
-
-  // Fetch perfil + (residente + intereses) en paralelo donde sea posible
-  const { data: perfil, error: perfilError } = await supabase
-    .from('perfiles_usuario')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (perfilError || !perfil) return null;
-
-  if (!perfil.residente_id) {
-    return { perfil, residente: null, residente_interes_ids: [] };
-  }
-
-  // Residente e intereses en paralelo — antes eran secuenciales
-  const [{ data: residente }, { data: interesesData }] = await Promise.all([
-    supabase.from('residentes').select('*').eq('id', perfil.residente_id).single(),
-    supabase.from('residente_intereses').select('interes_id').eq('residente_id', perfil.residente_id),
-  ]);
-
-  return {
-    perfil,
-    residente: residente ?? null,
-    residente_interes_ids: (interesesData ?? []).map((r: { interes_id: string }) => r.interes_id),
-  };
-}
-
 /**
  * Versión rápida: usa el userId de la sesión ya disponible localmente
- * sin hacer un roundtrip extra a getUser(). Para el background refresh.
+ * sin hacer un roundtrip extra a getUser().
+ *
+ * Intenta traer perfil + residente + intereses en UNA sola consulta con
+ * joins anidados (1 roundtrip en vez de 2 secuenciales — el perfil bloquea
+ * toda la app, así que cada roundtrip ahorrado se nota). Si PostgREST no
+ * resuelve la relación, cae al método clásico de 2 pasos.
  */
 export async function getProfileForUser(userId: string): Promise<AuthProfile | null> {
+  // ── Intento 1: joins anidados, un solo roundtrip ──
+  type ResidenteJoin = NonNullable<AuthProfile['residente']> & {
+    residente_intereses?: Array<{ interes_id: string }>;
+  };
+  type PerfilJoinRow = AuthProfile['perfil'] & { residente: ResidenteJoin | null };
+
+  try {
+    const { data, error } = await supabase
+      .from('perfiles_usuario')
+      .select('*, residente:residentes(*, residente_intereses(interes_id))')
+      .eq('id', userId)
+      .single();
+
+    if (!error && data) {
+      const { residente: residenteRaw, ...perfil } = data as unknown as PerfilJoinRow;
+      if (!residenteRaw) {
+        return { perfil, residente: null, residente_interes_ids: [] };
+      }
+      const { residente_intereses, ...residente } = residenteRaw;
+      return {
+        perfil,
+        residente,
+        residente_interes_ids: (residente_intereses ?? []).map((r) => r.interes_id),
+      };
+    }
+  } catch {
+    // FK no detectada por PostgREST — usar el camino clásico
+  }
+
+  // ── Fallback: método clásico de 2 pasos ──
   const { data: perfil, error: perfilError } = await supabase
     .from('perfiles_usuario')
     .select('*')

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,9 @@ interface RadioCardProps {
   sinMargen?: boolean;
 }
 
-export function RadioCard({ radio, mostrarPais = false, sinMargen = false }: RadioCardProps) {
+// memo evita re-renders cuando el padre se re-renderiza (los hooks de contexto
+// internos siguen disparando re-render solo cuando el player cambia)
+export const RadioCard = memo(function RadioCard({ radio, mostrarPais = false, sinMargen = false }: RadioCardProps) {
   const { alternar, radioActual, estado } = useRadioPlayer();
   const { esFavorito } = useFavoritos();
   const esActiva = radioActual?.id === radio.id;
@@ -115,7 +117,7 @@ export function RadioCard({ radio, mostrarPais = false, sinMargen = false }: Rad
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   // Tarjeta — ya no es tocable, solo es contenedor visual

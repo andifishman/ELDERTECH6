@@ -50,8 +50,12 @@ export default function ProfileScreen() {
   const [loadingExtra, setLoadingExtra] = useState(true);
 
 
+  const residenteId = residente?.id ?? null;
+  // Key estable: el array cambia de identidad en cada refresh del perfil
+  const interesKey = (profile?.residente_interes_ids ?? []).join(',');
+
   useEffect(() => {
-    if (!residente) {
+    if (!residenteId) {
       setLoadingExtra(false);
       return;
     }
@@ -61,13 +65,18 @@ export default function ProfileScreen() {
       supabase
         .from('residente_ciudades_familiares')
         .select('ciudad_familiar_id')
-        .eq('residente_id', residente.id),
-    ]).then(([ints, ciud, { data: rcData }]) => {
-      setIntereses(ints);
-      setCiudades(ciud);
-      setResidenteCiudades(rcData?.map((r) => r.ciudad_familiar_id) ?? []);
-    }).finally(() => setLoadingExtra(false));
-  }, [residente]);
+        .eq('residente_id', residenteId),
+    ])
+      .then(([ints, ciud, { data: rcData }]) => {
+        setIntereses(ints);
+        setCiudades(ciud);
+        setResidenteIntereses(interesKey ? interesKey.split(',') : []);
+        setResidenteCiudades(rcData?.map((r) => r.ciudad_familiar_id) ?? []);
+      })
+      .catch((e) => console.warn('[Profile] Error cargando intereses/ciudades:', e))
+      .finally(() => setLoadingExtra(false));
+    // id estable (no el objeto residente) para no re-fetchear en cada refresh de perfil
+  }, [residenteId, interesKey]);
 
   async function handleChangePhoto() {
     if (!residente || !session?.user.id) return;

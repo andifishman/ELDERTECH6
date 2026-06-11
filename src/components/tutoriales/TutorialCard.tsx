@@ -93,7 +93,7 @@ export const TutorialCard = memo(function TutorialCard({
         {/* Barra de progreso (solo si empezó el video) */}
         {porcentaje > 0 && (
           <View style={styles.progresoBar}>
-            <View style={[styles.progresoFill, { width: `${porcentaje}%` as any }]} />
+            <View style={[styles.progresoFill, { width: `${porcentaje}%` as `${number}%` }]} />
           </View>
         )}
       </View>

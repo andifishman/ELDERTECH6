@@ -4,8 +4,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 
 //lee las variables de entorno definidas en .env
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  // Error claro en vez del crash críptico de createClient(undefined)
+  throw new Error(
+    'Faltan EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY. ' +
+    'Copiá .env.example a .env y completá los valores (después reiniciá expo start).',
+  );
+}
 
 //crea el cliente de supabase con sesión persistente en AsyncStorage
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

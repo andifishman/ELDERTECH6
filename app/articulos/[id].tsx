@@ -38,7 +38,7 @@ export default function TutorialDetalleScreen() {
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
 
-  const { data: tutorial, isLoading } = useTutorialDetalle(id);
+  const { data: tutorial, isLoading } = useTutorialDetalle(id, residenteId);
   const { data: pasos = [] } = usePasosTutorial(
     tutorial?.formato === 'guia' ? id : null,
   );
@@ -54,7 +54,16 @@ export default function TutorialDetalleScreen() {
   // Dimensiones reales del video — se actualizan cuando carga
   const [videoH, setVideoH] = useState(VIDEO_H);
   const guardarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Evita disparar marcarCompletado en cada status update una vez superado el 90%
+  const completadoRef = useRef(false);
   const [pasoActual, setPasoActual] = useState(0);
+
+  // Cancelar el guardado pendiente al salir de la pantalla
+  useEffect(() => {
+    return () => {
+      if (guardarTimer.current) clearTimeout(guardarTimer.current);
+    };
+  }, []);
 
   // Configurar modo audio para video (sin grabar, reproduce en silencioso iOS)
   useEffect(() => {
@@ -78,14 +87,6 @@ export default function TutorialDetalleScreen() {
       if (!status.isLoaded) return;
       setReproduciendo(status.isPlaying ?? false);
 
-      // Calcular altura real según aspect ratio del video
-      if (status.naturalSize) {
-        const { width: vw, height: vh } = status.naturalSize;
-        if (vw && vh) {
-          setVideoH(Math.round(SCREEN_W * vh / vw));
-        }
-      }
-
       if (status.durationMillis) {
         setProgresoPct((status.positionMillis / status.durationMillis) * 100);
       }
@@ -98,8 +99,10 @@ export default function TutorialDetalleScreen() {
       if (
         status.durationMillis &&
         status.positionMillis / status.durationMillis >= 0.9 &&
+        !completadoRef.current &&
         !tutorial?.progreso?.completado
       ) {
+        completadoRef.current = true;
         progreso.marcarCompletado.mutate();
       }
     },
@@ -155,6 +158,11 @@ export default function TutorialDetalleScreen() {
               style={{ width: SCREEN_W, height: videoH }}
               resizeMode={ResizeMode.CONTAIN}
               onPlaybackStatusUpdate={handlePlaybackStatus}
+              onReadyForDisplay={(event) => {
+                // Altura real según aspect ratio (naturalSize no viene en el playback status)
+                const { width: vw, height: vh } = event.naturalSize;
+                if (vw && vh) setVideoH(Math.round(SCREEN_W * vh / vw));
+              }}
               useNativeControls
               shouldPlay={false}
               isLooping={false}
@@ -162,7 +170,7 @@ export default function TutorialDetalleScreen() {
             />
             {/* Barra de progreso fina debajo */}
             <View style={styles.videoBarra}>
-              <View style={[styles.videoBarraFill, { width: `${progresoPct}%` as any }]} />
+              <View style={[styles.videoBarraFill, { width: `${progresoPct}%` as `${number}%` }]} />
             </View>
           </>
         )}

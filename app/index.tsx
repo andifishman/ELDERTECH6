@@ -1,13 +1,9 @@
 //pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { useState } from 'react';
 import {
-  BackHandler,
   Dimensions,
   Image,
-  Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import { usePrefetchHome } from '@/hooks/usePrefetchHome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -89,10 +86,12 @@ function getFechaHoy() {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [showLogout, setShowLogout] = useState(false);
   const insets = useSafeAreaInsets();
   const fecha = getFechaHoy();
   const { profile } = useAuth();
+  // Precarga contactos, actividades, radios, tutoriales y clima en background
+  // para que las secciones abran al instante
+  usePrefetchHome();
 
   const speak = (text: string) => {
     Speech.stop();
@@ -214,37 +213,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Logout Modal */}
-      <Modal visible={showLogout} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalIcon}>🚪</Text>
-            <Text style={styles.modalTitle}>¿Querés salir?</Text>
-            <Text style={styles.modalSub}>¿Estás seguro que querés cerrar la aplicación?</Text>
-            <View style={styles.modalBtns}>
-              <TouchableOpacity
-                style={styles.modalBtnDanger}
-                onPress={() => {
-                  // En web cierra la pestaña del browser, en Android cierra la app
-                  if (Platform.OS === 'web') {
-                    window.close();
-                  } else {
-                    BackHandler.exitApp();
-                  }
-                }}
-              >
-                <Text style={styles.modalBtnDangerText}>Salir</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalBtnCancel}
-                onPress={() => setShowLogout(false)}
-              >
-                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -367,43 +335,4 @@ const styles = StyleSheet.create({
   mediumCardIcon: { fontSize: 26 },
   mediumCardLabel: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginTop: 4 },
 
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 30,
-    width: '85%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalIcon: { fontSize: 60, marginBottom: 20 },
-  modalTitle: { fontSize: 24, fontWeight: 'bold', color: '#2E3A59', marginBottom: 10, textAlign: 'center' },
-  modalSub: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 30, lineHeight: 22 },
-  modalBtns: { flexDirection: 'row', gap: 15, width: '100%' },
-  modalBtnDanger: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 12,
-    paddingVertical: 15,
-    flex: 1,
-    alignItems: 'center',
-  },
-  modalBtnDangerText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
-  modalBtnCancel: {
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-    paddingVertical: 15,
-    flex: 1,
-    alignItems: 'center',
-  },
-  modalBtnCancelText: { color: '#2E3A59', fontWeight: 'bold', fontSize: 16 },
 });

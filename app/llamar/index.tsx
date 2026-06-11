@@ -117,7 +117,7 @@ export default function LlamarScreen() {
   const renderContacto = useCallback(({ item }: { item: ContactoResumen }) => (
     <ContactoCard
       contacto={item}
-      onPress={() => handleContactoPress(item)}
+      onPress={handleContactoPress}
       onToggleFavorito={handleToggleFavorito}
     />
   ), [handleContactoPress, handleToggleFavorito]);
@@ -142,9 +142,8 @@ export default function LlamarScreen() {
   }
 
   if (isError) {
-    // Detectar causa probable del error para mostrar mensaje útil
-    const errorMsg = (error as Error)?.message ?? '';
-    const esTablaMissing = errorMsg.includes('does not exist') || errorMsg.includes('relation') || errorMsg.includes('42P01');
+    // El detalle técnico va al log; al usuario, un mensaje simple
+    console.warn('[Llamar] Error cargando contactos:', (error as Error)?.message);
     const esSinResidente = !residenteId;
 
     return (
@@ -159,16 +158,12 @@ export default function LlamarScreen() {
           <Text style={styles.estadoTitulo}>
             {esSinResidente
               ? 'No se encontró tu perfil'
-              : esTablaMissing
-              ? 'Configuración pendiente'
               : 'No pudimos cargar tus contactos'}
           </Text>
           <Text style={styles.estadoDetalle}>
             {esSinResidente
-              ? 'Tu usuario no tiene un residente asociado. Contactá al administrador.'
-              : esTablaMissing
-              ? 'La tabla de contactos no existe aún en la base de datos. Ejecutá la migración SQL en Supabase.'
-              : errorMsg || 'Error de conexión. Verificá tu internet.'}
+              ? 'Tu usuario no tiene un residente asociado. Pedile ayuda a un asistente de la residencia.'
+              : 'Verificá tu conexión a internet y tocá Reintentar.'}
           </Text>
           {!esSinResidente && (
             <TouchableOpacity style={styles.btnReintentar} onPress={() => refetch()}>

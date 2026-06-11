@@ -18,7 +18,9 @@ import type { ContactoResumen } from '@/types/database.types';
 
 interface ContactoCardProps {
   contacto: ContactoResumen;
-  onPress: () => void;
+  // Recibe el contacto para que el padre pueda pasar un callback estable
+  // (un arrow inline por item anularía React.memo)
+  onPress: (contacto: ContactoResumen) => void;
   onToggleFavorito: (id: string, nuevoValor: boolean) => void;
 }
 
@@ -46,7 +48,7 @@ export const ContactoCard = memo(function ContactoCard({
       {/* Área principal clickeable */}
       <TouchableOpacity
         style={styles.tileInner}
-        onPress={onPress}
+        onPress={() => onPress(contacto)}
         activeOpacity={0.8}
         accessibilityLabel={`Ver contacto ${nombreCompleto}`}
         accessibilityRole="button"

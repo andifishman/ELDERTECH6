@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -10,7 +11,10 @@ import { useRadioPlayer } from '@/context/RadioContext';
 export function NowPlayingBar() {
   const { radioActual, estado, detener } = useRadioPlayer();
   const insets = useSafeAreaInsets();
+  const segments = useSegments();
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  // No mostrar la barra sobre las pantallas de autenticación
+  const enAuth = segments[0] === '(auth)';
 
   // Pulso animado en el indicador verde cuando está reproduciendo
   useEffect(() => {
@@ -28,7 +32,7 @@ export function NowPlayingBar() {
     return () => loop.stop();
   }, [estado, pulseAnim]);
 
-  if (!radioActual || estado === 'idle') return null;
+  if (!radioActual || estado === 'idle' || enAuth) return null;
 
   const esCargando = estado === 'loading';
   const hayError = estado === 'error';

@@ -8,7 +8,7 @@ import {
   crearSesion,
   guardarMensaje,
   toggleFavoritoMensaje,
-  consultarGemini,
+  consultarIA,
   actualizarTituloSesion,
   generarTituloSesion,
 } from '@/services/asistenteService';
@@ -62,14 +62,6 @@ export function useCrearSesion() {
 
 // ─── Mensajes ─────────────────────────────────────────────────────────────────
 
-export function useMensajesDeSesion(sesionId: string | null) {
-  return useQuery({
-    queryKey: ['mensajes_asistente', sesionId],
-    queryFn: () => getMensajesDeSesion(sesionId!),
-    enabled: !!sesionId,
-  });
-}
-
 export function useMensajesFavoritos(residenteId: string | null) {
   return useQuery({
     queryKey: ['mensajes_favoritos', residenteId],
@@ -122,8 +114,8 @@ export function useEnviarMensaje() {
         ? { id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString() }
         : await guardarMensaje(sesionId, residenteId, 'usuario', pregunta);
 
-      // 2. Consultar Groq
-      const respuesta = await consultarGemini(pregunta, historial);
+      // 2. Consultar la IA
+      const respuesta = await consultarIA(pregunta, historial);
 
       // 3. Guardar respuesta del asistente (solo si sesión real)
       const msgAsistente = esLocal
