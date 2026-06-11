@@ -110,8 +110,8 @@ export default function HomeScreen() {
               style={styles.logoImage}
               resizeMode="contain"
             />
-            <Text style={styles.logoText}>ElderTech</Text>
           </View>
+          <Text style={styles.logoText}>ElderTech</Text>
           <TouchableOpacity
             onPress={() => router.push('/profile')}
             style={styles.avatarBtn}
@@ -263,17 +263,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  logoImage: { width: 80, height: 80, marginRight: -8 },
+  logoImage: { width: 80, height: 80 },
   logoContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
   },
   logoText: {
+    flex: 1,
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 46,
-    marginLeft: 8,
+    textAlign: 'center',
   },
   // Botón de usuario — mismo tamaño que los botones del AppHeader
   avatarBtn: {

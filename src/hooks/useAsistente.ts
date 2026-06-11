@@ -122,7 +122,7 @@ export function useEnviarMensaje() {
         ? { id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString() }
         : await guardarMensaje(sesionId, residenteId, 'usuario', pregunta);
 
-      // 2. Consultar Gemini
+      // 2. Consultar Groq
       const respuesta = await consultarGemini(pregunta, historial);
 
       // 3. Guardar respuesta del asistente (solo si sesión real)
@@ -132,7 +132,6 @@ export function useEnviarMensaje() {
 
       // 4. Título de sesión (solo si sesión real y primer mensaje)
       if (!esLocal && esPrimerMensaje) {
-        // Genera un título descriptivo con IA; cae a truncado si Gemini falla
         const titulo = await generarTituloSesion(pregunta);
         await actualizarTituloSesion(sesionId, titulo);
         qc.invalidateQueries({ queryKey: ['sesiones_asistente'] });
@@ -140,9 +139,7 @@ export function useEnviarMensaje() {
 
       return { msgUsuario, msgAsistente };
     },
-    onSuccess: (_, { sesionId }) => {
-      qc.invalidateQueries({ queryKey: ['mensajes_asistente', sesionId] });
-    },
+    // No invalidar mensajes — el chat usa estado local optimista para evitar duplicados
   });
 }
 

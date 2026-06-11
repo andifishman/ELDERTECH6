@@ -51,17 +51,10 @@ export default function ProfileScreen() {
 
 
   useEffect(() => {
-<<<<<<< HEAD
-    if (!residente) return;
-    // Los intereses del residente ya vienen en profile.residente_interes_ids
-    // Solo necesitamos los catálogos y las ciudades del residente
-    setResidenteIntereses(profile?.residente_interes_ids ?? []);
-=======
     if (!residente) {
       setLoadingExtra(false);
       return;
     }
->>>>>>> 112803bbb5f6e282b767d63155a773516eb07f6b
     Promise.all([
       getIntereses(),
       getCiudadesFamiliares(),

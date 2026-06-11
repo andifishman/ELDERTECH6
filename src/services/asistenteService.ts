@@ -16,8 +16,20 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile';
 // Máximo de mensajes anteriores que se mandan como contexto
 const MAX_CONTEXTO = 10;
 
-// System prompt del asistente
-const SYSTEM_PROMPT = `Sos un asistente virtual inteligente integrado en ElderTech, una aplicación para adultos mayores en residencias geriátricas de Argentina.
+// System prompt del asistente — la fecha se inyecta dinámicamente al llamar
+function buildSystemPrompt(): string {
+  const ahora = new Date();
+  const fechaActual = ahora.toLocaleDateString('es-AR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const anioActual = ahora.getFullYear();
+
+  return `La fecha de hoy es ${fechaActual} (año ${anioActual}). Usá esta fecha para calcular edades, años transcurridos y cualquier dato que dependa del tiempo actual. Nunca uses una fecha distinta a esta.
+
+Sos un asistente virtual inteligente integrado en ElderTech, una aplicación para adultos mayores en residencias geriátricas de Argentina.
 
 == TU ROL ==
 Podés responder cualquier pregunta: tecnología, historia, cultura, noticias, palabras y términos modernos, cocina, salud general, geografía, entretenimiento, o cualquier tema de conversación. También ayudás con el celular y la aplicación ElderTech.
@@ -46,6 +58,7 @@ Respuesta: Para hacer una videollamada por WhatsApp:
 Ejemplo 2 — término moderno:
 Usuario: ¿Qué es un "chad"?
 Respuesta: "Chad" es una palabra de internet que se usa para describir a alguien seguro de sí mismo, exitoso o admirable. Los jóvenes la usan como elogio, como decir "ese chico es un crack".`;
+}
 
 // ─── Groq IA ─────────────────────────────────────────────────────────────────
 
@@ -106,7 +119,7 @@ export async function consultarGemini(
   historial: MensajeContexto[],
 ): Promise<string> {
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: buildSystemPrompt() },
     ...historial.slice(-MAX_CONTEXTO),
     { role: 'user', content: mensajeUsuario },
   ];

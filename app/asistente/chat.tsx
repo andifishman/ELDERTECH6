@@ -30,7 +30,6 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { MensajeLocal, MensajeContexto } from '@/types/asistente.types';
-import { getMensajesDeSesion } from '@/services/asistenteService';
 
 // ID temporal para mensajes locales mientras cargan
 let tempId = 0;
@@ -74,8 +73,8 @@ export default function ChatAsistenteScreen() {
         setMensajes(locales);
         // Reconstruir historial de contexto para Gemini
         historialRef.current = msgs.map((m) => ({
-          role: m.rol === 'usuario' ? 'user' : 'model',
-          parts: [{ text: m.contenido }],
+          role: m.rol === 'usuario' ? ('user' as const) : ('assistant' as const),
+          content: m.contenido,
         }));
       })
       .catch(() => {/* si falla, se muestra el chat vacío */})
@@ -91,56 +90,6 @@ export default function ChatAsistenteScreen() {
   const preguntaInicialEnviadaRef = useRef(false);
 
   useEffect(() => {
-<<<<<<< HEAD
-    if (sesionIniciadaRef.current) return;
-
-    // Caso 1: Abriendo sesión existente desde el historial
-    if (sesionIdParam) {
-      sesionIniciadaRef.current = true;
-      setSesionId(sesionIdParam);
-      return;
-    }
-
-    // Caso 2: Safety timer — si Supabase no responde en 8s, caer a modo local
-    const safetyTimer = setTimeout(() => {
-      if (!sesionIniciadaRef.current) {
-        sesionIniciadaRef.current = true;
-        const localId = 'local_' + Date.now();
-        setSesionId(localId);
-        if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, localId), 300);
-      }
-    }, 8000);
-
-    // Caso 3: Sin residente autenticado — sesión local temporal
-    if (!residenteId) {
-      clearTimeout(safetyTimer);
-      sesionIniciadaRef.current = true;
-      const localId = 'local_' + Date.now();
-      setSesionId(localId);
-      if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, localId), 300);
-      return;
-    }
-
-    // Caso 4: Crear nueva sesión en Supabase
-    crearSesion.mutate(residenteId, {
-      onSuccess: (sesion) => {
-        clearTimeout(safetyTimer);
-        sesionIniciadaRef.current = true;
-        setSesionId(sesion.id);
-        if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, sesion.id), 300);
-      },
-      onError: (err) => {
-        clearTimeout(safetyTimer);
-        sesionIniciadaRef.current = true;
-        console.warn('[Asistente] crearSesion falló, modo local:', err);
-        const localId = 'local_' + Date.now();
-        setSesionId(localId);
-        if (preguntaInicial) setTimeout(() => enviar(preguntaInicial, localId), 300);
-      },
-    });
-
-    return () => clearTimeout(safetyTimer);
-=======
     // Si venimos del historial, no hay pregunta inicial que disparar
     if (sesionIdParam) return;
     if (!preguntaInicial) return;
@@ -151,7 +100,6 @@ export default function ChatAsistenteScreen() {
     const t = setTimeout(() => enviar(preguntaInicial), 300);
     return () => clearTimeout(t);
   // Se re-ejecuta cuando residenteId pasa de null a un valor real
->>>>>>> 112803bbb5f6e282b767d63155a773516eb07f6b
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [residenteId]);
 
@@ -204,14 +152,13 @@ export default function ChatAsistenteScreen() {
 
   // ── Enviar mensaje ────────────────────────────────────────────────────────
 
+  const enviarRef = useRef(false);
+
   const enviar = useCallback(
     async (texto: string, sid?: string) => {
-<<<<<<< HEAD
-      const currentSesionId = sid ?? sesionId;
-      const esLocalSession = currentSesionId?.startsWith('local_') ?? false;
-      if (!texto.trim() || !currentSesionId || (!residenteId && !esLocalSession) || enviando) return;
-=======
-      if (!texto.trim() || enviando) return;
+      if (!texto.trim() || enviarRef.current) return;
+      enviarRef.current = true;
+      setEnviando(true);
 
       // Creación lazy de sesión: si no hay sesionId aún, crear ahora
       let currentSesionId = sid ?? sesionId;
@@ -234,12 +181,8 @@ export default function ChatAsistenteScreen() {
         }
       }
 
-      if (!residenteId) return;
->>>>>>> 112803bbb5f6e282b767d63155a773516eb07f6b
-
       Keyboard.dismiss();
       setInput('');
-      setEnviando(true);
 
       // Mensaje del usuario (optimista)
       const msgUsuarioId = nextTempId();
@@ -264,7 +207,7 @@ export default function ChatAsistenteScreen() {
       setMensajes((prev) => [...prev, msgUsuario, msgCargando]);
 
       try {
-        const { msgAsistente } = await enviarMensaje.mutateAsync({
+        const { msgUsuario, msgAsistente } = await enviarMensaje.mutateAsync({
           sesionId: currentSesionId,
           residenteId: residenteId ?? '',
           pregunta: texto.trim(),
@@ -290,7 +233,7 @@ export default function ChatAsistenteScreen() {
                   cargando: false,
                 }
               : m.id === msgUsuarioId
-              ? { ...m, id: msgAsistente.sesion_id + '_u' }
+              ? { ...m, id: msgUsuario.id }
               : m,
           ),
         );
@@ -313,10 +256,11 @@ export default function ChatAsistenteScreen() {
           ),
         );
       } finally {
+        enviarRef.current = false;
         setEnviando(false);
       }
     },
-    [sesionId, residenteId, enviando, mensajes.length, enviarMensaje, leerTexto],
+    [sesionId, residenteId, mensajes.length, enviarMensaje, leerTexto],
   );
 
   // ── Toggle favorito ───────────────────────────────────────────────────────

@@ -1,4 +1,7 @@
-import 'react-native-gesture-handler';
+import { Platform } from 'react-native';
+if (Platform.OS !== 'web') {
+  require('react-native-gesture-handler');
+}
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
