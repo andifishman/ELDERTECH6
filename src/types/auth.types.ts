@@ -33,6 +33,15 @@ export interface AuthProfile {
   residente_interes_ids: string[];
 }
 
+/** Ciudad buscada libremente (Open-Meteo), no existe en la tabla ciudades_familiares */
+export interface CiudadCustom {
+  nombre: string;
+  pais_codigo: string;
+  lat: number;
+  lon: number;
+  timezone: string;
+}
+
 export interface RegisterFormData {
   // Step 1
   nombre: string;
@@ -49,7 +58,10 @@ export interface RegisterFormData {
   habitacion: string;
   nivel_dificultad: NivelDificultad;
   intereses: string[];
+  /** IDs de ciudades predeterminadas de la tabla ciudades_familiares */
   ciudades_familiares: string[];
+  /** Ciudades buscadas libremente que no están en la tabla predeterminada */
+  ciudades_familiares_custom: CiudadCustom[];
 }
 
 export type RegisterStep = 1 | 2 | 3;
