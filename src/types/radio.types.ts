@@ -1,8 +1,10 @@
+//tipos TypeScript para el módulo de radio: estaciones, categorías, países y estado del reproductor
 export interface RadioStation {
   id: string;
   nombre: string;
   descripcion: string | null;
   urlStream: string;
+  urlFallback: string | null;   // URL alternativa si la principal falla
   urlLogo: string | null;
   pais: string;
   paisNombre: string | null;

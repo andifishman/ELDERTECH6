@@ -1,16 +1,3 @@
-/**
- * clima.tsx
- * ─────────
- * Pantalla principal de Clima.
- *
- * Funcionalidades:
- *  - Muestra el clima de la ciudad natal (Buenos Aires) y de ciudades agregadas por el usuario
- *  - Selector de ciudades en la parte superior con flechas de navegación
- *  - Botón "Agregar ciudad" para buscar y agregar nuevas ciudades via API
- *  - Botón "Eliminar ciudad" para borrar ciudades agregadas (no la natal)
- *  - Las ciudades se guardan en AsyncStorage y persisten entre sesiones
- *  - Diseño optimizado para personas mayores: texto grande, botones amplios, colores claros
- */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -32,10 +19,23 @@ import { AppHeader } from '@/components/common/AppHeader';
 import { LoadingState, ErrorState } from '@/components/common/LoadingState';
 import { useClima, useClimaCiudad } from '@/hooks/useClima';
 import { buscarCiudades } from '@/services/climaService';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/services/supabase';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { PronosticoDia, GeocodingResult, CiudadGuardada } from '@/types/clima.types';
+
+const PAIS_NOMBRE: Record<string, string> = {
+  AR: 'Argentina',
+  IL: 'Israel',
+  US: 'Estados Unidos',
+  ES: 'España',
+  IT: 'Italia',
+  FR: 'Francia',
+  DE: 'Alemania',
+  BR: 'Brasil',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constantes
@@ -43,11 +43,6 @@ import type { PronosticoDia, GeocodingResult, CiudadGuardada } from '@/types/cli
 
 /** Clave de AsyncStorage donde se persisten las ciudades del usuario */
 const STORAGE_KEY = 'eldertech_ciudades_clima';
-
-/**
- * Ciudad natal fija — Buenos Aires.
- * Siempre aparece primera en el selector y no se puede eliminar.
- */
 const CIUDAD_NATAL: CiudadGuardada = {
   id: 'natal',
   nombre: 'Buenos Aires',
@@ -64,6 +59,9 @@ const CIUDAD_NATAL: CiudadGuardada = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ClimaScreen() {
+  const { profile } = useAuth();
+  const residenteId = profile?.residente?.id ?? null;
+
   /** Lista completa de ciudades (natal + las que agregó el usuario) */
   const [ciudades, setCiudades] = useState<CiudadGuardada[]>([CIUDAD_NATAL]);
 
@@ -96,22 +94,54 @@ export default function ClimaScreen() {
     ? climaNatal
     : climaCiudad;
 
-  // ── Cargar ciudades guardadas desde AsyncStorage al iniciar la pantalla ──
+  // Refrescar siempre que cambia la ciudad activa
+  useEffect(() => {
+    refetch();
+  }, [ciudadActiva.id]);
+
+  // ── Cargar ciudades: AsyncStorage primero; si vacío y hay sesión, semillar con ciudades familiares ──
   useEffect(() => {
     async function cargarCiudades() {
       try {
         const json = await AsyncStorage.getItem(STORAGE_KEY);
         if (json) {
           const guardadas: CiudadGuardada[] = JSON.parse(json);
-          // La ciudad natal siempre va primera, luego las guardadas
           setCiudades([CIUDAD_NATAL, ...guardadas.filter((c) => !c.esNatal)]);
+          return;
         }
-      } catch {
-        // Si falla la lectura del storage, se usa solo la ciudad natal
+      } catch {}
+
+      // Primera vez: si el usuario tiene familiares, pre-cargar sus ciudades
+      if (residenteId) {
+        try {
+          const { data } = await supabase
+            .from('residente_ciudades_familiares')
+            .select('ciudad_familiar:ciudades_familiares(id, nombre, pais_codigo, lat, lon, timezone)')
+            .eq('residente_id', residenteId);
+
+          const familiares: CiudadGuardada[] = (data ?? [])
+            .map((row: any) => row.ciudad_familiar)
+            .filter((c: any) => c?.lat && c?.lon && c?.timezone)
+            .map((c: any) => ({
+              id: `fam_${c.id}`,
+              nombre: c.nombre,
+              pais: c.pais_codigo,
+              paisNombre: PAIS_NOMBRE[c.pais_codigo] ?? c.pais_codigo,
+              lat: c.lat,
+              lon: c.lon,
+              timezone: c.timezone,
+              esNatal: false,
+            }));
+
+          if (familiares.length > 0) {
+            setCiudades([CIUDAD_NATAL, ...familiares]);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(familiares));
+          }
+        } catch {}
       }
     }
     cargarCiudades();
-  }, []);
+  }, [residenteId]);
 
   /** Guarda la lista de ciudades en AsyncStorage (excluye la natal que es fija) */
   const persistirCiudades = useCallback(async (lista: CiudadGuardada[]) => {
@@ -245,6 +275,7 @@ export default function ClimaScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 0 }}
           refreshControl={
             // Pull-to-refresh para actualizar el clima manualmente
             <RefreshControl
@@ -254,19 +285,6 @@ export default function ClimaScreen() {
             />
           }
         >
-          {/* Botón "Eliminar ciudad" — solo visible si la ciudad activa no es la natal */}
-          {!ciudadActiva.esNatal && (
-            <TouchableOpacity
-              style={styles.eliminarBtn}
-              onPress={() => setModalEliminar(true)}
-              accessibilityLabel={`Eliminar ${ciudadActiva.nombre}`}
-              accessibilityRole="button"
-            >
-              <Ionicons name="trash-outline" size={18} color={Colors.text.onDark} />
-              <Text style={styles.eliminarBtnTexto}>Eliminar ciudad</Text>
-            </TouchableOpacity>
-          )}
-
           {/* ── Card principal con gradiente azul ── */}
           <LinearGradient
             colors={['#1565C0', '#1976D2', '#2196F3']}
@@ -303,6 +321,19 @@ export default function ClimaScreen() {
               <PronosticoDiaRow key={dia.fecha} dia={dia} />
             ))}
           </View>
+
+          {/* Botón "Eliminar ciudad" — solo visible si la ciudad activa no es la natal, abajo de todo */}
+          {!ciudadActiva.esNatal && (
+            <TouchableOpacity
+              style={styles.eliminarBtn}
+              onPress={() => setModalEliminar(true)}
+              accessibilityLabel={`Eliminar ${ciudadActiva.nombre}`}
+              accessibilityRole="button"
+            >
+              <Ionicons name="trash-outline" size={18} color={Colors.text.onDark} />
+              <Text style={styles.eliminarBtnTexto}>Eliminar ciudad</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       )}
 
@@ -409,13 +440,20 @@ export default function ClimaScreen() {
 /**
  * CiudadSelector
  * ──────────────
- * Barra horizontal con tabs de ciudades y flechas de navegación.
+ * Layout fijo de 3 filas:
+ *   Fila 1: ciudades en posiciones pares  (0, 2, 4...)
+ *   Fila 2: ciudades en posiciones impares (1, 3, 5...) — si no hay, queda vacia
+ *   Fila 3: boton "Agregar ciudad" solo
  *
- * - Muestra hasta 3 ciudades a la vez
- * - Si hay más de 3, aparecen flechas ‹ › para desplazarse
- * - La flecha izquierda no aparece cuando se está al inicio (sin espacio vacío)
- * - El botón "Agregar ciudad" siempre está visible al final
+ * Caso pocas ciudades (todas caben en fila 1):
+ *   Fila 1: ciudades
+ *   Fila 2: boton "Agregar ciudad"  (la fila 3 desaparece)
+ *
+ * Las flechas < > aparecen cuando hay mas ciudades de las que entran visualmente.
  */
+const CHIP_WIDTH = 130;
+const CHIPS_PER_PAGE = 3;
+
 function CiudadSelector({
   ciudades,
   ciudadActiva,
@@ -427,46 +465,11 @@ function CiudadSelector({
   onSeleccionar: (c: CiudadGuardada) => void;
   onAgregar: () => void;
 }) {
-  /** Cantidad máxima de ciudades visibles al mismo tiempo */
-  const VISIBLE = 3;
-
-  /** Índice del primer tab visible en la ventana actual */
-  const [inicio, setInicio] = useState(0);
-
-  // Cuando cambia la ciudad activa, ajustar la ventana para que sea visible
-  useEffect(() => {
-    const idx = ciudades.findIndex((c) => c.id === ciudadActiva.id);
-    if (idx < 0) return;
-    if (idx < inicio) setInicio(idx);
-    else if (idx >= inicio + VISIBLE) setInicio(Math.max(0, idx - VISIBLE + 1));
-  }, [ciudadActiva, ciudades]);
-
-  const puedeAtras = inicio > 0;
-  const puedeAdelante = inicio + VISIBLE < ciudades.length;
-
-  /** Ciudades que se muestran en este momento */
-  const visibles = ciudades.slice(inicio, inicio + VISIBLE);
-
   return (
     <View style={styles.ciudadesBar}>
-
-      {/* Flecha izquierda — solo se renderiza si hay ciudades ocultas a la izquierda.
-          Cuando no hay, se usa un placeholder de ancho 0 para no dejar espacio vacío. */}
-      {puedeAtras ? (
-        <TouchableOpacity
-          style={styles.ciudadArrow}
-          onPress={() => setInicio((p) => p - 1)}
-          accessibilityLabel="Ciudad anterior"
-        >
-          <Ionicons name="chevron-back" size={22} color={Colors.text.secondary} />
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.ciudadArrowPlaceholder} />
-      )}
-
-      {/* Tabs de las ciudades visibles actualmente */}
-      <View style={styles.ciudadesRow}>
-        {visibles.map((ciudad) => {
+      {/* Chips de ciudades + botón agregar en un wrap continuo de izquierda a derecha */}
+      <View style={styles.ciudadesWrap}>
+        {ciudades.map((ciudad) => {
           const activa = ciudad.id === ciudadActiva.id;
           return (
             <TouchableOpacity
@@ -483,29 +486,18 @@ function CiudadSelector({
             </TouchableOpacity>
           );
         })}
-      </View>
 
-      {/* Flecha derecha — solo visible si hay ciudades ocultas a la derecha */}
-      {puedeAdelante && (
+        {/* Botón agregar — fluye junto a los chips */}
         <TouchableOpacity
-          style={styles.ciudadArrow}
-          onPress={() => setInicio((p) => p + 1)}
-          accessibilityLabel="Ciudad siguiente"
+          style={styles.addBtn}
+          onPress={onAgregar}
+          accessibilityLabel="Agregar ciudad"
+          accessibilityRole="button"
         >
-          <Ionicons name="chevron-forward" size={22} color={Colors.text.secondary} />
+          <Ionicons name="add" size={18} color={Colors.text.secondary} />
+          <Text style={styles.addBtnTexto}>Agregar ciudad</Text>
         </TouchableOpacity>
-      )}
-
-      {/* Botón "Agregar ciudad" — siempre visible, pegado justo después de los tabs */}
-      <TouchableOpacity
-        style={styles.addBtn}
-        onPress={onAgregar}
-        accessibilityLabel="Agregar ciudad"
-        accessibilityRole="button"
-      >
-        <Ionicons name="add" size={18} color={Colors.text.secondary} />
-        <Text style={styles.addBtnTexto}>Agregar ciudad</Text>
-      </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -560,33 +552,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ui.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.ui.border,
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
-  },
-  /** Botón de flecha (izquierda o derecha) */
-  ciudadArrow: {
-    width: 32,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  /** Placeholder de ancho 0 — reemplaza la flecha izquierda cuando no hay ciudades ocultas */
-  ciudadArrowPlaceholder: {
-    width: 0,
-  },
-  /** Fila que contiene los tabs de ciudades visibles */
-  ciudadesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  ciudadesScroll: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    alignItems: 'center',
+  },
+  /** Chips de ciudades + botón agregar en un wrap de izquierda a derecha */
+  ciudadesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
   /** Tab de ciudad no seleccionada */
@@ -613,7 +585,7 @@ const styles = StyleSheet.create({
     color: Colors.text.onDark,
     fontWeight: Typography.weight.medium,
   },
-  /** Botón "Agregar ciudad" con borde punteado */
+  /** Botón "Agregar ciudad" con borde punteado — fluye junto a los chips */
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -624,8 +596,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.ui.border,
     borderStyle: 'dashed',
-    flexShrink: 0,
-    marginLeft: Spacing.xs,
   },
   addBtnTexto: {
     fontSize: Typography.size.sm,
@@ -641,6 +611,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.red,
     marginHorizontal: Spacing.screen.horizontal,
     marginTop: Spacing.md,
+    marginBottom: Spacing.md,
     borderRadius: Spacing.radius.lg,
     paddingVertical: Spacing.md,
   },
@@ -740,7 +711,7 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.radius.xl,
     padding: Spacing.lg,
     gap: Spacing.sm,
-    marginBottom: Spacing.xxxl,
+    marginBottom: Spacing.md,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -784,19 +755,22 @@ const styles = StyleSheet.create({
   /** Fondo semitransparente del modal de búsqueda */
   modalOverlay: {
     flex: 1,
+    width: '100%',
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-start',
-    paddingTop: 80,   // Deja espacio para el header de la app
+    paddingTop: 80,
   },
   /** Caja blanca del modal — ocupa toda la pantalla desde el header hacia abajo */
   modalBox: {
     backgroundColor: Colors.ui.surface,
     borderRadius: 24,
     marginHorizontal: Spacing.md,
+    marginRight: Spacing.md,
     padding: Spacing.xxl,
     flex: 1,
     marginBottom: 0,
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   /** Título compartido por ambos modales */
   modalTitulo: {
@@ -860,16 +834,18 @@ const styles = StyleSheet.create({
   /** Fondo semitransparente centrado en pantalla */
   modalOverlayCentrado: {
     flex: 1,
+    width: '100%',
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
   /** Caja del modal de eliminación */
   modalBoxPequeno: {
     backgroundColor: Colors.ui.surface,
     borderRadius: 20,
     padding: Spacing.xxl,
-    marginHorizontal: Spacing.xxl,
+    width: '100%',
     gap: Spacing.md,
   },
   modalMensaje: {

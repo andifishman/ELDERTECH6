@@ -4,12 +4,14 @@ import {
   Text,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
-import { SpeakButton } from '@/components/common/SpeakButton';
 import { LoadingState, ErrorState } from '@/components/common/LoadingState';
 import { useActividad } from '@/hooks/useActividades';
+import { hablar } from '@/utils/tts';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -66,10 +68,15 @@ export default function ActividadDetalleScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionIcon}>📍</Text>
               <Text style={styles.sectionTitle}>¿Dónde es?</Text>
-              <SpeakButton
-                texto={`${actividad.ubicacion.nombre}. ${actividad.ubicacion.descripcion ?? ''}`}
-                size="sm"
-              />
+              <TouchableOpacity
+                style={styles.escucharBtn}
+                onPress={() => hablar(`${actividad.ubicacion!.nombre}. ${actividad.ubicacion!.descripcion ?? ''}`)}
+                accessibilityLabel="Escuchar ubicación"
+                accessibilityRole="button"
+              >
+                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
+                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.sectionCard}>
               <Text style={styles.sectionMainText}>{actividad.ubicacion.nombre}</Text>
@@ -86,7 +93,15 @@ export default function ActividadDetalleScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionIcon}>📝</Text>
               <Text style={styles.sectionTitle}>Descripción</Text>
-              <SpeakButton texto={actividad.descripcion} size="sm" />
+              <TouchableOpacity
+                style={styles.escucharBtn}
+                onPress={() => hablar(actividad.descripcion!)}
+                accessibilityLabel="Escuchar descripción"
+                accessibilityRole="button"
+              >
+                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
+                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
+              </TouchableOpacity>
             </View>
             <Text style={styles.descripcionTexto}>{actividad.descripcion}</Text>
           </View>
@@ -100,10 +115,15 @@ export default function ActividadDetalleScreen() {
               <Text style={styles.sectionTitle}>
                 {`${actividad.responsable.nombre} ${actividad.responsable.apellido}`}
               </Text>
-              <SpeakButton
-                texto={`Responsable: ${actividad.responsable.nombre} ${actividad.responsable.apellido}`}
-                size="sm"
-              />
+              <TouchableOpacity
+                style={styles.escucharBtn}
+                onPress={() => hablar(`Responsable: ${actividad.responsable!.nombre} ${actividad.responsable!.apellido}`)}
+                accessibilityLabel="Escuchar responsable"
+                accessibilityRole="button"
+              >
+                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
+                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
+              </TouchableOpacity>
             </View>
             <Text style={styles.sectionSubText}>Instructor ElderTech</Text>
           </View>
@@ -203,5 +223,23 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     color: Colors.text.primary,
     lineHeight: 26,
+  },
+
+  // Botón Escuchar — rectangular redondeado, fondo gris claro, texto azul
+  escucharBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.ui.background,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+  },
+  escucharBtnTexto: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: '#3D5AFE',
   },
 });

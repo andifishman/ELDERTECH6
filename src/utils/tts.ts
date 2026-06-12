@@ -1,8 +1,10 @@
+//utilidad para texto a voz — usa expo-speech con voz en español para adultos mayores
 import * as Speech from 'expo-speech';
 
+//guarda el texto que se está leyendo para saber si hay que detener o empezar
 let hablandoId: string | null = null;
 
-/** Habla el texto en español. Si ya está hablando el mismo texto, lo detiene. */
+//lee el texto en voz alta; si ya está hablando lo detiene
 export async function hablar(texto: string): Promise<void> {
   const estaHablando = await Speech.isSpeakingAsync();
 
@@ -23,6 +25,7 @@ export async function hablar(texto: string): Promise<void> {
   });
 }
 
+//detiene la lectura si está activa
 export async function detenerHabla(): Promise<void> {
   const estaHablando = await Speech.isSpeakingAsync();
   if (estaHablando) {
@@ -31,6 +34,7 @@ export async function detenerHabla(): Promise<void> {
   }
 }
 
+//devuelve true si el sintetizador de voz está activo en este momento
 export async function estaHablando(): Promise<boolean> {
   return Speech.isSpeakingAsync();
 }

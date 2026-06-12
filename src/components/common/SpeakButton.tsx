@@ -1,3 +1,4 @@
+//botón de texto a voz — lee el texto en voz alta al tocar; soporta variantes de estilo y tamaño
 import React, { useState, useCallback } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +7,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 
-type Variante = 'onLight' | 'onDark' | 'chip';
+type Variante = 'onLight' | 'onDark' | 'chip' | 'escuchar';
 
 interface SpeakButtonProps {
   texto: string;
@@ -28,6 +29,27 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
     await hablar(texto);
     setActivo(false);
   }, [texto, activo]);
+
+  if (variante === 'escuchar') {
+    return (
+      <TouchableOpacity
+        style={[styles.escucharBtn, activo && styles.escucharBtnActivo]}
+        onPress={handlePress}
+        accessibilityLabel={`Escuchar: ${texto}`}
+        accessibilityRole="button"
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+      >
+        <Ionicons
+          name={activo ? 'volume-high' : 'volume-medium'}
+          size={22}
+          color={activo ? Colors.speak.active : '#1B5E3B'}
+        />
+        <Text style={[styles.escucharLabel, activo && styles.escucharLabelActivo]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
 
   if (variante === 'chip') {
     return (
@@ -167,5 +189,29 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  // Variante "escuchar" — rectangular, fondo verde claro, texto verde oscuro
+  escucharBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#E8F5E9',
+    elevation: 0,
+  },
+  escucharBtnActivo: {
+    backgroundColor: Colors.speak.activeBg,
+  },
+  escucharLabel: {
+    fontSize: 16,
+    fontWeight: Typography.weight.bold,
+    color: '#1B5E3B',
+  },
+  escucharLabelActivo: {
+    color: Colors.speak.active,
   },
 });

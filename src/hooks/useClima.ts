@@ -22,8 +22,8 @@ import type { ConfiguracionClima } from '@/types/database.types';
 // Función interna: obtiene el clima de la organización desde Supabase
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function fetchClimaOrg() {
-  // 1. Intentar leer la configuración de clima de la organización en Supabase
+export async function fetchClimaOrg() {
+  //consulta la configuración de ciudad guardada para esta organización
   const { data, error } = await supabase
     .from('configuracion_clima')
     .select('*')
@@ -73,7 +73,7 @@ export function useClima() {
   return useQuery({
     queryKey: ['clima', 'org', ORG_ID],
     queryFn: fetchClimaOrg,
-    staleTime: 30 * 60 * 1000, // 30 minutos — el clima no cambia tan seguido
+    staleTime: 10 * 60 * 1000, // el clima cambia lento — evitar refetch en cada mount
     retry: 2,
     refetchOnWindowFocus: false,
   });
@@ -98,7 +98,7 @@ export function useClimaCiudad(ciudad: CiudadGuardada | null) {
       return getClima(ciudad.nombre, ciudad.lat, ciudad.lon, ciudad.timezone, ciudad.pais);
     },
     enabled: !!ciudad, // Solo ejecutar si hay una ciudad seleccionada
-    staleTime: 30 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // el clima cambia lento — evitar refetch en cada mount
     retry: 2,
     refetchOnWindowFocus: false,
   });
