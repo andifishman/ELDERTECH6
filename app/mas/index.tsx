@@ -42,7 +42,6 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     ruta: '/mas/radio',
     textoHablar: 'Radio. Escuchá radios en vivo.',
   },
-  
 ];
 
 // Opciones próximamente — aparecen abajo de la línea, bloqueadas y tachadas

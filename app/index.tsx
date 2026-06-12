@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { usePrefetchHome } from '@/hooks/usePrefetchHome';
+import { ProximaActividadWidget } from '@/components/home/ProximaActividadWidget';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -89,8 +90,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const fecha = getFechaHoy();
   const { profile } = useAuth();
-  // Precarga contactos, actividades, radios, tutoriales y clima en background
-  // para que las secciones abran al instante
   usePrefetchHome();
 
   const speak = (text: string) => {
@@ -101,7 +100,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <View style={styles.headerRow}>
           <View style={styles.logoContainer}>
             <Image
@@ -128,17 +127,20 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Welcome Section */}
-      <View style={styles.welcomeSection}>
-        <Text style={styles.welcome} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Hoy es {fecha}</Text>
-      </View>
-
       {/* Menu Grid */}
       <ScrollView
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
       >
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcome} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Hoy es {fecha}</Text>
+        </View>
+
+        {/* Widget próxima actividad */}
+        <ProximaActividadWidget />
+
         {/* Large Horarios Card */}
         <TouchableOpacity
           style={[styles.largeCard, { backgroundColor: menuItems[0].color }]}
@@ -223,7 +225,7 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: '#4CAF50',
-    paddingBottom: 12,
+    paddingBottom: 4,
     paddingHorizontal: 8,
   },
   headerRow: {
@@ -257,13 +259,13 @@ const styles = StyleSheet.create({
   // Welcome
   welcomeSection: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   welcome: { color: '#2E3A59', fontSize: 26, fontWeight: 'bold', marginBottom: 2 },
 
   // Grid
-  grid: { padding: 14, paddingTop: 4, gap: 12 },
+  grid: { padding: 14, paddingTop: 2, gap: 12 },
 
   // Shared icon circle
   iconCircle: {
@@ -294,7 +296,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   largeCardIcon: { fontSize: 30 },
-  largeCardLabel: { fontSize: 30, fontWeight: 'bold', color: '#FFFFFF' },
+  largeCardLabel: { fontSize: 36, fontWeight: 'bold', color: '#FFFFFF' },
 
   // Botón Escuchar — rectangular redondeado, fondo blanco, texto azul
   audioBtn: {
@@ -333,6 +335,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   mediumCardIcon: { fontSize: 26 },
-  mediumCardLabel: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginTop: 4 },
+  mediumCardLabel: { fontSize: 29, fontWeight: 'bold', color: '#FFFFFF', marginTop: 4 },
 
 });

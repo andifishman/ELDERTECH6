@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,36 @@ import { hablar } from '@/utils/tts';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { formatHora, esMañana } from '@/utils/dateUtils';
+import { formatHora, esMañana, parseHora } from '@/utils/dateUtils';
 
 export default function ActividadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: actividad, isLoading, error } = useActividad(id ?? null);
+
+  // Estado reactivo — se actualiza cada 30s para reflejar el minuto actual
+  const [minutosRestantes, setMinutosRestantes] = useState(0);
+
+  useEffect(() => {
+    if (!actividad) return;
+    const calcular = () => {
+      const ahora = new Date();
+      const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+      const { horas: hIni, minutos: mIni } = parseHora(actividad.hora_inicio);
+      return hIni * 60 + mIni - minutosAhora;
+    };
+    setMinutosRestantes(calcular());
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const now = new Date();
+    const msHastaProximoMinuto = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    const timeoutId = setTimeout(() => {
+      setMinutosRestantes(calcular());
+      intervalId = setInterval(() => setMinutosRestantes(calcular()), 60_000);
+    }, msHastaProximoMinuto);
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [actividad?.hora_inicio]);
 
   if (isLoading) return <LoadingState mensaje="Cargando actividad..." />;
   if (error || !actividad) return <ErrorState mensaje="No se encontró la actividad." />;
@@ -28,6 +53,7 @@ export default function ActividadDetalleScreen() {
   const colorAccent = mañana ? Colors.activity.morning : Colors.activity.afternoon;
   const emoji = actividad.emoji_icono ?? actividad.tipo_actividad?.emoji ?? '📋';
   const horaTexto = `${formatHora(actividad.hora_inicio)}${actividad.hora_fin ? ` - ${formatHora(actividad.hora_fin)}` : ''} hs`;
+  const esPronto = minutosRestantes > 0 && minutosRestantes <= 30;
 
   const textoHablar = [
     actividad.nombre,
@@ -60,6 +86,11 @@ export default function ActividadDetalleScreen() {
           </View>
           <Text style={styles.heroNombre}>{actividad.nombre}</Text>
           <Text style={styles.heroHora}>⏰ {horaTexto}</Text>
+          {esPronto && (
+            <View style={styles.prontoBadge}>
+              <Text style={styles.prontoTexto}>Empieza en {minutosRestantes} minutos</Text>
+            </View>
+          )}
         </View>
 
         {/* Ubicación */}
@@ -223,6 +254,20 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     color: Colors.text.primary,
     lineHeight: 26,
+  },
+
+  prontoBadge: {
+    backgroundColor: '#FF8F00',
+    borderRadius: Spacing.radius.lg,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: 12,
+    alignSelf: 'stretch',
+  },
+  prontoTexto: {
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.heavy,
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
 
   // Botón Escuchar — rectangular redondeado, fondo gris claro, texto azul
