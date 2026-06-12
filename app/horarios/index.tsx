@@ -59,11 +59,16 @@ function generarVentana(hoy: Date, diasAtras: number, diasAdelante: number): Dat
 }
 
 export default function HorariosScreen() {
-  const hoy = new Date();
+  // Estable durante toda la sesión — no recrear en cada render
+  const hoy = React.useMemo(() => new Date(), []);
 
-  const [diasAtras, setDiasAtras] = useState(0);
-  const [diasAdelante, setDiasAdelante] = useState(0);
-  const ventana = generarVentana(hoy, diasAtras, diasAdelante);
+  // Iniciar con ±2 para que el carrusel ya muestre 5 días al abrir
+  const [diasAtras, setDiasAtras] = useState(2);
+  const [diasAdelante, setDiasAdelante] = useState(2);
+  const ventana = React.useMemo(
+    () => generarVentana(hoy, diasAtras, diasAdelante),
+    [hoy, diasAtras, diasAdelante],
+  );
   const [diaSeleccionado, setDiaSeleccionado] = useState(hoy);
   const [mostrarModalLimite, setMostrarModalLimite] = useState(false);
   const [mensajeLimite, setMensajeLimite] = useState('');
@@ -105,7 +110,7 @@ export default function HorariosScreen() {
     if (diffPasado <= 1 && diasAtras < MAX_DIAS_PASADO) {
       setDiasAtras((prev) => Math.min(prev + 7, MAX_DIAS_PASADO));
     }
-  }, [diaSeleccionado, diasAtras, diasAdelante]);
+  }, [hoy, diaSeleccionado, diasAtras, diasAdelante]);
 
   // Hook de React Query — carga las actividades del día seleccionado desde Supabase
   const { data: actividades, isLoading, error, refetch } = useActividades(diaSeleccionado);

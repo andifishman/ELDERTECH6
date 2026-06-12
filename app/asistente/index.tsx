@@ -116,29 +116,28 @@ export default function AsistenteScreen() {
           </View>
         )}
 
-        {/* ── Historial ── */}
-        {sesiones.length > 0 && (
-          <>
-            <View style={styles.seccionHeader}>
-              <Text style={styles.seccionTitulo}>Conversaciones recientes</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.historialBtn}
-              onPress={irAHistorial}
-              accessibilityLabel="Ver historial de conversaciones"
-              accessibilityRole="button"
-            >
-              <Ionicons name="time" size={24} color={Colors.brand.blueDark} />
-              <View style={styles.historialInfo}>
-                <Text style={styles.historialTexto}>Ver conversaciones anteriores</Text>
-                <Text style={styles.historialSubtexto}>
-                  {sesiones.length} conversacion{sesiones.length !== 1 ? 'es' : ''} guardada{sesiones.length !== 1 ? 's' : ''}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color={Colors.text.hint} />
-            </TouchableOpacity>
-          </>
-        )}
+        {/* ── Historial — siempre visible ── */}
+        <View style={styles.seccionHeader}>
+          <Text style={styles.seccionTitulo}>Mis conversaciones</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.historialBtn}
+          onPress={irAHistorial}
+          accessibilityLabel="Ver historial de conversaciones"
+          accessibilityRole="button"
+          activeOpacity={0.8}
+        >
+          <Ionicons name="time" size={24} color={Colors.brand.blueDark} />
+          <View style={styles.historialInfo}>
+            <Text style={styles.historialTexto}>Ver conversaciones anteriores</Text>
+            <Text style={styles.historialSubtexto}>
+              {sesiones.length > 0
+                ? `${sesiones.length} conversacion${sesiones.length !== 1 ? 'es' : ''} guardada${sesiones.length !== 1 ? 's' : ''}`
+                : 'Sus conversaciones aparecerán aquí'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color={Colors.text.hint} />
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

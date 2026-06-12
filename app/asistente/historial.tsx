@@ -1,5 +1,5 @@
 // Historial de conversaciones del Asistente
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,16 +29,23 @@ export default function HistorialAsistenteScreen() {
   const { data: sesiones = [], isLoading } = useSesionesRecientes(residenteId);
   const { data: favoritos = [] } = useMensajesFavoritos(residenteId);
 
-  function formatearFecha(iso: string): string {
+  const formatearFecha = useCallback((iso: string): string => {
     const d = new Date(iso);
     const hoy = new Date();
     const ayer = new Date(hoy);
     ayer.setDate(ayer.getDate() - 1);
-
     if (d.toDateString() === hoy.toDateString()) return 'Hoy';
     if (d.toDateString() === ayer.toDateString()) return 'Ayer';
     return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
-  }
+  }, []);
+
+  const irAlMensajeFavorito = useCallback((sesionId: string, mensajeId: string) => {
+    router.push({ pathname: '/asistente/chat', params: { sesionId, mensajeId } });
+  }, [router]);
+
+  const irAlChat = useCallback((sesionId: string) => {
+    router.push({ pathname: '/asistente/chat', params: { sesionId } });
+  }, [router]);
 
   return (
     <View style={styles.root}>
@@ -52,75 +60,82 @@ export default function HistorialAsistenteScreen() {
           <ActivityIndicator size="large" color={Colors.brand.blueDark} />
         </View>
       ) : (
-        <FlatList
-          data={[]}
-          keyExtractor={() => ''}
-          renderItem={() => null}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
           showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <View style={styles.content}>
-              {/* ── Respuestas guardadas ── */}
-              {favoritos.length > 0 && (
-                <>
-                  <Text style={styles.seccionTitulo}>⭐ Respuestas guardadas</Text>
-                  {favoritos.slice(0, 5).map((msg) => (
-                    <TouchableOpacity
-                      key={msg.id}
-                      style={styles.favCard}
-                      activeOpacity={0.7}
-                      onPress={() => router.push({ pathname: '/asistente/chat', params: { sesionId: msg.sesion_id } })}
-                      accessibilityRole="button"
-                      accessibilityLabel="Ver conversación con esta respuesta guardada"
-                    >
-                      <Ionicons name="star" size={20} color="#FFC107" style={{ flexShrink: 0 }} />
-                      <Text style={styles.favTexto} numberOfLines={3}>
-                        {msg.contenido}
-                      </Text>
-                      <Ionicons name="chevron-forward" size={18} color={Colors.text.hint} style={{ flexShrink: 0 }} />
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
+        >
+          {/* ── Respuestas guardadas ── */}
+          {favoritos.length > 0 ? (
+            <>
+              <Text style={styles.seccionTitulo}>⭐  Respuestas guardadas</Text>
+              {favoritos.map((msg) => (
+                <TouchableOpacity
+                  key={msg.id}
+                  style={styles.favCard}
+                  activeOpacity={0.75}
+                  onPress={() => irAlMensajeFavorito(msg.sesion_id, msg.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver esta respuesta en el chat"
+                >
+                  <View style={styles.favIcono}>
+                    <Ionicons name="star" size={22} color="#F59E0B" />
+                  </View>
+                  <View style={styles.favCuerpo}>
+                    <Text style={styles.favTexto} numberOfLines={3}>
+                      {msg.contenido}
+                    </Text>
+                    <Text style={styles.favAccion}>Toque para ver en el chat →</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.seccionTitulo}>⭐  Respuestas guardadas</Text>
+              <View style={styles.vacioCont}>
+                <Text style={styles.vacioTexto}>
+                  Toque la estrella en cualquier respuesta para guardarla aquí.
+                </Text>
+              </View>
+            </>
+          )}
 
-              {/* ── Historial de sesiones ── */}
-              <Text style={styles.seccionTitulo}>🕐 Conversaciones anteriores</Text>
+          {/* ── Historial de sesiones ── */}
+          <Text style={[styles.seccionTitulo, { marginTop: Spacing.xl }]}>🕐  Conversaciones anteriores</Text>
 
-              {sesiones.length === 0 ? (
-                <View style={styles.vacioCont}>
-                  <Text style={styles.vacioEmoji}>💬</Text>
-                  <Text style={styles.vacioTexto}>
-                    Todavía no hay conversaciones guardadas.
+          {sesiones.length === 0 ? (
+            <View style={styles.vacioCont}>
+              <Text style={styles.vacioEmoji}>💬</Text>
+              <Text style={styles.vacioTexto}>
+                Todavía no hay conversaciones guardadas.
+              </Text>
+            </View>
+          ) : (
+            sesiones.map((sesion) => (
+              <TouchableOpacity
+                key={sesion.id}
+                style={styles.sesionCard}
+                onPress={() => irAlChat(sesion.id)}
+                accessibilityLabel={`Conversación: ${sesion.titulo ?? formatearFecha(sesion.created_at)}`}
+                accessibilityRole="button"
+                activeOpacity={0.8}
+              >
+                <View style={styles.sesionIcono}>
+                  <Ionicons name="chatbubbles" size={24} color={Colors.brand.blueDark} />
+                </View>
+                <View style={styles.sesionInfo}>
+                  <Text style={styles.sesionTitulo} numberOfLines={1}>
+                    {sesion.titulo ?? 'Conversación'}
+                  </Text>
+                  <Text style={styles.sesionFecha}>
+                    {formatearFecha(sesion.created_at)}
                   </Text>
                 </View>
-              ) : (
-                sesiones.map((sesion) => (
-                  <TouchableOpacity
-                    key={sesion.id}
-                    style={styles.sesionCard}
-                    onPress={() => router.push({ pathname: '/asistente/chat', params: { sesionId: sesion.id } })}
-                    accessibilityLabel={`Conversación: ${sesion.titulo ?? formatearFecha(sesion.created_at)}`}
-                    accessibilityRole="button"
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.sesionIcono}>
-                      <Ionicons name="chatbubbles" size={24} color={Colors.brand.blueDark} />
-                    </View>
-                    <View style={styles.sesionInfo}>
-                      <Text style={styles.sesionTitulo} numberOfLines={1}>
-                        {sesion.titulo ?? 'Conversación'}
-                      </Text>
-                      <Text style={styles.sesionFecha}>
-                        {formatearFecha(sesion.created_at)}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={Colors.text.hint} />
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          }
-        />
+                <Ionicons name="chevron-forward" size={20} color={Colors.text.hint} />
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
       )}
     </View>
   );
@@ -146,18 +161,41 @@ const styles = StyleSheet.create({
   favCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFFDE7',
+    backgroundColor: '#FFFBEB',
     borderRadius: Spacing.radius.lg,
     padding: Spacing.lg,
-    gap: Spacing.sm,
-    borderWidth: 1,
-    borderColor: '#FFF9C4',
+    gap: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+    elevation: 1,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+  },
+  favIcono: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  favCuerpo: {
+    flex: 1,
+    gap: 4,
   },
   favTexto: {
-    flex: 1,
     fontSize: Typography.size.md,
     color: Colors.text.primary,
     lineHeight: 24,
+  },
+  favAccion: {
+    fontSize: Typography.size.sm,
+    color: '#D97706',
+    fontWeight: Typography.weight.semibold,
+    marginTop: 2,
   },
 
   // Sesiones

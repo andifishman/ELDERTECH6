@@ -32,7 +32,7 @@ import type { Interes, CiudadFamiliar } from '@/types/auth.types';
 const FLAG: Record<string, string> = { AR: '🇦🇷', IL: '🇮🇱', US: '🇺🇸' };
 
 export default function ProfileScreen() {
-  const { profile, refreshProfile, updateLocalProfile, session } = useAuth();
+  const { profile, refreshProfile, updateLocalProfile, session, isLoading: authLoading } = useAuth();
   const residente = profile?.residente;
   const perfil = profile?.perfil;
 
@@ -120,10 +120,36 @@ export default function ProfileScreen() {
   }
 
   if (!profile) {
+    // Auth todavía cargando → spinner normal
+    if (authLoading) {
+      return (
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.center}>
+            <ActivityIndicator color={Colors.brand.greenDark} size="large" />
+          </View>
+        </SafeAreaView>
+      );
+    }
+    // Auth terminó pero no hay perfil → mostrar error con botón de reintento
     return (
       <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Volver">
+            <Ionicons name="arrow-back" size={26} color={Colors.text.onDark} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Mi perfil</Text>
+          <View style={{ width: 48 }} />
+        </View>
         <View style={styles.center}>
-          <ActivityIndicator color={Colors.brand.greenDark} size="large" />
+          <Text style={styles.errorEmoji}>😕</Text>
+          <Text style={styles.errorTitulo}>No se pudo cargar el perfil</Text>
+          <Text style={styles.errorSub}>Verificá tu conexión y tocá reintentar.</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={refreshProfile} accessibilityRole="button">
+            <Text style={styles.retryBtnTexto}>Reintentar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()} accessibilityRole="button">
+            <Text style={styles.volverLink}>Volver al inicio</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -585,5 +611,44 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     color: Colors.brand.red,
     textAlign: 'center',
+  },
+
+  // Estado de error en perfil
+  errorEmoji: {
+    fontSize: 52,
+    marginBottom: Spacing.md,
+  },
+  errorTitulo: {
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  errorSub: {
+    fontSize: Typography.size.md,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    paddingHorizontal: Spacing.xxxl,
+    lineHeight: 24,
+  },
+  retryBtn: {
+    backgroundColor: Colors.brand.greenDark,
+    borderRadius: Spacing.radius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xxxl,
+    marginBottom: Spacing.md,
+  },
+  retryBtnTexto: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+  },
+  volverLink: {
+    fontSize: Typography.size.md,
+    color: Colors.text.secondary,
+    textDecorationLine: 'underline',
+    marginTop: Spacing.sm,
   },
 });

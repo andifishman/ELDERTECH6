@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Timeout de seguridad — si algo falla, nunca quedarse en loading para siempre
       const safetyTimer = setTimeout(() => {
         if (mounted) setIsLoading(false);
-      }, 8000);
+      }, 5000);
 
       try {
         // Step 1: get session from local storage (fast, no network)
@@ -115,9 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               })
               .catch(() => {});
           } else {
-            // First login ever — fetch con getProfileForUser para evitar getUser() extra
+            // First login — fetch con timeout explícito: si Supabase tarda >4s no bloqueamos la UI
             try {
-              const p = await getProfileForUser(uid);
+              const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000));
+              const p = await Promise.race([getProfileForUser(uid), timeout]);
               if (mounted) {
                 setProfile(p);
                 if (p) writeCache(uid, p);

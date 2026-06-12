@@ -114,8 +114,8 @@ export function useEnviarMensaje() {
         ? { id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString() }
         : await guardarMensaje(sesionId, residenteId, 'usuario', pregunta);
 
-      // 2. Consultar la IA
-      const respuesta = await consultarIA(pregunta, historial);
+      // 2. Consultar la IA (puede incluir acción de navegación)
+      const { texto: respuesta, navegacion } = await consultarIA(pregunta, historial);
 
       // 3. Guardar respuesta del asistente (solo si sesión real)
       const msgAsistente = esLocal
@@ -129,7 +129,7 @@ export function useEnviarMensaje() {
         qc.invalidateQueries({ queryKey: ['sesiones_asistente'] });
       }
 
-      return { msgUsuario, msgAsistente };
+      return { msgUsuario, msgAsistente, navegacion };
     },
     // No invalidar mensajes — el chat usa estado local optimista para evitar duplicados
   });

@@ -26,7 +26,8 @@
         "foregroundImage": "./assets/images/logo-puente.png",
         "backgroundColor": "#1B5E3B"
       },
-      "package": "com.eldertech.app"
+      "package": "com.eldertech.app",
+      "permissions": ["RECORD_AUDIO"]
     },
     "web": {
       "bundler": "metro",
@@ -39,7 +40,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": false
+          "microphonePermission": "ElderTech necesita acceso al micrófono para que puedas hablar con el asistente virtual."
         }
       ],
       [

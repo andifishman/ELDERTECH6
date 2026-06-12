@@ -1,5 +1,12 @@
 // Tipos del módulo Asistente
 
+// Acción de navegación que el asistente puede incluir en su respuesta
+export interface NavegacionAccion {
+  ruta: string;      // e.g. '/horarios', '/horarios/uuid'
+  etiqueta: string;  // texto del botón, e.g. 'Ver desayuno'
+  emoji: string;     // e.g. '📅'
+}
+
 export interface SesionAsistente {
   id: string;
   residente_id: string;
@@ -35,6 +42,7 @@ export interface MensajeLocal {
   contenido: string;
   es_favorito: boolean;
   cargando?: boolean;  // true mientras el asistente está "pensando"
+  navegacion?: NavegacionAccion; // botón de navegación directa (no se persiste en DB)
   created_at: string;
 }
 

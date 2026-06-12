@@ -17,6 +17,47 @@ export function formatearDuracion(segundos: number | null): string {
   return `${min} min`;
 }
 
+// ─── Búsqueda para el asistente IA ───────────────────────────────────────────
+
+export interface TutorialParaIA {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  duracion: string;
+}
+
+/**
+ * Búsqueda de texto libre de tutoriales para el asistente IA.
+ * Retorna una lista compacta filtrada por título o descripción.
+ */
+export async function buscarTutorialesPorTexto(
+  busqueda: string,
+): Promise<TutorialParaIA[]> {
+  let query = supabase
+    .from('tutoriales')
+    .select('id, titulo, descripcion, duracion_segundos, categoria:categorias_tutorial(nombre)')
+    .eq('activo', true)
+    .order('orden', { ascending: true });
+
+  if (busqueda.trim()) {
+    query = query.or(
+      `titulo.ilike.%${busqueda.trim()}%,descripcion.ilike.%${busqueda.trim()}%`,
+    );
+  }
+
+  const { data, error } = await query.limit(5);
+  if (error) return [];
+
+  return (data ?? []).map((t) => ({
+    id: t.id as string,
+    titulo: t.titulo as string,
+    descripcion: (t.descripcion as string | null) ?? '',
+    categoria: ((t.categoria as { nombre?: string } | null)?.nombre) ?? '',
+    duracion: formatearDuracion(t.duracion_segundos as number | null),
+  }));
+}
+
 // ─── Categorías ───────────────────────────────────────────────────────────────
 
 export async function getCategoriasTutorial(): Promise<CategoriaTutorial[]> {

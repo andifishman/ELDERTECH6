@@ -99,6 +99,52 @@ export async function getActividadesPersonalizadas(
   return resultado.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 }
 
+// Resultado compacto para el asistente IA — solo campos relevantes
+export interface ActividadParaIA {
+  id: string;
+  nombre: string;
+  hora_inicio: string;
+  hora_fin: string;
+  lugar: string;
+  descripcion: string;
+}
+
+/**
+ * Búsqueda de texto libre para el asistente IA.
+ * Devuelve una lista compacta de actividades para el día dado,
+ * opcionalmente filtradas por nombre con ILIKE.
+ */
+export async function buscarActividadesPorTexto(
+  busqueda: string,
+  fecha: Date,
+): Promise<ActividadParaIA[]> {
+  const fechaStr = toSupabaseDate(fecha);
+
+  let query = supabase
+    .from('actividades')
+    .select('id, nombre, hora_inicio, hora_fin, descripcion, ubicaciones(nombre)')
+    .eq('organizacion_id', ORG_ID)
+    .eq('fecha', fechaStr)
+    .eq('activo', true)
+    .order('hora_inicio', { ascending: true });
+
+  if (busqueda.trim()) {
+    query = query.ilike('nombre', `%${busqueda.trim()}%`);
+  }
+
+  const { data, error } = await query;
+  if (error) return [];
+
+  return (data ?? []).map((a) => ({
+    id: a.id as string,
+    nombre: a.nombre as string,
+    hora_inicio: a.hora_inicio as string,
+    hora_fin: a.hora_fin as string,
+    lugar: ((a.ubicaciones as { nombre?: string } | null)?.nombre) ?? '',
+    descripcion: (a.descripcion as string | null) ?? '',
+  }));
+}
+
 export async function getActividadById(id: string): Promise<ActividadCompleta | null> {
   const { data, error } = await supabase
     .from('actividades')
