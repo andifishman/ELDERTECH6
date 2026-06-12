@@ -603,7 +603,7 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito }:
         {mensaje.cargando ? (
           <View style={styles.cargandoBurbuja}>
             <ActivityIndicator size="small" color={Colors.text.hint} />
-            <Text style={styles.cargandoTexto}>Pensando...</Text>
+            <Text style={styles.cargandoTexto}>Pensando una respuesta, aguarde unos segundos...</Text>
           </View>
         ) : (
           <>
@@ -818,7 +818,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   cargandoTexto: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.md,
     color: Colors.text.hint,
     fontStyle: 'italic',
   },
