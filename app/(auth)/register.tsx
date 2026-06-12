@@ -45,6 +45,7 @@ const INITIAL_FORM: RegisterFormData = {
   nivel_dificultad: 'independiente',
   intereses: [],
   ciudades_familiares: [],
+  ciudades_familiares_custom: [],
 };
 
 const STEP_TITLES: Record<RegisterStep, string> = {
@@ -373,6 +374,8 @@ export default function RegisterScreen() {
                       ciudades={ciudades}
                       selected={form.ciudades_familiares}
                       onChange={(v) => update('ciudades_familiares', v)}
+                      selectedCustom={form.ciudades_familiares_custom}
+                      onChangeCustom={(v) => update('ciudades_familiares_custom', v)}
                     />
                   </View>
                 </>

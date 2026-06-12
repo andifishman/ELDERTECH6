@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
 import { supabase, ORG_ID } from './supabase';
-import type { RegisterFormData, AuthProfile, Interes, CiudadFamiliar } from '@/types/auth.types';
+import type { RegisterFormData, AuthProfile, Interes, CiudadFamiliar, CiudadCustom } from '@/types/auth.types';
 import type { NivelDificultad } from '@/types/database.types';
 
 // ─── Login ───────────────────────────────────────────────────────────────────
@@ -132,6 +132,26 @@ export async function registerUser(data: RegisterFormData): Promise<void> {
       throw new Error('Ese nombre de usuario ya está en uso. Elegí otro.');
     }
     throw new Error('Error al crear el perfil. Intentá de nuevo.');
+  }
+
+  // 5. Save custom cities (searched via Open-Meteo) to ciudades_familiares + residente_ciudades_familiares
+  if (data.ciudades_familiares_custom && data.ciudades_familiares_custom.length > 0) {
+    try {
+      // Fetch the residente_id that was just created
+      const { data: perfil } = await supabase
+        .from('perfiles_usuario')
+        .select('residente_id')
+        .eq('id', userId)
+        .single();
+
+      const residenteId = perfil?.residente_id;
+
+      if (residenteId) {
+        await guardarCiudadesCustom(residenteId, data.ciudades_familiares_custom);
+      }
+    } catch {
+      // Non-fatal: the user is registered, custom cities can be added later
+    }
   }
 }
 
@@ -373,6 +393,56 @@ function parseFechaNacimiento(fecha: string): string | null {
   if (parts.length !== 3) return null;
   const [day, month, year] = parts;
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+// ─── Custom city persistence ──────────────────────────────────────────────────
+
+/**
+ * Inserta ciudades buscadas via Open-Meteo que no están en la tabla ciudades_familiares.
+ * Estrategia:
+ *  1. Upsert en ciudades_familiares (por nombre+pais_codigo) para obtener el id
+ *  2. Insert en residente_ciudades_familiares (junction) con ignore_duplicates
+ *
+ * Se usa `activo = false` para marcar estas ciudades como "custom" y no
+ * mezclarlas con las predeterminadas del selector de registro.
+ */
+export async function guardarCiudadesCustom(
+  residenteId: string,
+  ciudades: CiudadCustom[],
+): Promise<void> {
+  for (const ciudad of ciudades) {
+    try {
+      // 1. Upsert en ciudades_familiares para obtener ID (o reusar si ya existe)
+      const { data: upserted, error: upsertError } = await supabase
+        .from('ciudades_familiares')
+        .upsert(
+          {
+            nombre: ciudad.nombre,
+            pais_codigo: ciudad.pais_codigo,
+            lat: ciudad.lat,
+            lon: ciudad.lon,
+            timezone: ciudad.timezone,
+            activo: false,   // No aparece en el selector predeterminado
+            orden: 999,      // Al final si algún día se activa
+          },
+          { onConflict: 'nombre,pais_codigo', ignoreDuplicates: false },
+        )
+        .select('id')
+        .single();
+
+      if (upsertError || !upserted?.id) continue;
+
+      // 2. Insert en residente_ciudades_familiares (ignorar si ya existe)
+      await supabase
+        .from('residente_ciudades_familiares')
+        .upsert(
+          { residente_id: residenteId, ciudad_id: upserted.id },
+          { onConflict: 'residente_id,ciudad_id', ignoreDuplicates: true },
+        );
+    } catch {
+      // Fallo silencioso por ciudad individual — continuar con las demás
+    }
+  }
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────
