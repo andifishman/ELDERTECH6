@@ -1,10 +1,12 @@
-// Tarjeta de tutorial para la lista — título, categoría, formato y progreso
+// Tarjeta de tutorial para la lista — foto grande, título, categoría y CTA "Ver tutorial"
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
+import { SpeakButton } from '@/components/common/SpeakButton';
+import { TutorialImage } from './TutorialImage';
 import { formatearDuracion } from '@/services/tutorialesService';
 import type { TutorialConProgreso } from '@/types/database.types';
 
@@ -19,194 +21,208 @@ export const TutorialCard = memo(function TutorialCard({
 }: TutorialCardProps) {
   const esVideo = tutorial.formato === 'video';
   const progreso = tutorial.progreso;
-  const duracion = esVideo ? formatearDuracion(tutorial.duracion_segundos) : null;
+  const duracion = esVideo ? formatearDuracion(tutorial.duracion_segundos) : '';
 
-  // Porcentaje de progreso para la barra (solo videos)
   const porcentaje =
     esVideo && tutorial.duracion_segundos && (progreso?.segundos_vistos ?? 0) > 0
       ? Math.min((progreso!.segundos_vistos / tutorial.duracion_segundos) * 100, 100)
       : 0;
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.75}
-      accessibilityLabel={`Tutorial: ${tutorial.titulo}`}
-      accessibilityRole="button"
-    >
-      {/* Thumbnail o placeholder */}
-      <View style={styles.thumbContainer}>
-        {tutorial.thumbnail_url ? (
-          <Image source={{ uri: tutorial.thumbnail_url }} style={styles.thumb} />
-        ) : (
-          <View style={[styles.thumb, styles.thumbPlaceholder]}>
-            <Text style={styles.thumbEmoji}>
-              {esVideo ? '🎥' : '📷'}
-            </Text>
-          </View>
-        )}
-        {/* Ícono de formato sobre el thumb */}
-        <View style={styles.formatoBadge}>
-          <Ionicons
-            name={esVideo ? 'play-circle' : 'images'}
-            size={20}
-            color={Colors.text.onDark}
+    <View style={styles.card}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.85}
+        accessibilityLabel={`Tutorial: ${tutorial.titulo}`}
+        accessibilityRole="button"
+      >
+        {/* Foto temática (con fallback) */}
+        <View style={styles.mediaWrap}>
+          <TutorialImage
+            uri={tutorial.thumbnail_url}
+            fallbackSeed={tutorial.id}
+            categoria={tutorial.categoria?.nombre}
+            iconSize={48}
+            style={styles.media}
           />
-        </View>
-        {/* Badge completado */}
-        {progreso?.completado && (
-          <View style={styles.completadoBadge}>
-            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-          </View>
-        )}
-      </View>
 
-      {/* Info */}
-      <View style={styles.info}>
-        {/* Categoría */}
-        <View style={styles.categoriaRow}>
-          {tutorial.categoria?.emoji ? (
-            <Text style={styles.categoriaEmoji}>{tutorial.categoria.emoji}</Text>
-          ) : null}
-          <Text style={styles.categoriaNombre} numberOfLines={1}>
-            {tutorial.categoria?.nombre ?? 'Tutorial'}
-          </Text>
-          {/* Estrella favorito */}
+          <View style={styles.formatoBadge}>
+            <Ionicons name={esVideo ? 'play' : 'images'} size={13} color={Colors.text.onDark} />
+            <Text style={styles.formatoBadgeTexto}>{esVideo ? 'VIDEO' : 'GUÍA'}</Text>
+          </View>
+
           {progreso?.favorito && (
-            <Ionicons name="star" size={16} color="#FFC107" style={styles.favStar} />
+            <View style={styles.favBadge}>
+              <Ionicons name="star" size={18} color="#FFC107" />
+            </View>
+          )}
+
+          {progreso?.completado && (
+            <View style={styles.completadoBadge}>
+              <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+            </View>
+          )}
+
+          {porcentaje > 0 && (
+            <View style={styles.progresoTrack}>
+              <View style={[styles.progresoFill, { width: `${porcentaje}%` as `${number}%` }]} />
+            </View>
           )}
         </View>
 
-        {/* Título */}
-        <Text style={styles.titulo} numberOfLines={1}>
-          {tutorial.titulo}
-        </Text>
-
-        {/* Formato y duración */}
-        <Text style={styles.formato}>
-          {esVideo
-            ? `🎥 Video${duracion ? ` · ${duracion}` : ''}`
-            : '📷 Guía fotográfica'}
-        </Text>
-
-        {/* Barra de progreso (solo si empezó el video) */}
-        {porcentaje > 0 && (
-          <View style={styles.progresoBar}>
-            <View style={[styles.progresoFill, { width: `${porcentaje}%` as `${number}%` }]} />
+        {/* Info */}
+        <View style={styles.info}>
+          <View style={styles.metaRow}>
+            <Text style={styles.categoriaNombre} numberOfLines={1}>
+              {tutorial.categoria?.nombre ?? 'Tutorial'}
+            </Text>
+            <Text style={styles.punto}>·</Text>
+            <Text style={styles.metaTexto}>{esVideo ? (duracion || 'Video') : 'Guía paso a paso'}</Text>
           </View>
-        )}
-      </View>
+          <Text style={styles.titulo} numberOfLines={2}>
+            {tutorial.titulo}
+          </Text>
+        </View>
+      </TouchableOpacity>
 
-      {/* Flecha */}
-      <Ionicons
-        name="chevron-forward"
-        size={24}
-        color={Colors.ui.border}
-        style={styles.chevron}
-      />
-    </TouchableOpacity>
+      {/* CTA */}
+      <View style={styles.ctaRow}>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          onPress={onPress}
+          activeOpacity={0.85}
+          accessibilityLabel={`Ver tutorial: ${tutorial.titulo}`}
+          accessibilityRole="button"
+        >
+          <Text style={styles.ctaTexto}>Ver tutorial</Text>
+          <Ionicons name="chevron-forward" size={20} color={Colors.text.onDark} />
+        </TouchableOpacity>
+        <SpeakButton texto={`${tutorial.titulo}. ${tutorial.descripcion ?? ''}`} />
+      </View>
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: Colors.ui.surface,
-    borderRadius: Spacing.radius.lg,
-    marginBottom: Spacing.sm,
+    borderRadius: Spacing.radius.xl,
+    marginBottom: Spacing.lg,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
-    height: 72,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  thumbContainer: {
+  mediaWrap: {
     position: 'relative',
-    width: 72,
-    height: 72,
-    flexShrink: 0,
+    width: '100%',
+    height: 170,
   },
-  thumb: {
-    width: 72,
-    height: 72,
-  },
-  thumbPlaceholder: {
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  thumbEmoji: {
-    fontSize: 36,
+  media: {
+    width: '100%',
+    height: 170,
   },
   formatoBadge: {
     position: 'absolute',
-    bottom: 6,
-    left: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    top: Spacing.sm,
+    left: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     borderRadius: Spacing.radius.full,
-    padding: 3,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
+  },
+  formatoBadgeTexto: {
+    fontSize: 11,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+    letterSpacing: 0.5,
+  },
+  favBadge: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: Colors.ui.surface,
+    borderRadius: Spacing.radius.full,
+    padding: 6,
   },
   completadoBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    bottom: Spacing.sm,
+    right: Spacing.sm,
     backgroundColor: Colors.ui.surface,
     borderRadius: Spacing.radius.full,
   },
-  info: {
-    flex: 1,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    gap: 2,
-    justifyContent: 'center',
-  },
-  categoriaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  categoriaEmoji: {
-    fontSize: 11,
-  },
-  categoriaNombre: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.brand.greenDark,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    flex: 1,
-  },
-  favStar: {
-    marginLeft: 2,
-  },
-  titulo: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.bold,
-    color: Colors.text.primary,
-    lineHeight: 20,
-  },
-  formato: {
-    fontSize: Typography.size.xs,
-    color: Colors.text.secondary,
-    fontWeight: Typography.weight.medium,
-  },
-  progresoBar: {
+  progresoTrack: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: 4,
-    backgroundColor: Colors.ui.border,
-    borderRadius: 2,
-    marginTop: 2,
-    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.4)',
   },
   progresoFill: {
     height: 4,
     backgroundColor: Colors.brand.greenMedium,
-    borderRadius: 2,
   },
-  chevron: {
-    marginRight: Spacing.md,
+  info: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+    gap: 4,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoriaNombre: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.bold,
+    color: Colors.brand.purple,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  punto: {
+    color: Colors.text.hint,
+    marginHorizontal: 5,
+  },
+  metaTexto: {
+    fontSize: Typography.size.xs,
+    color: Colors.text.secondary,
+    fontWeight: Typography.weight.medium,
+  },
+  titulo: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
+    lineHeight: 26,
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    paddingTop: Spacing.xs,
+  },
+  ctaBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.brand.purple,
+    borderRadius: Spacing.radius.lg,
+    minHeight: Spacing.touch.min,
+    paddingVertical: Spacing.md,
+  },
+  ctaTexto: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
   },
 });

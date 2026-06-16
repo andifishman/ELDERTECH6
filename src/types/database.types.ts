@@ -305,6 +305,8 @@ export interface PasoTutorial {
   titulo: string | null;
   descripcion: string | null;
   imagen_url: string | null;
+  /** Consejo opcional — se muestra en un cartel destacado debajo del paso */
+  tip: string | null;
 }
 
 export interface ProgresoTutorial {

@@ -1,26 +1,34 @@
-// Pantalla principal de Tutoriales — categorías, buscador y lista
+// Pantalla principal de Tutoriales — categorías, buscador y lista agrupada por función
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   ScrollView,
   TouchableOpacity,
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { TutorialCard } from '@/components/tutoriales/TutorialCard';
+import { TutorialImage } from '@/components/tutoriales/TutorialImage';
+import { getIconoCategoria } from '@/components/tutoriales/categoriaIcono';
 import { useAuth } from '@/context/AuthContext';
-import { useCategoriasTutorial, useTutoriales } from '@/hooks/useTutoriales';
+import { useCategoriasTutorial, useTutoriales, useHistorial } from '@/hooks/useTutoriales';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { TutorialConProgreso, CategoriaTutorial } from '@/types/database.types';
+
+interface SeccionTutoriales {
+  titulo: string | null; // null => sin encabezado (vista filtrada)
+  data: TutorialConProgreso[];
+}
 
 export default function TutorialesScreen() {
   const router = useRouter();
@@ -30,23 +38,63 @@ export default function TutorialesScreen() {
 
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [soloFavoritos, setSoloFavoritos] = useState(false);
 
-  const { data: categorias = [] } = useCategoriasTutorial();
-  const { data: tutoriales = [], isLoading, isError, refetch } = useTutoriales(
+  const { data: categorias = [], refetch: refetchCategorias } = useCategoriasTutorial();
+  const { data: tutoriales = [], isLoading, isError, isFetching, refetch } = useTutoriales(
     residenteId,
     categoriaSeleccionada,
   );
+  const { data: historial = [], refetch: refetchHistorial } = useHistorial(residenteId);
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+    refetchCategorias();
+    refetchHistorial();
+  }, [refetch, refetchCategorias, refetchHistorial]);
+
+  const categoriaActivaNombre = categoriaSeleccionada
+    ? (categorias.find((c) => c.id === categoriaSeleccionada)?.nombre ?? '')
+    : 'Todo';
 
   const tutorialesFiltrados = useMemo(() => {
-    if (!busqueda.trim()) return tutoriales;
+    let lista = tutoriales;
+    if (soloFavoritos) {
+      lista = lista.filter((t) => t.progreso?.favorito);
+    }
     const q = busqueda.toLowerCase().trim();
-    return tutoriales.filter(
-      (t) =>
-        t.titulo.toLowerCase().includes(q) ||
-        t.descripcion?.toLowerCase().includes(q) ||
-        t.categoria?.nombre.toLowerCase().includes(q),
-    );
-  }, [tutoriales, busqueda]);
+    if (q) {
+      lista = lista.filter(
+        (t) =>
+          t.titulo.toLowerCase().includes(q) ||
+          t.descripcion?.toLowerCase().includes(q) ||
+          t.categoria?.nombre.toLowerCase().includes(q),
+      );
+    }
+    return lista;
+  }, [tutoriales, busqueda, soloFavoritos]);
+
+  // Agrupamos por función (categoría) solo en la vista "Todo" sin búsqueda ni favoritos.
+  const agrupar = categoriaActivaNombre === 'Todo' && !busqueda.trim() && !soloFavoritos;
+
+  const secciones = useMemo<SeccionTutoriales[]>(() => {
+    if (!agrupar) {
+      return tutorialesFiltrados.length > 0
+        ? [{ titulo: null, data: tutorialesFiltrados }]
+        : [];
+    }
+    const porCategoria = new Map<string, TutorialConProgreso[]>();
+    for (const t of tutorialesFiltrados) {
+      const nombre = t.categoria?.nombre ?? 'Otros';
+      const grupo = porCategoria.get(nombre);
+      if (grupo) grupo.push(t);
+      else porCategoria.set(nombre, [t]);
+    }
+    // Respetar el orden de las categorías (excluyendo "Todo")
+    return categorias
+      .filter((c) => c.nombre !== 'Todo' && porCategoria.has(c.nombre))
+      .map((c) => ({ titulo: c.nombre, data: porCategoria.get(c.nombre)! }));
+  }, [agrupar, tutorialesFiltrados, categorias]);
 
   const handleTutorialPress = useCallback(
     (tutorial: TutorialConProgreso) => {
@@ -60,13 +108,41 @@ export default function TutorialesScreen() {
     setBusqueda('');
   }, []);
 
-  const categoriaActivaNombre = categoriaSeleccionada
-    ? (categorias.find((c) => c.id === categoriaSeleccionada)?.nombre ?? '')
-    : 'Todo';
-
-  // Header del FlatList: chips de categoría + buscador
+  // Header de la lista: continuá viendo + chips de categoría + buscador + contador
   const ListHeader = (
     <View>
+      {/* Continuá viendo — últimos tutoriales abiertos */}
+      {historial.length > 0 && (
+        <View style={styles.historialSection}>
+          <Text style={styles.historialTitulo}>Continuá viendo</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.historialList}
+          >
+            {historial.map((t) => (
+              <TouchableOpacity
+                key={t.id}
+                style={styles.historialCard}
+                onPress={() => handleTutorialPress(t)}
+                activeOpacity={0.8}
+                accessibilityLabel={`Continuar: ${t.titulo}`}
+                accessibilityRole="button"
+              >
+                <TutorialImage
+                  uri={t.thumbnail_url}
+                  fallbackSeed={t.id}
+                  categoria={t.categoria?.nombre}
+                  iconSize={26}
+                  style={styles.historialThumb}
+                />
+                <Text style={styles.historialCardTitulo} numberOfLines={2}>{t.titulo}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Chips de categoría */}
       <ScrollView
         horizontal
@@ -87,7 +163,11 @@ export default function TutorialesScreen() {
               accessibilityRole="button"
               accessibilityState={{ selected: activa }}
             >
-              {cat.emoji ? <Text style={styles.categoriaEmoji}>{cat.emoji}</Text> : null}
+              <Ionicons
+                name={getIconoCategoria(cat.nombre)}
+                size={16}
+                color={activa ? Colors.text.onDark : Colors.brand.purple}
+              />
               <Text style={[styles.categoriaTexto, activa && styles.categoriaTextoActivo]}>
                 {cat.nombre}
               </Text>
@@ -96,36 +176,53 @@ export default function TutorialesScreen() {
         })}
       </ScrollView>
 
-      {/* Buscador */}
-      <View style={styles.buscadorWrapper}>
-        <Ionicons name="search" size={20} color={Colors.text.secondary} style={styles.buscadorIcon} />
-        <TextInput
-          style={styles.buscador}
-          placeholder="Buscar tutorial..."
-          placeholderTextColor={Colors.text.hint}
-          value={busqueda}
-          onChangeText={setBusqueda}
-          autoCorrect={false}
-          clearButtonMode="while-editing"
-          returnKeyType="search"
-          accessibilityLabel="Buscar tutorial"
-        />
-        {busqueda.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setBusqueda('')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="Limpiar búsqueda"
-          >
-            <Ionicons name="close-circle" size={20} color={Colors.text.hint} />
-          </TouchableOpacity>
-        )}
+      {/* Buscador + filtro de favoritos */}
+      <View style={styles.buscadorRow}>
+        <View style={styles.buscadorWrapper}>
+          <Ionicons name="search" size={20} color={Colors.text.secondary} style={styles.buscadorIcon} />
+          <TextInput
+            style={styles.buscador}
+            placeholder="Buscar tutorial..."
+            placeholderTextColor={Colors.text.hint}
+            value={busqueda}
+            onChangeText={setBusqueda}
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+            returnKeyType="search"
+            accessibilityLabel="Buscar tutorial"
+          />
+          {busqueda.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setBusqueda('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Limpiar búsqueda"
+            >
+              <Ionicons name="close-circle" size={20} color={Colors.text.hint} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity
+          style={[styles.favToggle, soloFavoritos && styles.favToggleActivo]}
+          onPress={() => setSoloFavoritos((v) => !v)}
+          activeOpacity={0.75}
+          accessibilityLabel={soloFavoritos ? 'Mostrar todos los tutoriales' : 'Mostrar solo favoritos'}
+          accessibilityRole="button"
+          accessibilityState={{ selected: soloFavoritos }}
+        >
+          <Ionicons
+            name={soloFavoritos ? 'star' : 'star-outline'}
+            size={22}
+            color={soloFavoritos ? Colors.text.onDark : '#FFC107'}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Contador */}
-      {tutorialesFiltrados.length > 0 && (
+      {/* Contador (solo en vistas filtradas; al agrupar, cada sección tiene su título) */}
+      {!agrupar && tutorialesFiltrados.length > 0 && (
         <Text style={styles.resultados}>
           {tutorialesFiltrados.length} tutorial{tutorialesFiltrados.length !== 1 ? 'es' : ''}
           {categoriaActivaNombre !== 'Todo' ? ` · ${categoriaActivaNombre}` : ''}
+          {soloFavoritos ? ' · Favoritos' : ''}
         </Text>
       )}
     </View>
@@ -147,31 +244,50 @@ export default function TutorialesScreen() {
         </View>
       ) : isError ? (
         <View style={styles.centrado}>
-          <Text style={styles.estadoEmoji}>⚠️</Text>
+          <Ionicons name="cloud-offline-outline" size={56} color={Colors.text.hint} />
           <Text style={styles.estadoTitulo}>No pudimos cargar los tutoriales</Text>
           <TouchableOpacity style={styles.btnReintentar} onPress={() => refetch()}>
             <Text style={styles.btnReintentarTexto}>Reintentar</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={tutorialesFiltrados}
+        <SectionList
+          sections={secciones}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TutorialCard tutorial={item} onPress={() => handleTutorialPress(item)} />
           )}
+          renderSectionHeader={({ section }) =>
+            section.titulo ? (
+              <View style={styles.seccionHeader}>
+                <Ionicons name={getIconoCategoria(section.titulo)} size={20} color={Colors.brand.purple} />
+                <Text style={styles.seccionTitulo}>{section.titulo}</Text>
+              </View>
+            ) : null
+          }
           ListHeaderComponent={ListHeader}
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={[styles.lista, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching && !isLoading}
+              onRefresh={handleRefresh}
+              colors={[Colors.brand.purple]}
+              tintColor={Colors.brand.purple}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.vacio}>
-              <Text style={styles.vacioEmoji}>📚</Text>
+              <Ionicons name="school-outline" size={64} color={Colors.ui.disabled} />
               <Text style={styles.vacioTitulo}>
                 {busqueda
                   ? 'No encontramos tutoriales con esa búsqueda'
-                  : 'No hay tutoriales en esta categoría aún'}
+                  : soloFavoritos
+                    ? 'Todavía no marcaste tutoriales favoritos'
+                    : 'No hay tutoriales en esta categoría aún'}
               </Text>
             </View>
           }
@@ -183,6 +299,42 @@ export default function TutorialesScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Colors.ui.background },
+
+  // Continuá viendo
+  historialSection: {
+    paddingTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+    backgroundColor: Colors.ui.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.ui.border,
+  },
+  historialTitulo: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
+    paddingHorizontal: Spacing.screen.horizontal,
+    marginBottom: Spacing.sm,
+  },
+  historialList: {
+    paddingHorizontal: Spacing.screen.horizontal,
+    paddingBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  historialCard: {
+    width: 120,
+  },
+  historialThumb: {
+    width: 120,
+    height: 80,
+    borderRadius: Spacing.radius.md,
+    marginBottom: Spacing.xs,
+  },
+  historialCardTitulo: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.primary,
+    lineHeight: 16,
+  },
 
   // Categorías
   categoriasList: {
@@ -196,20 +348,19 @@ const styles = StyleSheet.create({
   categoriaChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Spacing.radius.full,
     backgroundColor: Colors.ui.background,
     borderWidth: 1.5,
     borderColor: Colors.ui.border,
-    minHeight: 36,
+    minHeight: 40,
   },
   categoriaChipActivo: {
     backgroundColor: Colors.brand.purple,
     borderColor: Colors.brand.purple,
   },
-  categoriaEmoji: { fontSize: 15 },
   categoriaTexto: {
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.semibold,
@@ -217,15 +368,35 @@ const styles = StyleSheet.create({
   },
   categoriaTextoActivo: { color: Colors.text.onDark },
 
+  // Encabezado de sección (agrupación por función)
+  seccionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  seccionTitulo: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
+  },
+
   // Buscador
+  buscadorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.screen.horizontal,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
   buscadorWrapper: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.ui.surface,
     borderRadius: Spacing.radius.lg,
-    marginHorizontal: Spacing.screen.horizontal,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xs,
     paddingHorizontal: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.ui.border,
@@ -236,6 +407,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: Typography.size.md,
     color: Colors.text.primary,
+  },
+  favToggle: {
+    width: 44,
+    height: 44,
+    borderRadius: Spacing.radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.ui.surface,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+  },
+  favToggleActivo: {
+    backgroundColor: '#FFC107',
+    borderColor: '#FFC107',
   },
 
   // Lista
@@ -260,7 +445,6 @@ const styles = StyleSheet.create({
     gap: Spacing.lg,
     paddingHorizontal: Spacing.xxxl,
   },
-  estadoEmoji: { fontSize: 56 },
   estadoTitulo: {
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.semibold,
@@ -273,7 +457,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xxxl,
     gap: Spacing.lg,
   },
-  vacioEmoji: { fontSize: 64 },
   vacioTitulo: {
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.semibold,

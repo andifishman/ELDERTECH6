@@ -10,6 +10,30 @@ import {
   upsertProgreso,
   registrarVista,
 } from '@/services/tutorialesService';
+import type { ProgresoTutorial, TutorialConProgreso } from '@/types/database.types';
+
+// Construye un progreso "optimista" completo a partir del actual (o vacío) + un parche.
+// Permite que la UI (estrella de favorito, badge completado) reaccione al instante.
+function progresoOptimista(
+  base: ProgresoTutorial | null | undefined,
+  residenteId: string,
+  tutorialId: string,
+  patch: Partial<ProgresoTutorial>,
+): ProgresoTutorial {
+  const ahora = new Date().toISOString();
+  return {
+    id: base?.id ?? `optimistic-${tutorialId}`,
+    residente_id: residenteId,
+    tutorial_id: tutorialId,
+    favorito: base?.favorito ?? false,
+    completado: base?.completado ?? false,
+    segundos_vistos: base?.segundos_vistos ?? 0,
+    ultima_vista: base?.ultima_vista ?? null,
+    created_at: base?.created_at ?? ahora,
+    updated_at: ahora,
+    ...patch,
+  };
+}
 
 // ─── Keys ─────────────────────────────────────────────────────────────────────
 // Exportadas para que el prefetch del Home use exactamente las mismas
@@ -99,16 +123,38 @@ export function useProgresoTutorial(
   categoriaId: string | null,
 ) {
   const queryClient = useQueryClient();
+  const detalleKey = KEYS.detalle(tutorialId, residenteId);
 
   const invalidar = () => {
-    queryClient.invalidateQueries({ queryKey: KEYS.lista(residenteId) });
+    // Prefijo: invalida todas las variantes de lista (cualquier categoría)
+    queryClient.invalidateQueries({ queryKey: ['tutoriales', 'lista'] });
     queryClient.invalidateQueries({ queryKey: KEYS.historial(residenteId) });
+    queryClient.invalidateQueries({ queryKey: detalleKey });
+  };
+
+  // Actualiza el progreso en la cache del detalle al instante (optimista) y
+  // devuelve el valor previo para poder revertir si la mutación falla.
+  const aplicarOptimista = async (patch: Partial<ProgresoTutorial>) => {
+    await queryClient.cancelQueries({ queryKey: detalleKey });
+    const prev = queryClient.getQueryData<TutorialConProgreso>(detalleKey);
+    queryClient.setQueryData<TutorialConProgreso>(detalleKey, (old) =>
+      old
+        ? { ...old, progreso: progresoOptimista(old.progreso, residenteId, tutorialId, patch) }
+        : old,
+    );
+    return { prev };
+  };
+
+  const revertir = (ctx: { prev?: TutorialConProgreso } | undefined) => {
+    if (ctx?.prev) queryClient.setQueryData(detalleKey, ctx.prev);
   };
 
   const toggleFavorito = useMutation({
     mutationFn: (favorito: boolean) =>
       upsertProgreso(residenteId, tutorialId, { favorito }),
-    onSuccess: invalidar,
+    onMutate: (favorito: boolean) => aplicarOptimista({ favorito }),
+    onError: (_e, _v, ctx) => revertir(ctx),
+    onSettled: invalidar,
   });
 
   const marcarCompletado = useMutation({
@@ -117,7 +163,9 @@ export function useProgresoTutorial(
         completado: true,
         ultima_vista: new Date().toISOString(),
       }),
-    onSuccess: invalidar,
+    onMutate: () => aplicarOptimista({ completado: true, ultima_vista: new Date().toISOString() }),
+    onError: (_e, _v, ctx) => revertir(ctx),
+    onSettled: invalidar,
   });
 
   const guardarProgreso = useMutation({

@@ -62,9 +62,9 @@ export function ProximaActividadWidget() {
     };
   }, [actividades, tick]);
 
-  if (!proxima) return null;
+  // Solo se muestra cuando falta 1 hora o menos para que arranque la actividad
+  if (!proxima || minutosRestantes > 60) return null;
 
-  const emoji = proxima.emoji_icono ?? proxima.tipo_actividad?.emoji ?? '📅';
   const hora = formatHora(proxima.hora_inicio);
   const esPronto = minutosRestantes <= 30;
 
@@ -80,14 +80,9 @@ export function ProximaActividadWidget() {
       accessibilityLabel={textoHablar}
       accessibilityRole="button"
     >
-      {/* Izquierda: [emoji + label] en fila, nombre abajo */}
+      {/* Izquierda: label arriba, nombre abajo a la misma altura que Escuchar */}
       <View style={styles.left}>
-        <View style={styles.topRow}>
-          <View style={[styles.emojiCircle, esPronto && styles.emojiCirclePronto]}>
-            <Text style={styles.emoji}>{emoji}</Text>
-          </View>
-          <Text style={styles.label} numberOfLines={1}>Próxima actividad</Text>
-        </View>
+        <Text style={styles.label} numberOfLines={1}>Próxima actividad</Text>
         <Text style={styles.nombre} numberOfLines={2}>
           {proxima.nombre}
         </Text>
@@ -145,43 +140,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFDE7',
   },
 
-  emojiCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  emojiCirclePronto: {
-    backgroundColor: '#FFF9C4',
-  },
-  emoji: {
-    fontSize: 20,
-  },
-
   left: {
     flex: 1,
     gap: 1,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
   label: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.text.hint,
-    flex: 1,
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.secondary,
   },
   nombre: {
     fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
-    marginLeft: 44,
-    marginTop: -4,
   },
 
   right: {

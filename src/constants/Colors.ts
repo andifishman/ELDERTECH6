@@ -33,6 +33,13 @@ export const Colors = {
     nowPlayingBg: '#1B5E3B',
   },
 
+  // Módulo Tutoriales — acentos sobre el violeta de brand.purple
+  tutoriales: {
+    soft: '#F3E5F5',     // fondo violeta suave — "Qué vas a aprender", placeholders
+    amber: '#9A6B12',    // texto del cartel de tip
+    amberBg: '#FBF3DF',  // fondo del cartel de tip
+  },
+
   // UI general
   ui: {
     background: '#F5F5F5',
