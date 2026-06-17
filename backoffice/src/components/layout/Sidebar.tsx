@@ -7,7 +7,7 @@
 // cerrar sesión. Colapsable en mobile.
 // ========================================
 import { NavLink } from 'react-router-dom';
-import { Leaf, LogOut, X } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 import { cn, iniciales } from '@/lib/utils';
 import { NAV_ITEMS } from './nav.config';
 import { usePermisos } from '@/hooks/usePermisos';
@@ -43,16 +43,14 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-primary-600 text-white transition-transform duration-200 lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-primary-600 text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
           abierto ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* logo */}
         <div className="flex h-16 items-center justify-between gap-2 px-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-              <Leaf className="h-5 w-5" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="ElderTech" className="h-10 w-10 object-contain" />
             <div className="leading-tight">
               <p className="text-base font-extrabold tracking-tight">ElderTech</p>
               <p className="text-[11px] font-medium text-white/70">Backoffice</p>

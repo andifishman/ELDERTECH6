@@ -27,15 +27,12 @@ export interface PerfilUsuario {
 // ─── FAQ del asistente ─────────────────────────────────────────────────────────
 export interface Faq {
   id: string;
-  organizacion_id: string | null;
   pregunta: string;
-  respuesta: string;
   categoria: string | null;
-  veces_consultada: number;
+  emoji: string | null;
   orden: number;
   activo: boolean;
   created_at: string;
-  updated_at: string;
 }
 
 // ─── Auditoría ───────────────────────────────────────────────────────────────

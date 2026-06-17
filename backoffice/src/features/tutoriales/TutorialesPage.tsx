@@ -19,10 +19,11 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { usePermisos } from '@/hooks/usePermisos';
 import { useRealtime } from '@/hooks/useRealtime';
+import { queryKeys } from '@/lib/queryClient';
 import { useArticulos, useEliminarArticulo } from './useArticulos';
-import type { ArticuloConCategoria, NivelArticulo } from '@/types/database.types';
+import type { TutorialConCategoria } from '@/types/database.types';
 
-const NIVEL_BADGE: Record<NivelArticulo, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
+const NIVEL_BADGE: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
   principiante: { label: 'Principiante', variant: 'success' },
   intermedio: { label: 'Intermedio', variant: 'warning' },
   avanzado: { label: 'Avanzado', variant: 'danger' },
@@ -33,11 +34,11 @@ export function TutorialesPage() {
   const permisos = usePermisos();
   const { data, isLoading, isError, refetch } = useArticulos();
   const eliminar = useEliminarArticulo();
-  useRealtime('articulos', [['articulos']]);
+  useRealtime('tutoriales', [queryKeys.tutoriales]);
 
   const [busqueda, setBusqueda] = useState('');
   const [estado, setEstado] = useState<'todos' | 'publicado' | 'borrador'>('todos');
-  const [aEliminar, setAEliminar] = useState<ArticuloConCategoria | null>(null);
+  const [aEliminar, setAEliminar] = useState<TutorialConCategoria | null>(null);
 
   const filtrados = useMemo(() => {
     return (data ?? []).filter((a) => {
@@ -93,30 +94,30 @@ export function TutorialesPage() {
           {filtrados.map((a) => (
             <Card key={a.id} className="flex flex-col overflow-hidden">
               <div className="relative flex aspect-video items-center justify-center bg-primary-50">
-                {a.imagen_preview_url ? (
-                  <img src={a.imagen_preview_url} alt="" className="h-full w-full object-cover" />
-                ) : a.tipo === 'video' ? (
+                {a.thumbnail_url ? (
+                  <img src={a.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                ) : a.formato === 'video' ? (
                   <PlayCircle className="h-12 w-12 text-primary/40" />
                 ) : (
                   <FileText className="h-12 w-12 text-primary/40" />
                 )}
-                <Badge variant={a.tipo === 'video' ? 'info' : 'purple'} className="absolute left-2 top-2 capitalize">
-                  {a.tipo}
+                <Badge variant={a.formato === 'video' ? 'info' : 'purple'} className="absolute left-2 top-2 capitalize">
+                  {a.formato}
                 </Badge>
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <p className="line-clamp-2 font-semibold text-foreground">{a.titulo}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {a.categoria?.nombre ?? 'Sin categoría'}
-                  {a.duracion_minutos ? ` · ${a.duracion_minutos} min` : ''}
+                  {a.duracion_segundos ? ` · ${Math.round(a.duracion_segundos / 60)} min` : ''}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge variant={a.activo ? 'success' : 'muted'}>{a.activo ? 'Publicado' : 'Borrador'}</Badge>
-                  <Badge variant={NIVEL_BADGE[a.nivel].variant}>{NIVEL_BADGE[a.nivel].label}</Badge>
+                  <Badge variant={(NIVEL_BADGE[a.nivel] ?? NIVEL_BADGE['principiante']).variant}>{(NIVEL_BADGE[a.nivel] ?? NIVEL_BADGE['principiante']).label}</Badge>
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Eye className="h-3.5 w-3.5" /> {a.vistas} vistas
+                    <Eye className="h-3.5 w-3.5" /> Tutorial
                   </span>
                   <div className="flex gap-1">
                     {permisos.puedeEditar && (

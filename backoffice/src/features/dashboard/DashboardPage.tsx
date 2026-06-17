@@ -51,12 +51,34 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Acciones rápidas */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Button asChild variant="outline" className="h-auto justify-start gap-3 p-4">
+          <Link to="/horarios/nueva">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 text-brand-red"><Plus className="h-5 w-5" /></span>
+            <span className="text-sm font-semibold">Nueva actividad</span>
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-auto justify-start gap-3 p-4">
+          <Link to="/tutoriales/nuevo">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 text-brand-purple"><FileText className="h-5 w-5" /></span>
+            <span className="text-sm font-semibold">Nuevo tutorial</span>
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-auto justify-start gap-3 p-4">
+          <Link to="/asistente">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-700"><HelpCircle className="h-5 w-5" /></span>
+            <span className="text-sm font-semibold">Nueva FAQ</span>
+          </Link>
+        </Button>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard etiqueta="Residentes activos" valor={kpis.data?.residentesActivos ?? 0} icono={Users} acento="green" cargando={kpis.isLoading} />
         <KpiCard etiqueta="Actividades hoy" valor={kpis.data?.actividadesHoy ?? 0} icono={CalendarDays} acento="red" cargando={kpis.isLoading} />
         <KpiCard etiqueta="Tutoriales publicados" valor={kpis.data?.tutorialesPublicados ?? 0} icono={GraduationCap} acento="purple" cargando={kpis.isLoading} />
-        <KpiCard etiqueta="Consultas al asistente" valor={kpis.data?.consultasAsistente ?? 0} icono={MessageSquare} acento="blue" cargando={kpis.isLoading} />
+        <KpiCard etiqueta="Consultas hoy" valor={kpis.data?.consultasAsistente ?? 0} icono={MessageSquare} acento="blue" cargando={kpis.isLoading} />
       </div>
 
       {/* Gráficos */}
@@ -162,33 +184,6 @@ export function DashboardPage() {
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Acciones rápidas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Acciones rápidas</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Button asChild variant="outline" className="h-auto justify-start gap-3 p-4">
-            <Link to="/horarios/nueva">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 text-brand-red"><Plus className="h-5 w-5" /></span>
-              <span className="text-sm font-semibold">Nueva actividad</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="h-auto justify-start gap-3 p-4">
-            <Link to="/tutoriales/nuevo">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 text-brand-purple"><FileText className="h-5 w-5" /></span>
-              <span className="text-sm font-semibold">Nuevo tutorial</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="h-auto justify-start gap-3 p-4">
-            <Link to="/asistente">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-700"><HelpCircle className="h-5 w-5" /></span>
-              <span className="text-sm font-semibold">Nueva FAQ</span>
-            </Link>
-          </Button>
         </CardContent>
       </Card>
 

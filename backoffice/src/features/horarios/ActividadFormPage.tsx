@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Save, X, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -18,10 +19,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { LoadingState } from '@/components/common/states';
 import { notify } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/lib/queryClient';
+import { crearUbicacion, crearResponsable } from '@/services/catalogosService';
 import {
   useActividad,
   useActualizarActividad,
@@ -58,10 +61,29 @@ export function ActividadFormPage() {
   const esEdicion = !!id;
   const navigate = useNavigate();
 
+  const qc = useQueryClient();
   const { data: catalogos, isLoading: cargandoCat } = useCatalogos();
   const { data: actividad, isLoading: cargandoAct } = useActividad(id);
   const crear = useCrearActividad();
   const actualizar = useActualizarActividad();
+
+  const ubicacionOpts = (catalogos?.ubicaciones ?? []).map((u) => ({ id: u.id, label: u.nombre }));
+  const responsableOpts = (catalogos?.responsables ?? []).map((r) => ({
+    id: r.id,
+    label: r.apellido ? `${r.nombre} ${r.apellido}` : r.nombre,
+  }));
+
+  const handleCrearUbicacion = async (nombre: string) => {
+    const id = await crearUbicacion(nombre);
+    void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
+    return id;
+  };
+
+  const handleCrearResponsable = async (nombre: string) => {
+    const id = await crearResponsable(nombre);
+    void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
+    return id;
+  };
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CamposTexto>({
     defaultValues: { fecha: format(new Date(), 'yyyy-MM-dd'), hora_inicio: '09:00', hora_fin: '10:00', capacidad: '' },
@@ -214,28 +236,28 @@ export function ActividadFormPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Lugar</Label>
-              <Select value={ubicacionId} onValueChange={setUbicacionId}>
-                <SelectTrigger><SelectValue placeholder="Elegir lugar" /></SelectTrigger>
-                <SelectContent>
-                  {(catalogos?.ubicaciones ?? []).map((u) => (
-                    <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={ubicacionOpts}
+                value={ubicacionId}
+                onChange={(id) => setUbicacionId(id)}
+                placeholder="Elegir o escribir lugar"
+                placeholderSearch="Buscar o crear lugar…"
+                onCrear={handleCrearUbicacion}
+              />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Instructor / Responsable</Label>
-              <Select value={responsableId} onValueChange={setResponsableId}>
-                <SelectTrigger><SelectValue placeholder="Elegir responsable" /></SelectTrigger>
-                <SelectContent>
-                  {(catalogos?.responsables ?? []).map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.nombre} {r.apellido}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={responsableOpts}
+                value={responsableId}
+                onChange={(id) => setResponsableId(id)}
+                placeholder="Elegir o escribir responsable"
+                placeholderSearch="Buscar o crear responsable…"
+                onCrear={handleCrearResponsable}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="descripcion">Descripción</Label>

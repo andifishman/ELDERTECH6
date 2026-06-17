@@ -9,6 +9,8 @@ import {
   eliminarFaq,
   listarFaqs,
   obtenerStatsAsistente,
+  obtenerHistorialMensajes,
+  reordenarFaq,
   type FaqInput,
 } from '@/services/faqService';
 import { notify } from '@/components/ui/toast';
@@ -36,6 +38,18 @@ export function useGuardarFaq() {
       invalidar();
     },
     onError: () => notify.error('No se pudo guardar la FAQ'),
+  });
+}
+
+export function useHistorialMensajes() {
+  return useQuery({ queryKey: ['historial-mensajes'], queryFn: () => obtenerHistorialMensajes(50), staleTime: 30000 });
+}
+
+export function useReordenarFaq() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: (faqs: { id: string; orden: number }[]) => reordenarFaq(faqs),
+    onSuccess: () => invalidar(),
   });
 }
 
