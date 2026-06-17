@@ -1,78 +1,151 @@
-// ========================================
-// SERVICIO: Artículos / Tutoriales
-// DESCRIPCIÓN:
-// CRUD del contenido educativo (tabla `articulos`):
-// videos y guías con categoría, nivel y estado. Las
-// publicaciones aparecen al instante en la app.
-// ========================================
 import { supabase } from '@/lib/supabase';
-import type { ArticuloConCategoria, CategoriaArticulo, NivelArticulo, TipoArticulo } from '@/types/database.types';
+import type { TutorialConCategoria, CategoriaTutorial, FormatoTutorial, PasoTutorial } from '@/types/database.types';
 import { registrarAuditoria } from './auditService';
 
-export interface ArticuloInput {
+export interface PasoInput {
+  orden: number;
+  titulo: string;
+  descripcion: string;
+  imagen_url: string | null;
+  tip: string | null;
+}
+
+export interface TutorialInput {
   titulo: string;
   descripcion?: string | null;
   categoria_id?: string | null;
-  tipo: TipoArticulo;
-  nivel: NivelArticulo;
-  url_contenido?: string | null;
-  duracion_minutos?: number | null;
-  imagen_preview_url?: string | null;
-  activo: boolean; // true = publicado, false = borrador
+  formato: FormatoTutorial;
+  nivel: string;
+  url_video?: string | null;
+  thumbnail_url?: string | null;
+  duracion_segundos?: number | null;
+  lo_que_aprenderas?: string[] | null;
+  activo: boolean;
+  pasos?: PasoInput[];
 }
 
-export async function listarArticulos(): Promise<ArticuloConCategoria[]> {
+export async function listarArticulos(): Promise<TutorialConCategoria[]> {
   const { data, error } = await supabase
-    .from('articulos')
-    .select('*, categoria:categorias_articulo(*)')
-    .order('created_at', { ascending: false });
+    .from('tutoriales')
+    .select('*, categoria:categorias_tutorial(*)')
+    .order('orden', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as unknown as ArticuloConCategoria[];
+  return (data ?? []) as unknown as TutorialConCategoria[];
 }
 
-export async function listarCategoriasArticulo(): Promise<CategoriaArticulo[]> {
+export async function listarCategoriasArticulo(): Promise<CategoriaTutorial[]> {
   const { data, error } = await supabase
-    .from('categorias_articulo')
+    .from('categorias_tutorial')
     .select('*')
     .eq('activo', true)
     .order('orden');
   if (error) throw error;
-  return (data ?? []) as CategoriaArticulo[];
+  return (data ?? []) as CategoriaTutorial[];
 }
 
-export async function obtenerArticulo(id: string): Promise<ArticuloConCategoria | null> {
+export async function obtenerArticulo(id: string): Promise<TutorialConCategoria | null> {
   const { data, error } = await supabase
-    .from('articulos')
-    .select('*, categoria:categorias_articulo(*)')
+    .from('tutoriales')
+    .select('*, categoria:categorias_tutorial(*)')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
-  return (data as unknown as ArticuloConCategoria) ?? null;
+  return (data as unknown as TutorialConCategoria) ?? null;
 }
 
-export async function crearArticulo(input: ArticuloInput): Promise<string> {
-  const { data, error } = await supabase.from('articulos').insert({ ...input, vistas: 0 }).select('id').single();
+export async function listarPasos(tutorialId: string): Promise<PasoTutorial[]> {
+  const { data, error } = await supabase
+    .from('pasos_tutorial')
+    .select('*')
+    .eq('tutorial_id', tutorialId)
+    .order('orden', { ascending: true });
   if (error) throw error;
+  return (data ?? []) as PasoTutorial[];
+}
+
+async function sincronizarPasos(tutorialId: string, pasos: PasoInput[]) {
+  await supabase.from('pasos_tutorial').delete().eq('tutorial_id', tutorialId);
+  if (pasos.length > 0) {
+    await supabase.from('pasos_tutorial').insert(
+      pasos.map((p) => ({ ...p, tutorial_id: tutorialId })),
+    );
+  }
+}
+
+// Obtiene el siguiente valor de orden para un nuevo tutorial
+async function siguienteOrden(): Promise<number> {
+  const { data } = await supabase
+    .from('tutoriales')
+    .select('orden')
+    .order('orden', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return ((data as any)?.orden ?? 0) + 1;
+}
+
+export async function crearArticulo(input: TutorialInput): Promise<string> {
+  const { pasos, ...resto } = input;
+  const orden = await siguienteOrden();
+  const { data, error } = await supabase
+    .from('tutoriales')
+    .insert({ ...resto, orden })
+    .select('id')
+    .single();
+  if (error) throw error;
+
+  if (pasos && pasos.length > 0) {
+    await sincronizarPasos(data.id, pasos);
+  }
+
   await registrarAuditoria({
     accion: input.activo ? 'publicar' : 'crear',
-    tabla: 'articulos',
+    tabla: 'tutoriales',
     registroId: data.id,
     descripcion: `${input.activo ? 'Publicó' : 'Creó borrador de'} "${input.titulo}"`,
   });
   return data.id;
 }
 
-export async function actualizarArticulo(id: string, input: ArticuloInput): Promise<void> {
+export async function actualizarArticulo(id: string, input: TutorialInput): Promise<void> {
+  const { pasos, ...resto } = input;
   const { error } = await supabase
-    .from('articulos')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .from('tutoriales')
+    .update({ ...resto, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
-  await registrarAuditoria({ accion: 'editar', tabla: 'articulos', registroId: id, descripcion: `Editó "${input.titulo}"` });
+
+  if (pasos !== undefined) {
+    await sincronizarPasos(id, pasos);
+  }
+
+  await registrarAuditoria({
+    accion: 'editar',
+    tabla: 'tutoriales',
+    registroId: id,
+    descripcion: `Editó "${input.titulo}"`,
+  });
 }
 
 export async function eliminarArticulo(id: string, titulo?: string): Promise<void> {
-  const { error } = await supabase.from('articulos').delete().eq('id', id);
+  await supabase.from('pasos_tutorial').delete().eq('tutorial_id', id);
+  const { error } = await supabase.from('tutoriales').delete().eq('id', id);
   if (error) throw error;
-  await registrarAuditoria({ accion: 'eliminar', tabla: 'articulos', registroId: id, descripcion: `Eliminó "${titulo ?? id}"` });
+  await registrarAuditoria({
+    accion: 'eliminar',
+    tabla: 'tutoriales',
+    registroId: id,
+    descripcion: `Eliminó "${titulo ?? id}"`,
+  });
+}
+
+// Sube una imagen al bucket tutorial-images y devuelve la URL pública
+export async function subirImagenTutorial(archivo: File, carpeta = 'thumbnails'): Promise<string> {
+  const ext = archivo.name.split('.').pop() ?? 'jpg';
+  const nombre = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage
+    .from('tutorial-images')
+    .upload(nombre, archivo, { cacheControl: '3600', upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from('tutorial-images').getPublicUrl(nombre);
+  return data.publicUrl;
 }

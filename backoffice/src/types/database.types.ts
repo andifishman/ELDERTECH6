@@ -192,6 +192,7 @@ export interface Tutorial {
   titulo: string;
   descripcion: string | null;
   formato: FormatoTutorial;
+  nivel: string;
   url_video: string | null;
   duracion_segundos: number | null;
   thumbnail_url: string | null;

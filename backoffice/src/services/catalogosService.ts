@@ -1,10 +1,3 @@
-// ========================================
-// SERVICIO: Catálogos
-// DESCRIPCIÓN:
-// Lee las tablas de catálogo que alimentan los selects
-// de los formularios: tipos de actividad, ubicaciones,
-// responsables, intereses y pisos.
-// ========================================
 import { supabase, ORG_ID } from '@/lib/supabase';
 import type { TipoActividad, Ubicacion, Responsable, Interes, Piso } from '@/types/database.types';
 
@@ -16,9 +9,14 @@ export interface Catalogos {
   pisos: Piso[];
 }
 
+const PISOS_HARDCODED: Piso[] = [
+  { id: '1', organizacion_id: ORG_ID, numero: 1, nombre: 'Piso 1', descripcion: null, activo: true },
+  { id: '2', organizacion_id: ORG_ID, numero: 2, nombre: 'Piso 2', descripcion: null, activo: true },
+  { id: '3', organizacion_id: ORG_ID, numero: 3, nombre: 'Piso 3', descripcion: null, activo: true },
+];
+
 export async function obtenerCatalogos(): Promise<Catalogos> {
-  // los tipos de actividad pueden ser globales (organizacion_id NULL) o propios de la org
-  const [tipos, ubic, resp, inter, pisos] = await Promise.all([
+  const [tipos, ubic, resp, inter] = await Promise.all([
     supabase
       .from('tipos_actividad')
       .select('*')
@@ -33,7 +31,6 @@ export async function obtenerCatalogos(): Promise<Catalogos> {
       .eq('activo', true)
       .order('nombre'),
     supabase.from('intereses').select('*').eq('activo', true).order('nombre'),
-    supabase.from('pisos').select('*').eq('organizacion_id', ORG_ID).eq('activo', true).order('numero'),
   ]);
 
   return {
@@ -41,6 +38,29 @@ export async function obtenerCatalogos(): Promise<Catalogos> {
     ubicaciones: (ubic.data ?? []) as Ubicacion[],
     responsables: (resp.data ?? []) as Responsable[],
     intereses: (inter.data ?? []) as Interes[],
-    pisos: (pisos.data ?? []) as Piso[],
+    pisos: PISOS_HARDCODED,
   };
+}
+
+export async function crearUbicacion(nombre: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('ubicaciones')
+    .insert({ nombre, organizacion_id: ORG_ID, activo: true })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function crearResponsable(nombreCompleto: string): Promise<string> {
+  const partes = nombreCompleto.trim().split(/\s+/);
+  const nombre = partes[0] ?? nombreCompleto;
+  const apellido = partes.slice(1).join(' ') || '';
+  const { data, error } = await supabase
+    .from('responsables')
+    .insert({ nombre, apellido, organizacion_id: ORG_ID, activo: true, es_externo: false })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
 }
