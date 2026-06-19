@@ -44,6 +44,8 @@ export interface MensajeLocal {
   cargando?: boolean;  // true mientras el asistente está "pensando"
   navegacion?: NavegacionAccion; // botón de navegación directa (no se persiste en DB)
   created_at: string;
+  error?: boolean;              // true si el request falló o tardó demasiado
+  preguntaReintentar?: string;  // texto original para el botón "Reintentar"
 }
 
 // Configuración de voz del usuario

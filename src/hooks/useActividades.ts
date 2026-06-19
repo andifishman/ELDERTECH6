@@ -62,5 +62,6 @@ export function useActividad(id: string | null) {
     enabled: !!id,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
+    retry: 1, // 1 reintento máximo — evita esperar 3×8s antes de mostrar error
   });
 }

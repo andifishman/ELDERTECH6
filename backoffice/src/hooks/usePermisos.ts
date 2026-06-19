@@ -30,7 +30,7 @@ const MATRIZ: Record<RolBackoffice, Permisos> = {
   editor: {
     puedeCrear: true,
     puedeEditar: true,
-    puedeEliminar: false,
+    puedeEliminar: true,
     puedeGestionarUsuarios: false,
     puedeConfigurar: false,
   },

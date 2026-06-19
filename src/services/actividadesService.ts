@@ -146,12 +146,19 @@ export async function buscarActividadesPorTexto(
 }
 
 export async function getActividadById(id: string): Promise<ActividadCompleta | null> {
-  const { data, error } = await supabase
+  const queryPromise = supabase
     .from('actividades')
     .select(ACTIVIDAD_SELECT)
     .eq('id', id)
-    .single();
+    .single()
+    .then(({ data, error }) => {
+      if (error) throw new Error(`Error al cargar actividad: ${error.message}`);
+      return data as ActividadCompleta | null;
+    });
 
-  if (error) throw new Error(`Error al cargar actividad: ${error.message}`);
-  return data as ActividadCompleta | null;
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('La actividad tardó demasiado en cargar. Verificá tu conexión.')), 8000),
+  );
+
+  return Promise.race([queryPromise, timeoutPromise]);
 }
