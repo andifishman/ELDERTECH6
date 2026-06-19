@@ -7,7 +7,7 @@
 // Supabase en tiempo real.
 // ========================================
 import { Link } from 'react-router-dom';
-import { Users, CalendarDays, GraduationCap, MessageSquare, Plus, FileText, HelpCircle, Clock, Activity } from 'lucide-react';
+import { Users, CalendarDays, GraduationCap, MessageSquare, Plus, FileText, HelpCircle, Clock, Activity, Wifi, WifiOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { KpiCard } from '@/components/common/KpiCard';
@@ -141,18 +141,29 @@ export function DashboardPage() {
             ) : (residentes.data ?? []).length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Sin residentes registrados.</p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-1">
                 {(residentes.data ?? []).map((r) => (
-                  <li key={r.id} className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      {r.foto_url && <AvatarImage src={r.foto_url} alt="" />}
-                      <AvatarFallback>{iniciales(`${r.nombre} ${r.apellido}`)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{r.nombre} {r.apellido}</p>
-                      <p className="text-xs text-muted-foreground">Hab. {r.habitacion ?? '—'}</p>
-                    </div>
-                    <Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge>
+                  <li key={r.id}>
+                    <Link
+                      to={`/usuarios/${r.id}`}
+                      className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
+                    >
+                      <Avatar className="h-9 w-9">
+                        {r.foto_url && <AvatarImage src={r.foto_url} alt="" />}
+                        <AvatarFallback>{iniciales(`${r.nombre} ${r.apellido}`)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{r.nombre} {r.apellido}</p>
+                        <p className="text-xs text-muted-foreground">Hab. {r.habitacion ?? '—'}</p>
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                          {r.ultima_conexion
+                            ? <><Wifi className="h-3 w-3 shrink-0 text-primary-500" />{formatDistanceToNow(new Date(r.ultima_conexion), { addSuffix: true, locale: es })}</>
+                            : <><WifiOff className="h-3 w-3 shrink-0" />Sin actividad registrada</>
+                          }
+                        </p>
+                      </div>
+                      <Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge>
+                    </Link>
                   </li>
                 ))}
               </ul>

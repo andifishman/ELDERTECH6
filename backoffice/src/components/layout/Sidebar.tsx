@@ -48,9 +48,11 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
         )}
       >
         {/* logo */}
-        <div className="flex h-16 items-center justify-between gap-2 px-5">
+        <div className="flex h-24 items-center justify-between gap-2 px-4">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="ElderTech" className="h-10 w-10 object-contain" />
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl p-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.95)' }}>
+              <img src="/logo.png" alt="ElderTech" className="h-full w-full object-contain" />
+            </div>
             <div className="leading-tight">
               <p className="text-base font-extrabold tracking-tight">ElderTech</p>
               <p className="text-[11px] font-medium text-white/70">Backoffice</p>

@@ -61,6 +61,65 @@ export async function actualizarResidente(id: string, input: ResidenteInput): Pr
   });
 }
 
+export interface ResidenteDetalle {
+  residente: Residente;
+  mensajes: { id: string; contenido: string; created_at: string }[];
+  intereses: { nombre: string; emoji: string | null }[];
+  tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
+  ciudadesClima: string[];
+}
+
+export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDetalle> {
+  const { data: residente, error } = await supabase
+    .from('residentes')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+
+  const [mensajesR, interesesR, tutorialesR, climaR] = await Promise.allSettled([
+    supabase
+      .from('mensajes_asistente')
+      .select('id, contenido, created_at')
+      .eq('residente_id', id)
+      .eq('rol', 'usuario')
+      .order('created_at', { ascending: false })
+      .limit(20),
+    supabase
+      .from('residente_intereses')
+      .select('interes:intereses(nombre, emoji)')
+      .eq('residente_id', id),
+    supabase
+      .from('progreso_tutoriales')
+      .select('tutorial:tutoriales(titulo, thumbnail_url), completado, updated_at')
+      .eq('residente_id', id)
+      .eq('completado', true)
+      .order('updated_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('preferencias_residente')
+      .select('ciudades_clima')
+      .eq('residente_id', id)
+      .maybeSingle(),
+  ]);
+
+  return {
+    residente: residente as Residente,
+    mensajes: mensajesR.status === 'fulfilled' ? (mensajesR.value.data ?? []) as any[] : [],
+    intereses: interesesR.status === 'fulfilled'
+      ? ((interesesR.value.data ?? []) as any[]).map((r) => r.interes).filter(Boolean)
+      : [],
+    tutorialesCompletados: tutorialesR.status === 'fulfilled'
+      ? ((tutorialesR.value.data ?? []) as any[])
+          .map((r) => ({ titulo: r.tutorial?.titulo ?? '', thumbnail_url: r.tutorial?.thumbnail_url ?? null, completado_at: r.updated_at }))
+          .filter((r) => r.titulo)
+      : [],
+    ciudadesClima: climaR.status === 'fulfilled' && (climaR.value as any).data?.ciudades_clima
+      ? (climaR.value as any).data.ciudades_clima
+      : [],
+  };
+}
+
 export async function setActivoResidente(id: string, activo: boolean, nombre?: string): Promise<void> {
   const { error } = await supabase
     .from('residentes')

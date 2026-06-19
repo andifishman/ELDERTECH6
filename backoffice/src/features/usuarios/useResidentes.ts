@@ -7,6 +7,7 @@ import {
   actualizarResidente,
   crearResidente,
   listarResidentes,
+  obtenerResidenteDetalle,
   setActivoResidente,
   type ResidenteInput,
 } from '@/services/residentesService';
@@ -14,6 +15,14 @@ import { notify } from '@/components/ui/toast';
 
 export function useResidentes() {
   return useQuery({ queryKey: queryKeys.residentes, queryFn: listarResidentes });
+}
+
+export function useResidenteDetalle(id?: string) {
+  return useQuery({
+    queryKey: ['residente-detalle', id],
+    queryFn: () => obtenerResidenteDetalle(id!),
+    enabled: !!id,
+  });
 }
 
 function useInvalidar() {

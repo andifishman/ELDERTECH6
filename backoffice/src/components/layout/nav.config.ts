@@ -30,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Tutoriales', to: '/tutoriales', icon: GraduationCap },
   { label: 'Usuarios', to: '/usuarios', icon: Users, visible: (p) => p.puedeGestionarUsuarios },
   { label: 'Asistente / FAQ', to: '/asistente', icon: Bot },
+  { label: 'Residentes', to: '/usuarios', icon: Users, visible: (p) => !p.puedeGestionarUsuarios },
   { label: 'Auditoría', to: '/auditoria', icon: History, visible: (p) => p.puedeGestionarUsuarios },
   { label: 'Configuración', to: '/configuracion', icon: Settings, visible: (p) => p.puedeConfigurar },
 ];

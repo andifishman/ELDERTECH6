@@ -88,6 +88,7 @@ export interface Residente {
   notas: string | null;
   fecha_ingreso: string | null;
   activo: boolean;
+  ultima_conexion: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -199,6 +200,7 @@ export interface Tutorial {
   lo_que_aprenderas: string[] | null;
   orden: number;
   activo: boolean;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }

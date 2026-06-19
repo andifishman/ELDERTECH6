@@ -7,6 +7,7 @@
 // ========================================
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Search, UserCog, Power } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/ui/card';
@@ -49,6 +50,7 @@ const NIVEL_LABEL: Record<NivelDificultad, string> = {
 };
 
 export function UsuariosPage() {
+  const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useResidentes();
   const guardar = useGuardarResidente();
   const toggle = useToggleResidente();
@@ -141,32 +143,43 @@ export function UsuariosPage() {
               {filtrados.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell>
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/usuarios/${r.id}`)}
+                      className="flex items-center gap-3 rounded-md hover:underline text-left"
+                    >
                       <Avatar className="h-9 w-9">
                         {r.foto_url && <AvatarImage src={r.foto_url} alt="" />}
                         <AvatarFallback>{iniciales(`${r.nombre} ${r.apellido}`)}</AvatarFallback>
                       </Avatar>
                       <span className="font-medium text-foreground">{r.nombre} {r.apellido}</span>
-                    </div>
+                    </button>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{r.habitacion ?? '—'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{r.piso ?? '—'}</TableCell>
                   <TableCell><Badge variant="outline">{NIVEL_LABEL[r.nivel_dificultad]}</Badge></TableCell>
                   <TableCell><Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge></TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => abrirEditar(r)}>
-                        <Pencil className="h-4 w-4 text-primary-700" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={r.activo ? 'Desactivar' : 'Reactivar'}
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => abrirEditar(r)}
+                        className="flex flex-col items-center gap-0.5 rounded-md p-1.5 text-primary-700 hover:bg-accent transition-colors"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="text-[10px] font-medium text-muted-foreground">Editar</span>
+                      </button>
+                      <button
+                        type="button"
                         disabled={toggle.isPending}
                         onClick={() => toggle.mutate({ id: r.id, activo: !r.activo, nombre: `${r.nombre} ${r.apellido}` })}
+                        className="flex flex-col items-center gap-0.5 rounded-md p-1.5 hover:bg-accent transition-colors disabled:opacity-50"
                       >
                         <Power className={r.activo ? 'h-4 w-4 text-destructive' : 'h-4 w-4 text-primary'} />
-                      </Button>
+                        <span className={`text-[10px] font-medium ${r.activo ? 'text-destructive' : 'text-primary'}`}>
+                          {r.activo ? 'Desactivar' : 'Activar'}
+                        </span>
+                      </button>
                     </div>
                   </TableCell>
                 </TableRow>
