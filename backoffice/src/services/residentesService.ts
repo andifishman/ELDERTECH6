@@ -90,7 +90,7 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
       .select('interes:intereses(nombre, emoji)')
       .eq('residente_id', id),
     supabase
-      .from('progreso_tutoriales')
+      .from('progreso_tutorial')
       .select('tutorial:tutoriales(titulo, thumbnail_url), completado, updated_at')
       .eq('residente_id', id)
       .eq('completado', true)

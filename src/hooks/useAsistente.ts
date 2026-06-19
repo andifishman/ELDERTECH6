@@ -109,29 +109,48 @@ export function useEnviarMensaje() {
     }: EnviarMensajeParams) => {
       const esLocal = sesionId.startsWith('local_');
 
-      // Envuelve una promesa con timeout explícito — cubre el loop agéntico entero
-      const conTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
+      const conTimeout = <T>(p: Promise<T>, ms: number, msg?: string): Promise<T> =>
         Promise.race([
           p,
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('La IA tardó demasiado. Tocá Reintentar.')), ms),
+            setTimeout(() => reject(new Error(msg ?? 'timeout')), ms),
           ),
         ]);
 
-      // 1+2. Guardar mensaje usuario y llamar a la IA en paralelo (son independientes)
+      // Objeto local de fallback para cuando Supabase no responde a tiempo
+      const msgLocalUsuario = () => ({
+        id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId,
+        rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString(),
+      });
+      const msgLocalAsistente = (contenido: string) => ({
+        id: 'a_' + Date.now(), sesion_id: sesionId, residente_id: residenteId,
+        rol: 'asistente' as const, contenido, es_favorito: false, created_at: new Date().toISOString(),
+      });
+
+      // 1. Guardar mensaje usuario con timeout propio corto — si Supabase cuelga,
+      //    no bloquea la IA. El mensaje se muestra igual localmente.
+      const guardarUsuarioPromise = esLocal
+        ? Promise.resolve(msgLocalUsuario())
+        : conTimeout(guardarMensaje(sesionId, residenteId, 'usuario', pregunta), 5000)
+            .catch(() => msgLocalUsuario());
+
+      // 2. Llamar a la IA — operación principal (67s = 3/4 de 90s anteriores)
+      const iaPromise = conTimeout(
+        consultarIA(pregunta, historial),
+        67000,
+        'La IA tardó demasiado. Tocá Reintentar.',
+      );
+
       const [msgUsuario, { texto: respuesta, navegacion }] = await Promise.all([
-        esLocal
-          ? Promise.resolve({ id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString() })
-          : guardarMensaje(sesionId, residenteId, 'usuario', pregunta),
-        // 90s: cada modelo tiene 42s propio — este timeout cubre hasta ~2 modelos completos
-        // antes de rendirse. Es ligeramente menor que el frontendTimeout (95s).
-        conTimeout(consultarIA(pregunta, historial), 90000),
+        guardarUsuarioPromise,
+        iaPromise,
       ]);
 
-      // 3. Guardar respuesta del asistente (solo si sesión real)
+      // 3. Guardar respuesta del asistente con timeout propio — tampoco bloquea
       const msgAsistente = esLocal
-        ? { id: 'a_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'asistente' as const, contenido: respuesta, es_favorito: false, created_at: new Date().toISOString() }
-        : await guardarMensaje(sesionId, residenteId, 'asistente', respuesta);
+        ? msgLocalAsistente(respuesta)
+        : await conTimeout(guardarMensaje(sesionId, residenteId, 'asistente', respuesta), 5000)
+            .catch(() => msgLocalAsistente(respuesta));
 
       // 4. Generar título en background — no bloquea mostrar la respuesta al usuario
       if (!esLocal && esPrimerMensaje) {

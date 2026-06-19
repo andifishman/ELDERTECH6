@@ -67,6 +67,8 @@ Sobre ElderTech: la app tiene Inicio (actividades del día), Radio (emisoras en 
 
 IMPORTANTE sobre Contactos: ElderTech tiene su propia lista de contactos guardados (no son los contactos del teléfono). Para AGREGAR un contacto, el residente toca el botón "Agregar contacto" dentro de la app, que abre un selector de los contactos del celular (requiere darle permiso a la app una sola vez). Elige uno de ahí y queda guardado en ElderTech. También puede ELIMINAR contactos de la lista. NO existe opción para editar los datos de un contacto ya guardado — debería eliminarlo y volver a agregarlo. Si alguien pregunta cómo agregar un contacto, indicale que vaya a la sección Llamadas y toque el botón verde "Agregar contacto".
 
+MUY IMPORTANTE: NO tenés acceso a la lista de contactos del usuario. NUNCA digas que alguien "está en la lista de contactos" ni que "voy a llamar a X" ni que "la llamada se está estableciendo" — no podés saberlo. Cuando alguien pida llamar a alguien, simplemente indicale que lo llevás a su lista de contactos para que elija a quién llamar.
+
 == CÓMO RESPONDER ==
 - Respondé siempre en español rioplatense (Argentina).
 - Usá lenguaje adulto, claro y respetuoso. NUNCA hablés como si el usuario fuera un niño.
@@ -103,13 +105,14 @@ buscar_actividades: ÚNICAMENTE para actividades programadas en la RESIDENCIA: d
 
 buscar_tutoriales: ÚNICAMENTE para guías del celular o la app: WhatsApp, videollamadas, fotos, WiFi, batería, volumen, ajustes. Usala cuando el usuario pregunta CÓMO hacer algo en el teléfono.
 
-navegar_a_pantalla: Mostrá un botón de acceso directo después de encontrar info, o cuando el usuario quiere ir a una sección. Rutas disponibles: "/horarios" o "/horarios/ID", "/articulos" o "/articulos/ID", "/llamar" (contactos y llamadas), "/mas/radio", "/mas/clima", "/" (inicio).
+navegar_a_pantalla: Mostrá un botón de acceso directo después de encontrar info, o cuando el usuario quiere ir a una sección. Rutas disponibles: "/horarios" o "/horarios/ID", "/articulos" o "/articulos/ID", "/llamar" (contactos y llamadas), "/mas/radio", "/mas/clima", "/profile" (perfil del residente), "/" (inicio).
 
 EJEMPLOS DE USO:
 - "¿A qué hora es el desayuno?" → buscar_actividades(busqueda="desayuno") → navegar_a_pantalla("/horarios/ID")
 - "¿Cómo uso WhatsApp?" → buscar_tutoriales(busqueda="WhatsApp") → navegar_a_pantalla("/articulos/ID")
 - "Llamá a María" o "quiero llamar a alguien" → sin búsqueda → navegar_a_pantalla("/llamar")
 - "¿Qué actividades hay hoy?" → buscar_actividades() sin busqueda → navegar_a_pantalla("/horarios")
+- "Ver mi perfil" o "ir a mi perfil" → navegar_a_pantalla("/profile")
 - Preguntas generales (historia, cultura, tecnología no relacionada) → responder directo, sin herramientas.`;
 }
 
@@ -119,6 +122,42 @@ EJEMPLOS DE USO:
 function extraerTexto(data: unknown): string {
   const d = data as { choices?: Array<{ message?: { content?: string } }> } | null;
   return d?.choices?.[0]?.message?.content?.trim() ?? '';
+}
+
+/**
+ * Algunos modelos escriben <navegar_a_pantalla .../> como texto en lugar de invocar
+ * la herramienta correctamente. Este helper extrae la navegación del texto y la limpia.
+ */
+function extraerNavegacionDelTexto(texto: string): { texto: string; navegacion?: NavegacionAccion } {
+  // Primero extraer la navegación del tag <navegar_a_pantalla> antes de limpiar el XML
+  const navTagRegex = /<navegar_a_pantalla([^>]*)>(.*?)<\/navegar_a_pantalla>|<navegar_a_pantalla([^/]*)\/>/gs;
+  const match = navTagRegex.exec(texto);
+
+  // Limpiar TODOS los tags XML-like (algunos modelos escriben argumentos de herramientas como texto)
+  // También eliminar patrones internos conocidos que no deben mostrarse al usuario
+  const textoLimpio = texto
+    .replace(/<[a-zA-Z_][a-zA-Z0-9_]*(?:\s[^>]*)?>[\s\S]*?<\/[a-zA-Z_][a-zA-Z0-9_]*>/gs, '')
+    .replace(/<[a-zA-Z_][a-zA-Z0-9_]*(?:\s[^>]*)?\s*\/>/gs, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  if (!match) return { texto: textoLimpio };
+
+  const attrs = match[1] ?? match[3] ?? '';
+  const ruta = /ruta="([^"]*)"/.exec(attrs)?.[1];
+  const etiqueta = /etiqueta="([^"]*)"/.exec(attrs)?.[1];
+  const emoji = /emoji="([^"]*)"/.exec(attrs)?.[1];
+
+  if (!ruta) return { texto: textoLimpio };
+
+  return {
+    texto: textoLimpio,
+    navegacion: {
+      ruta,
+      etiqueta: etiqueta ?? 'Ver más',
+      emoji: emoji ?? '📱',
+    },
+  };
 }
 
 interface GroqToolCall {
@@ -194,7 +233,7 @@ const HERRAMIENTAS_IA = [
               '"/articulos" (todos los tutoriales), ' +
               '"/articulos/ID" (tutorial específico — reemplazá ID con el id real), ' +
               '"/llamar" (pantalla de contactos y llamadas), ' +
-              '"/mas/radio", "/mas/clima", "/" (inicio).',
+              '"/mas/radio", "/mas/clima", "/profile" (perfil del residente), "/" (inicio).',
           },
           etiqueta: {
             type: 'string',
@@ -202,7 +241,7 @@ const HERRAMIENTAS_IA = [
           },
           emoji: {
             type: 'string',
-            description: 'Emoji del botón (📅 horarios, 📚 tutoriales, 📞 llamadas, 📻 radio, 🌤️ clima).',
+            description: 'Emoji del botón (📅 horarios, 📚 tutoriales, 📞 llamadas, 📻 radio, 🌤️ clima, 👤 perfil).',
           },
         },
         required: ['ruta', 'etiqueta', 'emoji'],
@@ -231,7 +270,7 @@ async function ejecutarConModelo(
   // Controller independiente por modelo: si este modelo tarda > 42s,
   // se aborta SOLO este intento y llamarIA puede pasar al siguiente.
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 42000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   let navegacion: NavegacionAccion | undefined;
   const msgs = [...messages];
@@ -301,9 +340,11 @@ async function ejecutarConModelo(
 
       // Sin tool calls → respuesta final de texto
       if (!toolCalls || toolCalls.length === 0) {
-        const texto = ((message.content as string) ?? '').trim();
-        if (!texto) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
-        return { texto, navegacion };
+        const textoRaw = ((message.content as string) ?? '').trim();
+        if (!textoRaw) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+        // Algunos modelos escriben <navegar_a_pantalla> como texto en vez de invocar la herramienta
+        const extraido = extraerNavegacionDelTexto(textoRaw);
+        return { texto: extraido.texto, navegacion: navegacion ?? extraido.navegacion };
       }
 
       // Agregar el mensaje del asistente con las tool calls al historial
@@ -483,11 +524,11 @@ export async function consultarIA(
     { role: 'user', content: mensajeUsuario },
   ];
 
-  // Para solicitudes de llamada: saltamos tools y agregamos navegación directo.
+  // Para solicitudes de llamada: respuesta fija sin llamar a la IA para evitar
+  // que alucine sobre si una persona está o no en la lista de contactos.
   if (esIntentLlamar(mensajeUsuario)) {
-    const { texto } = await llamarIA(messages, 200, false);
     return {
-      texto,
+      texto: 'Te llevo a tu lista de contactos para que elijas a quién llamar.',
       navegacion: { ruta: '/llamar', etiqueta: 'Ir a Contactos', emoji: '📞' },
     };
   }

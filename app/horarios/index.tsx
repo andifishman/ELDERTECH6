@@ -24,7 +24,6 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -78,12 +77,6 @@ export default function HorariosScreen() {
   const [scrollY, setScrollY] = useState(0);
   const [listaAltura, setListaAltura] = useState(0);
   const [contenidoAltura, setContenidoAltura] = useState(0);
-
-  // Baja un paso equivalente al 80% de la altura visible
-  function bajarScroll() {
-    const paso = listaAltura * 0.8;
-    flatListRef.current?.scrollToOffset({ offset: scrollY + paso, animated: true });
-  }
 
   // Muestra la flecha solo si hay contenido por debajo del viewport
   const hayMasAbajo = contenidoAltura > listaAltura && scrollY + listaAltura < contenidoAltura - 10;
@@ -218,18 +211,12 @@ export default function HorariosScreen() {
               onContentSizeChange={(_, h) => setContenidoAltura(h)}
             />
 
-            {/* Botón flotante de flecha — solo visible si hay más contenido abajo */}
+            {/* Indicador visual de scroll — no es interactivo, solo indica que hay más contenido */}
             {hayMasAbajo && (
-              <TouchableOpacity
-                style={styles.flechaBtn}
-                onPress={bajarScroll}
-                activeOpacity={0.85}
-                accessibilityLabel="Bajar para ver más actividades"
-                accessibilityRole="button"
-              >
+              <View style={styles.flechaBtn} pointerEvents="none">
                 <Ionicons name="chevron-down" size={32} color="#222" />
                 <Text style={styles.flechaTexto}>Bajar</Text>
-              </TouchableOpacity>
+              </View>
             )}
           </View>
         )}

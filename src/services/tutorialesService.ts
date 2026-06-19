@@ -89,6 +89,7 @@ export async function getTutoriales(
     .from('tutoriales')
     .select(TUTORIAL_SELECT)
     .eq('activo', true)
+    .is('deleted_at', null)
     .order('orden', { ascending: true });
 
   if (categoriaId) {
@@ -117,6 +118,7 @@ export async function getTutorialesConProgreso(
       progreso:progreso_tutorial(*)
     `)
     .eq('activo', true)
+    .is('deleted_at', null)
     .order('orden', { ascending: true });
 
   if (categoriaId) {
@@ -174,6 +176,7 @@ export async function getTutorialesRelacionados(
     .from('tutoriales')
     .select(TUTORIAL_SELECT)
     .eq('activo', true)
+    .is('deleted_at', null)
     .eq('categoria_id', categoriaId)
     .neq('id', tutorialId)
     .order('orden', { ascending: true })

@@ -5,6 +5,15 @@ import { supabase } from '@/services/supabase';
 import { getProfileForUser } from '@/services/authService';
 import type { AuthProfile } from '@/types/auth.types';
 
+async function registrarConexion(residenteId: string): Promise<void> {
+  try {
+    await supabase
+      .from('residentes')
+      .update({ ultima_conexion: new Date().toISOString() })
+      .eq('id', residenteId);
+  } catch {}
+}
+
 const cacheKey = (uid: string) => `@et_profile_v1_${uid}`;
 
 async function readCache(uid: string): Promise<AuthProfile | null> {
@@ -121,7 +130,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const p = await Promise.race([getProfileForUser(uid), timeout]);
               if (mounted) {
                 setProfile(p);
-                if (p) writeCache(uid, p);
+                if (p) {
+                  writeCache(uid, p);
+                  if (p.residente?.id) void registrarConexion(p.residente.id);
+                }
               }
             } catch {}
             if (mounted) setIsLoading(false);
@@ -175,7 +187,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const p = await getProfileForUser(s.user.id);
             if (mounted) {
               setProfile(p);
-              if (p) writeCache(s.user.id, p);
+              if (p) {
+                writeCache(s.user.id, p);
+                if (event === 'SIGNED_IN' && p.residente?.id) void registrarConexion(p.residente.id);
+              }
             }
           } catch {
             if (mounted) setProfile(null);

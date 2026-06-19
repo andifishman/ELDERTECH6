@@ -51,8 +51,8 @@ export default function ChatAsistenteScreen() {
   const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [cargandoHistorial, setCargandoHistorial] = useState(!!sesionIdParam);
-  const [historialError, setHistorialError] = useState(false);
   const [recargarKey, setRecargarKey] = useState(0);
+  const [historialAviso, setHistorialAviso] = useState(false);
   const [grabando, setGrabando] = useState(false);
   const [transcribiendo, setTranscribiendo] = useState(false);
   const [mensajeDestacado, setMensajeDestacado] = useState<string | null>(null);
@@ -92,7 +92,7 @@ export default function ChatAsistenteScreen() {
 
   // ── Cargar mensajes de sesión existente (historial) ───────────────────────
   const reintentarCargaHistorial = useCallback(() => {
-    setHistorialError(false);
+    setHistorialAviso(false);
     setCargandoHistorial(true);
     setMensajes([]);
     setRecargarKey((k) => k + 1);
@@ -104,16 +104,19 @@ export default function ChatAsistenteScreen() {
 
     let cancelled = false;
 
-    // 8s: tiempo razonable para que Supabase responda aun con red lenta
+    // 15s: timeout generoso para conexiones lentas desde Argentina a us-east-1
+    const TIMEOUT_MS = 15000;
+
     const safetyTimer = setTimeout(() => {
       if (!cancelled) {
-        setHistorialError(true);
+        // No bloqueamos la UI: mostramos aviso pero dejamos el chat usable
+        setHistorialAviso(true);
         setCargandoHistorial(false);
       }
-    }, 8000);
+    }, TIMEOUT_MS);
 
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 8000),
+      setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS),
     );
 
     Promise.race([getMensajesDeSesion(sesionId), timeout])
@@ -146,7 +149,8 @@ export default function ChatAsistenteScreen() {
       .catch((err) => {
         if (!cancelled) {
           console.warn('[Asistente] Error cargando historial:', err);
-          setHistorialError(true);
+          // Degradación: chat usable aunque no se cargue el historial anterior
+          setHistorialAviso(true);
         }
       })
       .finally(() => {
@@ -216,9 +220,8 @@ export default function ChatAsistenteScreen() {
 
       setMensajes((prev) => [...prev, msgUsuarioLocal, msgCargando]);
 
-      // Timeout global — cubre TODO: crearSesion + llamada IA + guardar.
-      // 95s: mayor que conTimeout (90s) para que conTimeout active primero con mensaje accionable.
-      // Se registra ANTES de cualquier await para que ningún cuelgue lo evite
+      // Timeout global — 71s (3/4 de 95s anterior). El timeout interno de la IA es 67s,
+      // así que ese dispara primero con mensaje accionable.
       let timedOut = false;
       const frontendTimeout = setTimeout(() => {
         timedOut = true;
@@ -237,7 +240,7 @@ export default function ChatAsistenteScreen() {
               : m,
           ),
         );
-      }, 95000);
+      }, 71000);
 
       // Creación lazy de sesión: si no hay sesionId aún, crear ahora
       let currentSesionId = sid ?? sesionId;
@@ -299,8 +302,7 @@ export default function ChatAsistenteScreen() {
           ),
         );
 
-        // Leer la respuesta en voz
-        leerTexto(msgAsistente.contenido);
+        // No leer automáticamente — el usuario toca "Escuchar" cuando quiere
       } catch (err) {
         if (timedOut) return;
         clearTimeout(frontendTimeout);
@@ -526,7 +528,7 @@ export default function ChatAsistenteScreen() {
       {/* Lista de mensajes */}
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
         {cargandoHistorial ? (
@@ -534,21 +536,19 @@ export default function ChatAsistenteScreen() {
             <ActivityIndicator size="large" color={Colors.brand.blueDark} />
             <Text style={styles.iniciandoTexto}>Cargando conversación...</Text>
           </View>
-        ) : historialError ? (
-          <View style={styles.centrado}>
-            <Text style={styles.errorHistorialEmoji}>⚠️</Text>
-            <Text style={styles.errorHistorialTexto}>No se pudieron cargar los mensajes.</Text>
-            <TouchableOpacity
-              style={styles.errorHistorialBtn}
-              onPress={reintentarCargaHistorial}
-              accessibilityRole="button"
-              accessibilityLabel="Reintentar cargar la conversación"
-            >
-              <Ionicons name="refresh" size={20} color={Colors.text.onDark} />
-              <Text style={styles.errorHistorialBtnTexto}>Reintentar</Text>
-            </TouchableOpacity>
-          </View>
         ) : (
+          <>
+            {historialAviso && (
+              <TouchableOpacity
+                style={styles.avisoHistorial}
+                onPress={reintentarCargaHistorial}
+                accessibilityRole="button"
+                accessibilityLabel="No se cargó el historial, tocar para reintentar"
+              >
+                <Ionicons name="warning-outline" size={16} color="#92400E" />
+                <Text style={styles.avisoHistorialTexto}>No se cargó el historial anterior · Tocar para reintentar</Text>
+              </TouchableOpacity>
+            )}
           <FlatList
             ref={flatRef}
             data={mensajes}
@@ -572,6 +572,7 @@ export default function ChatAsistenteScreen() {
               </View>
             }
           />
+          </>
         )}
 
         {/* Indicador de grabación */}
@@ -1099,6 +1100,22 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
+  },
+  avisoHistorial: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#FEF3C7',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FDE68A',
+    paddingHorizontal: Spacing.screen.horizontal,
+    paddingVertical: Spacing.sm,
+  },
+  avisoHistorialTexto: {
+    flex: 1,
+    fontSize: Typography.size.sm,
+    color: '#92400E',
+    fontWeight: Typography.weight.medium,
   },
 
   // Botón Reintentar (solo en mensajes con error de timeout)

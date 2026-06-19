@@ -8,7 +8,9 @@
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Search, UserCog, Power } from 'lucide-react';
+import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -135,6 +137,7 @@ export function UsuariosPage() {
                 <TableHead>Habitación</TableHead>
                 <TableHead>Piso</TableHead>
                 <TableHead>Nivel</TableHead>
+                <TableHead>Última conexión</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -158,6 +161,14 @@ export function UsuariosPage() {
                   <TableCell className="text-sm text-muted-foreground">{r.habitacion ?? '—'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{r.piso ?? '—'}</TableCell>
                   <TableCell><Badge variant="outline">{NIVEL_LABEL[r.nivel_dificultad]}</Badge></TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {r.ultima_conexion
+                        ? <><Wifi className="h-3.5 w-3.5 shrink-0 text-primary-500" />{formatDistanceToNow(new Date(r.ultima_conexion), { addSuffix: true, locale: es })}</>
+                        : <><WifiOff className="h-3.5 w-3.5 shrink-0" />Sin conexión</>
+                      }
+                    </span>
+                  </TableCell>
                   <TableCell><Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge></TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-3">

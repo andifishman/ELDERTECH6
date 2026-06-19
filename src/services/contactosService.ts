@@ -270,16 +270,14 @@ export async function uploadFotoContacto(
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
 
   let blob: Blob;
-
-  // En web, expo-image-picker devuelve una URL blob: o data: — fetch() las maneja bien
-  // En nativo, usamos XMLHttpRequest para content:// y file:// URIs
-  if (uri.startsWith('blob:') || uri.startsWith('data:') || uri.startsWith('http')) {
+  try {
     const response = await fetch(uri);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     blob = await response.blob();
-  } else {
-    blob = await new Promise((resolve, reject) => {
+  } catch {
+    blob = await new Promise<Blob>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.onload = () => resolve(xhr.response);
+      xhr.onload = () => resolve(xhr.response as Blob);
       xhr.onerror = () => reject(new Error('No se pudo leer la imagen'));
       xhr.responseType = 'blob';
       xhr.open('GET', uri, true);
