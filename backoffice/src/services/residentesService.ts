@@ -118,7 +118,10 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
           .map((r) => {
             const ciudad = r.ciudad;
             if (!ciudad?.nombre) return null;
-            return ciudad.pais_codigo ? `${ciudad.nombre} (${ciudad.pais_codigo})` : ciudad.nombre;
+            const bandera = ciudad.pais_codigo
+              ? [...(ciudad.pais_codigo as string).toUpperCase()].map((c) => String.fromCodePoint(c.charCodeAt(0) + 127397)).join('')
+              : '🌍';
+            return `${bandera} ${ciudad.nombre}`;
           })
           .filter(Boolean) as string[]
       : [],

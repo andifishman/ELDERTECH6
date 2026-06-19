@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,6 +61,14 @@ export default function VerifyEmailScreen() {
             <Text style={styles.subtitle}>
               El link puede haber expirado.{'\n'}Pedí un nuevo link o contactá al personal.
             </Text>
+            <TouchableOpacity
+              style={styles.volverBtn}
+              onPress={() => router.replace('/login')}
+              accessibilityRole="button"
+              accessibilityLabel="Volver al inicio de sesión"
+            >
+              <Text style={styles.volverBtnTexto}>Ir al inicio de sesión</Text>
+            </TouchableOpacity>
           </>
         )}
       </View>
@@ -101,5 +109,20 @@ const styles = StyleSheet.create({
     color: Colors.text.hint,
     textAlign: 'center',
     marginTop: Spacing.md,
+  },
+  volverBtn: {
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.brand.greenDark,
+    borderRadius: 14,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xxxl,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  volverBtnTexto: {
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
   },
 });

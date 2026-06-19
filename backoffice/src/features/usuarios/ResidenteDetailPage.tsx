@@ -143,7 +143,7 @@ export function ResidenteDetailPage() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {ciudadesClima.map((ciudad, idx) => (
-                  <Badge key={idx} variant="outline">🌍 {ciudad}</Badge>
+                  <Badge key={idx} variant="outline">{ciudad}</Badge>
                 ))}
               </div>
             )}

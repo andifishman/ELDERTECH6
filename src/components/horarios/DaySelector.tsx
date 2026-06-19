@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   numeroBg: {
     width: s(48, 36),
     height: s(48, 36),
-    borderRadius: 100,
+    borderRadius: s(24, 18),
     alignItems: 'center',
     justifyContent: 'center',
   },

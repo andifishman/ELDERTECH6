@@ -81,8 +81,9 @@ const PAIS_NOMBRE: Record<string, string> = {
 // Constantes
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Clave de AsyncStorage donde se persisten las ciudades del usuario */
-const STORAGE_KEY = 'eldertech_ciudades_clima';
+/** Clave de AsyncStorage por residente — evita que usuarios compartan ciudades en el mismo dispositivo */
+const getStorageKey = (residenteId: string | null) =>
+  `eldertech_ciudades_clima_${residenteId ?? 'guest'}`;
 const CIUDAD_NATAL: CiudadGuardada = {
   id: 'natal',
   nombre: 'Buenos Aires',
@@ -101,6 +102,7 @@ const CIUDAD_NATAL: CiudadGuardada = {
 export default function ClimaScreen() {
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
+  const storageKey = getStorageKey(residenteId);
 
   /** Lista completa de ciudades (natal + las que agregó el usuario) */
   const [ciudades, setCiudades] = useState<CiudadGuardada[]>([CIUDAD_NATAL]);
@@ -143,7 +145,7 @@ export default function ClimaScreen() {
   useEffect(() => {
     async function cargarCiudades() {
       try {
-        const json = await AsyncStorage.getItem(STORAGE_KEY);
+        const json = await AsyncStorage.getItem(storageKey);
         if (json) {
           const guardadas: CiudadGuardada[] = JSON.parse(json);
           const sinNatal = guardadas.filter((c) => !c.esNatal);
@@ -178,7 +180,7 @@ export default function ClimaScreen() {
 
           if (familiares.length > 0) {
             setCiudades([CIUDAD_NATAL, ...familiares]);
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(familiares));
+            await AsyncStorage.setItem(storageKey, JSON.stringify(familiares));
           }
         } catch {}
       }
@@ -190,11 +192,11 @@ export default function ClimaScreen() {
   const persistirCiudades = useCallback(async (lista: CiudadGuardada[]) => {
     try {
       const sinNatal = lista.filter((c) => !c.esNatal);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sinNatal));
+      await AsyncStorage.setItem(storageKey, JSON.stringify(sinNatal));
     } catch {
       // Fallo silencioso — la app sigue funcionando aunque no se guarde
     }
-  }, []);
+  }, [storageKey]);
 
   // ── Buscar ciudades en la API mientras el usuario escribe (con debounce) ──
   useEffect(() => {
@@ -256,28 +258,7 @@ export default function ClimaScreen() {
     setResultados([]);
 
     // Sincronizar con Supabase en background para que el backoffice pueda verlo
-    if (residenteId) {
-      void (async () => {
-        try {
-          const { data: upserted } = await supabase
-            .from('ciudades_familiares')
-            .upsert(
-              { nombre: geo.name, pais_codigo: geo.country_code, lat: geo.latitude, lon: geo.longitude, timezone: geo.timezone, activo: false, orden: 999 },
-              { onConflict: 'nombre,pais_codigo', ignoreDuplicates: false },
-            )
-            .select('id')
-            .single();
-          if (upserted?.id) {
-            await supabase
-              .from('residente_ciudades_familiares')
-              .upsert(
-                { residente_id: residenteId, ciudad_id: upserted.id },
-                { onConflict: 'residente_id,ciudad_id', ignoreDuplicates: true },
-              );
-          }
-        } catch {}
-      })();
-    }
+    if (residenteId) void sincronizarConSupabase(residenteId, [nueva]);
   }
 
   /** Elimina la ciudad activa (solo funciona si no es la natal) */

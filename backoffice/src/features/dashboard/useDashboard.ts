@@ -25,7 +25,7 @@ export function useActividadesHoy() {
 }
 
 export function useResidentesRecientes() {
-  return useQuery({ queryKey: [...queryKeys.dashboard, 'residentes-recientes'], queryFn: () => obtenerResidentesRecientes(5), refetchInterval: REFETCH_INTERVAL });
+  return useQuery({ queryKey: [...queryKeys.dashboard, 'residentes-recientes'], queryFn: () => obtenerResidentesRecientes(10), refetchInterval: REFETCH_INTERVAL });
 }
 
 export function useTutorialesMasVistos() {

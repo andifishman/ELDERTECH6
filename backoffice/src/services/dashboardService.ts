@@ -64,6 +64,7 @@ export async function obtenerResidentesRecientes(limite = 5): Promise<ResidenteC
     .select('*')
     .eq('organizacion_id', ORG_ID)
     .order('activo', { ascending: false })
+    .order('ultima_conexion', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(limite);
   if (error) throw error;

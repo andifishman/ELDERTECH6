@@ -101,15 +101,15 @@ export function AppHeader({
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: Spacing.xxxl,
-    paddingHorizontal: Spacing.lg,
+    paddingBottom: 44,
+    paddingHorizontal: Spacing.xl,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: Spacing.header,
-    paddingTop: Spacing.lg,
-    gap: Spacing.md,
+    paddingTop: Spacing.xl,
+    gap: Spacing.xl,
   },
   // Contenedor lateral más ancho para acomodar botones más grandes
   sideContainer: {

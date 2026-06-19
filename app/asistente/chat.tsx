@@ -41,6 +41,13 @@ export default function ChatAsistenteScreen() {
   const { pregunta: preguntaInicial, sesionId: sesionIdParam, mensajeId: mensajeIdParam } = useLocalSearchParams<{ pregunta?: string; sesionId?: string; mensajeId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [androidKbHeight, setAndroidKbHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setAndroidKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
   const { config } = useAsistenteConfig();
@@ -174,14 +181,13 @@ export default function ChatAsistenteScreen() {
 
   const leerTexto = useCallback(
     (texto: string) => {
-      if (!config.leerRespuestas) return;
       Speech.stop();
       Speech.speak(texto, {
         language: 'es-AR',
         rate: getSpeechRate(config.velocidad),
       });
     },
-    [config.leerRespuestas, config.velocidad],
+    [config.velocidad],
   );
 
   // ── Enviar mensaje ────────────────────────────────────────────────────────
@@ -528,9 +534,10 @@ export default function ChatAsistenteScreen() {
       {/* Lista de mensajes */}
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 72 : 0}
       >
+        <View style={[styles.flex, { paddingBottom: androidKbHeight }]}>
         {cargandoHistorial ? (
           <View style={styles.centrado}>
             <ActivityIndicator size="large" color={Colors.brand.blueDark} />
@@ -586,7 +593,7 @@ export default function ChatAsistenteScreen() {
         )}
 
         {/* Input */}
-        <View style={[styles.inputWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
+        <View style={[styles.inputWrapper, { paddingBottom: (Platform.OS === 'android' && androidKbHeight > 0) ? Spacing.sm : insets.bottom + Spacing.sm }]}>
           <TextInput
             ref={inputRef}
             style={[styles.input, { fontSize: Typography.size.md * scale }]}
@@ -641,6 +648,7 @@ export default function ChatAsistenteScreen() {
               <Ionicons name="send" size={24} color={Colors.text.onDark} />
             )}
           </TouchableOpacity>
+        </View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -762,7 +770,14 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                     {mensaje.navegacion && (
                       <TouchableOpacity
                         style={styles.navegacionBtn}
-                        onPress={() => router.push(mensaje.navegacion!.ruta as Parameters<typeof router.push>[0])}
+                        onPress={() => {
+                          const nav = mensaje.navegacion!;
+                          // Corrección si la IA envía "/" para el perfil
+                          const ruta = (nav.ruta === '/' && /perfil/i.test(nav.etiqueta))
+                            ? '/profile'
+                            : nav.ruta;
+                          router.push(ruta as Parameters<typeof router.push>[0]);
+                        }}
                         accessibilityLabel={mensaje.navegacion.etiqueta}
                         accessibilityRole="button"
                         activeOpacity={0.85}

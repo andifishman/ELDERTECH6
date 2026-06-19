@@ -270,15 +270,17 @@ export async function uploadFotoContacto(
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
 
   let blob: Blob;
-  try {
+
+  // En web o URIs http/blob/data → fetch nativo
+  // En nativo (file:// / content://) → XHR es más confiable en React Native
+  if (uri.startsWith('blob:') || uri.startsWith('data:') || uri.startsWith('http')) {
     const response = await fetch(uri);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     blob = await response.blob();
-  } catch {
+  } else {
     blob = await new Promise<Blob>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.onload = () => resolve(xhr.response as Blob);
-      xhr.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      xhr.onerror = () => reject(new Error('No se pudo leer la imagen del contacto'));
       xhr.responseType = 'blob';
       xhr.open('GET', uri, true);
       xhr.send(null);
