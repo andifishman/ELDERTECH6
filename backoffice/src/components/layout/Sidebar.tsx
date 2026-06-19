@@ -54,8 +54,8 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
               <img src="/logo.png" alt="ElderTech" className="h-full w-full object-contain" />
             </div>
             <div className="leading-tight">
-              <p className="text-base font-extrabold tracking-tight">ElderTech</p>
-              <p className="text-[11px] font-medium text-white/70">Backoffice</p>
+              <p className="text-2xl font-extrabold tracking-tight">ElderTech</p>
+              <p className="text-base font-medium text-white/70">Backoffice</p>
             </div>
           </div>
           <button

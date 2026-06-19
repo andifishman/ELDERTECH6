@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -244,76 +244,91 @@ export function TutorialesPage() {
 
       {/* Dialog de detalle papelera */}
       <Dialog open={!!selectedEnPapelera} onOpenChange={(v) => !v && setSelectedEnPapelera(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="truncate pr-4">{selectedEnPapelera?.titulo}</DialogTitle>
-            <DialogDescription>
-              {selectedEnPapelera?.activo ? 'Publicado' : 'Borrador'} · {selectedEnPapelera?.categoria?.nombre ?? 'Sin categoría'}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-sm p-0 overflow-hidden">
+          {/* Thumbnail */}
+          <div className="relative flex h-40 items-center justify-center bg-muted">
+            {selectedEnPapelera?.thumbnail_url
+              ? <img src={selectedEnPapelera.thumbnail_url} alt="" className="h-full w-full object-cover" />
+              : selectedEnPapelera?.formato === 'video'
+              ? <PlayCircle className="h-16 w-16 text-muted-foreground/40" />
+              : <FileText className="h-16 w-16 text-muted-foreground/40" />
+            }
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+              <Badge variant={selectedEnPapelera?.formato === 'video' ? 'info' : 'purple'} className="capitalize">
+                {selectedEnPapelera?.formato}
+              </Badge>
+              <Badge variant={selectedEnPapelera?.activo ? 'success' : 'muted'}>
+                {selectedEnPapelera?.activo ? 'Publicado' : 'Borrador'}
+              </Badge>
+            </div>
+          </div>
 
-          {selectedEnPapelera && (() => {
-            const dias = selectedEnPapelera.deleted_at ? diasRestantes(selectedEnPapelera.deleted_at) : 7;
-            const pct = Math.round(((7 - dias) / 7) * 100);
-            return (
-              <div className="space-y-4">
-                <div className="flex h-36 items-center justify-center rounded-xl bg-muted overflow-hidden">
-                  {selectedEnPapelera.thumbnail_url
-                    ? <img src={selectedEnPapelera.thumbnail_url} alt="" className="h-full w-full object-cover" />
-                    : selectedEnPapelera.formato === 'video'
-                    ? <PlayCircle className="h-14 w-14 text-muted-foreground" />
-                    : <FileText className="h-14 w-14 text-muted-foreground" />
-                  }
-                </div>
-                <div className="space-y-1.5">
-                  {selectedEnPapelera.deleted_at && (
-                    <p className="text-sm text-muted-foreground">
-                      Eliminado {formatDistanceToNow(new Date(selectedEnPapelera.deleted_at), { addSuffix: true, locale: es })}
-                    </p>
-                  )}
-                  <p className={`text-sm font-medium ${dias <= 1 ? 'text-destructive' : dias <= 3 ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                    {dias === 0 ? 'Se eliminará definitivamente hoy' : `Se eliminará definitivamente en ${dias} día${dias !== 1 ? 's' : ''}`}
-                  </p>
-                  <div className="h-1.5 w-full rounded-full bg-muted">
+          <div className="p-5 space-y-4">
+            <div>
+              <h3 className="font-semibold text-base leading-snug truncate">{selectedEnPapelera?.titulo}</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {selectedEnPapelera?.categoria?.nombre ?? 'Sin categoría'}
+              </p>
+            </div>
+
+            {selectedEnPapelera && (() => {
+              const dias = selectedEnPapelera.deleted_at ? diasRestantes(selectedEnPapelera.deleted_at) : 7;
+              const pct = Math.round(((7 - dias) / 7) * 100);
+              const urgente = dias <= 1;
+              const alerta = dias <= 3;
+              return (
+                <div className={`rounded-lg border p-3 space-y-2 ${urgente ? 'border-destructive/30 bg-destructive/5' : alerta ? 'border-amber-300/50 bg-amber-50' : 'border-border bg-muted/40'}`}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      {selectedEnPapelera.deleted_at
+                        ? `Eliminado ${formatDistanceToNow(new Date(selectedEnPapelera.deleted_at), { addSuffix: true, locale: es })}`
+                        : 'Eliminado recientemente'}
+                    </span>
+                    <span className={`font-semibold ${urgente ? 'text-destructive' : alerta ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                      {dias === 0 ? 'Se elimina hoy' : `${dias}d restantes`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-black/10">
                     <div
-                      className={`h-1.5 rounded-full transition-all ${dias <= 1 ? 'bg-destructive' : dias <= 3 ? 'bg-amber-500' : 'bg-primary'}`}
+                      className={`h-1.5 rounded-full transition-all ${urgente ? 'bg-destructive' : alerta ? 'bg-amber-500' : 'bg-primary'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={restaurar.isPending}
-              onClick={() => {
-                if (!selectedEnPapelera) return;
-                restaurar.mutate(
-                  { id: selectedEnPapelera.id, titulo: selectedEnPapelera.titulo },
-                  { onSuccess: () => setSelectedEnPapelera(null) },
-                );
-              }}
-            >
-              <RotateCcw className="h-4 w-4" />
-              {selectedEnPapelera?.activo ? 'Restaurar como publicado' : 'Restaurar como borrador'}
-            </Button>
-            {permisos.puedeEliminar && (
+            <div className="flex flex-col gap-2">
               <Button
-                variant="destructive"
+                variant="outline"
                 className="w-full"
+                disabled={restaurar.isPending}
                 onClick={() => {
-                  setAEliminarDef(selectedEnPapelera);
-                  setSelectedEnPapelera(null);
+                  if (!selectedEnPapelera) return;
+                  restaurar.mutate(
+                    { id: selectedEnPapelera.id, titulo: selectedEnPapelera.titulo },
+                    { onSuccess: () => setSelectedEnPapelera(null) },
+                  );
                 }}
               >
-                <Trash2 className="h-4 w-4" /> Eliminar definitivamente
+                <RotateCcw className="h-4 w-4" />
+                {selectedEnPapelera?.activo ? 'Restaurar como publicado' : 'Restaurar como borrador'}
               </Button>
-            )}
-          </DialogFooter>
+              {permisos.puedeEliminar && (
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => {
+                    setAEliminarDef(selectedEnPapelera);
+                    setSelectedEnPapelera(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" /> Eliminar definitivamente
+                </Button>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

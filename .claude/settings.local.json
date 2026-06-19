@@ -39,7 +39,8 @@
       "mcp__supabase__get_logs",
       "WebFetch(domain:api.anthropic.com)",
       "mcp__supabase__get_advisors",
-      "Bash(claude mcp *)"
+      "Bash(claude mcp *)",
+      "mcp__claude_ai_Supabase__execute_sql"
     ]
   }
 }

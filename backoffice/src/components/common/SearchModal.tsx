@@ -77,7 +77,7 @@ export function SearchModal({ abierto, onCerrar }: SearchModalProps) {
 
   return (
     <Dialog open={abierto} onOpenChange={onCerrar}>
-      <DialogContent className="p-0 sm:max-w-xl">
+      <DialogContent hideClose className="p-0 sm:max-w-xl">
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
           <input
@@ -89,11 +89,13 @@ export function SearchModal({ abierto, onCerrar }: SearchModalProps) {
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             onKeyDown={(e) => e.key === 'Escape' && onCerrar()}
           />
-          {query && (
-            <button onClick={() => setQuery('')} className="rounded p-0.5 hover:bg-accent">
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
-          )}
+          <button
+            onClick={() => (query ? setQuery('') : onCerrar())}
+            className="rounded p-0.5 hover:bg-accent"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
 
         <div className="max-h-80 overflow-y-auto py-2">
