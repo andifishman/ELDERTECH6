@@ -83,6 +83,40 @@ export async function obtenerHistorialMensajes(limite = 50): Promise<MensajeHist
   }));
 }
 
+function normalizarTexto(s: string): string {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function claveAgrupacion(s: string): string {
+  // colapsa vocales repetidas: "holaa" → "hola", "holaaa" → "hola"
+  return normalizarTexto(s).replace(/([aeiou])\1+/g, '$1');
+}
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const curr = [i];
+    for (let j = 1; j <= b.length; j++)
+      curr[j] = a[i - 1] === b[j - 1] ? prev[j - 1] : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
+    prev = curr;
+  }
+  return prev[b.length];
+}
+
+function sonSimilares(a: string, b: string): boolean {
+  if (claveAgrupacion(a) === claveAgrupacion(b)) return true;
+  const na = normalizarTexto(a), nb = normalizarTexto(b);
+  const maxLen = Math.max(na.length, nb.length);
+  // permite hasta 2 ediciones o el 15% del largo, lo que sea menor
+  return maxLen > 0 && levenshtein(na, nb) <= Math.min(2, Math.floor(maxLen * 0.15));
+}
+
 export interface AsistenteStats {
   totalConsultas: number;
   sesionesHoy: number;
@@ -111,16 +145,23 @@ export async function obtenerStatsAsistente(): Promise<AsistenteStats> {
         .limit(500),
     ]);
 
-    // top preguntas por frecuencia
+    // top preguntas agrupadas por similitud
     const conteo = new Map<string, number>();
     (topData ?? []).forEach((m: any) => {
       const k = (m.contenido as string)?.trim();
       if (k) conteo.set(k, (conteo.get(k) ?? 0) + 1);
     });
-    const topPreguntas = Array.from(conteo.entries())
-      .map(([pregunta, total]) => ({ pregunta, total }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+
+    // ordenar de mayor a menor frecuencia para que el más común sea el representante
+    const entradas = Array.from(conteo.entries()).sort((a, b) => b[1] - a[1]);
+    const grupos: { pregunta: string; total: number }[] = [];
+    for (const [texto, cnt] of entradas) {
+      const grupo = grupos.find((g) => sonSimilares(g.pregunta, texto));
+      if (grupo) grupo.total += cnt;
+      else grupos.push({ pregunta: texto, total: cnt });
+    }
+
+    const topPreguntas = grupos.sort((a, b) => b.total - a.total).slice(0, 20);
 
     return {
       totalConsultas: totalConsultas ?? 0,

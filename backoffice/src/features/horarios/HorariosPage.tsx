@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Pause, Play, CalendarClock } from 'lucide-react';
-import { addDays, format, startOfWeek } from 'date-fns';
+import { addDays, format, isToday, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/ui/card';
@@ -48,10 +48,10 @@ export function HorariosPage() {
 
   useRealtime('actividades', [['actividades']]);
 
-  // chips de los 7 días de la semana actual
+  // chips de los 30 días desde el lunes de la semana actual
   const dias = useMemo(() => {
     const inicio = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return Array.from({ length: 7 }, (_, i) => addDays(inicio, i));
+    return Array.from({ length: 30 }, (_, i) => addDays(inicio, i));
   }, []);
 
   const tituloFecha = format(new Date(fecha + 'T00:00:00'), "EEEE d 'de' MMMM", { locale: es });
@@ -73,26 +73,35 @@ export function HorariosPage() {
       />
 
       {/* selector de día */}
-      <div className="flex flex-wrap gap-2">
-        {dias.map((d) => {
-          const valor = format(d, 'yyyy-MM-dd');
-          const activo = valor === fecha;
-          return (
-            <button
-              key={valor}
-              onClick={() => setFecha(valor)}
-              className={cn(
-                'flex flex-col items-center rounded-xl border px-4 py-2 text-sm font-semibold transition-colors',
-                activo
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-foreground hover:bg-accent',
-              )}
-            >
-              <span className="capitalize">{format(d, 'EEE', { locale: es })}</span>
-              <span className="text-base">{format(d, 'd')}</span>
-            </button>
-          );
-        })}
+      <div className="overflow-x-auto pb-1">
+        <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+          {dias.map((d) => {
+            const valor = format(d, 'yyyy-MM-dd');
+            const activo = valor === fecha;
+            const hoy = isToday(d);
+            return (
+              <button
+                key={valor}
+                onClick={() => setFecha(valor)}
+                className={cn(
+                  'flex flex-col items-center rounded-xl border px-5 py-3 font-semibold transition-colors',
+                  activo
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : hoy
+                    ? 'border-2 border-primary text-primary-700 bg-card hover:bg-primary-50'
+                    : 'border-border bg-card text-foreground hover:bg-accent',
+                )}
+              >
+                <span className="text-xs uppercase tracking-wide capitalize">{format(d, 'EEE', { locale: es })}</span>
+                <span className="text-xl leading-tight">{format(d, 'd')}</span>
+                {hoy && !activo
+                  ? <span className="text-xs font-bold text-primary">● hoy</span>
+                  : <span className={cn('text-xs', activo ? 'opacity-70' : 'opacity-70')}>{format(d, 'MMM', { locale: es })}</span>
+                }
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <Card className="overflow-hidden">

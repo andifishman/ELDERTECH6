@@ -7,21 +7,29 @@
 // ========================================
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, PlayCircle, FileText, Eye, GraduationCap, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, PlayCircle, FileText, Eye, GraduationCap, Search, RotateCcw } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { usePermisos } from '@/hooks/usePermisos';
 import { useRealtime } from '@/hooks/useRealtime';
 import { queryKeys } from '@/lib/queryClient';
-import { useArticulos, useEliminarArticulo } from './useArticulos';
+import { useArticulos, useArticulosEliminados, useEliminarArticulo, useEliminarDefinitivamente, useRestaurarArticulo } from './useArticulos';
 import type { TutorialConCategoria } from '@/types/database.types';
+
+function diasRestantes(deletedAt: string): number {
+  const ms = 7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(deletedAt).getTime());
+  return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+}
 
 const NIVEL_BADGE: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
   principiante: { label: 'Principiante', variant: 'success' },
@@ -36,9 +44,15 @@ export function TutorialesPage() {
   const eliminar = useEliminarArticulo();
   useRealtime('tutoriales', [queryKeys.tutoriales]);
 
+  const eliminados = useArticulosEliminados();
+  const restaurar = useRestaurarArticulo();
+  const eliminarDef = useEliminarDefinitivamente();
+
   const [busqueda, setBusqueda] = useState('');
-  const [estado, setEstado] = useState<'todos' | 'publicado' | 'borrador'>('todos');
+  const [estado, setEstado] = useState<'todos' | 'publicado' | 'borrador' | 'papelera'>('todos');
   const [aEliminar, setAEliminar] = useState<TutorialConCategoria | null>(null);
+  const [aEliminarDef, setAEliminarDef] = useState<TutorialConCategoria | null>(null);
+  const [selectedEnPapelera, setSelectedEnPapelera] = useState<TutorialConCategoria | null>(null);
 
   const filtrados = useMemo(() => {
     return (data ?? []).filter((a) => {
@@ -74,11 +88,63 @@ export function TutorialesPage() {
             <TabsTrigger value="todos">Todos</TabsTrigger>
             <TabsTrigger value="publicado">Publicados</TabsTrigger>
             <TabsTrigger value="borrador">Borradores</TabsTrigger>
+            <TabsTrigger value="papelera" className="gap-1.5">
+              <Trash2 className="h-3.5 w-3.5" />
+              Papelera
+              {(eliminados.data?.length ?? 0) > 0 && (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-destructive/15 text-[10px] font-bold text-destructive">
+                  {eliminados.data!.length}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {isLoading ? (
+      {estado === 'papelera' ? (
+        eliminados.isLoading ? (
+          <LoadingState />
+        ) : (eliminados.data ?? []).length === 0 ? (
+          <EmptyState icono={Trash2} titulo="La papelera está vacía" descripcion="Los tutoriales eliminados aparecerán aquí." />
+        ) : (
+          <Card>
+            <ul className="divide-y divide-border px-4">
+              {(eliminados.data ?? []).map((a) => {
+                const dias = a.deleted_at ? diasRestantes(a.deleted_at) : 7;
+                return (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 py-3 px-1 text-left transition-colors hover:bg-accent/50 rounded-lg"
+                      onClick={() => setSelectedEnPapelera(a)}
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted overflow-hidden">
+                        {a.thumbnail_url
+                          ? <img src={a.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                          : a.formato === 'video'
+                          ? <PlayCircle className="h-5 w-5 text-muted-foreground" />
+                          : <FileText className="h-5 w-5 text-muted-foreground" />
+                        }
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{a.titulo}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {a.deleted_at ? `Eliminado ${formatDistanceToNow(new Date(a.deleted_at), { addSuffix: true, locale: es })}` : ''}
+                          {' · '}
+                          <span className={dias <= 1 ? 'text-destructive font-medium' : dias <= 3 ? 'text-amber-600 font-medium' : ''}>
+                            {dias === 0 ? 'Se elimina hoy' : `${dias}d restantes`}
+                          </span>
+                        </p>
+                      </div>
+                      <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        )
+      ) : isLoading ? (
         <LoadingState />
       ) : isError ? (
         <ErrorState onReintentar={() => void refetch()} />
@@ -141,15 +207,103 @@ export function TutorialesPage() {
       <ConfirmDialog
         abierto={!!aEliminar}
         onOpenChange={(v) => !v && setAEliminar(null)}
-        titulo="¿Eliminar contenido?"
-        descripcion={`"${aEliminar?.titulo}" se eliminará y dejará de verse en la app.`}
-        textoConfirmar="Eliminar"
+        titulo="¿Mover a la papelera?"
+        descripcion={`"${aEliminar?.titulo}" se moverá a la papelera. Podés restaurarlo después.`}
+        textoConfirmar="Mover a papelera"
         cargando={eliminar.isPending}
         onConfirmar={() => {
           if (!aEliminar) return;
           eliminar.mutate({ id: aEliminar.id, titulo: aEliminar.titulo }, { onSuccess: () => setAEliminar(null) });
         }}
       />
+
+      <ConfirmDialog
+        abierto={!!aEliminarDef}
+        onOpenChange={(v) => !v && setAEliminarDef(null)}
+        titulo="¿Eliminar definitivamente?"
+        descripcion={`"${aEliminarDef?.titulo}" se borrará para siempre y no se podrá recuperar.`}
+        textoConfirmar="Eliminar para siempre"
+        cargando={eliminarDef.isPending}
+        onConfirmar={() => {
+          if (!aEliminarDef) return;
+          eliminarDef.mutate({ id: aEliminarDef.id, titulo: aEliminarDef.titulo }, { onSuccess: () => setAEliminarDef(null) });
+        }}
+      />
+
+      {/* Dialog de detalle papelera */}
+      <Dialog open={!!selectedEnPapelera} onOpenChange={(v) => !v && setSelectedEnPapelera(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="truncate pr-4">{selectedEnPapelera?.titulo}</DialogTitle>
+            <DialogDescription>
+              {selectedEnPapelera?.activo ? 'Publicado' : 'Borrador'} · {selectedEnPapelera?.categoria?.nombre ?? 'Sin categoría'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedEnPapelera && (() => {
+            const dias = selectedEnPapelera.deleted_at ? diasRestantes(selectedEnPapelera.deleted_at) : 7;
+            const pct = Math.round(((7 - dias) / 7) * 100);
+            return (
+              <div className="space-y-4">
+                <div className="flex h-36 items-center justify-center rounded-xl bg-muted overflow-hidden">
+                  {selectedEnPapelera.thumbnail_url
+                    ? <img src={selectedEnPapelera.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                    : selectedEnPapelera.formato === 'video'
+                    ? <PlayCircle className="h-14 w-14 text-muted-foreground" />
+                    : <FileText className="h-14 w-14 text-muted-foreground" />
+                  }
+                </div>
+                <div className="space-y-1.5">
+                  {selectedEnPapelera.deleted_at && (
+                    <p className="text-sm text-muted-foreground">
+                      Eliminado {formatDistanceToNow(new Date(selectedEnPapelera.deleted_at), { addSuffix: true, locale: es })}
+                    </p>
+                  )}
+                  <p className={`text-sm font-medium ${dias <= 1 ? 'text-destructive' : dias <= 3 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                    {dias === 0 ? 'Se eliminará definitivamente hoy' : `Se eliminará definitivamente en ${dias} día${dias !== 1 ? 's' : ''}`}
+                  </p>
+                  <div className="h-1.5 w-full rounded-full bg-muted">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${dias <= 1 ? 'bg-destructive' : dias <= 3 ? 'bg-amber-500' : 'bg-primary'}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={restaurar.isPending}
+              onClick={() => {
+                if (!selectedEnPapelera) return;
+                restaurar.mutate(
+                  { id: selectedEnPapelera.id, titulo: selectedEnPapelera.titulo },
+                  { onSuccess: () => setSelectedEnPapelera(null) },
+                );
+              }}
+            >
+              <RotateCcw className="h-4 w-4" />
+              {selectedEnPapelera?.activo ? 'Restaurar como publicado' : 'Restaurar como borrador'}
+            </Button>
+            {permisos.puedeEliminar && (
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => {
+                  setAEliminarDef(selectedEnPapelera);
+                  setSelectedEnPapelera(null);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Eliminar definitivamente
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

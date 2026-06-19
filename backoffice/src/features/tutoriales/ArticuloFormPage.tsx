@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Save, X, Plus, Trash2, Upload, Link as LinkIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Save, X, Plus, Trash2, Upload, Link as LinkIcon, ChevronDown, ChevronUp, Music } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingState } from '@/components/common/states';
 import { cn } from '@/lib/utils';
 import { notify } from '@/components/ui/toast';
-import { subirImagenTutorial, type PasoInput } from '@/services/articulosService';
-import { useArticulo, useCategoriasArticulo, useGuardarArticulo, usePasosTutorial } from './useArticulos';
+import { subirAudioTutorial, subirImagenTutorial, type PasoInput } from '@/services/articulosService';
+import { useArticulo, useCategoriasArticulo, useEliminarArticulo, useGuardarArticulo, usePasosTutorial } from './useArticulos';
 import type { FormatoTutorial } from '@/types/database.types';
 
 interface CamposPrincipales {
@@ -39,6 +40,8 @@ export function ArticuloFormPage() {
   const { data: tutorial, isLoading: cargandoTut } = useArticulo(id);
   const { data: pasosExistentes } = usePasosTutorial(id);
   const guardar = useGuardarArticulo();
+  const eliminar = useEliminarArticulo();
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false);
 
   // ── Diálogo inicial: cuántos pasos ──────────────────────────────────────────
   const [dialogAbierto, setDialogAbierto] = useState(!esEdicion);
@@ -57,6 +60,11 @@ export function ArticuloFormPage() {
   const [thumbnailModo, setThumbnailModo] = useState<'url' | 'archivo'>('url');
   const [subiendoThumb, setSubiendoThumb] = useState(false);
   const thumbRef = useRef<HTMLInputElement>(null);
+
+  // ── Audio ────────────────────────────────────────────────────────────────────
+  const [audioUrl, setAudioUrl] = useState('');
+  const [subiendoAudio, setSubiendoAudio] = useState(false);
+  const audioRef = useRef<HTMLInputElement>(null);
 
   // ── Pasos ────────────────────────────────────────────────────────────────────
   const [pasos, setPasos] = useState<(PasoInput & { _imagenFile?: File })[]>([]);
@@ -109,6 +117,20 @@ export function ArticuloFormPage() {
       );
     }
     setDialogAbierto(false);
+  };
+
+  // ── Helpers audio ────────────────────────────────────────────────────────────
+  const subirAudio = async (archivo: File) => {
+    setSubiendoAudio(true);
+    try {
+      const url = await subirAudioTutorial(archivo);
+      setAudioUrl(url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      notify.error('No se pudo subir el audio', msg);
+    } finally {
+      setSubiendoAudio(false);
+    }
   };
 
   // ── Helpers thumbnail ────────────────────────────────────────────────────────
@@ -378,6 +400,33 @@ export function ArticuloFormPage() {
                 <Input id="dur" type="number" min={0} placeholder="5" {...register('duracion_minutos')} />
               </div>
             </div>
+
+            {/* Audio */}
+            <div className="space-y-2">
+              <Label>Audio</Label>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={subiendoAudio}
+                  onClick={() => audioRef.current?.click()}
+                >
+                  <Music className="h-4 w-4" />
+                  {subiendoAudio ? 'Subiendo…' : 'Elegir archivo de audio'}
+                </Button>
+                <input
+                  ref={audioRef}
+                  type="file"
+                  accept="audio/*,.mp4,.m4a,.mp3,.wav,.ogg,.aac"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) subirAudio(f); }}
+                />
+                {audioUrl && <span className="truncate text-xs text-muted-foreground">{audioUrl.split('/').pop()}</span>}
+              </div>
+              {audioUrl && (
+                <audio controls src={audioUrl} className="w-full rounded-lg" />
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -412,27 +461,53 @@ export function ArticuloFormPage() {
         )}
 
         {/* Acciones */}
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={() => navigate('/tutoriales')}>
-            <X className="h-4 w-4" /> Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={guardar.isPending}
-            onClick={handleSubmit((c) => enviar(c, false), () => notify.error('Revisá los campos obligatorios'))}
-          >
-            Guardar borrador
-          </Button>
-          <Button
-            type="button"
-            disabled={guardar.isPending}
-            onClick={handleSubmit((c) => enviar(c, true), () => notify.error('Revisá los campos obligatorios'))}
-          >
-            <Save className="h-4 w-4" /> {guardar.isPending ? 'Guardando…' : 'Publicar ahora'}
-          </Button>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {esEdicion && tutorial ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/40"
+              onClick={() => setConfirmarEliminar(true)}
+            >
+              <Trash2 className="h-4 w-4" /> Eliminar tutorial
+            </Button>
+          ) : <div />}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+            <Button type="button" variant="outline" onClick={() => navigate('/tutoriales')}>
+              <X className="h-4 w-4" /> Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={guardar.isPending}
+              onClick={handleSubmit((c) => enviar(c, false), () => notify.error('Revisá los campos obligatorios'))}
+            >
+              Guardar borrador
+            </Button>
+            <Button
+              type="button"
+              disabled={guardar.isPending}
+              onClick={handleSubmit((c) => enviar(c, true), () => notify.error('Revisá los campos obligatorios'))}
+            >
+              <Save className="h-4 w-4" /> {guardar.isPending ? 'Guardando…' : 'Publicar ahora'}
+            </Button>
+          </div>
         </div>
       </form>
+
+      <ConfirmDialog
+        abierto={confirmarEliminar}
+        onOpenChange={(v) => !v && setConfirmarEliminar(false)}
+        titulo="¿Eliminar tutorial?"
+        descripcion={`"${tutorial?.titulo}" se eliminará de forma permanente y dejará de verse en la app.`}
+        textoConfirmar="Eliminar"
+        cargando={eliminar.isPending}
+        onConfirmar={() => {
+          if (!id || !tutorial) return;
+          eliminar.mutate({ id, titulo: tutorial.titulo }, { onSuccess: () => navigate('/tutoriales') });
+        }}
+      />
     </>
   );
 }

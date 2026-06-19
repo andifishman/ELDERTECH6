@@ -18,6 +18,7 @@ interface AuthState {
   cargando: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  actualizarPerfil: (data: { nombre_completo?: string; avatar_url?: string }) => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthState | undefined>(undefined);
@@ -89,6 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPerfil(null);
   }, []);
 
+  const actualizarPerfil = React.useCallback(async (data: { nombre_completo?: string; avatar_url?: string }) => {
+    if (!session?.user.id) return;
+    await supabase.from('perfiles_usuario').update(data).eq('id', session.user.id);
+    setPerfil((prev) => (prev ? { ...prev, ...data } : null));
+  }, [session]);
+
   const value: AuthState = {
     session,
     perfil,
@@ -96,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     cargando,
     signIn,
     signOut,
+    actualizarPerfil,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,6 +2,10 @@ import { supabase, ORG_ID } from '@/lib/supabase';
 import type { AuditLog, DashboardKpis } from '@/types/backoffice.types';
 import type { ActividadCompleta, Residente } from '@/types/database.types';
 
+export interface ResidenteConConexion extends Residente {
+  ultima_conexion: string | null;
+}
+
 function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -54,15 +58,16 @@ export async function obtenerActividadesHoy(): Promise<ActividadCompleta[]> {
   return (data ?? []) as ActividadCompleta[];
 }
 
-export async function obtenerResidentesRecientes(limite = 5): Promise<Residente[]> {
+export async function obtenerResidentesRecientes(limite = 5): Promise<ResidenteConConexion[]> {
   const { data, error } = await supabase
     .from('residentes')
     .select('*')
     .eq('organizacion_id', ORG_ID)
+    .order('activo', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limite);
   if (error) throw error;
-  return (data ?? []) as Residente[];
+  return (data ?? []) as ResidenteConConexion[];
 }
 
 export async function obtenerTutorialesMasVistos(limite = 6): Promise<{ titulo: string; vistas: number }[]> {

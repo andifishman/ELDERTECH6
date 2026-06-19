@@ -116,6 +116,15 @@ export function LoginPage() {
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
 
+            <div className="flex justify-between text-sm">
+              <a href="#" className="text-primary hover:underline" onClick={e => e.preventDefault()}>
+                ¿Olvidaste tu contraseña?
+              </a>
+              <a href="#" className="text-primary hover:underline" onClick={e => e.preventDefault()}>
+                Crear cuenta
+              </a>
+            </div>
+
             <Button type="submit" size="lg" className="w-full" disabled={enviando}>
               {enviando ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Entrar'}
             </Button>

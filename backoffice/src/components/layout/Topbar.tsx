@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Menu, Search, Bell, ChevronDown, LogOut, Sun, Moon, Calendar, GraduationCap, Users, Pencil, Plus } from 'lucide-react';
+import { Menu, Search, Bell, ChevronDown, LogOut, Sun, Moon, Calendar, GraduationCap, Users, Pencil, Plus, UserCog } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { iniciales } from '@/lib/utils';
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SearchModal } from '@/components/common/SearchModal';
+import { EditarPerfilDialog } from '@/features/auth/EditarPerfilDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, ORG_ID } from '@/lib/supabase';
 import type { AuditLog } from '@/types/backoffice.types';
@@ -61,6 +62,7 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
   const { tema, alternar } = useTema();
   const [searchAbierto, setSearchAbierto] = useState(false);
   const [notifVistas, setNotifVistas] = useState<string | null>(null);
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const notif = useNotificaciones();
 
   // Ctrl+K para abrir búsqueda
@@ -167,6 +169,10 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
               <span className="text-xs font-normal text-muted-foreground">{perfil?.email}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setPerfilAbierto(true)} className="cursor-pointer">
+              <UserCog className="h-4 w-4" /> Editar perfil
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => void signOut()} className="cursor-pointer text-destructive">
               <LogOut className="h-4 w-4" /> Cerrar sesión
             </DropdownMenuItem>
@@ -175,6 +181,7 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
       </header>
 
       <SearchModal abierto={searchAbierto} onCerrar={() => setSearchAbierto(false)} />
+      <EditarPerfilDialog abierto={perfilAbierto} onCerrar={() => setPerfilAbierto(false)} />
     </>
   );
 }
