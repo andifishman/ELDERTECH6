@@ -103,9 +103,10 @@ export async function getTutoriales(
 /**
  * Devuelve tutoriales con el progreso del residente ya joinado.
  * Un LEFT JOIN para que aparezcan aunque no tengan progreso.
+ * residenteId puede ser null — en ese caso se muestran los tutoriales sin datos de progreso.
  */
 export async function getTutorialesConProgreso(
-  residenteId: string,
+  residenteId: string | null,
   categoriaId?: string | null,
 ): Promise<TutorialConProgreso[]> {
   let query = supabase

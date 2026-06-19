@@ -41,7 +41,8 @@ export default function ProfileScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null); // optimistic preview
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
+  const [fotoError, setFotoError] = useState(false);
 
   const [intereses, setIntereses] = useState<Interes[]>([]);
   const [ciudades, setCiudades] = useState<CiudadFamiliar[]>([]);
@@ -86,6 +87,7 @@ export default function ProfileScreen() {
   async function uploadPhoto(uri: string) {
     if (!residente || !session?.user.id) return;
     setLocalPhotoUri(uri);
+    setFotoError(false);
     updateLocalProfile({ foto_url: uri });
     setSaving(true);
     setPhotoError(null);
@@ -176,8 +178,12 @@ export default function ProfileScreen() {
       >
         {/* Avatar + name */}
         <View style={styles.avatarSection}>
-          {(localPhotoUri ?? residente?.foto_url) ? (
-            <Image source={{ uri: (localPhotoUri ?? residente!.foto_url)! }} style={styles.avatar} />
+          {(localPhotoUri ?? residente?.foto_url) && !fotoError ? (
+            <Image
+              source={{ uri: (localPhotoUri ?? residente!.foto_url)! }}
+              style={styles.avatar}
+              onError={() => setFotoError(true)}
+            />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Ionicons name="person" size={48} color={Colors.ui.disabled} />

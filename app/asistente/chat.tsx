@@ -51,6 +51,8 @@ export default function ChatAsistenteScreen() {
   const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [cargandoHistorial, setCargandoHistorial] = useState(!!sesionIdParam);
+  const [historialError, setHistorialError] = useState(false);
+  const [recargarKey, setRecargarKey] = useState(0);
   const [grabando, setGrabando] = useState(false);
   const [transcribiendo, setTranscribiendo] = useState(false);
   const [mensajeDestacado, setMensajeDestacado] = useState<string | null>(null);
@@ -89,14 +91,34 @@ export default function ChatAsistenteScreen() {
   }, [residenteId]);
 
   // ── Cargar mensajes de sesión existente (historial) ───────────────────────
-  // residenteId en deps porque RLS necesita auth cargado; si auth llega tarde,
-  // el effect se re-ejecuta cuando residenteId cambia de null a valor real.
+  const reintentarCargaHistorial = useCallback(() => {
+    setHistorialError(false);
+    setCargandoHistorial(true);
+    setMensajes([]);
+    setRecargarKey((k) => k + 1);
+  }, []);
+
   useEffect(() => {
     if (!sesionIdParam || !sesionId) return;
-    // Garantía de que el spinner no queda trabado si algo falla silenciosamente
-    const safetyTimer = setTimeout(() => setCargandoHistorial(false), 8000);
-    getMensajesDeSesion(sesionId)
+    if (!residenteId) return;
+
+    let cancelled = false;
+
+    // 8s: tiempo razonable para que Supabase responda aun con red lenta
+    const safetyTimer = setTimeout(() => {
+      if (!cancelled) {
+        setHistorialError(true);
+        setCargandoHistorial(false);
+      }
+    }, 8000);
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 8000),
+    );
+
+    Promise.race([getMensajesDeSesion(sesionId), timeout])
       .then((msgs) => {
+        if (cancelled) return;
         const locales = msgs.map((m) => ({
           id: m.id,
           rol: m.rol,
@@ -110,7 +132,6 @@ export default function ChatAsistenteScreen() {
           content: m.contenido,
         }));
 
-        // Si venimos de un favorito, destacar y hacer scroll al mensaje
         if (mensajeIdParam) {
           setMensajeDestacado(mensajeIdParam);
           const idx = locales.findIndex((m) => m.id === mensajeIdParam);
@@ -118,18 +139,24 @@ export default function ChatAsistenteScreen() {
             setTimeout(() => {
               flatRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
             }, 400);
-            // Quitar el highlight después de 3 segundos
             setTimeout(() => setMensajeDestacado(null), 3500);
           }
         }
       })
-      .catch((err) => console.warn('[Asistente] Error cargando historial:', err))
+      .catch((err) => {
+        if (!cancelled) {
+          console.warn('[Asistente] Error cargando historial:', err);
+          setHistorialError(true);
+        }
+      })
       .finally(() => {
         clearTimeout(safetyTimer);
-        setCargandoHistorial(false);
+        if (!cancelled) setCargandoHistorial(false);
       });
+
+    return () => { cancelled = true; clearTimeout(safetyTimer); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sesionId]);
+  }, [sesionId, residenteId, recargarKey]);
 
   // ── Scroll al último mensaje ──────────────────────────────────────────────
 
@@ -169,11 +196,12 @@ export default function ChatAsistenteScreen() {
 
       const msgUsuarioId = nextTempId();
       const msgAsistenteId = nextTempId();
+      const textoTrimmed = texto.trim();
 
       const msgUsuarioLocal: MensajeLocal = {
         id: msgUsuarioId,
         rol: 'usuario',
-        contenido: texto.trim(),
+        contenido: textoTrimmed,
         es_favorito: false,
         created_at: new Date().toISOString(),
       };
@@ -187,6 +215,29 @@ export default function ChatAsistenteScreen() {
       };
 
       setMensajes((prev) => [...prev, msgUsuarioLocal, msgCargando]);
+
+      // Timeout global — cubre TODO: crearSesion + llamada IA + guardar.
+      // 95s: mayor que conTimeout (90s) para que conTimeout active primero con mensaje accionable.
+      // Se registra ANTES de cualquier await para que ningún cuelgue lo evite
+      let timedOut = false;
+      const frontendTimeout = setTimeout(() => {
+        timedOut = true;
+        enviarRef.current = false;
+        setEnviando(false);
+        setMensajes((prev) =>
+          prev.map((m) =>
+            m.id === msgAsistenteId
+              ? {
+                  ...m,
+                  contenido: 'No pude responder a tiempo. Tocá "Reintentar" para intentarlo de nuevo. Si sigue sin contestar, cerrá la app y volvé a abrirla.',
+                  cargando: false,
+                  error: true,
+                  preguntaReintentar: textoTrimmed,
+                }
+              : m,
+          ),
+        );
+      }, 95000);
 
       // Creación lazy de sesión: si no hay sesionId aún, crear ahora
       let currentSesionId = sid ?? sesionId;
@@ -209,19 +260,25 @@ export default function ChatAsistenteScreen() {
         }
       }
 
+      // Si el timeout disparó mientras creábamos la sesión, abortar
+      if (timedOut) return;
+
       try {
         const { msgUsuario, msgAsistente, navegacion } = await enviarMensaje.mutateAsync({
           sesionId: currentSesionId,
           residenteId: residenteId ?? '',
-          pregunta: texto.trim(),
+          pregunta: textoTrimmed,
           historial: historialRef.current,
           // No generar título si estamos viendo una sesión del historial
           esPrimerMensaje: mensajes.length === 0 && !sesionIdParam,
         });
 
+        if (timedOut) return;
+        clearTimeout(frontendTimeout);
+
         historialRef.current = [
           ...historialRef.current,
-          { role: 'user' as const, content: texto.trim() },
+          { role: 'user' as const, content: textoTrimmed },
           { role: 'assistant' as const, content: msgAsistente.contenido },
         ];
 
@@ -245,22 +302,27 @@ export default function ChatAsistenteScreen() {
         // Leer la respuesta en voz
         leerTexto(msgAsistente.contenido);
       } catch (err) {
-        // El detalle técnico va al log; al usuario, un mensaje amable
+        if (timedOut) return;
+        clearTimeout(frontendTimeout);
         console.error('[Asistente] Error:', err instanceof Error ? err.message : err);
         setMensajes((prev) =>
           prev.map((m) =>
             m.id === msgAsistenteId
               ? {
                   ...m,
-                  contenido: 'No pude responderte ahora. Esperá un momento y probá de nuevo.',
+                  contenido: 'Hubo un problema al responder. Tocá "Reintentar" para intentarlo de nuevo. Si sigue fallando, verificá el WiFi o cerrá la app y volvé a abrirla.',
                   cargando: false,
+                  error: true,
+                  preguntaReintentar: textoTrimmed,
                 }
               : m,
           ),
         );
       } finally {
-        enviarRef.current = false;
-        setEnviando(false);
+        if (!timedOut) {
+          enviarRef.current = false;
+          setEnviando(false);
+        }
       }
     },
     [sesionId, residenteId, mensajes.length, enviarMensaje, leerTexto],
@@ -297,9 +359,11 @@ export default function ChatAsistenteScreen() {
         destacado={item.id === mensajeDestacado}
         onLeer={() => leerTexto(item.contenido)}
         onToggleFavorito={() => handleToggleFavorito(item.id, item.es_favorito)}
+        onReintentar={enviar}
       />
     ),
-    [scale, mensajeDestacado, leerTexto, handleToggleFavorito],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scale, mensajeDestacado, leerTexto, handleToggleFavorito, enviar],
   );
 
   const puedeEnviar = input.trim().length > 0 && !enviando;
@@ -468,7 +532,21 @@ export default function ChatAsistenteScreen() {
         {cargandoHistorial ? (
           <View style={styles.centrado}>
             <ActivityIndicator size="large" color={Colors.brand.blueDark} />
-            <Text style={styles.iniciandoTexto}>Iniciando conversación...</Text>
+            <Text style={styles.iniciandoTexto}>Cargando conversación...</Text>
+          </View>
+        ) : historialError ? (
+          <View style={styles.centrado}>
+            <Text style={styles.errorHistorialEmoji}>⚠️</Text>
+            <Text style={styles.errorHistorialTexto}>No se pudieron cargar los mensajes.</Text>
+            <TouchableOpacity
+              style={styles.errorHistorialBtn}
+              onPress={reintentarCargaHistorial}
+              accessibilityRole="button"
+              accessibilityLabel="Reintentar cargar la conversación"
+            >
+              <Ionicons name="refresh" size={20} color={Colors.text.onDark} />
+              <Text style={styles.errorHistorialBtnTexto}>Reintentar</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <FlatList
@@ -576,12 +654,14 @@ interface BurbujaMensajeProps {
   destacado: boolean;
   onLeer: () => void;
   onToggleFavorito: () => void;
+  onReintentar?: (pregunta: string) => void;
 }
 
-function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito }: BurbujaMensajeProps) {
+function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, onReintentar }: BurbujaMensajeProps) {
   const esUsuario = mensaje.rol === 'usuario';
   const iconSize = Math.round(22 * scale);
-  const accionFontSize = Math.round(Typography.size.md * scale);
+  // sm base + scale capped at 1.15 para que no desborde los botones en fuente "muy grande"
+  const accionFontSize = Math.round(Typography.size.sm * Math.min(scale, 1.15));
   const accionAltura = Math.round(52 * scale);
   const router = useRouter();
 
@@ -618,63 +698,82 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito }:
             {/* Acciones del asistente */}
             {!esUsuario && !mensaje.cargando && (
               <>
-                <View style={styles.accionesRow}>
-                  {/* Escuchar de nuevo */}
-                  <TouchableOpacity
-                    style={[styles.accionBtn, styles.accionBtnEscuchar, { minHeight: accionAltura }]}
-                    onPress={onLeer}
-                    accessibilityLabel="Escuchar respuesta nuevamente"
-                    accessibilityRole="button"
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="volume-medium" size={iconSize} color={Colors.brand.blueDark} />
-                    <Text style={[styles.accionTexto, styles.accionTextoEscuchar, { fontSize: accionFontSize }]}>
-                      Escuchar
-                    </Text>
-                  </TouchableOpacity>
+                {mensaje.error ? (
+                  /* Estado de error: solo mostrar botón Reintentar */
+                  mensaje.preguntaReintentar && onReintentar && (
+                    <TouchableOpacity
+                      style={styles.reintentarBtn}
+                      onPress={() => onReintentar(mensaje.preguntaReintentar!)}
+                      accessibilityLabel="Reintentar la pregunta"
+                      accessibilityRole="button"
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="refresh" size={iconSize} color={Colors.text.onDark} />
+                      <Text style={[styles.reintentarTexto, { fontSize: accionFontSize }]}>Reintentar</Text>
+                    </TouchableOpacity>
+                  )
+                ) : (
+                  /* Estado normal: Escuchar, Guardar y navegación */
+                  <>
+                    <View style={styles.accionesRow}>
+                      {/* Escuchar de nuevo */}
+                      <TouchableOpacity
+                        style={[styles.accionBtn, styles.accionBtnEscuchar, { minHeight: accionAltura }]}
+                        onPress={onLeer}
+                        accessibilityLabel="Escuchar respuesta nuevamente"
+                        accessibilityRole="button"
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="volume-medium" size={iconSize} color={Colors.brand.blueDark} />
+                        <Text style={[styles.accionTexto, styles.accionTextoEscuchar, { fontSize: accionFontSize }]}>
+                          Escuchar
+                        </Text>
+                      </TouchableOpacity>
 
-                  {/* Guardar como favorito */}
-                  <TouchableOpacity
-                    style={[
-                      styles.accionBtn,
-                      mensaje.es_favorito ? styles.accionBtnGuardado : styles.accionBtnGuardar,
-                      { minHeight: accionAltura },
-                    ]}
-                    onPress={onToggleFavorito}
-                    accessibilityLabel={mensaje.es_favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'}
-                    accessibilityRole="button"
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons
-                      name={mensaje.es_favorito ? 'star' : 'star-outline'}
-                      size={iconSize}
-                      color={mensaje.es_favorito ? '#D97706' : Colors.text.secondary}
-                    />
-                    <Text style={[
-                      styles.accionTexto,
-                      mensaje.es_favorito ? styles.accionTextoGuardado : styles.accionTextoGuardar,
-                      { fontSize: accionFontSize },
-                    ]}>
-                      {mensaje.es_favorito ? 'Guardado' : 'Guardar'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                      {/* Guardar como favorito */}
+                      <TouchableOpacity
+                        style={[
+                          styles.accionBtn,
+                          mensaje.es_favorito ? styles.accionBtnGuardado : styles.accionBtnGuardar,
+                          { minHeight: accionAltura },
+                        ]}
+                        onPress={onToggleFavorito}
+                        accessibilityLabel={mensaje.es_favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                        accessibilityRole="button"
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons
+                          name={mensaje.es_favorito ? 'star' : 'star-outline'}
+                          size={iconSize}
+                          color={mensaje.es_favorito ? '#D97706' : Colors.text.secondary}
+                        />
+                        <Text style={[
+                          styles.accionTexto,
+                          mensaje.es_favorito ? styles.accionTextoGuardado : styles.accionTextoGuardar,
+                          { fontSize: accionFontSize },
+                        ]}>
+                          {mensaje.es_favorito ? 'Guardado' : 'Guardar'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
 
-                {/* Botón de navegación directa — aparece cuando la IA encontró algo relevante */}
-                {mensaje.navegacion && (
-                  <TouchableOpacity
-                    style={styles.navegacionBtn}
-                    onPress={() => router.push(mensaje.navegacion!.ruta as Parameters<typeof router.push>[0])}
-                    accessibilityLabel={mensaje.navegacion.etiqueta}
-                    accessibilityRole="button"
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.navegacionEmoji]}>{mensaje.navegacion.emoji}</Text>
-                    <Text style={[styles.navegacionTexto, { fontSize: accionFontSize }]}>
-                      {mensaje.navegacion.etiqueta}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={Math.round(18 * scale)} color={Colors.text.onDark} />
-                  </TouchableOpacity>
+                    {/* Botón de navegación directa — aparece cuando la IA encontró algo relevante */}
+                    {mensaje.navegacion && (
+                      <TouchableOpacity
+                        style={styles.navegacionBtn}
+                        onPress={() => router.push(mensaje.navegacion!.ruta as Parameters<typeof router.push>[0])}
+                        accessibilityLabel={mensaje.navegacion.etiqueta}
+                        accessibilityRole="button"
+                        activeOpacity={0.85}
+                      >
+                        <Text style={[styles.navegacionEmoji]}>{mensaje.navegacion.emoji}</Text>
+                        <Text style={[styles.navegacionTexto, { fontSize: accionFontSize }]}>
+                          {mensaje.navegacion.etiqueta}
+                        </Text>
+                        <Ionicons name="arrow-forward" size={Math.round(18 * scale)} color={Colors.text.onDark} />
+                      </TouchableOpacity>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -969,7 +1068,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Estado inicial
+  // Estado inicial / error historial
   centrado: {
     flex: 1,
     alignItems: 'center',
@@ -979,6 +1078,44 @@ const styles = StyleSheet.create({
   iniciandoTexto: {
     fontSize: Typography.size.md,
     color: Colors.text.secondary,
+  },
+  errorHistorialEmoji: { fontSize: 48 },
+  errorHistorialTexto: {
+    fontSize: Typography.size.md,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+  errorHistorialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.brand.blueDark,
+    borderRadius: Spacing.radius.lg,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.md,
+    minHeight: Spacing.touch.comfortable,
+  },
+  errorHistorialBtnTexto: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+  },
+
+  // Botón Reintentar (solo en mensajes con error de timeout)
+  reintentarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#C62828',
+    borderRadius: Spacing.radius.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  reintentarTexto: {
+    color: Colors.text.onDark,
+    fontWeight: Typography.weight.bold,
   },
 
   // Botón de navegación directa (dentro de burbuja del asistente)

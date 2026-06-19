@@ -187,12 +187,24 @@ export function TutorialesPage() {
                   </span>
                   <div className="flex gap-1">
                     {permisos.puedeEditar && (
-                      <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => navigate(`/tutoriales/${a.id}/editar`)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Editar"
+                        className="transition-all duration-150 hover:scale-110 active:scale-95 hover:bg-primary-50 hover:text-primary-700"
+                        onClick={() => navigate(`/tutoriales/${a.id}/editar`)}
+                      >
                         <Pencil className="h-4 w-4 text-primary-700" />
                       </Button>
                     )}
                     {permisos.puedeEliminar && (
-                      <Button variant="ghost" size="icon" aria-label="Eliminar" onClick={() => setAEliminar(a)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Eliminar"
+                        className="transition-all duration-150 hover:scale-110 active:scale-95 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => setAEliminar(a)}
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     )}

@@ -109,24 +109,36 @@ export function useEnviarMensaje() {
     }: EnviarMensajeParams) => {
       const esLocal = sesionId.startsWith('local_');
 
-      // 1. Guardar mensaje del usuario (solo si sesión real)
-      const msgUsuario = esLocal
-        ? { id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString() }
-        : await guardarMensaje(sesionId, residenteId, 'usuario', pregunta);
+      // Envuelve una promesa con timeout explícito — cubre el loop agéntico entero
+      const conTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
+        Promise.race([
+          p,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('La IA tardó demasiado. Tocá Reintentar.')), ms),
+          ),
+        ]);
 
-      // 2. Consultar la IA (puede incluir acción de navegación)
-      const { texto: respuesta, navegacion } = await consultarIA(pregunta, historial);
+      // 1+2. Guardar mensaje usuario y llamar a la IA en paralelo (son independientes)
+      const [msgUsuario, { texto: respuesta, navegacion }] = await Promise.all([
+        esLocal
+          ? Promise.resolve({ id: 'u_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'usuario' as const, contenido: pregunta, es_favorito: false, created_at: new Date().toISOString() })
+          : guardarMensaje(sesionId, residenteId, 'usuario', pregunta),
+        // 90s: cada modelo tiene 42s propio — este timeout cubre hasta ~2 modelos completos
+        // antes de rendirse. Es ligeramente menor que el frontendTimeout (95s).
+        conTimeout(consultarIA(pregunta, historial), 90000),
+      ]);
 
       // 3. Guardar respuesta del asistente (solo si sesión real)
       const msgAsistente = esLocal
         ? { id: 'a_' + Date.now(), sesion_id: sesionId, residente_id: residenteId, rol: 'asistente' as const, contenido: respuesta, es_favorito: false, created_at: new Date().toISOString() }
         : await guardarMensaje(sesionId, residenteId, 'asistente', respuesta);
 
-      // 4. Título de sesión (solo si sesión real y primer mensaje)
+      // 4. Generar título en background — no bloquea mostrar la respuesta al usuario
       if (!esLocal && esPrimerMensaje) {
-        const titulo = await generarTituloSesion(pregunta);
-        await actualizarTituloSesion(sesionId, titulo);
-        qc.invalidateQueries({ queryKey: ['sesiones_asistente'] });
+        generarTituloSesion(pregunta)
+          .then((titulo) => actualizarTituloSesion(sesionId, titulo))
+          .then(() => qc.invalidateQueries({ queryKey: ['sesiones_asistente'] }))
+          .catch(() => {});
       }
 
       return { msgUsuario, msgAsistente, navegacion };

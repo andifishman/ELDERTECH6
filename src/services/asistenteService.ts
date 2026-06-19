@@ -14,16 +14,38 @@ export type { NavegacionAccion };
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-// Solo para desarrollo sin Edge Function desplegada — NO incluir en builds de
-// producción: todo lo EXPO_PUBLIC_* queda expuesto en el bundle del cliente.
 const GROQ_DEV_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+// Cadena de fallback: si el modelo principal alcanza su cuota diaria/por minuto,
+// se intenta automáticamente con el siguiente. Cada modelo tiene cuota INDEPENDIENTE
+// en Groq, por lo que el fallback resuelve el caso "ya no responde nada".
+//
+//   70B  → mejor comprensión del español y las instrucciones complejas
+//   8B   → rápido, cuota separada, perfecto para preguntas simples
+//   90B  → vision model pero excelente en chat, cuota completamente distinta
+const MODELOS_CHAT = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'llama3-70b-8192',
+] as const;
 
 // Máximo de mensajes anteriores que se mandan como contexto
 const MAX_CONTEXTO = 10;
 
-// System prompt del asistente — la fecha se inyecta dinámicamente al llamar
+// ─── Error de cuota — señal interna para cambiar de modelo ───────────────────
+
+class RateLimitError extends Error {
+  readonly modelo: string;
+  constructor(modelo: string) {
+    super(`Cuota alcanzada para ${modelo}`);
+    this.name = 'RateLimitError';
+    this.modelo = modelo;
+  }
+}
+
+// ─── System prompt ───────────────────────────────────────────────────────────
+
 function buildSystemPrompt(): string {
   const ahora = new Date();
   const fechaActual = ahora.toLocaleDateString('es-AR', {
@@ -42,6 +64,8 @@ Sos un asistente virtual inteligente integrado en ElderTech, una aplicación par
 Podés responder cualquier pregunta: tecnología, historia, cultura, noticias, palabras y términos modernos, cocina, salud general, geografía, entretenimiento, o cualquier tema de conversación. También ayudás con el celular y la aplicación ElderTech.
 
 Sobre ElderTech: la app tiene Inicio (actividades del día), Radio (emisoras en vivo), Clima (pronóstico), Asistente (este chat), Llamadas/Contactos, Tutoriales y Ajustes.
+
+IMPORTANTE sobre Contactos: ElderTech tiene su propia lista de contactos guardados (no son los contactos del teléfono). Para AGREGAR un contacto, el residente toca el botón "Agregar contacto" dentro de la app, que abre un selector de los contactos del celular (requiere darle permiso a la app una sola vez). Elige uno de ahí y queda guardado en ElderTech. También puede ELIMINAR contactos de la lista. NO existe opción para editar los datos de un contacto ya guardado — debería eliminarlo y volver a agregarlo. Si alguien pregunta cómo agregar un contacto, indicale que vaya a la sección Llamadas y toque el botón verde "Agregar contacto".
 
 == CÓMO RESPONDER ==
 - Respondé siempre en español rioplatense (Argentina).
@@ -89,7 +113,7 @@ EJEMPLOS DE USO:
 - Preguntas generales (historia, cultura, tecnología no relacionada) → responder directo, sin herramientas.`;
 }
 
-// ─── IA (Groq) ───────────────────────────────────────────────────────────────
+// ─── Herramientas ────────────────────────────────────────────────────────────
 
 /** Extrae el texto de una respuesta con formato OpenAI/Groq. */
 function extraerTexto(data: unknown): string {
@@ -97,14 +121,12 @@ function extraerTexto(data: unknown): string {
   return d?.choices?.[0]?.message?.content?.trim() ?? '';
 }
 
-// Tipos internos para el loop de tool calling
 interface GroqToolCall {
   id: string;
   type: 'function';
   function: { name: string; arguments: string };
 }
 
-// Herramientas disponibles para la IA
 const HERRAMIENTAS_IA = [
   {
     type: 'function',
@@ -119,8 +141,7 @@ const HERRAMIENTAS_IA = [
         properties: {
           fecha: {
             type: 'string',
-            description:
-              'Fecha en formato YYYY-MM-DD. Omitir para usar el día de hoy.',
+            description: 'Fecha en formato YYYY-MM-DD. Omitir para usar el día de hoy.',
           },
           busqueda: {
             type: 'string',
@@ -146,8 +167,7 @@ const HERRAMIENTAS_IA = [
         properties: {
           busqueda: {
             type: 'string',
-            description:
-              'Tema o app a buscar (ej: "WhatsApp", "videollamada", "fotos", "WiFi", "batería").',
+            description: 'Tema o app a buscar (ej: "WhatsApp", "videollamada", "fotos", "WiFi", "batería").',
           },
         },
         required: ['busqueda'],
@@ -191,152 +211,238 @@ const HERRAMIENTAS_IA = [
   },
 ] as const;
 
+// ─── Loop agéntico por modelo ────────────────────────────────────────────────
+
 /**
- * Llama a la IA con soporte de tool calling (loop agéntico).
- * - Dev (GROQ_DEV_API_KEY): llama directamente a Groq con herramientas.
- * - Prod: usa la Edge Function (sin herramientas por ahora).
+ * Ejecuta el loop agéntico completo con un modelo específico.
+ * Lanza `RateLimitError` si el modelo está saturado (429 agotado) O si tarda demasiado
+ * (timeout propio de 42s), para que llamarIA pueda probar el siguiente modelo.
+ * Lanza `Error` normal solo para errores no recuperables (401 key inválida, etc.).
+ *
+ * Cada modelo tiene su PROPIO AbortController: el timeout de un modelo no cancela
+ * los intentos con los modelos siguientes del fallback.
+ */
+async function ejecutarConModelo(
+  modelo: string,
+  messages: Array<Record<string, unknown>>,
+  maxTokens: number,
+  conHerramientas: boolean,
+): Promise<{ texto: string; navegacion?: NavegacionAccion }> {
+  // Controller independiente por modelo: si este modelo tarda > 42s,
+  // se aborta SOLO este intento y llamarIA puede pasar al siguiente.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 42000);
+
+  let navegacion: NavegacionAccion | undefined;
+  const msgs = [...messages];
+  const herramientasUsadas = new Set<string>();
+
+  // Fetch con reintentos para 429/503 transitorios.
+  // Si los 3 intentos fallan por cuota, lanza RateLimitError para que llamarIA
+  // cambie al siguiente modelo de la cadena de fallback.
+  const fetchGroq = async (reqBody: Record<string, unknown>): Promise<Response> => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 1000 * attempt));
+        if (controller.signal.aborted) {
+          const e = new Error('Aborted');
+          e.name = 'AbortError';
+          throw e;
+        }
+      }
+      const r = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${GROQ_DEV_API_KEY}`,
+        },
+        body: JSON.stringify(reqBody),
+        signal: controller.signal,
+      });
+      if (r.ok) return r;
+
+      const errText = await r.text();
+
+      if (r.status === 401) {
+        console.error('[Asistente] API key inválida o expirada:', errText);
+        throw new Error('La clave de IA no es válida. Contactá al administrador de la app.');
+      }
+      if (r.status !== 429 && r.status !== 503) {
+        console.warn(`[Asistente] Groq ${r.status} (${modelo}):`, errText);
+        throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+      }
+      console.warn(`[Asistente] Groq ${r.status} (${modelo}) — reintento ${attempt + 1}/3`);
+    }
+    // Cuota agotada para este modelo → señalar para cambiar al siguiente
+    throw new RateLimitError(modelo);
+  };
+
+  try {
+    // Loop agéntico — máximo 5 iteraciones para evitar bucles infinitos
+    for (let iter = 0; iter < 5; iter++) {
+      const body: Record<string, unknown> = {
+        model: modelo,
+        messages: msgs,
+        temperature: 0.7,
+        max_tokens: maxTokens,
+      };
+      if (conHerramientas) {
+        body.tools = HERRAMIENTAS_IA;
+        body.tool_choice = 'auto';
+      }
+
+      const res = await fetchGroq(body);
+
+      const data = await res.json();
+      const message = data.choices?.[0]?.message as Record<string, unknown> | undefined;
+      if (!message) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+
+      const toolCalls = message.tool_calls as GroqToolCall[] | undefined;
+
+      // Sin tool calls → respuesta final de texto
+      if (!toolCalls || toolCalls.length === 0) {
+        const texto = ((message.content as string) ?? '').trim();
+        if (!texto) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+        return { texto, navegacion };
+      }
+
+      // Agregar el mensaje del asistente con las tool calls al historial
+      msgs.push(message);
+
+      // Ejecutar cada tool call y devolver los resultados
+      for (const toolCall of toolCalls) {
+        let toolResult: string;
+
+        try {
+          const args = JSON.parse(toolCall.function.arguments || '{}') as Record<string, unknown>;
+
+          // Cortar bucles: si el AI llama la misma herramienta con los mismos args
+          const toolKey = `${toolCall.function.name}:${toolCall.function.arguments}`;
+          if (herramientasUsadas.has(toolKey)) {
+            toolResult = JSON.stringify({
+              error: 'Ya ejecutaste esta herramienta con los mismos parámetros. Respondé directamente al usuario con lo que sabés.',
+            });
+            msgs.push({ role: 'tool', tool_call_id: toolCall.id, content: toolResult });
+            continue;
+          }
+          herramientasUsadas.add(toolKey);
+
+          if (toolCall.function.name === 'buscar_actividades') {
+            const fechaStr = args.fecha as string | undefined;
+            const busqueda = (args.busqueda as string | undefined) ?? '';
+            const fecha = fechaStr ? new Date(fechaStr) : new Date();
+            const actividades = await buscarActividadesPorTexto(busqueda, fecha);
+            toolResult = actividades.length > 0
+              ? JSON.stringify(actividades)
+              : JSON.stringify({ mensaje: 'No se encontraron actividades para esa búsqueda en esa fecha.' });
+          } else if (toolCall.function.name === 'buscar_tutoriales') {
+            const busqueda = (args.busqueda as string | undefined) ?? '';
+            const tutoriales = await buscarTutorialesPorTexto(busqueda);
+            toolResult = tutoriales.length > 0
+              ? JSON.stringify(tutoriales)
+              : JSON.stringify({ mensaje: 'No se encontraron tutoriales para esa búsqueda.' });
+          } else if (toolCall.function.name === 'navegar_a_pantalla') {
+            navegacion = {
+              ruta: (args.ruta as string) ?? '/horarios',
+              etiqueta: (args.etiqueta as string) ?? 'Ver más',
+              emoji: (args.emoji as string) ?? '📅',
+            };
+            toolResult = JSON.stringify({ ok: true });
+          } else {
+            toolResult = JSON.stringify({ error: 'Herramienta desconocida.' });
+          }
+        } catch (e) {
+          // RateLimitError y AbortError se propagan — no son errores de tool execution
+          if (e instanceof RateLimitError || (e instanceof Error && e.name === 'AbortError')) throw e;
+          toolResult = JSON.stringify({ error: 'Error al ejecutar la herramienta.' });
+        }
+
+        msgs.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: toolResult,
+        });
+      }
+    }
+
+    if (navegacion) {
+      return { texto: 'Tocá el botón para ir a donde necesitás.', navegacion };
+    }
+    throw new Error('El asistente tardó demasiado generando la respuesta. Intentá de nuevo.');
+  } catch (err) {
+    // Timeout propio de este modelo (42s) → tratar como "saturado" para probar el siguiente
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.warn(`[Asistente] Timeout en modelo ${modelo} — probando el siguiente...`);
+      throw new RateLimitError(modelo);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+    controller.abort(); // Cancelar fetches pendientes de este modelo
+  }
+}
+
+// ─── Orquestador principal ───────────────────────────────────────────────────
+
+/**
+ * Llama a la IA con cadena de fallback de modelos.
+ *
+ * Flujo:
+ *  1. Intenta con llama-3.3-70b-versatile (70B, mejor calidad)
+ *  2. Si la cuota está agotada (RateLimitError) → llama-3.1-8b-instant (8B, cuota separada)
+ *  3. Si también está agotada → llama3-70b-8192 (cuota separada)
+ *  4. Si todos fallan → error con mensaje accionable
+ *
+ * Los tres modelos reciben el MISMO system prompt y herramientas.
+ * Un AbortController de 20s cubre el tiempo total incluyendo fallbacks.
+ *
  * @param conHerramientas false para llamadas auxiliares (ej: generar título)
+ * @param modeloFijo override para usar UN modelo específico (sin fallback)
  */
 async function llamarIA(
   messages: Array<Record<string, unknown>>,
   maxTokens = 400,
   conHerramientas = true,
+  modeloFijo?: string,
 ): Promise<{ texto: string; navegacion?: NavegacionAccion }> {
-  const controller = new AbortController();
-  // 20s para el loop agéntico (puede hacer 2+ requests)
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  if (GROQ_DEV_API_KEY) {
+    // Cada modelo tiene su propio AbortController (42s) en ejecutarConModelo.
+    // Si uno tarda demasiado o tiene cuota agotada, lanza RateLimitError y pasamos al siguiente.
+    const modelos: readonly string[] = modeloFijo ? [modeloFijo] : MODELOS_CHAT;
 
-  try {
-    if (GROQ_DEV_API_KEY) {
-      let navegacion: NavegacionAccion | undefined;
-      const msgs = [...messages];
-
-      // Rastrea tools ya llamadas con los mismos args para cortar bucles
-      const herramientasUsadas = new Set<string>();
-
-      // Loop agéntico — máximo 5 iteraciones para evitar bucles infinitos
-      for (let iter = 0; iter < 5; iter++) {
-        const body: Record<string, unknown> = {
-          model: GROQ_MODEL,
-          messages: msgs,
-          temperature: 0.7,
-          max_tokens: maxTokens,
-        };
-        if (conHerramientas) {
-          body.tools = HERRAMIENTAS_IA;
-          body.tool_choice = 'auto';
+    for (const modeloActual of modelos) {
+      try {
+        if (modeloActual !== modelos[0]) {
+          console.log(`[Asistente] Cambiando a modelo de respaldo: ${modeloActual}`);
         }
-
-        const res = await fetch(GROQ_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${GROQ_DEV_API_KEY}`,
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          const err = await res.text();
-          console.warn(`[Asistente] Groq error ${res.status}: ${err}`);
-          throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+        return await ejecutarConModelo(modeloActual, messages, maxTokens, conHerramientas);
+      } catch (err) {
+        if (err instanceof RateLimitError) {
+          console.warn(`[Asistente] Modelo ${err.modelo} no disponible o lento — probando siguiente...`);
+          continue;
         }
-
-        const data = await res.json();
-        const message = data.choices?.[0]?.message as Record<string, unknown> | undefined;
-        if (!message) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
-
-        const toolCalls = message.tool_calls as GroqToolCall[] | undefined;
-
-        // Sin tool calls → respuesta final
-        if (!toolCalls || toolCalls.length === 0) {
-          const texto = ((message.content as string) ?? '').trim();
-          if (!texto) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
-          return { texto, navegacion };
-        }
-
-        // Agregar el mensaje del asistente con las tool calls al historial
-        msgs.push(message);
-
-        // Ejecutar cada tool call y devolver los resultados
-        for (const toolCall of toolCalls) {
-          let toolResult: string;
-
-          try {
-            const args = JSON.parse(toolCall.function.arguments || '{}') as Record<string, unknown>;
-
-            // Si el AI llama la misma herramienta+args dos veces, cortamos el bucle
-            const toolKey = `${toolCall.function.name}:${toolCall.function.arguments}`;
-            if (herramientasUsadas.has(toolKey)) {
-              toolResult = JSON.stringify({
-                error: 'Ya ejecutaste esta herramienta con los mismos parámetros. Respondé directamente al usuario con lo que sabés.',
-              });
-              msgs.push({ role: 'tool', tool_call_id: toolCall.id, content: toolResult });
-              continue;
-            }
-            herramientasUsadas.add(toolKey);
-
-            if (toolCall.function.name === 'buscar_actividades') {
-              const fechaStr = args.fecha as string | undefined;
-              const busqueda = (args.busqueda as string | undefined) ?? '';
-              const fecha = fechaStr ? new Date(fechaStr) : new Date();
-              const actividades = await buscarActividadesPorTexto(busqueda, fecha);
-              toolResult = actividades.length > 0
-                ? JSON.stringify(actividades)
-                : JSON.stringify({ mensaje: 'No se encontraron actividades para esa búsqueda en esa fecha.' });
-            } else if (toolCall.function.name === 'buscar_tutoriales') {
-              const busqueda = (args.busqueda as string | undefined) ?? '';
-              const tutoriales = await buscarTutorialesPorTexto(busqueda);
-              toolResult = tutoriales.length > 0
-                ? JSON.stringify(tutoriales)
-                : JSON.stringify({ mensaje: 'No se encontraron tutoriales para esa búsqueda.' });
-            } else if (toolCall.function.name === 'navegar_a_pantalla') {
-              navegacion = {
-                ruta: (args.ruta as string) ?? '/horarios',
-                etiqueta: (args.etiqueta as string) ?? 'Ver más',
-                emoji: (args.emoji as string) ?? '📅',
-              };
-              toolResult = JSON.stringify({ ok: true });
-            } else {
-              toolResult = JSON.stringify({ error: 'Herramienta desconocida.' });
-            }
-          } catch {
-            toolResult = JSON.stringify({ error: 'Error al ejecutar la herramienta.' });
-          }
-
-          msgs.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: toolResult,
-          });
-        }
+        throw err; // Error no recuperable (401, red, etc.) → propagar
       }
-
-      // Si agotamos iteraciones pero tenemos navegación, devolvemos igual
-      if (navegacion) {
-        return { texto: 'Tocá el botón para ir a donde necesitás.', navegacion };
-      }
-      throw new Error('El asistente tardó demasiado generando la respuesta. Intentá de nuevo.');
     }
 
-    // Ruta segura (producción): Edge Function — sin tool calling por ahora
-    const { data, error } = await supabase.functions.invoke('asistente', {
-      body: { messages, max_tokens: maxTokens },
-    });
-    if (error) throw new Error('El asistente no está disponible en este momento.');
-    const texto = extraerTexto(data);
-    if (!texto) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
-    return { texto };
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('El asistente tardó demasiado. Verificá tu conexión y probá de nuevo.');
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
+    // Todos los modelos de la cadena fallaron
+    throw new Error(
+      'El servicio de IA está temporalmente saturado. ' +
+      'Probá en unos minutos o cerrá y volvé a abrir la app.',
+    );
   }
+
+  // Ruta de producción: Edge Function de Supabase (key almacenada en servidor)
+  const { data, error } = await supabase.functions.invoke('asistente', {
+    body: { messages, max_tokens: maxTokens },
+  });
+  if (error) throw new Error('El asistente no está disponible en este momento.');
+  const texto = extraerTexto(data);
+  if (!texto) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+  return { texto };
 }
+
+// ─── API pública del servicio ─────────────────────────────────────────────────
 
 export async function generarTituloSesion(primerMensaje: string): Promise<string> {
   const fallback =
@@ -348,7 +454,8 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
     const { texto } = await llamarIA(
       [{ role: 'user', content: `Generá un título corto (máximo 5 palabras) para una conversación que empieza con: "${primerMensaje}". Solo el título, sin comillas ni puntuación al final.` }],
       20,
-      false, // sin herramientas — solo necesita texto
+      false,
+      'llama-3.1-8b-instant', // modelo fijo: rápido, sin fallback necesario para títulos
     );
     return texto.length > 0 ? texto : fallback;
   } catch {
@@ -358,12 +465,11 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
 
 /**
  * Detecta si el mensaje es claramente una solicitud de llamada/contactos.
- * Si lo es, saltamos el loop de tool calling para evitar que el AI confunda
- * nombres de personas ("Juan", "Tobi") con actividades de la residencia.
+ * Si lo es, saltamos el loop de tool calling para evitar que la IA confunda
+ * nombres de personas con actividades de la residencia.
  */
 function esIntentLlamar(texto: string): boolean {
-  // Normalizar: minúsculas + quitar acentos (NFD + strip combining marks U+0300-U+036F)
-  const lower = texto.toLowerCase().normalize('NFD').replace(/̀-ͯ/g, '');
+  const lower = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   return /\bllama(r|me|lo|la)?\b|\bquiero llamar\b|\bpuedo llamar\b|\bllamar a\b|\bcontacto(s)?\b/.test(lower);
 }
 
@@ -378,7 +484,6 @@ export async function consultarIA(
   ];
 
   // Para solicitudes de llamada: saltamos tools y agregamos navegación directo.
-  // Evita que el AI busque "Juan" como si fuera una actividad de la residencia.
   if (esIntentLlamar(mensajeUsuario)) {
     const { texto } = await llamarIA(messages, 200, false);
     return {
@@ -418,10 +523,7 @@ export async function getSesionesRecientes(
   return (data ?? []) as SesionAsistente[];
 }
 
-export async function actualizarTituloSesion(
-  sesionId: string,
-  titulo: string,
-): Promise<void> {
+export async function actualizarTituloSesion(sesionId: string, titulo: string): Promise<void> {
   await supabase
     .from('sesiones_asistente')
     .update({ titulo })
@@ -430,9 +532,7 @@ export async function actualizarTituloSesion(
 
 // ─── Mensajes ─────────────────────────────────────────────────────────────────
 
-export async function getMensajesDeSesion(
-  sesionId: string,
-): Promise<MensajeAsistente[]> {
+export async function getMensajesDeSesion(sesionId: string): Promise<MensajeAsistente[]> {
   const { data, error } = await supabase
     .from('mensajes_asistente')
     .select('*')
@@ -459,10 +559,7 @@ export async function guardarMensaje(
   return data as MensajeAsistente;
 }
 
-export async function toggleFavoritoMensaje(
-  mensajeId: string,
-  esFavorito: boolean,
-): Promise<void> {
+export async function toggleFavoritoMensaje(mensajeId: string, esFavorito: boolean): Promise<void> {
   const { error } = await supabase
     .from('mensajes_asistente')
     .update({ es_favorito: esFavorito })
@@ -471,9 +568,7 @@ export async function toggleFavoritoMensaje(
   if (error) throw new Error(`Error al actualizar favorito: ${error.message}`);
 }
 
-export async function getMensajesFavoritos(
-  residenteId: string,
-): Promise<MensajeAsistente[]> {
+export async function getMensajesFavoritos(residenteId: string): Promise<MensajeAsistente[]> {
   const { data, error } = await supabase
     .from('mensajes_asistente')
     .select('*')
@@ -485,27 +580,33 @@ export async function getMensajesFavoritos(
   return (data ?? []) as MensajeAsistente[];
 }
 
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+
+export async function getFaq(): Promise<FaqAsistente[]> {
+  const { data, error } = await supabase
+    .from('faq_asistente')
+    .select('*')
+    .eq('activo', true)
+    .order('orden', { ascending: true });
+
+  if (error) return [];
+  return (data ?? []) as FaqAsistente[];
+}
+
 // ─── Transcripción de voz (Groq Whisper) ─────────────────────────────────────
 
 const GROQ_WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
-/**
- * Transcribe un archivo de audio a texto usando Groq Whisper.
- * Primero intenta la Edge Function (segura); si no está disponible,
- * usa la key local de desarrollo.
- * @param audioUri URI local del archivo de audio (expo-av Recording)
- */
 export async function transcribirAudio(audioUri: string): Promise<string> {
+  if (!GROQ_DEV_API_KEY) {
+    throw new Error('Reconocimiento de voz no disponible.');
+  }
+
   const formData = new FormData();
   formData.append('file', { uri: audioUri, type: 'audio/m4a', name: 'audio.m4a' } as unknown as Blob);
   formData.append('model', 'whisper-large-v3-turbo');
   formData.append('language', 'es');
   formData.append('response_format', 'text');
-
-  // Ruta directa (desarrollo)
-  if (!GROQ_DEV_API_KEY) {
-    throw new Error('Reconocimiento de voz no disponible.');
-  }
 
   const res = await fetch(GROQ_WHISPER_URL, {
     method: 'POST',
@@ -522,17 +623,4 @@ export async function transcribirAudio(audioUri: string): Promise<string> {
   const texto = await res.text();
   if (!texto.trim()) throw new Error('No se detectó voz en el audio.');
   return texto.trim();
-}
-
-// ─── FAQ ──────────────────────────────────────────────────────────────────────
-
-export async function getFaq(): Promise<FaqAsistente[]> {
-  const { data, error } = await supabase
-    .from('faq_asistente')
-    .select('*')
-    .eq('activo', true)
-    .order('orden', { ascending: true });
-
-  if (error) return [];
-  return (data ?? []) as FaqAsistente[];
 }

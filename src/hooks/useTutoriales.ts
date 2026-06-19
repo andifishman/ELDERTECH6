@@ -65,8 +65,7 @@ export function useTutoriales(
 ) {
   return useQuery({
     queryKey: KEYS.lista(residenteId ?? '', categoriaId),
-    queryFn: () => getTutorialesConProgreso(residenteId!, categoriaId),
-    enabled: !!residenteId,
+    queryFn: () => getTutorialesConProgreso(residenteId ?? null, categoriaId),
     staleTime: 1000 * 60 * 5,
     // Al cambiar de categoría muestra la lista anterior mientras carga la nueva
     placeholderData: keepPreviousData,

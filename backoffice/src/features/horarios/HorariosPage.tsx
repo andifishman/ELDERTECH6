@@ -178,6 +178,7 @@ export function HorariosPage() {
                           variant="ghost"
                           size="icon"
                           aria-label="Editar"
+                          className="transition-all duration-150 hover:scale-110 active:scale-95 hover:bg-primary-50 hover:text-primary-700"
                           onClick={() => navigate(`/horarios/${a.id}/editar`)}
                         >
                           <Pencil className="h-4 w-4 text-primary-700" />
@@ -189,6 +190,7 @@ export function HorariosPage() {
                           size="icon"
                           aria-label={a.activo ? 'Pausar' : 'Reactivar'}
                           disabled={toggle.isPending}
+                          className="transition-all duration-150 hover:scale-110 active:scale-95 hover:bg-amber-50 hover:text-amber-600 disabled:hover:scale-100"
                           onClick={() => toggle.mutate({ id: a.id, activo: !a.activo, nombre: a.nombre })}
                         >
                           {a.activo ? (
@@ -199,7 +201,13 @@ export function HorariosPage() {
                         </Button>
                       )}
                       {permisos.puedeEliminar && (
-                        <Button variant="ghost" size="icon" aria-label="Eliminar" onClick={() => setAEliminar(a)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Eliminar"
+                          className="transition-all duration-150 hover:scale-110 active:scale-95 hover:bg-red-50 hover:text-red-600"
+                          onClick={() => setAEliminar(a)}
+                        >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       )}

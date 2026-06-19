@@ -148,8 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(s);
 
         if (event === 'SIGNED_OUT') {
-          const uid = currentUidRef.current;
-          if (uid) clearCache(uid);
+          // No borramos el cache en logout: el dispositivo es de un solo residente
+          // y el cache es por uid. En el próximo login se restaura instantáneamente.
           currentUidRef.current = null;
           setProfile(null);
           setIsLoading(false);
@@ -158,6 +158,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (s?.user.id) {
           currentUidRef.current = s.user.id;
+
+          // En SIGNED_IN: spinner inmediato para no mostrar el estado de error
+          // mientras el perfil se fetchea. Intentamos cache primero para que
+          // usuarios que ya loguearon antes vean datos instantáneos.
+          if (event === 'SIGNED_IN' && mounted) {
+            setIsLoading(true);
+            const cached = await readCache(s.user.id);
+            if (cached && mounted) {
+              setProfile(cached);
+              setIsLoading(false);
+            }
+          }
+
           try {
             const p = await getProfileForUser(s.user.id);
             if (mounted) {
