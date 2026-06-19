@@ -12,6 +12,8 @@ import { AppProviders } from '@/providers/AppProviders';
 import { AppShell } from '@/components/layout/AppShell';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 import { LoginPage } from '@/features/auth/LoginPage';
+import { RecuperarContrasenaPage } from '@/features/auth/RecuperarContrasenaPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { NotFoundPage } from '@/components/common/NotFoundPage';
 
 // Carga diferida por ruta: cada módulo se descarga solo al visitarlo.
@@ -28,6 +30,8 @@ const ConfiguracionPage = lazy(() => import('@/features/configuracion/Configurac
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/recuperar-contrasena', element: <RecuperarContrasenaPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     element: <ProtectedRoute />,
     children: [

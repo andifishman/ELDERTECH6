@@ -97,10 +97,9 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
       .order('updated_at', { ascending: false })
       .limit(10),
     supabase
-      .from('preferencias_residente')
-      .select('ciudades_clima')
-      .eq('residente_id', id)
-      .maybeSingle(),
+      .from('residente_ciudades_familiares')
+      .select('ciudad:ciudades_familiares(nombre, pais_codigo)')
+      .eq('residente_id', id),
   ]);
 
   return {
@@ -114,8 +113,14 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
           .map((r) => ({ titulo: r.tutorial?.titulo ?? '', thumbnail_url: r.tutorial?.thumbnail_url ?? null, completado_at: r.updated_at }))
           .filter((r) => r.titulo)
       : [],
-    ciudadesClima: climaR.status === 'fulfilled' && (climaR.value as any).data?.ciudades_clima
-      ? (climaR.value as any).data.ciudades_clima
+    ciudadesClima: climaR.status === 'fulfilled'
+      ? ((climaR.value.data ?? []) as any[])
+          .map((r) => {
+            const ciudad = r.ciudad;
+            if (!ciudad?.nombre) return null;
+            return ciudad.pais_codigo ? `${ciudad.nombre} (${ciudad.pais_codigo})` : ciudad.nombre;
+          })
+          .filter(Boolean) as string[]
       : [],
   };
 }

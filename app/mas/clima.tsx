@@ -26,6 +26,46 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { PronosticoDia, GeocodingResult, CiudadGuardada } from '@/types/clima.types';
 
+/**
+ * Resuelve el ID de una ciudad en `ciudades_familiares`.
+ * Primero intenta SELECT (siempre permitido), luego INSERT si no existe.
+ */
+async function resolverCiudadId(nombre: string, pais: string, lat: number, lon: number, timezone: string): Promise<string | null> {
+  // 1. Buscar por nombre + país (el SELECT funciona aunque el INSERT esté restringido)
+  const { data: existente } = await supabase
+    .from('ciudades_familiares')
+    .select('id')
+    .eq('nombre', nombre)
+    .eq('pais_codigo', pais)
+    .maybeSingle();
+  if (existente?.id) return existente.id;
+
+  // 2. No existe — intentar insertar
+  const { data: nueva } = await supabase
+    .from('ciudades_familiares')
+    .insert({ nombre, pais_codigo: pais, lat, lon, timezone, activo: false, orden: 999 })
+    .select('id')
+    .single();
+  return nueva?.id ?? null;
+}
+
+/** Sincroniza una lista de ciudades desde AsyncStorage a Supabase. Fallo silencioso por ciudad. */
+async function sincronizarConSupabase(residenteId: string, ciudades: CiudadGuardada[]) {
+  for (const ciudad of ciudades) {
+    try {
+      const ciudadId = await resolverCiudadId(ciudad.nombre, ciudad.pais, ciudad.lat, ciudad.lon, ciudad.timezone);
+      if (ciudadId) {
+        await supabase
+          .from('residente_ciudades_familiares')
+          .upsert(
+            { residente_id: residenteId, ciudad_id: ciudadId },
+            { onConflict: 'residente_id,ciudad_id', ignoreDuplicates: true },
+          );
+      }
+    } catch {}
+  }
+}
+
 const PAIS_NOMBRE: Record<string, string> = {
   AR: 'Argentina',
   IL: 'Israel',
@@ -106,7 +146,10 @@ export default function ClimaScreen() {
         const json = await AsyncStorage.getItem(STORAGE_KEY);
         if (json) {
           const guardadas: CiudadGuardada[] = JSON.parse(json);
-          setCiudades([CIUDAD_NATAL, ...guardadas.filter((c) => !c.esNatal)]);
+          const sinNatal = guardadas.filter((c) => !c.esNatal);
+          setCiudades([CIUDAD_NATAL, ...sinNatal]);
+          // Sincronizar con Supabase en background para que el backoffice las vea
+          if (residenteId) void sincronizarConSupabase(residenteId, sinNatal);
           return;
         }
       } catch {}
@@ -179,7 +222,7 @@ export default function ClimaScreen() {
   }, [busqueda]);
 
   /** Agrega una ciudad seleccionada desde los resultados de búsqueda */
-  function agregarCiudad(geo: GeocodingResult) {
+  async function agregarCiudad(geo: GeocodingResult) {
     // Evitar duplicados comparando coordenadas con tolerancia de ~1km
     const yaExiste = ciudades.some(
       (c) => Math.abs(c.lat - geo.latitude) < 0.01 && Math.abs(c.lon - geo.longitude) < 0.01
@@ -203,30 +246,82 @@ export default function ClimaScreen() {
       esNatal: false,
     };
 
+    // Actualizar UI y AsyncStorage inmediatamente (sin esperar a Supabase)
     const nuevaLista = [...ciudades, nueva];
     setCiudades(nuevaLista);
     persistirCiudades(nuevaLista);
-
-    // Seleccionar automáticamente la ciudad recién agregada para mostrar su clima
     setCiudadActiva(nueva);
-
-    // Cerrar el modal y limpiar el estado de búsqueda
     setModalVisible(false);
     setBusqueda('');
     setResultados([]);
+
+    // Sincronizar con Supabase en background para que el backoffice pueda verlo
+    if (residenteId) {
+      void (async () => {
+        try {
+          const { data: upserted } = await supabase
+            .from('ciudades_familiares')
+            .upsert(
+              { nombre: geo.name, pais_codigo: geo.country_code, lat: geo.latitude, lon: geo.longitude, timezone: geo.timezone, activo: false, orden: 999 },
+              { onConflict: 'nombre,pais_codigo', ignoreDuplicates: false },
+            )
+            .select('id')
+            .single();
+          if (upserted?.id) {
+            await supabase
+              .from('residente_ciudades_familiares')
+              .upsert(
+                { residente_id: residenteId, ciudad_id: upserted.id },
+                { onConflict: 'residente_id,ciudad_id', ignoreDuplicates: true },
+              );
+          }
+        } catch {}
+      })();
+    }
   }
 
   /** Elimina la ciudad activa (solo funciona si no es la natal) */
   function confirmarEliminar() {
     if (ciudadActiva.esNatal) return;
 
+    // Actualizar UI y AsyncStorage inmediatamente
     const nuevaLista = ciudades.filter((c) => c.id !== ciudadActiva.id);
     setCiudades(nuevaLista);
     persistirCiudades(nuevaLista);
-
-    // Volver a la ciudad natal después de eliminar
     setCiudadActiva(CIUDAD_NATAL);
     setModalEliminar(false);
+
+    // Borrar de Supabase en background para mantener sincronía con el backoffice
+    if (residenteId) {
+      const ciudadSnapshot = ciudadActiva;
+      void (async () => {
+        try {
+          let ciudadId: string | undefined = ciudadSnapshot.dbId;
+
+          if (!ciudadId && ciudadSnapshot.id.startsWith('fam_')) {
+            ciudadId = ciudadSnapshot.id.slice(4);
+          }
+
+          if (!ciudadId) {
+            const { data } = await supabase
+              .from('ciudades_familiares')
+              .select('id')
+              .eq('nombre', ciudadSnapshot.nombre)
+              .eq('pais_codigo', ciudadSnapshot.pais)
+              .maybeSingle();
+            ciudadId = data?.id;
+          }
+
+          if (ciudadId) {
+            await supabase
+              .from('residente_ciudades_familiares')
+              .delete()
+              .eq('residente_id', residenteId)
+              .eq('ciudad_id', ciudadId);
+          }
+        } catch {}
+      })();
+    }
   }
 
   /** Texto que lee el botón de voz (TTS) describiendo el clima actual */

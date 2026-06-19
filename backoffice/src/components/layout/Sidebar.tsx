@@ -6,6 +6,7 @@
 // ítems de menú filtrados por permisos y el botón de
 // cerrar sesión. Colapsable en mobile.
 // ========================================
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LogOut, X } from 'lucide-react';
 import { cn, iniciales } from '@/lib/utils';
@@ -13,6 +14,7 @@ import { NAV_ITEMS } from './nav.config';
 import { usePermisos } from '@/hooks/usePermisos';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface SidebarProps {
   abierto: boolean;
@@ -29,6 +31,7 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
   const permisos = usePermisos();
   const { perfil, rol, signOut } = useAuth();
   const items = NAV_ITEMS.filter((i) => !i.visible || i.visible(permisos));
+  const [confirmarCerrar, setConfirmarCerrar] = useState(false);
 
   return (
     <>
@@ -105,7 +108,7 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
         {/* cerrar sesión */}
         <div className="border-t border-white/10 p-3">
           <button
-            onClick={() => void signOut()}
+            onClick={() => setConfirmarCerrar(true)}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/85 transition-colors hover:bg-white/10"
           >
             <LogOut className="h-5 w-5" />
@@ -113,6 +116,16 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
           </button>
         </div>
       </aside>
+
+      <ConfirmDialog
+        abierto={confirmarCerrar}
+        onOpenChange={setConfirmarCerrar}
+        titulo="¿Cerrar sesión?"
+        descripcion="Vas a salir del backoffice. Podés volver a ingresar cuando quieras."
+        textoConfirmar="Cerrar sesión"
+        variante="default"
+        onConfirmar={() => void signOut()}
+      />
     </>
   );
 }

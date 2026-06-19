@@ -6,7 +6,7 @@
 // formulario validado con react-hook-form.
 // ========================================
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Leaf, Loader2, Lock, Mail } from 'lucide-react';
 import { useAuth } from './AuthContext';
@@ -116,13 +116,10 @@ export function LoginPage() {
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
 
-            <div className="flex justify-between text-sm">
-              <a href="#" className="text-primary hover:underline" onClick={e => e.preventDefault()}>
+            <div className="flex text-sm">
+              <Link to="/recuperar-contrasena" className="text-primary hover:underline">
                 ¿Olvidaste tu contraseña?
-              </a>
-              <a href="#" className="text-primary hover:underline" onClick={e => e.preventDefault()}>
-                Crear cuenta
-              </a>
+              </Link>
             </div>
 
             <Button type="submit" size="lg" className="w-full" disabled={enviando}>

@@ -228,6 +228,9 @@ export function ArticuloFormPage() {
             <Button className="w-full" onClick={confirmarPasos}>
               Continuar
             </Button>
+            <Button className="w-full" variant="outline" onClick={() => navigate('/tutoriales')}>
+              Cancelar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

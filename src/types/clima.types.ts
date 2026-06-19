@@ -77,4 +77,5 @@ export interface CiudadGuardada {
   lon: number;           // Longitud
   timezone: string;      // Zona horaria
   esNatal: boolean;      // true = ciudad natal (Buenos Aires), no se puede borrar
+  dbId?: string;         // UUID de ciudades_familiares en Supabase
 }

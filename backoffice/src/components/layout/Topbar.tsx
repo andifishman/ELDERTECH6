@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SearchModal } from '@/components/common/SearchModal';
 import { EditarPerfilDialog } from '@/features/auth/EditarPerfilDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase, ORG_ID } from '@/lib/supabase';
 import type { AuditLog } from '@/types/backoffice.types';
@@ -63,6 +64,7 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
   const [searchAbierto, setSearchAbierto] = useState(false);
   const [notifVistas, setNotifVistas] = useState<string | null>(null);
   const [perfilAbierto, setPerfilAbierto] = useState(false);
+  const [confirmarCerrar, setConfirmarCerrar] = useState(false);
   const notif = useNotificaciones();
 
   // Ctrl+K para abrir búsqueda
@@ -173,7 +175,7 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
               <UserCog className="h-4 w-4" /> Editar perfil
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void signOut()} className="cursor-pointer text-destructive">
+            <DropdownMenuItem onClick={() => setConfirmarCerrar(true)} className="cursor-pointer text-destructive">
               <LogOut className="h-4 w-4" /> Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -182,6 +184,15 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
 
       <SearchModal abierto={searchAbierto} onCerrar={() => setSearchAbierto(false)} />
       <EditarPerfilDialog abierto={perfilAbierto} onCerrar={() => setPerfilAbierto(false)} />
+      <ConfirmDialog
+        abierto={confirmarCerrar}
+        onOpenChange={setConfirmarCerrar}
+        titulo="¿Cerrar sesión?"
+        descripcion="Vas a salir del backoffice. Podés volver a ingresar cuando quieras."
+        textoConfirmar="Cerrar sesión"
+        variante="default"
+        onConfirmar={() => void signOut()}
+      />
     </>
   );
 }
