@@ -59,6 +59,13 @@ export default function TutorialesScreen() {
 
   const tutorialesFiltrados = useMemo(() => {
     let lista = tutoriales;
+
+    // Filtro por categoría en cliente: garantiza que solo se vean los tutoriales
+    // de la categoría seleccionada aunque el servidor devuelva todos (keepPreviousData)
+    if (categoriaSeleccionada) {
+      lista = lista.filter((t) => t.categoria_id === categoriaSeleccionada);
+    }
+
     if (soloFavoritos) {
       lista = lista.filter((t) => t.progreso?.favorito);
     }
@@ -72,7 +79,7 @@ export default function TutorialesScreen() {
       );
     }
     return lista;
-  }, [tutoriales, busqueda, soloFavoritos]);
+  }, [tutoriales, busqueda, soloFavoritos, categoriaSeleccionada]);
 
   // Agrupamos por función (categoría) solo en la vista "Todo" sin búsqueda ni favoritos.
   const agrupar = categoriaActivaNombre === 'Todo' && !busqueda.trim() && !soloFavoritos;
@@ -85,15 +92,24 @@ export default function TutorialesScreen() {
     }
     const porCategoria = new Map<string, TutorialConProgreso[]>();
     for (const t of tutorialesFiltrados) {
-      const nombre = t.categoria?.nombre ?? 'Otros';
+      // Tutoriales sin categoría o asignados a la categoría "Todo" (el chip "all")
+      // se muestran en "Otros" para que nunca queden ocultos en la vista agrupada
+      const nombre =
+        t.categoria?.nombre && t.categoria.nombre !== 'Todo'
+          ? t.categoria.nombre
+          : 'Otros';
       const grupo = porCategoria.get(nombre);
       if (grupo) grupo.push(t);
       else porCategoria.set(nombre, [t]);
     }
     // Respetar el orden de las categorías (excluyendo "Todo")
-    return categorias
+    const seccionesOrdenadas = categorias
       .filter((c) => c.nombre !== 'Todo' && porCategoria.has(c.nombre))
       .map((c) => ({ titulo: c.nombre, data: porCategoria.get(c.nombre)! }));
+    // Tutoriales sin categoría asignada al final
+    const otros = porCategoria.get('Otros');
+    if (otros?.length) seccionesOrdenadas.push({ titulo: 'Otros', data: otros });
+    return seccionesOrdenadas;
   }, [agrupar, tutorialesFiltrados, categorias]);
 
   const handleTutorialPress = useCallback(

@@ -99,7 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const { data } = await supabase.auth.getSession();
           s = data.session;
-        } catch {}
+        } catch (err) {
+          // Refresh token inválido o expirado — limpiar sesión local para no quedar bloqueado
+          const msg = err instanceof Error ? err.message : '';
+          if (msg.includes('Refresh Token') || msg.includes('refresh_token')) {
+            await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          }
+          s = null;
+        }
 
         if (!mounted) return;
         setSession(s);
@@ -153,6 +160,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, s) => {
         if (!mounted) return;
+
+        // Token inválido disparado por Supabase — limpiar y dejar que NavigationGuard redirija al login
+        if (event === 'TOKEN_REFRESHED' && !s) {
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          setSession(null);
+          setProfile(null);
+          currentUidRef.current = null;
+          if (mounted) setIsLoading(false);
+          return;
+        }
 
         // INITIAL_SESSION is handled by init() above — skip to avoid double fetch
         if (event === 'INITIAL_SESSION') return;

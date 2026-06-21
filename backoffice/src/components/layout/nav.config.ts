@@ -12,6 +12,7 @@ import {
   Bot,
   Settings,
   History,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { Permisos } from '@/types/backoffice.types';
@@ -33,4 +34,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Residentes', to: '/usuarios', icon: Users, visible: (p) => !p.puedeGestionarUsuarios },
   { label: 'Auditoría', to: '/auditoria', icon: History, visible: (p) => p.puedeGestionarUsuarios },
   { label: 'Configuración', to: '/configuracion', icon: Settings, visible: (p) => p.puedeConfigurar },
+  { label: 'Administradores', to: '/administradores', icon: ShieldCheck, visible: (p) => p.puedeGestionarAdmins },
 ];

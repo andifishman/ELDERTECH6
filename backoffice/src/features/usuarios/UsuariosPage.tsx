@@ -130,7 +130,8 @@ export function UsuariosPage() {
             <EmptyState icono={UserCog} titulo="Sin residentes" descripcion="Agregá el primer residente." accion={<Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Nuevo residente</Button>} />
           </div>
         ) : (
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Residente</TableHead>
@@ -197,6 +198,7 @@ export function UsuariosPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </Card>
 

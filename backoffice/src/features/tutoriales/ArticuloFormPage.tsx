@@ -51,6 +51,7 @@ export function ArticuloFormPage() {
   // ── Campos principales ───────────────────────────────────────────────────────
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CamposPrincipales>();
   const [categoriaId, setCategoriaId] = useState('');
+  const [errorCategoria, setErrorCategoria] = useState('');
   const [formato, setFormato] = useState<FormatoTutorial>('video');
   const [nivel, setNivel] = useState<'principiante' | 'intermedio' | 'avanzado'>('principiante');
   const [loQueAprenderas, setLoQueAprenderas] = useState<string[]>(['']);
@@ -80,7 +81,7 @@ export function ArticuloFormPage() {
       duracion_minutos: tutorial.duracion_segundos ? String(Math.round(tutorial.duracion_segundos / 60)) : '',
     });
     setCategoriaId(tutorial.categoria_id ?? '');
-    setFormato(tutorial.formato);
+    setFormato((tutorial.formato as FormatoTutorial) || 'video');
     setNivel(tutorial.nivel as any);
     setThumbnailUrl(tutorial.thumbnail_url ?? '');
     setLoQueAprenderas(tutorial.lo_que_aprenderas?.length ? tutorial.lo_que_aprenderas : ['']);
@@ -184,11 +185,17 @@ export function ArticuloFormPage() {
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   const enviar = (campos: CamposPrincipales, publicar: boolean) => {
+    if (publicar && !categoriaId) {
+      setErrorCategoria('La categoría es obligatoria para publicar');
+      notify.error('Categoría requerida', 'Seleccioná una categoría antes de publicar el tutorial.');
+      return;
+    }
+    setErrorCategoria('');
     const input = {
       titulo: campos.titulo,
       descripcion: campos.descripcion || null,
       categoria_id: categoriaId || null,
-      formato,
+      formato: formato || 'video',
       nivel,
       url_video: campos.url_video || null,
       thumbnail_url: thumbnailUrl || null,
@@ -259,15 +266,18 @@ export function ArticuloFormPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Categoría</Label>
-                <Select value={categoriaId} onValueChange={setCategoriaId}>
-                  <SelectTrigger><SelectValue placeholder="Elegir categoría" /></SelectTrigger>
+                <Label>Categoría *</Label>
+                <Select value={categoriaId} onValueChange={(v) => { setCategoriaId(v); setErrorCategoria(''); }}>
+                  <SelectTrigger className={errorCategoria ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Elegir categoría" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(categorias ?? []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.emoji} {c.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {errorCategoria && <p className="text-xs text-destructive">{errorCategoria}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Formato</Label>

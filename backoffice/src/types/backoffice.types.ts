@@ -94,4 +94,5 @@ export interface Permisos {
   puedeEliminar: boolean;
   puedeGestionarUsuarios: boolean;
   puedeConfigurar: boolean;
+  puedeGestionarAdmins: boolean; // solo super_admin puede promover/degradar roles
 }

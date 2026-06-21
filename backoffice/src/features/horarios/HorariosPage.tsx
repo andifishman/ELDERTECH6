@@ -135,7 +135,8 @@ export function HorariosPage() {
             />
           </div>
         ) : (
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Hora</TableHead>
@@ -217,6 +218,7 @@ export function HorariosPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </Card>
 

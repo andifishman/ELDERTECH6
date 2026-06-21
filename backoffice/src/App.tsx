@@ -27,6 +27,7 @@ const ResidenteDetailPage = lazy(() => import('@/features/usuarios/ResidenteDeta
 const AsistentePage = lazy(() => import('@/features/asistente/AsistentePage').then((m) => ({ default: m.AsistentePage })));
 const AuditoriaPage = lazy(() => import('@/features/auditoria/AuditoriaPage').then((m) => ({ default: m.AuditoriaPage })));
 const ConfiguracionPage = lazy(() => import('@/features/configuracion/ConfiguracionPage').then((m) => ({ default: m.ConfiguracionPage })));
+const AdministradoresPage = lazy(() => import('@/features/administradores/AdministradoresPage').then((m) => ({ default: m.AdministradoresPage })));
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
           { path: '/asistente', element: <AsistentePage />, handle: { titulo: 'Asistente / FAQ' } },
           { path: '/auditoria', element: <AuditoriaPage />, handle: { titulo: 'Auditoría' } },
           { path: '/configuracion', element: <ConfiguracionPage />, handle: { titulo: 'Configuración' } },
+          { path: '/administradores', element: <AdministradoresPage />, handle: { titulo: 'Administradores' } },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

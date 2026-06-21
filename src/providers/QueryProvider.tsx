@@ -1,9 +1,10 @@
 //configura react-query con caché PERSISTENTE en AsyncStorage:
 //los datos de Supabase se muestran al instante desde el disco (aunque la app
 //se haya cerrado) y se refrescan en background cuando están viejos.
-import React from 'react';
+import React, { useEffect } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 
@@ -27,6 +28,14 @@ const persister = createAsyncStoragePersister({
 });
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
+  // Refrescar queries obsoletas cuando la app vuelve al primer plano
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      focusManager.setFocused(state === 'active');
+    });
+    return () => sub.remove();
+  }, []);
+
   return (
     <PersistQueryClientProvider
       client={queryClient}

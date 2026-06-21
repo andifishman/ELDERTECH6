@@ -19,6 +19,7 @@ const MATRIZ: Record<RolBackoffice, Permisos> = {
     puedeEliminar: true,
     puedeGestionarUsuarios: true,
     puedeConfigurar: true,
+    puedeGestionarAdmins: true,
   },
   admin: {
     puedeCrear: true,
@@ -26,6 +27,7 @@ const MATRIZ: Record<RolBackoffice, Permisos> = {
     puedeEliminar: true,
     puedeGestionarUsuarios: true,
     puedeConfigurar: false,
+    puedeGestionarAdmins: false,
   },
   editor: {
     puedeCrear: true,
@@ -33,6 +35,7 @@ const MATRIZ: Record<RolBackoffice, Permisos> = {
     puedeEliminar: true,
     puedeGestionarUsuarios: false,
     puedeConfigurar: false,
+    puedeGestionarAdmins: false,
   },
 };
 

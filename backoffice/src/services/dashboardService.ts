@@ -21,6 +21,37 @@ async function contar(tabla: string, aplicar: (q: any) => any): Promise<number> 
   }
 }
 
+async function contarResidentesSinAdmins(): Promise<number> {
+  try {
+    // Obtener los residente_ids vinculados a cuentas admin/staff
+    const { data: adminLinks } = await supabase
+      .from('perfiles_usuario')
+      .select('residente_id')
+      .in('rol', ['admin', 'staff'])
+      .not('residente_id', 'is', null);
+
+    const adminResidenteIds = ((adminLinks ?? []) as { residente_id: string }[])
+      .map((p) => p.residente_id);
+
+    // Contar residentes activos excluyendo los que tienen cuenta de admin
+    let query = supabase
+      .from('residentes')
+      .select('*', { count: 'exact', head: true })
+      .eq('organizacion_id', ORG_ID)
+      .eq('activo', true);
+
+    if (adminResidenteIds.length > 0) {
+      query = query.not('id', 'in', `(${adminResidenteIds.join(',')})`);
+    }
+
+    const { count, error } = await query;
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function obtenerKpis(): Promise<DashboardKpis> {
   const hoy = hoyISO();
   const hoyStart = `${hoy}T00:00:00.000Z`;
@@ -28,7 +59,7 @@ export async function obtenerKpis(): Promise<DashboardKpis> {
 
   const [residentesActivos, actividadesHoy, tutorialesPublicados, consultasAsistente] =
     await Promise.all([
-      contar('residentes', (q) => q.eq('organizacion_id', ORG_ID).eq('activo', true)),
+      contarResidentesSinAdmins(),
       contar('actividades', (q) => q.eq('organizacion_id', ORG_ID).eq('fecha', hoy).eq('activo', true)),
       contar('tutoriales', (q) => q.eq('activo', true)),
       contar('mensajes_asistente', (q) =>

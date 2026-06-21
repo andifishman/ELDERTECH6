@@ -66,7 +66,7 @@ export function useTutoriales(
   return useQuery({
     queryKey: KEYS.lista(residenteId ?? '', categoriaId),
     queryFn: () => getTutorialesConProgreso(residenteId ?? null, categoriaId),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 30, // 30s — para que los tutoriales nuevos del backoffice aparezcan pronto
     // Al cambiar de categoría muestra la lista anterior mientras carga la nueva
     placeholderData: keepPreviousData,
   });

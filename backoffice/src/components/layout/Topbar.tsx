@@ -62,7 +62,9 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
   const { perfil, signOut } = useAuth();
   const { tema, alternar } = useTema();
   const [searchAbierto, setSearchAbierto] = useState(false);
-  const [notifVistas, setNotifVistas] = useState<string | null>(null);
+  const [notifVistas, setNotifVistas] = useState<string | null>(() => {
+    try { return localStorage.getItem('backoffice_notif_vista'); } catch { return null; }
+  });
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [confirmarCerrar, setConfirmarCerrar] = useState(false);
   const notif = useNotificaciones();
@@ -111,59 +113,85 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
           <kbd className="rounded border border-border px-1.5 py-0.5 font-mono text-xs">⌃K</kbd>
         </button>
 
-        {/* Modo oscuro */}
-        <button
-          onClick={alternar}
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label={tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-        >
-          {tema === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </button>
+        {/* Separador */}
+        <div className="hidden h-8 w-px bg-border sm:block" />
 
-        {/* Notificaciones */}
-        <DropdownMenu onOpenChange={(open) => {
-          if (open && logs.length > 0) setNotifVistas(logs[0].created_at);
-        }}>
-          <DropdownMenuTrigger className="relative rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Notificaciones">
-            <Bell className="h-5 w-5" />
-            {noVistas > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
-                {noVistas > 9 ? '9+' : noVistas}
-              </span>
-            )}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="text-sm font-semibold">Actividad reciente</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {logs.length === 0 ? (
-              <p className="px-3 py-4 text-center text-xs text-muted-foreground">Sin actividad reciente</p>
-            ) : (
-              logs.map((log) => (
-                <div key={log.id} className="flex items-start gap-3 px-3 py-2.5 text-sm hover:bg-accent">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted">
-                    {TABLA_ICONO[log.tabla_afectada] ?? ACCION_ICONO[log.accion] ?? <Bell className="h-3.5 w-3.5" />}
+        {/* Grupo de acciones */}
+        <div className="flex items-center gap-1">
+
+          {/* Tema */}
+          <button
+            onClick={alternar}
+            className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:px-3"
+            aria-label={tema === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'}
+          >
+            {tema === 'dark' ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
+            <span className="hidden sm:block">Tema</span>
+          </button>
+
+          {/* Alertas */}
+          <DropdownMenu onOpenChange={(open) => {
+            if (open && logs.length > 0) {
+              const ts = logs[0].created_at;
+              setNotifVistas(ts);
+              try { localStorage.setItem('backoffice_notif_vista', ts); } catch {}
+            }
+          }}>
+            <DropdownMenuTrigger
+              className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:px-3"
+              aria-label="Notificaciones"
+            >
+              <span className="relative shrink-0">
+                <Bell className="h-5 w-5" />
+                {noVistas > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                    {noVistas > 9 ? '9+' : noVistas}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-foreground">{log.descripcion ?? `${log.accion} en ${log.tabla_afectada}`}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {log.usuario_nombre && <span className="font-medium">{log.usuario_nombre} · </span>}
-                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
-                    </p>
+                )}
+              </span>
+              <span className="hidden sm:block">Alertas</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="text-sm font-semibold">Actividad reciente</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {logs.length === 0 ? (
+                <p className="px-3 py-4 text-center text-xs text-muted-foreground">Sin actividad reciente</p>
+              ) : (
+                logs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 px-3 py-2.5 text-sm hover:bg-accent">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted">
+                      {TABLA_ICONO[log.tabla_afectada] ?? ACCION_ICONO[log.accion] ?? <Bell className="h-3.5 w-3.5" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium text-foreground">{log.descripcion ?? `${log.accion} en ${log.tabla_afectada}`}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {log.usuario_nombre && <span className="font-medium">{log.usuario_nombre} · </span>}
+                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* Usuario */}
+        </div>
+
+        {/* Separador */}
+        <div className="hidden h-8 w-px bg-border sm:block" />
+
+        {/* Perfil */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-1 pr-2 hover:bg-accent">
-            <Avatar className="h-9 w-9">
+          <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent sm:gap-2.5">
+            <Avatar className="h-8 w-8 shrink-0">
               {perfil?.avatar_url && <AvatarImage src={perfil.avatar_url} alt="" />}
-              <AvatarFallback>{iniciales(perfil?.nombre_completo)}</AvatarFallback>
+              <AvatarFallback className="text-xs font-semibold">{iniciales(perfil?.nombre_completo)}</AvatarFallback>
             </Avatar>
-            <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
+            <div className="hidden flex-col sm:flex">
+              <span className="text-sm font-medium leading-tight text-foreground">{perfil?.nombre_completo ?? 'Administrador'}</span>
+              <span className="text-xs leading-tight text-muted-foreground">Mi perfil</span>
+            </div>
+            <ChevronDown className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="flex flex-col">

@@ -11,10 +11,27 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { PerfilUsuario, RolBackoffice } from '@/types/backoffice.types';
 
+// Cuentas con acceso total al backoffice y gestión de administradores
+const SUPER_ADMIN_EMAILS = ['andresfishman@gmail.com', 'eldertech6@gmail.com'];
+
+function mapearRol(rawRol: string | null, email: string | null): RolBackoffice {
+  if (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) return 'super_admin';
+  if (rawRol === 'admin') return 'admin';
+  if (rawRol === 'staff') return 'editor';
+  return 'editor';
+}
+
+function esAutorizado(rawRol: string | null, email: string | null): boolean {
+  if (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) return true;
+  // solo admin y staff tienen acceso al backoffice; 'residente' no
+  return rawRol === 'admin' || rawRol === 'staff';
+}
+
 interface AuthState {
   session: Session | null;
   perfil: PerfilUsuario | null;
   rol: RolBackoffice;
+  autorizado: boolean;
   cargando: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -26,6 +43,7 @@ const AuthContext = React.createContext<AuthState | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = React.useState<Session | null>(null);
   const [perfil, setPerfil] = React.useState<PerfilUsuario | null>(null);
+  const [autorizado, setAutorizado] = React.useState(true);
   const [cargando, setCargando] = React.useState(true);
 
   // obtenemos el perfil del admin (rol/organización) desde la DB
@@ -36,17 +54,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', userId)
       .maybeSingle();
 
+    const emailNorm = email?.toLowerCase() ?? null;
+
     if (data) {
-      setPerfil(data as PerfilUsuario);
-      // registramos último acceso (no bloqueante)
+      const rawRol = (data as Record<string, unknown>).rol as string | null;
+      const rolMapeado = mapearRol(rawRol, emailNorm);
+      setAutorizado(esAutorizado(rawRol, emailNorm));
+      setPerfil({ ...data, rol: rolMapeado } as PerfilUsuario);
       void supabase.from('perfiles_usuario').update({ ultimo_acceso: new Date().toISOString() }).eq('id', userId);
     } else {
-      // si no hay fila de perfil, asumimos admin básico para no bloquear el acceso
+      // sin fila de perfil: solo acceso si el email es super_admin
+      const isSuperAdmin = !!emailNorm && SUPER_ADMIN_EMAILS.includes(emailNorm);
+      setAutorizado(isSuperAdmin);
       setPerfil({
         id: userId,
         organizacion_id: null,
         residente_id: null,
-        rol: 'admin',
+        rol: isSuperAdmin ? 'super_admin' : 'editor',
         nombre_completo: email ?? 'Administrador',
         avatar_url: null,
         email: email ?? null,
@@ -74,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await cargarPerfil(newSession.user.id, newSession.user.email);
       } else {
         setPerfil(null);
+        setAutorizado(true);
       }
     });
 
@@ -88,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = React.useCallback(async () => {
     await supabase.auth.signOut();
     setPerfil(null);
+    setAutorizado(true);
   }, []);
 
   const actualizarPerfil = React.useCallback(async (data: { nombre_completo?: string; avatar_url?: string }) => {
@@ -100,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     perfil,
     rol: perfil?.rol ?? 'editor',
+    autorizado,
     cargando,
     signIn,
     signOut,

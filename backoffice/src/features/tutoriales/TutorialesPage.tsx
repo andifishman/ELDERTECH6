@@ -83,22 +83,24 @@ export function TutorialesPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar contenido…" className="pl-9" />
         </div>
-        <Tabs value={estado} onValueChange={(v) => setEstado(v as typeof estado)}>
-          <TabsList>
-            <TabsTrigger value="todos">Todos</TabsTrigger>
-            <TabsTrigger value="publicado">Publicados</TabsTrigger>
-            <TabsTrigger value="borrador">Borradores</TabsTrigger>
-            <TabsTrigger value="papelera" className="gap-1.5">
-              <Trash2 className="h-3.5 w-3.5" />
-              Papelera
-              {(eliminados.data?.length ?? 0) > 0 && (
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-destructive/15 text-[10px] font-bold text-destructive">
-                  {eliminados.data!.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="overflow-x-auto pb-0.5">
+          <Tabs value={estado} onValueChange={(v) => setEstado(v as typeof estado)}>
+            <TabsList className="w-max">
+              <TabsTrigger value="todos">Todos</TabsTrigger>
+              <TabsTrigger value="publicado">Publicados</TabsTrigger>
+              <TabsTrigger value="borrador">Borradores</TabsTrigger>
+              <TabsTrigger value="papelera" className="gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" />
+                Papelera
+                {(eliminados.data?.length ?? 0) > 0 && (
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-destructive/15 text-[10px] font-bold text-destructive">
+                    {eliminados.data!.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {estado === 'papelera' ? (

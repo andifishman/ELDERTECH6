@@ -185,12 +185,15 @@ export function DashboardPage() {
           ) : (
             <ul className="space-y-3">
               {(reciente.data ?? []).map((log) => (
-                <li key={log.id} className="flex items-center gap-3">
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
-                  <p className="min-w-0 flex-1 truncate text-sm text-foreground">{log.descripcion ?? `${log.accion} en ${log.tabla_afectada}`}</p>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
-                  </span>
+                <li key={log.id} className="flex items-start gap-3">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-foreground">{log.descripcion ?? `${log.accion} en ${log.tabla_afectada}`}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {log.usuario_nombre && <>{log.usuario_nombre} · </>}
+                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>

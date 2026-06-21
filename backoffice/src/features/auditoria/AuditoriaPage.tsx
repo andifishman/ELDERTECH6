@@ -58,30 +58,32 @@ export function AuditoriaPage() {
             <EmptyState icono={History} titulo="Sin registros" descripcion="Las acciones del backoffice aparecerán acá." />
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Acción</TableHead>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Tabla</TableHead>
-                <TableHead>Usuario</TableHead>
-                <TableHead>Cuándo</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(data ?? []).map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell><Badge variant={ACCION_BADGE[log.accion] ?? 'muted'} className="capitalize">{log.accion}</Badge></TableCell>
-                  <TableCell className="text-sm text-foreground">{log.descripcion ?? '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{log.tabla_afectada}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{log.usuario_nombre ?? '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[600px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Acción</TableHead>
+                  <TableHead>Usuario</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Tabla</TableHead>
+                  <TableHead>Cuándo</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(data ?? []).map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell><Badge variant={ACCION_BADGE[log.accion] ?? 'muted'} className="capitalize">{log.accion}</Badge></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{log.usuario_nombre ?? '—'}</TableCell>
+                    <TableCell className="text-sm text-foreground">{log.descripcion ?? '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{log.tabla_afectada}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: es })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </Card>
     </div>
