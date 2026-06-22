@@ -74,6 +74,8 @@ export function Combobox({
       onChange(newId, busqueda.trim());
       setAbierto(false);
       setBusqueda('');
+    } catch {
+      // onCrear es responsable de mostrar el mensaje de error al usuario
     } finally {
       setCreando(false);
     }

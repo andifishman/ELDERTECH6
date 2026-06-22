@@ -6,10 +6,10 @@
 // estado, recurrencia y acciones (editar, pausar/
 // reactivar, eliminar). Sincronizada en tiempo real.
 // ========================================
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Pause, Play, CalendarClock } from 'lucide-react';
-import { addDays, format, isToday, startOfWeek } from 'date-fns';
+import { addDays, format, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/ui/card';
@@ -48,10 +48,22 @@ export function HorariosPage() {
 
   useRealtime('actividades', [['actividades']]);
 
-  // chips de los 30 días desde el lunes de la semana actual
-  const dias = useMemo(() => {
-    const inicio = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return Array.from({ length: 30 }, (_, i) => addDays(inicio, i));
+  // 30 días atrás + hoy + 30 días adelante
+  const hoy = useMemo(() => new Date(), []);
+  const dias = useMemo(
+    () => Array.from({ length: 61 }, (_, i) => addDays(hoy, -30 + i)),
+    [hoy],
+  );
+
+  // auto-scroll: hoy queda como el 3er chip visible al montar
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const todayRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!scrollRef.current || !todayRef.current) return;
+    // Hoy está en el índice 30 del array de 61 días (−30…hoy…+30)
+    // Para que sea el 3er chip visible hay que saltear 28 chips (índices 0–27)
+    const chip = todayRef.current.offsetWidth + 8; // ancho botón + gap-2
+    scrollRef.current.scrollLeft = chip * 28;
   }, []);
 
   const tituloFecha = format(new Date(fecha + 'T00:00:00'), "EEEE d 'de' MMMM", { locale: es });
@@ -73,30 +85,31 @@ export function HorariosPage() {
       />
 
       {/* selector de día */}
-      <div className="overflow-x-auto pb-1">
+      <div ref={scrollRef} className="overflow-x-auto pb-1">
         <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
           {dias.map((d) => {
             const valor = format(d, 'yyyy-MM-dd');
             const activo = valor === fecha;
-            const hoy = isToday(d);
+            const esHoy = isToday(d);
             return (
               <button
                 key={valor}
+                ref={esHoy ? todayRef : undefined}
                 onClick={() => setFecha(valor)}
                 className={cn(
                   'flex flex-col items-center rounded-xl border px-5 py-3 font-semibold transition-colors',
                   activo
                     ? 'border-primary bg-primary text-primary-foreground'
-                    : hoy
+                    : esHoy
                     ? 'border-2 border-primary text-primary-700 bg-card hover:bg-primary-50'
                     : 'border-border bg-card text-foreground hover:bg-accent',
                 )}
               >
                 <span className="text-xs uppercase tracking-wide capitalize">{format(d, 'EEE', { locale: es })}</span>
                 <span className="text-xl leading-tight">{format(d, 'd')}</span>
-                {hoy && !activo
+                {esHoy && !activo
                   ? <span className="text-xs font-bold text-primary">● hoy</span>
-                  : <span className={cn('text-xs', activo ? 'opacity-70' : 'opacity-70')}>{format(d, 'MMM', { locale: es })}</span>
+                  : <span className="text-xs opacity-70">{format(d, 'MMM', { locale: es })}</span>
                 }
               </button>
             );

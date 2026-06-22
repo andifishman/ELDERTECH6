@@ -25,7 +25,7 @@ export function PasswordInput({
   value,
   onChangeText,
   error,
-  placeholder = '••••••••',
+  placeholder = 'Contraseña',
   required,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);

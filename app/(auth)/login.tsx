@@ -210,7 +210,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   dividerText: {
-    fontSize: Typography.size.md,
-    color: Colors.text.secondary,
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.primary,
   },
 });

@@ -7,7 +7,7 @@ import type { NivelDificultad } from '@/types/database.types';
 
 const OPCIONES: { value: NivelDificultad; label: string; color: string }[] = [
   { value: 'independiente', label: 'Independiente', color: '#4CAF50' },
-  { value: 'necesita_ayuda', label: 'Necesita ayuda', color: '#FF9800' },
+  { value: 'necesita_ayuda', label: 'Necesita ayuda', color: '#FFC107' },
   { value: 'dependiente', label: 'Dependiente', color: '#F44336' },
 ];
 
@@ -44,9 +44,6 @@ export function NivelDificultadSelector({
                 styles.label,
                 isSelected && styles.labelSelected,
               ]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
             >
               {opcion.label}
             </Text>
@@ -64,17 +61,17 @@ const styles = StyleSheet.create({
   },
   option: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     borderRadius: Spacing.radius.md,
     borderWidth: 2,
     borderColor: Colors.ui.border,
     backgroundColor: Colors.ui.surface,
     gap: Spacing.xs,
-    minHeight: Spacing.touch.min,
+    minHeight: 64,
   },
   dot: {
     width: 10,

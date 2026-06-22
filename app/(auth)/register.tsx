@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,16 +18,14 @@ import { PasswordInput } from '@/components/auth/PasswordInput';
 import { LoadingButton } from '@/components/auth/LoadingButton';
 import { AvatarPicker } from '@/components/auth/AvatarPicker';
 import { InterestSelector } from '@/components/auth/InterestSelector';
-import { CiudadFamiliarSelector } from '@/components/auth/CiudadFamiliarSelector';
 import { NivelDificultadSelector } from '@/components/auth/NivelDificultadSelector';
 import {
   registerUser,
   getIntereses,
-  getCiudadesFamiliares,
   checkUsernameAvailable,
   Validators,
 } from '@/services/authService';
-import type { RegisterFormData, RegisterStep, Interes, CiudadFamiliar, ValidationErrors } from '@/types/auth.types';
+import type { RegisterFormData, RegisterStep, Interes, ValidationErrors } from '@/types/auth.types';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -63,17 +62,14 @@ export default function RegisterScreen() {
   const [success, setSuccess] = useState(false);
 
   const [intereses, setIntereses] = useState<Interes[]>([]);
-  const [ciudades, setCiudades] = useState<CiudadFamiliar[]>([]);
   const [loadingLists, setLoadingLists] = useState(true);
+  const [pisoOpen, setPisoOpen] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    Promise.all([getIntereses(), getCiudadesFamiliares()])
-      .then(([ints, ciud]) => {
-        setIntereses(ints);
-        setCiudades(ciud);
-      })
+    getIntereses()
+      .then((ints) => setIntereses(ints))
       .finally(() => setLoadingLists(false));
   }, []);
 
@@ -174,14 +170,21 @@ export default function RegisterScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={80} color={Colors.brand.greenDark} />
+            <Ionicons name="mail-unread" size={80} color={Colors.brand.greenDark} />
           </View>
           <Text style={styles.successTitle}>¡Cuenta creada!</Text>
+          <View style={styles.emailBanner}>
+            <Ionicons name="information-circle" size={24} color={Colors.brand.greenDark} />
+            <Text style={styles.emailBannerText}>
+              Te enviamos un correo de confirmación.{'\n'}
+              Abrí tu casilla de email y tocá el link para activar tu cuenta antes de iniciar sesión.
+            </Text>
+          </View>
           <Text style={styles.successMessage}>
-            Bienvenido/a a ElderTech.{'\n'}Ya podés iniciar sesión.
+            Una vez confirmado el email, ya podés ingresar a ElderTech.
           </Text>
           <LoadingButton
-            title="Iniciar sesión"
+            title="Entendido, ir al inicio"
             onPress={() => router.replace('/(auth)/login')}
             style={styles.successButton}
           />
@@ -329,13 +332,57 @@ export default function RegisterScreen() {
           {step === 3 && (
             <>
               <View style={styles.sectionGroup}>
-                <AuthInput
-                  label="Piso / Habitación"
-                  value={form.piso}
-                  onChangeText={(v) => update('piso', v)}
-                  placeholder="Ej: Piso 2"
-                  returnKeyType="next"
-                />
+                <Text style={styles.fieldLabel}>
+                  Piso
+                </Text>
+                <TouchableOpacity
+                  style={styles.pisoSelector}
+                  onPress={() => setPisoOpen(true)}
+                  accessibilityLabel="Seleccionar piso"
+                  accessibilityRole="button"
+                >
+                  <Text style={form.piso ? styles.pisoValue : styles.pisoPlaceholder}>
+                    {form.piso ? `Piso ${form.piso}` : 'Seleccioná el piso'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={Colors.text.secondary} />
+                </TouchableOpacity>
+
+                <Modal
+                  transparent
+                  visible={pisoOpen}
+                  animationType="fade"
+                  onRequestClose={() => setPisoOpen(false)}
+                >
+                  <TouchableOpacity
+                    style={styles.pisoOverlay}
+                    activeOpacity={1}
+                    onPress={() => setPisoOpen(false)}
+                  >
+                    <View style={styles.pisoDropdown}>
+                      {['1', '2', '3'].map((p) => (
+                        <TouchableOpacity
+                          key={p}
+                          style={[
+                            styles.pisoOption,
+                            form.piso === p && styles.pisoOptionSelected,
+                          ]}
+                          onPress={() => { update('piso', p); setPisoOpen(false); }}
+                        >
+                          <Text style={[
+                            styles.pisoOptionText,
+                            form.piso === p && styles.pisoOptionTextSelected,
+                          ]}>
+                            Piso {p}
+                          </Text>
+                          {form.piso === p && (
+                            <Ionicons name="checkmark" size={18} color={Colors.brand.greenDark} />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </TouchableOpacity>
+                </Modal>
+
                 <AuthInput
                   label="Número de habitación"
                   value={form.habitacion}
@@ -356,29 +403,15 @@ export default function RegisterScreen() {
               {loadingLists ? (
                 <ActivityIndicator color={Colors.brand.greenDark} size="large" style={styles.loader} />
               ) : (
-                <>
-                  <View style={styles.sectionGroup}>
-                    <Text style={styles.sectionLabel}>Intereses</Text>
-                    <Text style={styles.sectionHint}>Seleccioná los que más te gustan</Text>
-                    <InterestSelector
-                      intereses={intereses}
-                      selected={form.intereses}
-                      onChange={(v) => update('intereses', v)}
-                    />
-                  </View>
-
-                  <View style={styles.sectionGroup}>
-                    <Text style={styles.sectionLabel}>Ciudades de familiares</Text>
-                    <Text style={styles.sectionHint}>¿Dónde viven tus seres queridos?</Text>
-                    <CiudadFamiliarSelector
-                      ciudades={ciudades}
-                      selected={form.ciudades_familiares}
-                      onChange={(v) => update('ciudades_familiares', v)}
-                      selectedCustom={form.ciudades_familiares_custom}
-                      onChangeCustom={(v) => update('ciudades_familiares_custom', v)}
-                    />
-                  </View>
-                </>
+                <View style={styles.sectionGroup}>
+                  <Text style={styles.sectionLabel}>Intereses</Text>
+                  <Text style={styles.sectionHint}>Seleccioná los que más te gustan</Text>
+                  <InterestSelector
+                    intereses={intereses}
+                    selected={form.intereses}
+                    onChange={(v) => update('intereses', v)}
+                  />
+                </View>
               )}
             </>
           )}
@@ -513,6 +546,69 @@ const styles = StyleSheet.create({
   sectionGroup: {
     marginBottom: Spacing.xxl,
   },
+  fieldLabel: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.semibold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.sm,
+  },
+  pisoSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: Spacing.touch.comfortable,
+    backgroundColor: Colors.ui.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.ui.border,
+    borderRadius: Spacing.radius.md,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  pisoValue: {
+    fontSize: Typography.size.md,
+    color: Colors.text.primary,
+  },
+  pisoPlaceholder: {
+    fontSize: Typography.size.md,
+    color: Colors.text.hint,
+  },
+  pisoOverlay: {
+    flex: 1,
+    backgroundColor: Colors.ui.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pisoDropdown: {
+    backgroundColor: Colors.ui.surface,
+    borderRadius: Spacing.radius.lg,
+    width: 240,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  pisoOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.ui.border,
+  },
+  pisoOptionSelected: {
+    backgroundColor: '#E8F5E9',
+  },
+  pisoOptionText: {
+    fontSize: Typography.size.lg,
+    color: Colors.text.primary,
+  },
+  pisoOptionTextSelected: {
+    color: Colors.brand.greenDark,
+    fontWeight: Typography.weight.semibold,
+  },
   sectionLabel: {
     fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
@@ -572,6 +668,24 @@ const styles = StyleSheet.create({
   },
   successButton: {
     width: '100%',
+  },
+  emailBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    backgroundColor: '#E8F5E9',
+    borderRadius: Spacing.radius.md,
+    padding: Spacing.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.brand.greenDark,
+    width: '100%',
+  },
+  emailBannerText: {
+    flex: 1,
+    fontSize: Typography.size.md,
+    color: Colors.brand.greenDark,
+    lineHeight: 24,
+    fontWeight: Typography.weight.medium,
   },
   webPhotoNote: {
     flexDirection: 'row',

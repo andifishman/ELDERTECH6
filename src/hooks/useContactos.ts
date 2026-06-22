@@ -18,7 +18,7 @@ export function useContactos(residenteId: string | null | undefined) {
     queryKey: contactosKey(residenteId ?? ''),
     queryFn: () => getContactos(residenteId!),
     enabled: !!residenteId,
-    staleTime: 1000 * 60 * 5, // 5 minutos — contactos no cambian seguido
+    staleTime: 0, // siempre refetch al volver al primer plano (AppState listener)
     retry: 2,
   });
 }

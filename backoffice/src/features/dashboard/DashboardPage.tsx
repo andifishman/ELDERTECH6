@@ -86,10 +86,12 @@ export function DashboardPage() {
         <BarChartCard
           titulo="Tutoriales más vistos"
           data={(tutorialesVistos.data ?? []).map((t) => ({ label: t.titulo, valor: t.vistas }))}
+          isLoading={tutorialesVistos.isLoading}
         />
         <DonutChartCard
           titulo="Actividades por categoría"
           data={(porCategoria.data ?? []).map((c) => ({ label: c.nombre, valor: c.total }))}
+          isLoading={porCategoria.isLoading}
         />
       </div>
 

@@ -42,6 +42,16 @@ export async function obtenerCatalogos(): Promise<Catalogos> {
   };
 }
 
+export async function crearTipoActividad(nombre: string, emoji: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('tipos_actividad')
+    .insert({ nombre, emoji: emoji || null, organizacion_id: ORG_ID, activo: true })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
 export async function crearUbicacion(nombre: string): Promise<string> {
   const { data, error } = await supabase
     .from('ubicaciones')

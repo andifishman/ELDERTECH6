@@ -16,10 +16,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { TutorialCard } from '@/components/tutoriales/TutorialCard';
-import { TutorialImage } from '@/components/tutoriales/TutorialImage';
 import { getIconoCategoria } from '@/components/tutoriales/categoriaIcono';
 import { useAuth } from '@/context/AuthContext';
-import { useCategoriasTutorial, useTutoriales, useHistorial } from '@/hooks/useTutoriales';
+import { useCategoriasTutorial, useTutoriales } from '@/hooks/useTutoriales';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -45,13 +44,11 @@ export default function TutorialesScreen() {
     residenteId,
     categoriaSeleccionada,
   );
-  const { data: historial = [], refetch: refetchHistorial } = useHistorial(residenteId);
 
   const handleRefresh = useCallback(() => {
     refetch();
     refetchCategorias();
-    refetchHistorial();
-  }, [refetch, refetchCategorias, refetchHistorial]);
+  }, [refetch, refetchCategorias]);
 
   const categoriaActivaNombre = categoriaSeleccionada
     ? (categorias.find((c) => c.id === categoriaSeleccionada)?.nombre ?? '')
@@ -124,41 +121,9 @@ export default function TutorialesScreen() {
     setBusqueda('');
   }, []);
 
-  // Header de la lista: continuá viendo + chips de categoría + buscador + contador
+  // Header de la lista: chips de categoría + buscador + contador
   const ListHeader = (
     <View>
-      {/* Continuá viendo — últimos tutoriales abiertos */}
-      {historial.length > 0 && (
-        <View style={styles.historialSection}>
-          <Text style={styles.historialTitulo}>Continuá viendo</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.historialList}
-          >
-            {historial.map((t) => (
-              <TouchableOpacity
-                key={t.id}
-                style={styles.historialCard}
-                onPress={() => handleTutorialPress(t)}
-                activeOpacity={0.8}
-                accessibilityLabel={`Continuar: ${t.titulo}`}
-                accessibilityRole="button"
-              >
-                <TutorialImage
-                  uri={t.thumbnail_url}
-                  fallbackSeed={t.id}
-                  categoria={t.categoria?.nombre}
-                  iconSize={26}
-                  style={styles.historialThumb}
-                />
-                <Text style={styles.historialCardTitulo} numberOfLines={2}>{t.titulo}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
       {/* Chips de categoría */}
       <ScrollView
         horizontal
@@ -315,42 +280,6 @@ export default function TutorialesScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Colors.ui.background },
-
-  // Continuá viendo
-  historialSection: {
-    paddingTop: Spacing.sm,
-    marginBottom: Spacing.xs,
-    backgroundColor: Colors.ui.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.ui.border,
-  },
-  historialTitulo: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.bold,
-    color: Colors.text.primary,
-    paddingHorizontal: Spacing.screen.horizontal,
-    marginBottom: Spacing.sm,
-  },
-  historialList: {
-    paddingHorizontal: Spacing.screen.horizontal,
-    paddingBottom: Spacing.md,
-    gap: Spacing.sm,
-  },
-  historialCard: {
-    width: 120,
-  },
-  historialThumb: {
-    width: 120,
-    height: 80,
-    borderRadius: Spacing.radius.md,
-    marginBottom: Spacing.xs,
-  },
-  historialCardTitulo: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.text.primary,
-    lineHeight: 16,
-  },
 
   // Categorías
   categoriasList: {
