@@ -205,13 +205,17 @@ const styles = StyleSheet.create({
   cancelLink: {
     alignItems: 'center',
     paddingVertical: Spacing.lg,
-    minHeight: Spacing.touch.min,
+    marginTop: Spacing.sm,
+    minHeight: Spacing.touch.comfortable,
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.ui.border,
+    borderRadius: Spacing.radius.lg,
   },
   cancelText: {
-    fontSize: Typography.size.md,
+    fontSize: Typography.size.lg,
+    fontWeight: Typography.weight.semibold,
     color: Colors.text.secondary,
-    textDecorationLine: 'underline',
   },
   successContainer: {
     flex: 1,

@@ -208,11 +208,10 @@ export default function ProfileScreen() {
           <Text style={styles.fullName}>
             {residente ? `${residente.nombre} ${residente.apellido}` : perfil?.username}
           </Text>
-          <Text style={styles.username}>@{perfil?.username}</Text>
+          <Text style={styles.username}>Usuario: {perfil?.username}</Text>
           {residente?.piso && (
             <Text style={styles.location}>
-              {residente.piso}
-              {residente.habitacion ? ` · Hab. ${residente.habitacion}` : ''}
+              {`Piso: ${residente.piso}${residente.habitacion ? ` - Habitación: ${residente.habitacion}` : ''}`}
             </Text>
           )}
         </View>
@@ -356,14 +355,7 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
     <View style={styles.infoRow}>
       <Ionicons name={icon as any} size={20} color={Colors.text.secondary} />
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text
-        style={styles.infoValue}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.7}
-      >
-        {value}
-      </Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
@@ -415,7 +407,8 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: 'center',
-    paddingVertical: Spacing.xxxl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xxl,
     backgroundColor: Colors.brand.greenDark,
   },
   avatar: {
@@ -457,17 +450,17 @@ const styles = StyleSheet.create({
   },
   fullName: {
     marginTop: Spacing.sm,
-    fontSize: Typography.size.xl,
+    fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
   },
   username: {
-    fontSize: Typography.size.md,
+    fontSize: Typography.size.lg,
     color: Colors.text.onDarkSecondary,
     marginTop: Spacing.xs,
   },
   location: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.md,
     color: Colors.text.onDarkSecondary,
     marginTop: Spacing.xs,
   },
@@ -506,7 +499,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     fontWeight: Typography.weight.medium,
     textAlign: 'right',
-    maxWidth: '70%',
+    flexShrink: 1,
   },
   chips: {
     flexDirection: 'row',

@@ -11,7 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Save, X, Sparkles } from 'lucide-react';
+import { Save, X, Sparkles, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import { LoadingState } from '@/components/common/states';
 import { notify } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
-import { crearUbicacion, crearResponsable } from '@/services/catalogosService';
+import { crearUbicacion, crearResponsable, crearTipoActividad } from '@/services/catalogosService';
 import {
   useActividad,
   useActualizarActividad,
@@ -74,15 +74,25 @@ export function ActividadFormPage() {
   }));
 
   const handleCrearUbicacion = async (nombre: string) => {
-    const id = await crearUbicacion(nombre);
-    void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
-    return id;
+    try {
+      const id = await crearUbicacion(nombre);
+      void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
+      return id;
+    } catch (err) {
+      notify.error('No se pudo crear el lugar', err instanceof Error ? err.message : undefined);
+      throw err;
+    }
   };
 
   const handleCrearResponsable = async (nombre: string) => {
-    const id = await crearResponsable(nombre);
-    void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
-    return id;
+    try {
+      const id = await crearResponsable(nombre);
+      void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
+      return id;
+    } catch (err) {
+      notify.error('No se pudo crear el responsable', err instanceof Error ? err.message : undefined);
+      throw err;
+    }
   };
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CamposTexto>({
@@ -98,6 +108,30 @@ export function ActividadFormPage() {
   const [intereses, setIntereses] = useState<string[]>([]);
   const [pisos, setPisos] = useState<string[]>([]);
   const [notificar, setNotificar] = useState(true);
+
+  // mini-formulario para crear tipo de actividad nuevo
+  const [mostrarFormTipo, setMostrarFormTipo] = useState(false);
+  const [nuevoTipoNombre, setNuevoTipoNombre] = useState('');
+  const [nuevoTipoEmoji, setNuevoTipoEmoji] = useState('');
+  const [creandoTipo, setCreandoTipo] = useState(false);
+
+  const handleCrearTipo = async () => {
+    if (!nuevoTipoNombre.trim()) return;
+    setCreandoTipo(true);
+    try {
+      const id = await crearTipoActividad(nuevoTipoNombre.trim(), nuevoTipoEmoji.trim());
+      void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
+      aplicarPredefinida(id, nuevoTipoNombre.trim(), nuevoTipoEmoji.trim() || null);
+      setNuevoTipoNombre('');
+      setNuevoTipoEmoji('');
+      setMostrarFormTipo(false);
+      notify.success('Tipo de actividad creado');
+    } catch (err) {
+      notify.error('No se pudo crear el tipo', err instanceof Error ? err.message : undefined);
+    } finally {
+      setCreandoTipo(false);
+    }
+  };
 
   // precargamos el formulario en modo edición
   useEffect(() => {
@@ -201,9 +235,19 @@ export function ActividadFormPage() {
 
           {/* actividades predefinidas */}
           <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-              <Sparkles className="h-4 w-4 text-primary" /> Actividades predefinidas
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                <Sparkles className="h-4 w-4 text-primary" /> Categoría de actividad
+              </p>
+              <button
+                type="button"
+                onClick={() => setMostrarFormTipo((v) => !v)}
+                className="flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <Plus className="h-3.5 w-3.5" /> Nueva categoría
+              </button>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {(catalogos?.tiposActividad ?? []).map((t) => (
                 <button
@@ -219,6 +263,46 @@ export function ActividadFormPage() {
                 </button>
               ))}
             </div>
+
+            {mostrarFormTipo && (
+              <div className="flex items-end gap-2 rounded-lg border border-dashed border-primary/50 bg-primary-50/40 p-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Emoji</Label>
+                  <Input
+                    value={nuevoTipoEmoji}
+                    onChange={(e) => setNuevoTipoEmoji(e.target.value)}
+                    placeholder="🎨"
+                    maxLength={4}
+                    className="w-16 text-center"
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs">Nombre de la categoría</Label>
+                  <Input
+                    value={nuevoTipoNombre}
+                    onChange={(e) => setNuevoTipoNombre(e.target.value)}
+                    placeholder="Ej: Yoga, Teatro, Cocina…"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleCrearTipo(); } }}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!nuevoTipoNombre.trim() || creandoTipo}
+                  onClick={() => void handleCrearTipo()}
+                >
+                  {creandoTipo ? 'Creando…' : 'Crear'}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setMostrarFormTipo(false); setNuevoTipoNombre(''); setNuevoTipoEmoji(''); }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

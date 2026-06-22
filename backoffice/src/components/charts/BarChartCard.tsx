@@ -7,22 +7,26 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/common/EmptyState';
+import { LoadingState } from '@/components/common/states';
 import { BarChart3 } from 'lucide-react';
 
 interface BarChartCardProps {
   titulo: string;
   data: { label: string; valor: number }[];
   color?: string;
+  isLoading?: boolean;
 }
 
-export function BarChartCard({ titulo, data, color = '#1B5E3B' }: BarChartCardProps) {
+export function BarChartCard({ titulo, data, color = '#1B5E3B', isLoading }: BarChartCardProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{titulo}</CardTitle>
       </CardHeader>
       <CardContent>
-        {data.length === 0 ? (
+        {isLoading ? (
+          <LoadingState />
+        ) : data.length === 0 ? (
           <EmptyState icono={BarChart3} titulo="Sin datos aún" descripcion="Se mostrará al haber actividad." />
         ) : (
           <ResponsiveContainer width="100%" height={260}>

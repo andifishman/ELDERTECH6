@@ -49,7 +49,7 @@ export function useActividades(fecha: Date) {
     queryKey: actividadesKey(fecha, residenteId, interesesKey, miPiso),
     queryFn: () => fetchFn(fecha),
     enabled: !authLoading,
-    staleTime: 30 * 60 * 1000,  // 30 min — los horarios no cambian cada rato
+    staleTime: 0,                // siempre refetch al volver al primer plano (AppState listener)
     gcTime: 60 * 60 * 1000,     // 1 hora en caché — días visitados quedan guardados
     retry: 2,
   });
