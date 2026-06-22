@@ -249,3 +249,17 @@ export interface Articulo {
 export interface ArticuloConCategoria extends Articulo {
   categoria: CategoriaArticulo | null;
 }
+
+// ─── Contactos ────────────────────────────────────────────────────────────────
+
+export interface ContactoResumen {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  telefono: string;
+  whatsapp_disponible: boolean;
+  foto_url: string | null;
+  favorito: boolean;
+  orden: number;
+  tipo_contacto: { id: string; nombre: string; emoji: string | null } | null;
+}
