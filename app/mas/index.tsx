@@ -42,10 +42,6 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     ruta: '/mas/radio',
     textoHablar: 'Radio. Escuchá radios en vivo.',
   },
-];
-
-// Opciones próximamente — aparecen abajo de la línea, bloqueadas y tachadas
-const OPCIONES_PROXIMAMENTE: OpcionMenu[] = [
   {
     id: 'juegos',
     emoji: '🎲',
@@ -53,9 +49,11 @@ const OPCIONES_PROXIMAMENTE: OpcionMenu[] = [
     descripcion: 'Divertite con ElderTech',
     ruta: '/mas/juegos',
     textoHablar: 'Juegos. Divertite con ElderTech.',
-    proximamente: false,
   },
 ];
+
+// Opciones próximamente — aparecen abajo de la línea, bloqueadas y tachadas
+const OPCIONES_PROXIMAMENTE: OpcionMenu[] = [];
 
 export default function MasScreen() {
   return (
@@ -105,30 +103,6 @@ export default function MasScreen() {
           </View>
         ))}
 
-        {/* ── Línea roja separadora ── */}
-        <View style={styles.separator} />
-
-        {/* ── Opciones próximamente — bloqueadas y tachadas ── */}
-        {OPCIONES_PROXIMAMENTE.map((opcion) => (
-          <View
-            key={opcion.id}
-            style={[styles.opcionCard, styles.opcionBloqueada]}
-            accessibilityLabel={`${opcion.titulo} — próximamente`}
-          >
-            <View style={styles.opcionOverlay} pointerEvents="none" />
-            <View style={[styles.emojiContainer, styles.emojiContainerBloqueado]}>
-              <Text style={[styles.opcionEmoji, styles.opcionEmojiBloqueado]}>
-                {opcion.emoji}
-              </Text>
-            </View>
-            <View style={styles.opcionInfo}>
-              <Text style={[styles.opcionTitulo, styles.textoBloqueado, styles.textoTachado]}>
-                {opcion.titulo}
-              </Text>
-              <Text style={styles.proximamenteLabel}>🔒 Próximamente</Text>
-            </View>
-          </View>
-        ))}
       </ScrollView>
 
       {/* Botón Volver */}
