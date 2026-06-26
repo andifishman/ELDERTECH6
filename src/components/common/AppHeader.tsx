@@ -101,14 +101,14 @@ export function AppHeader({
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: 44,
+    paddingBottom: 8,
     paddingHorizontal: Spacing.xl,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: Spacing.header,
-    paddingTop: Spacing.xl,
+    minHeight: 52,
+    paddingTop: Spacing.sm,
     gap: Spacing.xl,
   },
   // Contenedor lateral más ancho para acomodar botones más grandes
@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
   titulo: {
     ...Typography.styles.screenTitle,
     fontSize: 28,
+    fontWeight: 'bold' as const,
   },
   tituloGrande: {
     fontSize: 36,

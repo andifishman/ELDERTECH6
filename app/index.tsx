@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import {
   Dimensions,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -102,27 +101,14 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <View style={styles.headerRow}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/images/logo-puente.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
           <Text style={styles.logoText}>ElderTech</Text>
           <TouchableOpacity
             onPress={() => router.push('/profile')}
-            style={styles.avatarBtn}
+            style={styles.profileBtn}
             accessibilityLabel="Mi perfil"
+            accessibilityRole="button"
           >
-            {profile?.residente?.foto_url ? (
-              <Image
-                source={{ uri: profile.residente.foto_url }}
-                style={{ width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: '#FFFFFF' }}
-              />
-            ) : (
-              <Text style={styles.avatarIcon}>👤</Text>
-            )}
+            <Text style={styles.profileBtnText}>Mi Perfil</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -225,36 +211,37 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: '#4CAF50',
-    paddingBottom: 4,
-    paddingHorizontal: 8,
+    paddingBottom: 8,
+    paddingLeft: 40,
+    paddingRight: 16,
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  logoImage: { width: 80, height: 80 },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 52,
   },
   logoText: {
     flex: 1,
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 46,
-    textAlign: 'center',
   },
-  // Botón de usuario — mismo tamaño que los botones del AppHeader
-  avatarBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  profileBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 22,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.7)',
   },
-  avatarIcon: { fontSize: 28, color: '#FFFFFF' },
+  profileBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 
   // Welcome
   welcomeSection: {
