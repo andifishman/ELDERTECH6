@@ -1,5 +1,6 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
+import { useTutorial } from '@/hooks/useTutorial';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -30,7 +31,7 @@ export default function SimonScreen() {
   const [activeBtn, setActiveBtn] = useState<number | null>(null);
   const [round, setRound] = useState(0);
   const [bestRound, setBestRound] = useState(0);
-  const [showTutorial, setShowTutorial] = useState(true);
+  const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('simon');
 
   const timerIds = useRef<ReturnType<typeof setTimeout>[]>([]);
   // Refs to avoid stale closures inside setTimeout callbacks
@@ -132,7 +133,7 @@ export default function SimonScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Simón" subtitle="Repetí la secuencia de colores" showBack />
+      <AppHeader title="Simón" showBack />
 
       <View style={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
         {/* Rondas */}
@@ -187,6 +188,10 @@ export default function SimonScreen() {
             <Text style={styles.startBtnText}>🎮 Empezar</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial} accessibilityLabel="¿Cómo se juega?">
+          <Text style={styles.helpBtnText}>❓ ¿Cómo se juega?</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tutorial */}
@@ -200,7 +205,7 @@ export default function SimonScreen() {
               Cuando es tu turno, repetí la secuencia tocando los botones en el mismo orden.{'\n\n'}
               Cada ronda se agrega un color más. ¡Hasta dónde llegás?
             </Text>
-            <TouchableOpacity style={styles.modalBtnPrimary} onPress={() => setShowTutorial(false)}>
+            <TouchableOpacity style={styles.modalBtnPrimary} onPress={dismissTutorial}>
               <Text style={styles.modalBtnPrimaryText}>¡Entendido, a jugar!</Text>
             </TouchableOpacity>
           </View>
@@ -258,10 +263,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   scoreItem: { alignItems: 'center', minWidth: 70 },
-  scoreLabel: { fontSize: FontSizes.sm, color: Colors.textSecondary },
+  scoreLabel: { fontSize: FontSizes.md, color: Colors.textSecondary },
   scoreValue: {
-    fontSize: 40, fontWeight: 'bold',
-    color: Colors.textPrimary, lineHeight: 48,
+    fontSize: 48, fontWeight: 'bold',
+    color: Colors.textPrimary, lineHeight: 56,
   },
   scoreDivider: { width: 1, backgroundColor: Colors.border },
 
@@ -277,9 +282,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   statusText: {
-    fontSize: FontSizes.md,
+    fontSize: FontSizes.xl,
     color: Colors.textPrimary,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
 
@@ -307,9 +312,9 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   btnLabel: {
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.95)',
     fontWeight: 'bold',
-    fontSize: FontSizes.lg,
+    fontSize: FontSizes.xl,
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -344,18 +349,25 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary, marginBottom: Spacing.sm,
   },
   modalSub: {
-    fontSize: FontSizes.md, color: Colors.textSecondary,
-    textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 22,
+    fontSize: FontSizes.lg, color: Colors.textSecondary,
+    textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26,
   },
   modalBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, width: '100%', alignItems: 'center',
     marginBottom: Spacing.sm,
   },
-  modalBtnPrimaryText: { color: Colors.white, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  modalBtnPrimaryText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
   modalBtnSecondary: {
     borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, width: '100%', alignItems: 'center',
   },
-  modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.xl, fontWeight: 'bold' },
+
+  helpBtn: {
+    borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.md,
+    paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm,
+    backgroundColor: Colors.white,
+  },
+  helpBtnText: { color: Colors.primary, fontSize: FontSizes.md, fontWeight: 'bold' },
 });

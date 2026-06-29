@@ -1,11 +1,11 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
+import { useTutorial } from '@/hooks/useTutorial';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Dimensions,
   Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,15 +14,18 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ALL_EMOJIS = [
-  '💻','📱','😁','🖥️','❤️','😎','📷','📸',
-  '📺','🍕','🎧','🔋','🍔','💿','🍟','🌭',
-  '🚗','✈️','☎️','🚀','🐬','🐯','🦆','🐧',
+  '🌸','🌈','⚽','🎵','🏠','🌞','🍎','🎂',
+  '🐬','🐯','🦆','🐧','🚗','✈️','☎️','🚀',
+  '💻','📱','❤️','😎','📷','📺','🍕','🎧',
+  '🌺','🦋','🎨','🏆','🎁','🌙','⭐','🍦',
 ];
 
 const DIFFICULTIES = [
-  { label: 'Fácil',   pairs: 4,  cols: 4 },
-  { label: 'Normal',  pairs: 6,  cols: 4 },
-  { label: 'Difícil', pairs: 10, cols: 5 },
+  { label: 'Muy fácil', pairs: 3,  cols: 2 },
+  { label: 'Fácil',     pairs: 6,  cols: 3 },
+  { label: 'Normal',    pairs: 8,  cols: 4 },
+  { label: 'Difícil',   pairs: 12, cols: 4 },
+  { label: 'Muy difícil', pairs: 16, cols: 4 },
 ];
 
 interface Card {
@@ -38,15 +41,24 @@ function shuffle<T>(arr: T[]): T[] {
 
 function createCards(pairs: number): Card[] {
   const emojis = shuffle(ALL_EMOJIS).slice(0, pairs);
-  const doubled = [...emojis, ...emojis];
-  return shuffle(doubled).map((emoji, i) => ({ id: i, emoji, flipped: false, matched: false }));
+  return shuffle([...emojis, ...emojis]).map((emoji, i) => ({
+    id: i, emoji, flipped: false, matched: false,
+  }));
 }
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SW, height: SH } = Dimensions.get('window');
+const CARD_GAP = 10;
+// Altura estimada de AppHeader + topBar + insets — ajustado para que quepa sin scroll
+const FIXED_UI_H = 310;
 
-function cardSize(cols: number): number {
-  const gap = 8;
-  return Math.floor((SCREEN_W - 32 - (cols - 1) * gap) / cols);
+const CARD_MAX = 130; // tope para que las cartas no sean demasiado grandes
+
+function calcCardSize(cols: number, pairs: number): number {
+  const rows = Math.ceil((pairs * 2) / cols);
+  const byW = Math.floor((SW - 32 - (cols - 1) * CARD_GAP) / cols);
+  const availH = SH - FIXED_UI_H;
+  const byH = Math.floor((availH - (rows - 1) * CARD_GAP - 24) / rows);
+  return Math.max(56, Math.min(byW, byH, CARD_MAX));
 }
 
 export default function MemotestScreen() {
@@ -57,11 +69,13 @@ export default function MemotestScreen() {
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(true);
+  const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('memotest');
   const isChecking = useRef(false);
 
   const diff = DIFFICULTIES[diffIdx];
-  const CARD_SIZE = cardSize(diff.cols);
+  const CARD_SIZE = calcCardSize(diff.cols, diff.pairs);
+  // Ancho exacto de la grilla para que flexWrap funcione con alignItems:center del padre
+  const GRID_W = diff.cols * CARD_SIZE + (diff.cols - 1) * CARD_GAP;
 
   const initGame = useCallback((idx: number) => {
     isChecking.current = false;
@@ -75,86 +89,96 @@ export default function MemotestScreen() {
   const handleFlip = (cardId: number) => {
     if (isChecking.current || won) return;
     if (flippedIds.length >= 2) return;
-
-    const updatedCards = cards.map((c, i) =>
-      i === cardId && !c.flipped && !c.matched ? { ...c, flipped: true } : c
-    );
-
     const card = cards[cardId];
     if (!card || card.flipped || card.matched) return;
 
+    const updatedCards = cards.map((c, i) => i === cardId ? { ...c, flipped: true } : c);
     setCards(updatedCards);
-
     const newFlipped = [...flippedIds, cardId];
     setFlippedIds(newFlipped);
 
     if (newFlipped.length === 2) {
       setMoves(m => m + 1);
       isChecking.current = true;
-      const [idx1, idx2] = newFlipped;
-      const match = updatedCards[idx1].emoji === updatedCards[idx2].emoji;
-
+      const [i1, i2] = newFlipped;
+      const match = updatedCards[i1].emoji === updatedCards[i2].emoji;
       setTimeout(() => {
         if (match) {
           setCards(prev => {
-            const next = prev.map((c, i) =>
-              i === idx1 || i === idx2 ? { ...c, matched: true } : c
-            );
+            const next = prev.map((c, i) => i === i1 || i === i2 ? { ...c, matched: true } : c);
             if (next.every(c => c.matched)) setWon(true);
             return next;
           });
         } else {
-          setCards(prev => prev.map((c, i) =>
-            i === idx1 || i === idx2 ? { ...c, flipped: false } : c
-          ));
+          setCards(prev => prev.map((c, i) => i === i1 || i === i2 ? { ...c, flipped: false } : c));
         }
         setFlippedIds([]);
         isChecking.current = false;
-      }, 1000);
+      }, 900);
     }
   };
 
   const matchedCount = cards.filter(c => c.matched).length / 2;
 
   return (
-    <View style={styles.container}>
-      <AppHeader title="Memotest" subtitle="Encontrá los pares de cartas iguales" showBack />
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <AppHeader title="Memotest" showBack />
 
-      {/* Dificultad + stats */}
+      {/* Barra superior */}
       <View style={styles.topBar}>
-        <View style={styles.diffRow}>
-          {DIFFICULTIES.map((d, i) => (
-            <TouchableOpacity
-              key={d.label}
-              style={[styles.diffBtn, diffIdx === i && styles.diffBtnActive]}
-              onPress={() => initGame(i)}
-            >
-              <Text style={[styles.diffBtnText, diffIdx === i && styles.diffBtnTextActive]}>
-                {d.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Carrusel de dificultad */}
+        <View style={styles.carousel}>
+          {/* Flecha izquierda */}
+          <TouchableOpacity
+            style={[styles.arrowBtn, diffIdx === 0 && styles.arrowBtnOff]}
+            onPress={() => diffIdx > 0 && initGame(diffIdx - 1)}
+            disabled={diffIdx === 0}
+          >
+            <Text style={[styles.arrowTxt, diffIdx === 0 && styles.arrowTxtOff]}>‹</Text>
+          </TouchableOpacity>
 
-        <View style={styles.statsRow}>
-          <Text style={styles.statItem}>
-            Jugadas: <Text style={styles.statBold}>{moves}</Text>
-          </Text>
-          <Text style={styles.statItem}>
-            Pares: <Text style={styles.statBold}>{matchedCount}/{diff.pairs}</Text>
-          </Text>
-          <TouchableOpacity onPress={() => initGame(diffIdx)}>
-            <Text style={styles.resetText}>🔄 Nuevo</Text>
+          {/* Centro: nivel + nombre + dots */}
+          <View style={styles.diffCenter}>
+            <Text style={styles.diffLevel}>Nivel {diffIdx + 1} de {DIFFICULTIES.length}</Text>
+            <Text style={styles.diffName}>{diff.label}</Text>
+            <View style={styles.dotsRow}>
+              {DIFFICULTIES.map((_, i) => (
+                <View key={i} style={[styles.dot, i === diffIdx && styles.dotActive]} />
+              ))}
+            </View>
+          </View>
+
+          {/* Flecha derecha */}
+          <TouchableOpacity
+            style={[styles.arrowBtn, diffIdx === DIFFICULTIES.length - 1 && styles.arrowBtnOff]}
+            onPress={() => diffIdx < DIFFICULTIES.length - 1 && initGame(diffIdx + 1)}
+            disabled={diffIdx === DIFFICULTIES.length - 1}
+          >
+            <Text style={[styles.arrowTxt, diffIdx === DIFFICULTIES.length - 1 && styles.arrowTxtOff]}>›</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <Text style={styles.stat}>Jugadas: <Text style={styles.statBold}>{moves}</Text></Text>
+          <Text style={styles.stat}>Pares: <Text style={styles.statBold}>{matchedCount}/{diff.pairs}</Text></Text>
+        </View>
+
+        {/* Acciones */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.newBtn} onPress={() => initGame(diffIdx)}>
+            <Text style={styles.newBtnTxt}>🔄 Nuevo juego</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>
+            <Text style={styles.helpBtnTxt}>❓ ¿Cómo se juega?</Text>
+          </TouchableOpacity>
+        </View>
+
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Grilla de cartas */}
-        <View style={[styles.grid, { gap: 8 }]}>
+      {/* Grilla — ocupa el espacio restante sin scroll */}
+      <View style={styles.gridArea}>
+        <View style={[styles.grid, { width: GRID_W, gap: CARD_GAP }]}>
           {cards.map((card, idx) => {
             const visible = card.flipped || card.matched;
             return (
@@ -163,60 +187,53 @@ export default function MemotestScreen() {
                 style={[
                   styles.card,
                   { width: CARD_SIZE, height: CARD_SIZE },
-                  visible ? styles.cardVisible : styles.cardHidden,
+                  visible ? styles.cardFront : styles.cardBack,
                   card.matched && styles.cardMatched,
                 ]}
                 onPress={() => handleFlip(idx)}
                 disabled={visible || isChecking.current}
                 activeOpacity={0.75}
-                accessibilityLabel={visible ? card.emoji : 'Carta boca abajo'}
               >
-                <Text style={[
-                  styles.cardEmoji,
-                  { fontSize: CARD_SIZE * 0.42 },
-                  !visible && styles.cardEmojiHidden,
-                ]}>
+                <Text style={{ fontSize: CARD_SIZE * 0.45, color: visible ? undefined : Colors.white }}>
                   {visible ? card.emoji : '?'}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
-      </ScrollView>
+      </View>
 
       {/* Tutorial */}
       <Modal visible={showTutorial} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalIcon}>🃏</Text>
-            <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
-            <Text style={styles.modalSub}>
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.mIcon}>🃏</Text>
+            <Text style={styles.mTitle}>¿Cómo se juega?</Text>
+            <Text style={styles.mSub}>
               Hay cartas boca abajo con emojis escondidos.{'\n\n'}
               Tocá dos cartas para darlas vuelta.{'\n\n'}
               Si son iguales, quedan descubiertas. Si no, se vuelven a tapar.{'\n\n'}
               Encontrá todos los pares con la menor cantidad de jugadas.
             </Text>
-            <TouchableOpacity style={styles.modalBtnPrimary} onPress={() => setShowTutorial(false)}>
-              <Text style={styles.modalBtnPrimaryText}>¡Entendido, a jugar!</Text>
+            <TouchableOpacity style={styles.mBtnPrimary} onPress={dismissTutorial}>
+              <Text style={styles.mBtnPrimaryTxt}>¡Entendido, a jugar!</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Modal victoria */}
+      {/* Victoria */}
       <Modal visible={won} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalIcon}>🎉</Text>
-            <Text style={styles.modalTitle}>¡Ganaste!</Text>
-            <Text style={styles.modalSub}>
-              Encontraste todos los pares en {moves} jugadas.
-            </Text>
-            <TouchableOpacity style={styles.modalBtnPrimary} onPress={() => initGame(diffIdx)}>
-              <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.mIcon}>🎉</Text>
+            <Text style={styles.mTitle}>¡Ganaste!</Text>
+            <Text style={styles.mSub}>Encontraste todos los pares en {moves} jugadas.</Text>
+            <TouchableOpacity style={styles.mBtnPrimary} onPress={() => initGame(diffIdx)}>
+              <Text style={styles.mBtnPrimaryTxt}>Jugar de nuevo</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.modalBtnSecondary} onPress={() => router.back()}>
-              <Text style={styles.modalBtnSecondaryText}>Volver</Text>
+            <TouchableOpacity style={styles.mBtnSecondary} onPress={() => router.back()}>
+              <Text style={styles.mBtnSecondaryTxt}>Volver</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -236,64 +253,76 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  diffRow: { flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
-  diffBtn: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, backgroundColor: Colors.background,
+
+  carousel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
+  arrowBtn: {
+    width: 72, height: 72, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.primary, borderRadius: Radius.md,
   },
-  diffBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  diffBtnText: { fontSize: FontSizes.sm, color: Colors.textSecondary, fontWeight: '600' },
-  diffBtnTextActive: { color: Colors.white },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statItem: { fontSize: FontSizes.sm, color: Colors.textSecondary },
-  statBold: { fontWeight: 'bold', color: Colors.textPrimary },
-  resetText: { fontSize: FontSizes.sm, color: Colors.primary, fontWeight: '600' },
+  arrowBtnOff: { backgroundColor: Colors.border },
+  arrowTxt: { color: Colors.white, fontSize: 44, fontWeight: '300', lineHeight: 50 },
+  arrowTxtOff: { color: Colors.textSecondary },
+  diffCenter: { flex: 1, alignItems: 'center', gap: 4 },
+  diffLevel: { fontSize: FontSizes.sm, color: Colors.textSecondary, fontWeight: '600', letterSpacing: 0.5 },
+  diffName: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.primary },
+  dotsRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.border },
+  dotActive: { width: 24, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
 
-  content: { padding: 16, alignItems: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  stat: { fontSize: FontSizes.lg, color: Colors.textSecondary },
+  statBold: { fontWeight: 'bold', color: Colors.textPrimary, fontSize: FontSizes.xl },
 
-  card: {
-    borderRadius: Radius.md,
+  actionRow: { flexDirection: 'row', gap: Spacing.sm },
+  newBtn: {
+    flex: 1, backgroundColor: Colors.primary, borderRadius: Radius.md,
+    paddingVertical: Spacing.md, alignItems: 'center',
+  },
+  newBtnTxt: { color: Colors.white, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  helpBtn: {
+    borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.md,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.white,
+  },
+  helpBtnTxt: { color: Colors.primary, fontSize: FontSizes.sm, fontWeight: 'bold' },
+
+  gridArea: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    paddingVertical: 12,
   },
-  cardHidden: { backgroundColor: Colors.primary },
-  cardVisible: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.border },
-  cardMatched: { backgroundColor: Colors.successLight, borderColor: Colors.success, borderWidth: 2 },
-  cardEmoji: { textAlign: 'center' },
-  cardEmojiHidden: { color: Colors.white, fontWeight: 'bold' },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
 
-  modalOverlay: {
-    flex: 1, backgroundColor: '#00000066',
-    alignItems: 'center', justifyContent: 'center',
+  card: {
+    borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15, shadowRadius: 3, elevation: 3,
   },
-  modalBox: {
+  cardBack: { backgroundColor: Colors.primary },
+  cardFront: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.border },
+  cardMatched: { backgroundColor: Colors.successLight, borderColor: Colors.success, borderWidth: 2 },
+
+  overlay: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center' },
+  modal: {
     backgroundColor: Colors.white, borderRadius: Radius.lg,
-    padding: Spacing.xxl, width: '82%', alignItems: 'center',
+    padding: Spacing.xxl, width: '85%', alignItems: 'center',
   },
-  modalIcon: { fontSize: 64, marginBottom: Spacing.md },
-  modalTitle: {
-    fontSize: FontSizes.xxl, fontWeight: 'bold',
-    color: Colors.textPrimary, marginBottom: Spacing.sm,
-  },
-  modalSub: {
-    fontSize: FontSizes.md, color: Colors.textSecondary,
-    textAlign: 'center', marginBottom: Spacing.xl,
-  },
-  modalBtnPrimary: {
+  mIcon: { fontSize: 64, marginBottom: Spacing.md },
+  mTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.sm },
+  mSub: { fontSize: FontSizes.lg, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26 },
+  mBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
-    paddingVertical: Spacing.md, width: '100%', alignItems: 'center',
-    marginBottom: Spacing.sm,
+    paddingVertical: Spacing.md, width: '100%', alignItems: 'center', marginBottom: Spacing.sm,
   },
-  modalBtnPrimaryText: { color: Colors.white, fontSize: FontSizes.lg, fontWeight: 'bold' },
-  modalBtnSecondary: {
+  mBtnPrimaryTxt: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
+  mBtnSecondary: {
     borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, width: '100%', alignItems: 'center',
   },
-  modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  mBtnSecondaryTxt: { color: Colors.primary, fontSize: FontSizes.xl, fontWeight: 'bold' },
 });

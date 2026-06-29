@@ -1,15 +1,16 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
+import { useTutorial } from '@/hooks/useTutorial';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -49,83 +50,74 @@ const PALABRAS = [
 const MAX_ERRORES = 6;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-// ASCII art hangman — no external dependencies needed
-const HANGMAN_STAGES = [
-`   ____
-   |  |
-   |
-   |
-   |
-   |
- __|__`,
-`   ____
-   |  |
-   |  O
-   |
-   |
-   |
- __|__`,
-`   ____
-   |  |
-   |  O
-   |  |
-   |  |
-   |
- __|__`,
-`   ____
-   |  |
-   |  O
-   | /|
-   |  |
-   |
- __|__`,
-`   ____
-   |  |
-   |  O
-   | /|\\
-   |  |
-   |
- __|__`,
-`   ____
-   |  |
-   |  O
-   | /|\\
-   | /
-   |
- __|__`,
-`   ____
-   |  |
-   |  O
-   | /|\\
-   | / \\
-   |
- __|__`,
-];
+// Figura del ahorcado dibujada con Views nativos
+function HangmanFigure({ errors, color }: { errors: number; color: string }) {
+  const line: ViewStyle = { position: 'absolute', borderRadius: 2, backgroundColor: color };
+  return (
+    <View style={{ width: 180, height: 200 }}>
+      {/* Horca — siempre visible */}
+      <View style={[line, { bottom: 0, left: 5, width: 170, height: 4 }]} />
+      <View style={[line, { bottom: 4, left: 25, width: 4, height: 165 }]} />
+      <View style={[line, { top: 8, left: 27, width: 93, height: 4 }]} />
+      <View style={[line, { top: 12, left: 116, width: 4, height: 22 }]} />
+
+      {/* Error 1: cabeza */}
+      {errors >= 1 && (
+        <View style={{ position: 'absolute', top: 34, left: 100, width: 36, height: 36,
+          borderRadius: 18, borderWidth: 4, borderColor: color }} />
+      )}
+      {/* Error 2: cuerpo */}
+      {errors >= 2 && <View style={[line, { top: 70, left: 116, width: 4, height: 50 }]} />}
+      {/* Error 3: brazo izquierdo */}
+      {errors >= 3 && (
+        <View style={[line, { top: 91, left: 87, width: 36, height: 4,
+          transform: [{ rotate: '-45deg' }] }]} />
+      )}
+      {/* Error 4: brazo derecho */}
+      {errors >= 4 && (
+        <View style={[line, { top: 91, left: 113, width: 36, height: 4,
+          transform: [{ rotate: '45deg' }] }]} />
+      )}
+      {/* Error 5: pierna izquierda */}
+      {errors >= 5 && (
+        <View style={[line, { top: 127, left: 91, width: 32, height: 4,
+          transform: [{ rotate: '-45deg' }] }]} />
+      )}
+      {/* Error 6: pierna derecha */}
+      {errors >= 6 && (
+        <View style={[line, { top: 127, left: 113, width: 32, height: 4,
+          transform: [{ rotate: '45deg' }] }]} />
+      )}
+    </View>
+  );
+}
 
 function getRandomWord(): string {
-  const filtered = PALABRAS.filter(p => p.length >= 5 && p.length <= 12 && !p.includes(' '));
+  const filtered = PALABRAS.filter(p => p.length >= 5 && p.length <= 9 && !p.includes(' '));
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
 export default function AhorcadoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [palabra, setPalabra] = useState('');
+  const [palabra, setPalabra] = useState(() => getRandomWord());
   const [letrasUsadas, setLetrasUsadas] = useState<Set<string>>(new Set());
   const [errores, setErrores] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [ganó, setGanó] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(true);
+  const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('ahorcado');
+  // Captura la palabra al momento de perder, así el modal no muestra la nueva
+  const [palabraFinal, setPalabraFinal] = useState('');
 
   const initGame = () => {
-    setPalabra(getRandomWord());
-    setLetrasUsadas(new Set());
-    setErrores(0);
     setGameOver(false);
     setGanó(false);
+    setLetrasUsadas(new Set());
+    setErrores(0);
+    setPalabra(getRandomWord());
+    setPalabraFinal('');
   };
 
-  useEffect(() => { initGame(); }, []);
 
   const handleLetra = (letra: string) => {
     if (letrasUsadas.has(letra) || gameOver) return;
@@ -138,12 +130,14 @@ export default function AhorcadoScreen() {
       const nuevosErrores = errores + 1;
       setErrores(nuevosErrores);
       if (nuevosErrores >= MAX_ERRORES) {
+        setPalabraFinal(palabra);
         setGameOver(true);
         setGanó(false);
       }
     } else {
       const todasDescubiertas = palabra.split('').every(l => nuevasUsadas.has(l));
       if (todasDescubiertas) {
+        setPalabraFinal(palabra);
         setGameOver(true);
         setGanó(true);
       }
@@ -154,7 +148,7 @@ export default function AhorcadoScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Ahorcado" subtitle="Descubrí la palabra letra por letra" showBack />
+      <AppHeader title="Ahorcado" showBack />
 
       {/* Stats */}
       <View style={styles.statsRow}>
@@ -168,17 +162,18 @@ export default function AhorcadoScreen() {
           <Text style={styles.statLabel}>Letras usadas</Text>
           <Text style={styles.statValue}>{letrasUsadas.size}</Text>
         </View>
+        <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial} accessibilityLabel="¿Cómo se juega?">
+          <Text style={styles.helpBtnText}>❓ ¿Cómo se juega?</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ASCII art hangman */}
+        {/* Figura del ahorcado */}
         <View style={styles.hangmanContainer}>
-          <Text style={[styles.hangmanText, { color: hangmanColor }]}>
-            {HANGMAN_STAGES[Math.min(errores, MAX_ERRORES)]}
-          </Text>
+          <HangmanFigure errors={errores} color={hangmanColor} />
         </View>
 
         {/* Palabra con guiones */}
@@ -255,7 +250,7 @@ export default function AhorcadoScreen() {
               Si la letra está en la palabra, aparece en su lugar. Si no, se dibuja una parte del ahorcado.{'\n\n'}
               Tenés <Text style={{ fontWeight: 'bold', color: Colors.textPrimary }}>6 errores</Text> antes de perder.
             </Text>
-            <TouchableOpacity style={styles.modalBtnPrimary} onPress={() => setShowTutorial(false)}>
+            <TouchableOpacity style={styles.modalBtnPrimary} onPress={dismissTutorial}>
               <Text style={styles.modalBtnPrimaryText}>¡Entendido, a jugar!</Text>
             </TouchableOpacity>
           </View>
@@ -271,7 +266,7 @@ export default function AhorcadoScreen() {
             <Text style={styles.modalSub}>
               {ganó
                 ? '¡Muy bien! Descubriste la palabra.'
-                : `La palabra era: ${palabra}`}
+                : `La palabra era: ${palabraFinal}`}
             </Text>
             <TouchableOpacity style={styles.modalBtnPrimary} onPress={initGame}>
               <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
@@ -286,23 +281,26 @@ export default function AhorcadoScreen() {
   );
 }
 
-const MONO = Platform.OS === 'ios' ? 'Courier' : 'monospace';
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
 
   statsRow: {
-    flexDirection: 'row', justifyContent: 'space-around',
+    flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
     backgroundColor: Colors.white, paddingVertical: Spacing.md,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   stat: { alignItems: 'center' },
   statLabel: { fontSize: FontSizes.sm, color: Colors.textSecondary },
   statValue: { fontSize: FontSizes.xl, fontWeight: 'bold', color: Colors.textPrimary },
+  helpBtn: {
+    borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    backgroundColor: Colors.white,
+  },
+  helpBtnText: { color: Colors.primary, fontSize: FontSizes.sm, fontWeight: 'bold' },
 
   content: { padding: Spacing.lg, alignItems: 'center' },
 
-  // ASCII hangman
   hangmanContainer: {
     marginVertical: Spacing.md,
     backgroundColor: Colors.white,
@@ -310,56 +308,50 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     alignItems: 'center',
   },
-  hangmanText: {
-    fontFamily: MONO,
-    fontSize: 17,
-    lineHeight: 23,
-    textAlign: 'left',
-  },
 
   // Palabra
   wordRow: {
     flexDirection: 'row', flexWrap: 'wrap',
-    justifyContent: 'center', gap: Spacing.sm,
+    justifyContent: 'center', gap: 4,
     marginVertical: Spacing.lg, paddingHorizontal: Spacing.md,
   },
-  letterBox: { alignItems: 'center', minWidth: 28 },
+  letterBox: { alignItems: 'center', minWidth: 32 },
   letterText: {
-    fontSize: FontSizes.xl, fontWeight: 'bold',
-    color: Colors.primary, minHeight: 30,
+    fontSize: 28, fontWeight: 'bold',
+    color: Colors.primary, minHeight: 34,
   },
   letterUnderline: {
-    height: 3, width: 28, backgroundColor: Colors.primary,
+    height: 3, width: 32, backgroundColor: Colors.primary,
     borderRadius: 2, marginTop: 2,
   },
 
   // Letras incorrectas
   wrongSection: { alignItems: 'center', marginBottom: Spacing.md },
-  wrongLabel: { fontSize: FontSizes.sm, color: Colors.textSecondary, marginBottom: Spacing.xs },
+  wrongLabel: { fontSize: FontSizes.md, color: Colors.textSecondary, marginBottom: Spacing.xs },
   wrongRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.xs },
   wrongBadge: {
     backgroundColor: Colors.dangerLight, borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm, paddingVertical: 2,
+    paddingHorizontal: Spacing.sm, paddingVertical: 4,
     borderWidth: 1, borderColor: Colors.danger,
   },
-  wrongBadgeText: { color: Colors.danger, fontWeight: 'bold', fontSize: FontSizes.sm },
+  wrongBadgeText: { color: Colors.danger, fontWeight: 'bold', fontSize: FontSizes.md },
 
   // Teclado
   keyboard: {
     flexDirection: 'row', flexWrap: 'wrap',
-    justifyContent: 'center', gap: Spacing.xs,
+    justifyContent: 'center', gap: 6,
     marginVertical: Spacing.md, paddingHorizontal: Spacing.sm,
   },
   key: {
-    width: 42, height: 42, borderRadius: Radius.sm,
+    width: 50, height: 50, borderRadius: Radius.sm,
     backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
     shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15, shadowRadius: 3, elevation: 3,
   },
-  keyUsed: { opacity: 0.4 },
+  keyUsed: { opacity: 0.35 },
   keyCorrect: { backgroundColor: Colors.success },
   keyWrong: { backgroundColor: Colors.danger },
-  keyText: { color: Colors.white, fontWeight: 'bold', fontSize: FontSizes.md },
+  keyText: { color: Colors.white, fontWeight: 'bold', fontSize: FontSizes.lg },
   keyTextWrong: { color: Colors.white },
 
   newGameBtn: {
@@ -384,19 +376,19 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary, marginBottom: Spacing.sm,
   },
   modalSub: {
-    fontSize: FontSizes.md, color: Colors.textSecondary,
-    textAlign: 'center', marginBottom: Spacing.xl,
+    fontSize: FontSizes.lg, color: Colors.textSecondary,
+    textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26,
   },
   modalBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, paddingHorizontal: Spacing.xxl,
     marginBottom: Spacing.sm, width: '100%', alignItems: 'center',
   },
-  modalBtnPrimaryText: { color: Colors.white, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  modalBtnPrimaryText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
   modalBtnSecondary: {
     borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, paddingHorizontal: Spacing.xxl,
     width: '100%', alignItems: 'center',
   },
-  modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.xl, fontWeight: 'bold' },
 });

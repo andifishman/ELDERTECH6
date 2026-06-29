@@ -1,5 +1,6 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
+import { useTutorial } from '@/hooks/useTutorial';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -15,7 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const GRID_SIZE = 9;
 const { width: SCREEN_W } = Dimensions.get('window');
-const CELL_SIZE = Math.floor((SCREEN_W - 32) / GRID_SIZE);
+const CELL_SIZE = Math.max(34, Math.min(Math.floor((SCREEN_W - 32) / GRID_SIZE), 42));
+const GRID_PX = CELL_SIZE * GRID_SIZE;
 
 const WORD_SETS = [
   { theme: 'Frutas 🍎',    words: ['PERA', 'UVA', 'LIMON', 'MANGO', 'FRESA', 'BANANA'] },
@@ -83,7 +85,6 @@ function generateGrid(words: string[]): { grid: Grid; placements: WordPlacement[
     }
   }
 
-  // Fill empty cells
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       if (cells[r][c] === '') {
@@ -95,27 +96,6 @@ function generateGrid(words: string[]): { grid: Grid; placements: WordPlacement[
   return { grid: cells, placements };
 }
 
-function getLineCells(
-  start: [number, number],
-  end: [number, number]
-): [number, number][] {
-  const [r1, c1] = start;
-  const [r2, c2] = end;
-  const result: [number, number][] = [];
-
-  if (r1 === r2) {
-    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
-      result.push([r1, c]);
-    }
-  } else if (c1 === c2) {
-    for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) {
-      result.push([r, c1]);
-    }
-  }
-
-  return result;
-}
-
 export default function SopaScreen() {
   const insets = useSafeAreaInsets();
   const [grid, setGrid] = useState<Grid>([]);
@@ -123,86 +103,154 @@ export default function SopaScreen() {
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [selCells, setSelCells] = useState<[number, number][]>([]);
   const [won, setWon] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(true);
+  const [hintCell, setHintCell] = useState<[number, number] | null>(null);
+  const [hintWord, setHintWord] = useState<string | null>(null);
+  const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('sopa');
   const [currentTheme, setCurrentTheme] = useState('');
 
-  // Refs used inside PanResponder to avoid stale closures
-  const gridRef = useRef<View>(null);
-  const gridMeasure = useRef({ x: 0, y: 0 });
-  const touchStartRef = useRef<[number, number] | null>(null);
-  const touchEndRef = useRef<[number, number] | null>(null);
-  const gameRef = useRef<{
-    grid: Grid;
-    placements: WordPlacement[];
-    foundWords: string[];
-  }>({ grid: [], placements: [], foundWords: [] });
+  // Refs for PanResponder (avoid stale closures)
+  const gameRef = useRef<{ grid: Grid; placements: WordPlacement[]; foundWords: string[] }>(
+    { grid: [], placements: [], foundWords: [] }
+  );
+  const selCellsRef = useRef<[number, number][]>([]);
+  const wonRef = useRef(false);
+  const hintWordRef = useRef<string | null>(null);
 
+  // Grid position measurement for coordinate → cell conversion
+  const gridViewRef = useRef<View>(null);
+  const gridMeasure = useRef({ x: 0, y: 0 });
   const measureGrid = () => {
     setTimeout(() => {
-      gridRef.current?.measureInWindow((x, y) => {
+      gridViewRef.current?.measureInWindow((x, y) => {
         gridMeasure.current = { x, y };
       });
     }, 100);
   };
-
   const getCellAt = (pageX: number, pageY: number): [number, number] | null => {
     const col = Math.floor((pageX - gridMeasure.current.x) / CELL_SIZE);
     const row = Math.floor((pageY - gridMeasure.current.y) / CELL_SIZE);
-    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
-      return [row, col];
-    }
+    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) return [row, col];
     return null;
   };
 
-  const checkSelection = (start: [number, number], end: [number, number]) => {
-    const cells = getLineCells(start, end);
-    if (cells.length < 2) return;
+  // Drag tracking refs
+  const dragStartCell = useRef<[number, number] | null>(null);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const lastDragKey = useRef<string | null>(null);
 
-    const { placements: ps, foundWords: fw, grid: g } = gameRef.current;
-    const word = cells.map(([r, c]) => g[r][c]).join('');
-    const wordRev = [...word].reverse().join('');
+  // Sync state to refs
+  const updateSel = (cells: [number, number][]) => {
+    selCellsRef.current = cells;
+    setSelCells(cells);
+  };
+  const updateWon = (val: boolean) => {
+    wonRef.current = val;
+    setWon(val);
+  };
+  const updateHint = (word: string | null, cell: [number, number] | null) => {
+    hintWordRef.current = word;
+    setHintWord(word);
+    setHintCell(cell);
+  };
+
+  // Try adding a cell to selection and auto-confirm if word matches
+  const tryAddCell = (r: number, c: number, current: [number, number][]) => {
+    if (current.some(([sr, sc]) => sr === r && sc === c)) return current;
+    const next = [...current, [r, c]];
+
+    const cellKey = (row: number, col: number) => `${row},${col}`;
+    const keys = new Set(next.map(([row, col]) => cellKey(row, col)));
+    const { placements: ps, foundWords: fw } = gameRef.current;
 
     const match = ps.find(p =>
-      !fw.includes(p.word) && (p.word === word || p.word === wordRev)
+      !fw.includes(p.word) &&
+      p.cells.length === next.length &&
+      p.cells.every(([row, col]) => keys.has(cellKey(row, col)))
     );
 
     if (match) {
       const newFound = [...fw, match.word];
       gameRef.current.foundWords = newFound;
       setFoundWords(newFound);
-      if (newFound.length === ps.length) setWon(true);
+      updateSel([]);
+      if (hintWordRef.current === match.word) updateHint(null, null);
+      if (newFound.length === ps.length) updateWon(true);
+      return [];
     }
+
+    updateSel(next);
+    return next;
   };
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+
       onPanResponderGrant: (e) => {
-        const cell = getCellAt(e.nativeEvent.pageX, e.nativeEvent.pageY);
-        if (cell) {
-          touchStartRef.current = cell;
-          setSelCells([cell]);
-        }
+        if (wonRef.current) return;
+        dragStartCell.current = getCellAt(e.nativeEvent.pageX, e.nativeEvent.pageY);
+        dragStartPos.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+        isDragging.current = false;
+        lastDragKey.current = null;
       },
+
       onPanResponderMove: (e) => {
-        if (!touchStartRef.current) return;
+        if (wonRef.current) return;
+        const dx = Math.abs(e.nativeEvent.pageX - dragStartPos.current.x);
+        const dy = Math.abs(e.nativeEvent.pageY - dragStartPos.current.y);
+
+        // Activate drag after minimal movement
+        if (!isDragging.current && (dx > CELL_SIZE * 0.3 || dy > CELL_SIZE * 0.3)) {
+          isDragging.current = true;
+          // Start fresh drag selection from the start cell
+          if (dragStartCell.current) {
+            const [r, c] = dragStartCell.current;
+            lastDragKey.current = `${r},${c}`;
+            selCellsRef.current = tryAddCell(r, c, []);
+          }
+        }
+
+        if (!isDragging.current) return;
         const cell = getCellAt(e.nativeEvent.pageX, e.nativeEvent.pageY);
-        if (cell) {
-          touchEndRef.current = cell;
-          setSelCells(getLineCells(touchStartRef.current, cell));
+        if (!cell) return;
+        const [r, c] = cell;
+        const key = `${r},${c}`;
+        if (key !== lastDragKey.current) {
+          lastDragKey.current = key;
+          selCellsRef.current = tryAddCell(r, c, selCellsRef.current);
         }
       },
-      onPanResponderRelease: () => {
-        if (touchStartRef.current && touchEndRef.current) {
-          checkSelection(touchStartRef.current, touchEndRef.current);
+
+      onPanResponderRelease: (e) => {
+        if (wonRef.current) return;
+        if (!isDragging.current && dragStartCell.current) {
+          // Tap: toggle the cell
+          const [r, c] = dragStartCell.current;
+          const current = selCellsRef.current;
+          const idx = current.findIndex(([sr, sc]) => sr === r && sc === c);
+          if (idx >= 0) {
+            const next = current.filter((_, i) => i !== idx);
+            updateSel(next);
+          } else {
+            tryAddCell(r, c, current);
+          }
         }
-        touchStartRef.current = null;
-        touchEndRef.current = null;
-        setTimeout(() => setSelCells([]), 350);
+        isDragging.current = false;
+        dragStartCell.current = null;
       },
     })
   ).current;
+
+  const handleHint = () => {
+    const { placements: ps, foundWords: fw } = gameRef.current;
+    const unfound = ps.filter(p => !fw.includes(p.word));
+    if (unfound.length === 0) return;
+    const target = unfound[Math.floor(Math.random() * unfound.length)];
+    const cell = target.cells[Math.floor(Math.random() * target.cells.length)];
+    updateHint(target.word, cell);
+  };
 
   const initGame = useCallback(() => {
     const setIdx = Math.floor(Math.random() * WORD_SETS.length);
@@ -212,12 +260,12 @@ export default function SopaScreen() {
     setGrid(g);
     setPlacements(ps);
     setFoundWords([]);
-    setWon(false);
+    updateWon(false);
     setCurrentTheme(wordSet.theme);
-    setSelCells([]);
+    updateSel([]);
+    updateHint(null, null);
   }, []);
 
-  // Inicializar al montar
   React.useEffect(() => { initGame(); }, []);
 
   const isCellSelected = (r: number, c: number) =>
@@ -239,28 +287,35 @@ export default function SopaScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Sopa de Letras" subtitle={currentTheme} showBack />
+      <AppHeader title="Sopa de Letras" showBack />
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Progreso */}
-        <View style={styles.progressRow}>
+        <View style={[styles.progressRow, { width: GRID_PX }]}>
           <Text style={styles.progressText}>
-            Palabras encontradas:{' '}
-            <Text style={styles.progressBold}>{foundWords.length}/{placements.length}</Text>
+            Palabras: <Text style={styles.progressBold}>{foundWords.length}/{placements.length}</Text>
           </Text>
-          <TouchableOpacity onPress={initGame}>
-            <Text style={styles.resetText}>🔄 Nueva sopa</Text>
+          <View style={styles.progressActions}>
+            <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>
+              <Text style={styles.helpBtnText}>¿Cómo se juega?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.newBtn} onPress={initGame}>
+              <Text style={styles.newBtnText}>🔄 Nueva</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.hintBtn} onPress={handleHint}>
+            <Text style={styles.hintBtnText}>💡 Pedir pista</Text>
           </TouchableOpacity>
         </View>
 
         {/* Grilla */}
         <View
-          ref={gridRef}
+          ref={gridViewRef}
           onLayout={measureGrid}
-          style={styles.grid}
+          style={[styles.grid, { width: GRID_PX }]}
           {...panResponder.panHandlers}
         >
           {grid.map((row, r) => (
@@ -268,6 +323,8 @@ export default function SopaScreen() {
               {row.map((letter, c) => {
                 const foundColor = getFoundColor(r, c);
                 const selected = isCellSelected(r, c);
+                const isHint = !foundColor && !selected &&
+                  hintCell && hintCell[0] === r && hintCell[1] === c;
                 return (
                   <View
                     key={c}
@@ -275,13 +332,14 @@ export default function SopaScreen() {
                       styles.cell,
                       { width: CELL_SIZE, height: CELL_SIZE },
                       foundColor ? { backgroundColor: foundColor } : undefined,
+                      isHint && styles.cellHint,
                       selected && styles.cellSelected,
                     ]}
                   >
                     <Text style={[
                       styles.cellText,
-                      selected && styles.cellTextSelected,
                       { fontSize: CELL_SIZE * 0.45 },
+                      (selected || isHint) && styles.cellTextSelected,
                     ]}>
                       {letter}
                     </Text>
@@ -294,16 +352,28 @@ export default function SopaScreen() {
 
         {/* Lista de palabras */}
         <View style={styles.wordList}>
-          {placements.map((p) => (
-            <View
-              key={p.word}
-              style={[styles.wordBadge, foundWords.includes(p.word) && styles.wordBadgeFound]}
-            >
-              <Text style={[styles.wordBadgeText, foundWords.includes(p.word) && styles.wordBadgeTextFound]}>
-                {foundWords.includes(p.word) ? '✓ ' : ''}{p.word}
-              </Text>
-            </View>
-          ))}
+          {placements.map((p) => {
+            const isFound = foundWords.includes(p.word);
+            const isHinted = !isFound && p.word === hintWord;
+            return (
+              <View
+                key={p.word}
+                style={[
+                  styles.wordBadge,
+                  isFound && styles.wordBadgeFound,
+                  isHinted && styles.wordBadgeHint,
+                ]}
+              >
+                <Text style={[
+                  styles.wordBadgeText,
+                  isFound && styles.wordBadgeTextFound,
+                  isHinted && styles.wordBadgeTextHint,
+                ]}>
+                  {isFound ? '✓ ' : isHinted ? '💡 ' : ''}{p.word}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -315,11 +385,11 @@ export default function SopaScreen() {
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <Text style={styles.modalSub}>
               Hay palabras escondidas en la grilla de letras.{'\n\n'}
-              Las palabras están en horizontal o vertical.{'\n\n'}
-              Deslizá el dedo sobre las letras para marcar una palabra.{'\n\n'}
+              Arrastrá el dedo sobre las letras, o tocá cada letra por separado (en cualquier orden).{'\n\n'}
+              Cuando seleccionás todas las letras correctas, se marca sola automáticamente.{'\n\n'}
               Las palabras que tenés que encontrar aparecen abajo de la grilla.
             </Text>
-            <TouchableOpacity style={styles.modalBtnPrimary} onPress={() => setShowTutorial(false)}>
+            <TouchableOpacity style={styles.modalBtnPrimary} onPress={dismissTutorial}>
               <Text style={styles.modalBtnPrimaryText}>¡Entendido, a jugar!</Text>
             </TouchableOpacity>
           </View>
@@ -350,14 +420,33 @@ const styles = StyleSheet.create({
   scroll: { alignItems: 'center', gap: Spacing.md, padding: Spacing.lg },
 
   progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     alignItems: 'center',
-    width: '100%',
+    gap: Spacing.sm,
   },
-  progressText: { fontSize: FontSizes.md, color: Colors.textSecondary },
-  progressBold: { fontWeight: 'bold', color: Colors.textPrimary },
-  resetText: { fontSize: FontSizes.sm, color: Colors.primary, fontWeight: '600' },
+  progressText: { fontSize: FontSizes.xl, color: Colors.textSecondary, textAlign: 'center' },
+  progressBold: { fontWeight: 'bold', color: Colors.textPrimary, fontSize: FontSizes.xxl },
+  progressActions: { flexDirection: 'row', gap: Spacing.sm, width: '100%' },
+  helpBtn: {
+    flex: 1,
+    borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.md,
+    paddingVertical: Spacing.md, alignItems: 'center',
+    backgroundColor: Colors.white,
+  },
+  helpBtnText: { color: Colors.primary, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  newBtn: {
+    flex: 1,
+    backgroundColor: Colors.primary, borderRadius: Radius.md,
+    paddingVertical: Spacing.md, alignItems: 'center',
+  },
+  newBtnText: { color: Colors.white, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  hintBtn: {
+    width: '100%',
+    borderWidth: 2, borderColor: '#FF9800', borderRadius: Radius.md,
+    paddingVertical: Spacing.md, alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+  },
+  hintBtnText: { color: '#E65100', fontSize: FontSizes.lg, fontWeight: 'bold' },
 
   grid: {
     borderWidth: 1,
@@ -373,6 +462,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   cellSelected: { backgroundColor: Colors.primary },
+  cellHint: { backgroundColor: '#FF9800' },
   cellText: { fontWeight: '700', color: Colors.textPrimary },
   cellTextSelected: { color: Colors.white },
 
@@ -387,20 +477,25 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.primary,
     borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     backgroundColor: Colors.white,
   },
   wordBadgeFound: {
     backgroundColor: Colors.successLight,
     borderColor: Colors.success,
   },
+  wordBadgeHint: {
+    backgroundColor: '#FFF3E0',
+    borderColor: '#FF9800',
+  },
   wordBadgeText: {
-    fontSize: FontSizes.md,
+    fontSize: FontSizes.lg,
     fontWeight: '700',
     color: Colors.primary,
   },
   wordBadgeTextFound: { color: Colors.success },
+  wordBadgeTextHint: { color: '#E65100' },
 
   modalOverlay: {
     flex: 1, backgroundColor: '#00000066',
@@ -416,8 +511,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary, marginBottom: Spacing.sm,
   },
   modalSub: {
-    fontSize: FontSizes.md, color: Colors.textSecondary,
-    textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 22,
+    fontSize: FontSizes.lg, color: Colors.textSecondary,
+    textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26,
   },
   modalBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,

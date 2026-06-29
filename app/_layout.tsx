@@ -7,6 +7,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import * as NavigationBar from 'expo-navigation-bar';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
@@ -89,7 +90,18 @@ function DeepLinkHandler() {
   return null;
 }
 
+function useHideNavigationBar() {
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    try {
+      NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+      NavigationBar.setBehaviorAsync('inset-swipe').catch(() => {});
+    } catch {}
+  }, []);
+}
+
 export default function RootLayout() {
+  useHideNavigationBar();
   return (
     <SafeAreaProvider>
       <QueryProvider>

@@ -1,5 +1,6 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
+import { useTutorial } from '@/hooks/useTutorial';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Modal, PanResponder,
@@ -57,20 +58,22 @@ export default function LaberintoScreen() {
   const [pos, setPos] = useState<[number, number]>([0, 0]);
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(true);
+  const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('laberinto');
 
   const diff = DIFFICULTIES[diffIdx];
   const CELL_SIZE = Math.min(36, Math.floor(300 / diff.cols));
 
   // Refs para acceder al estado actual desde el PanResponder sin closures stale
-  const posRef  = useRef(pos);
-  const mazeRef = useRef(maze);
-  const wonRef  = useRef(won);
-  const diffRef = useRef(diff);
-  posRef.current  = pos;
-  mazeRef.current = maze;
-  wonRef.current  = won;
-  diffRef.current = diff;
+  const posRef      = useRef(pos);
+  const mazeRef     = useRef(maze);
+  const wonRef      = useRef(won);
+  const diffRef     = useRef(diff);
+  const cellSizeRef = useRef(CELL_SIZE);
+  posRef.current      = pos;
+  mazeRef.current     = maze;
+  wonRef.current      = won;
+  diffRef.current     = diff;
+  cellSizeRef.current = CELL_SIZE;
 
   const initGame = useCallback((idx: number) => {
     const d = DIFFICULTIES[idx];
@@ -98,44 +101,64 @@ export default function LaberintoScreen() {
     if (nr === diffRef.current.rows - 1 && nc === diffRef.current.cols - 1) setWon(true);
   };
 
-  const swipeAccum  = useRef({ x: 0, y: 0 });
-  const lastGesture = useRef({ x: 0, y: 0 });
+  // Arrastre continuo: el personaje sigue el dedo celda a celda
+  const dragAccum   = useRef({ x: 0, y: 0 });
+  const prevGesture = useRef({ x: 0, y: 0 });
+  const dragAxis    = useRef<'h' | 'v' | null>(null); // eje bloqueado para este gesto
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  () => true,
       onPanResponderGrant: () => {
-        swipeAccum.current  = { x: 0, y: 0 };
-        lastGesture.current = { x: 0, y: 0 };
+        dragAccum.current   = { x: 0, y: 0 };
+        prevGesture.current = { x: 0, y: 0 };
+        dragAxis.current    = null;
       },
-      onPanResponderMove: (_, gestureState) => {
-        const deltaX = gestureState.dx - lastGesture.current.x;
-        const deltaY = gestureState.dy - lastGesture.current.y;
-        lastGesture.current = { x: gestureState.dx, y: gestureState.dy };
+      onPanResponderMove: (_, gs) => {
+        // Delta incremental desde el último evento
+        const dx = gs.dx - prevGesture.current.x;
+        const dy = gs.dy - prevGesture.current.y;
+        prevGesture.current = { x: gs.dx, y: gs.dy };
 
-        swipeAccum.current.x += deltaX;
-        swipeAccum.current.y += deltaY;
+        dragAccum.current.x += dx;
+        dragAccum.current.y += dy;
 
-        const threshold = diffRef.current.cols <= 7 ? 28 : 20;
-        const ax = Math.abs(swipeAccum.current.x);
-        const ay = Math.abs(swipeAccum.current.y);
+        const ax = Math.abs(dragAccum.current.x);
+        const ay = Math.abs(dragAccum.current.y);
 
-        if (ax >= threshold || ay >= threshold) {
-          if (ax > ay) {
-            handleMove(0, swipeAccum.current.x > 0 ? 1 : -1);
-          } else {
-            handleMove(swipeAccum.current.y > 0 ? 1 : -1, 0);
+        // Detectar eje dominante al inicio del arrastre
+        if (!dragAxis.current) {
+          if (ax > 10 || ay > 10) {
+            dragAxis.current = ax >= ay ? 'h' : 'v';
           }
-          swipeAccum.current = { x: 0, y: 0 };
+          return;
         }
+
+        const step = cellSizeRef.current;
+
+        if (dragAxis.current === 'h' && ax >= step) {
+          const steps = Math.floor(ax / step);
+          const dir   = dragAccum.current.x > 0 ? 1 : -1;
+          for (let i = 0; i < steps; i++) handleMove(0, dir);
+          // Conservar el resto para que el siguiente paso fluya sin parar
+          dragAccum.current.x = (ax - steps * step) * dir;
+        } else if (dragAxis.current === 'v' && ay >= step) {
+          const steps = Math.floor(ay / step);
+          const dir   = dragAccum.current.y > 0 ? 1 : -1;
+          for (let i = 0; i < steps; i++) handleMove(dir, 0);
+          dragAccum.current.y = (ay - steps * step) * dir;
+        }
+      },
+      onPanResponderRelease: () => {
+        dragAxis.current = null;
       },
     })
   ).current;
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Laberinto" subtitle="Llegá a la salida" showBack />
+      <AppHeader title="Laberinto" showBack />
 
       <View style={styles.topBar}>
         <View style={styles.diffRow}>
@@ -151,18 +174,26 @@ export default function LaberintoScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <View style={styles.statsRow}>
+        {/* Info: movimientos + leyenda */}
+        <View style={styles.infoRow}>
           <Text style={styles.statText}>
             Movimientos: <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{moves}</Text>
           </Text>
-          <TouchableOpacity onPress={() => initGame(diffIdx)}>
-            <Text style={styles.resetText}>🔄 Nuevo</Text>
-          </TouchableOpacity>
+          <View style={styles.legend}>
+            <Text style={styles.legendItem}>⭐ Inicio</Text>
+            <Text style={styles.legendItem}>🚪 Salida</Text>
+            <Text style={styles.legendItem}>🧑 Vos</Text>
+          </View>
         </View>
-        <View style={styles.legend}>
-          <Text style={styles.legendItem}>⭐ Inicio</Text>
-          <Text style={styles.legendItem}>🚪 Salida</Text>
-          <Text style={styles.legendItem}>🧑 Vos</Text>
+
+        {/* Botones */}
+        <View style={styles.btnRow}>
+          <TouchableOpacity style={styles.newBtn} onPress={() => initGame(diffIdx)}>
+            <Text style={styles.newBtnText}>🔄 Nuevo juego</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>
+            <Text style={styles.helpBtnText}>¿Cómo se juega?</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -201,7 +232,7 @@ export default function LaberintoScreen() {
             </View>
           ))}
         </View>
-        <Text style={styles.swipeHint}>Deslizá el dedo sobre el laberinto para moverte</Text>
+        <Text style={styles.swipeHint}>👆 Arrastrá el dedo sobre el laberinto{'\n'}o usá las flechas de abajo para moverte</Text>
       </View>
 
       {/* Controles fijos abajo */}
@@ -232,11 +263,11 @@ export default function LaberintoScreen() {
             <View style={styles.tutorialList}>
               <Text style={styles.tutorialItem}>⭐ Empezás en la esquina superior izquierda</Text>
               <Text style={styles.tutorialItem}>🚪 Tenés que llegar a la puerta en la esquina inferior derecha</Text>
-              <Text style={styles.tutorialItem}>▲▼◀▶ Usá las flechas de abajo para moverte</Text>
-              <Text style={styles.tutorialItem}>👆 O deslizá el dedo sobre el laberinto</Text>
+              <Text style={styles.tutorialItem}>👆 Arrastrá el dedo sobre el laberinto y el personaje te sigue</Text>
+              <Text style={styles.tutorialItem}>▲▼◀▶ O usá las flechas de abajo para moverte de a un paso</Text>
               <Text style={styles.tutorialItem}>🔄 Podés cambiar la dificultad cuando quieras</Text>
             </View>
-            <TouchableOpacity style={styles.modalBtn} onPress={() => setShowTutorial(false)}>
+            <TouchableOpacity style={styles.modalBtn} onPress={dismissTutorial}>
               <Text style={styles.modalBtnText}>¡Entendido, a jugar!</Text>
             </TouchableOpacity>
           </View>
@@ -267,17 +298,27 @@ const styles = StyleSheet.create({
   topBar: { padding: Spacing.md, gap: Spacing.sm },
   diffRow: { flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
   diffBtn: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, backgroundColor: Colors.white,
+    borderWidth: 2, borderColor: Colors.border, borderRadius: Radius.full,
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, backgroundColor: Colors.white,
   },
   diffBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  diffBtnText: { fontSize: FontSizes.sm, color: Colors.textSecondary, fontWeight: '600' },
+  diffBtnText: { fontSize: FontSizes.md, color: Colors.textSecondary, fontWeight: '700' },
   diffBtnTextActive: { color: Colors.white },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: Spacing.sm },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   statText: { fontSize: FontSizes.md, color: Colors.textSecondary },
-  resetText: { fontSize: FontSizes.md, color: Colors.primary, fontWeight: '600' },
-  legend: { flexDirection: 'row', gap: Spacing.lg, justifyContent: 'center' },
+  legend: { flexDirection: 'row', gap: Spacing.sm },
   legendItem: { fontSize: FontSizes.sm, color: Colors.textSecondary },
+  btnRow: { flexDirection: 'row', gap: Spacing.sm },
+  newBtn: {
+    flex: 1, backgroundColor: Colors.primary, borderRadius: Radius.md,
+    paddingVertical: Spacing.md, alignItems: 'center',
+  },
+  newBtnText: { color: Colors.white, fontSize: FontSizes.md, fontWeight: 'bold' },
+  helpBtn: {
+    flex: 1, borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.md,
+    paddingVertical: Spacing.md, alignItems: 'center', backgroundColor: Colors.white,
+  },
+  helpBtnText: { color: Colors.primary, fontSize: FontSizes.md, fontWeight: 'bold' },
   mazeArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
   maze: { borderWidth: 1, borderColor: Colors.textPrimary },
   mazeRow: { flexDirection: 'row' },
@@ -297,14 +338,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2, shadowRadius: 3, elevation: 3,
   },
   arrowText: { color: Colors.white, fontSize: 28, fontWeight: 'bold' },
-  swipeHint: { fontSize: FontSizes.sm, color: Colors.textSecondary, textAlign: 'center' },
+  swipeHint: { fontSize: FontSizes.lg, color: Colors.textSecondary, textAlign: 'center', lineHeight: 28 },
   modalOverlay: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center' },
   modalBox: { backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.xxl, width: '85%', alignItems: 'center' },
   modalIcon: { fontSize: 64, marginBottom: Spacing.md },
   modalTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.md },
   modalSub: { fontSize: FontSizes.md, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
   tutorialList: { width: '100%', gap: Spacing.sm, marginBottom: Spacing.xl },
-  tutorialItem: { fontSize: FontSizes.md, color: Colors.textPrimary, lineHeight: 24 },
+  tutorialItem: { fontSize: FontSizes.lg, color: Colors.textPrimary, lineHeight: 28 },
   modalBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingVertical: Spacing.md, width: '100%', alignItems: 'center' },
-  modalBtnText: { color: Colors.white, fontSize: FontSizes.lg, fontWeight: 'bold' },
+  modalBtnText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
 });
