@@ -65,6 +65,9 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
   const [notifVistas, setNotifVistas] = useState<string | null>(() => {
     try { return localStorage.getItem('backoffice_notif_vista'); } catch { return null; }
   });
+  const [limpiadoEn, setLimpiadoEn] = useState<string | null>(() => {
+    try { return localStorage.getItem('backoffice_notif_limpiado'); } catch { return null; }
+  });
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [confirmarCerrar, setConfirmarCerrar] = useState(false);
   const notif = useNotificaciones();
@@ -82,8 +85,23 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
   }, []);
 
   const logs = notif.data ?? [];
-  const ultimaVista = notifVistas;
-  const noVistas = logs.filter((l) => !ultimaVista || l.created_at > ultimaVista).length;
+  // Solo mostrar logs posteriores al último limpiado
+  const logsVisibles = logs.filter((l) => !limpiadoEn || l.created_at > limpiadoEn);
+  // Badge: logs visibles que no fueron vistos aún
+  const umbral = limpiadoEn && notifVistas
+    ? (limpiadoEn > notifVistas ? limpiadoEn : notifVistas)
+    : (limpiadoEn ?? notifVistas);
+  const noVistas = logsVisibles.filter((l) => !umbral || l.created_at > umbral).length;
+
+  const limpiarNotificaciones = () => {
+    const ahora = new Date().toISOString();
+    setLimpiadoEn(ahora);
+    setNotifVistas(ahora);
+    try {
+      localStorage.setItem('backoffice_notif_limpiado', ahora);
+      localStorage.setItem('backoffice_notif_vista', ahora);
+    } catch {}
+  };
 
   return (
     <>
@@ -131,8 +149,8 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
 
           {/* Alertas */}
           <DropdownMenu onOpenChange={(open) => {
-            if (open && logs.length > 0) {
-              const ts = logs[0].created_at;
+            if (open && logsVisibles.length > 0) {
+              const ts = logsVisibles[0].created_at;
               setNotifVistas(ts);
               try { localStorage.setItem('backoffice_notif_vista', ts); } catch {}
             }
@@ -152,12 +170,22 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
               <span className="hidden sm:block">Alertas</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel className="text-sm font-semibold">Actividad reciente</DropdownMenuLabel>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-semibold">Actividad reciente</span>
+                {logsVisibles.length > 0 && (
+                  <button
+                    onClick={limpiarNotificaciones}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    Limpiar todo
+                  </button>
+                )}
+              </div>
               <DropdownMenuSeparator />
-              {logs.length === 0 ? (
+              {logsVisibles.length === 0 ? (
                 <p className="px-3 py-4 text-center text-xs text-muted-foreground">Sin actividad reciente</p>
               ) : (
-                logs.map((log) => (
+                logsVisibles.map((log) => (
                   <div key={log.id} className="flex items-start gap-3 px-3 py-2.5 text-sm hover:bg-accent">
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted">
                       {TABLA_ICONO[log.tabla_afectada] ?? ACCION_ICONO[log.accion] ?? <Bell className="h-3.5 w-3.5" />}

@@ -103,6 +103,9 @@ export interface TipoActividad {
   color: string | null;
   descripcion: string | null;
   activo: boolean;
+  // Defaults para pre-completar el formulario al seleccionar la categoría
+  hora_inicio_default?: string | null;
+  hora_fin_default?: string | null;
 }
 
 export interface Ubicacion {
@@ -132,7 +135,7 @@ export interface Responsable {
 export interface Actividad {
   id: string;
   organizacion_id: string;
-  tipo_actividad_id: string;
+  tipo_actividad_id: string | null;
   ubicacion_id: string | null;
   responsable_id: string | null;
   nombre: string;
@@ -145,6 +148,7 @@ export interface Actividad {
   patron_recurrencia: PatronRecurrencia | null;
   pisos_objetivo: string[] | null;
   activo: boolean;
+  plantilla_id: string | null; // UUID del row-plantilla del grupo (self-ref si es plantilla, ID externo si es ocurrencia)
   created_at: string;
   updated_at: string;
 }

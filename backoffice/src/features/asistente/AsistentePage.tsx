@@ -164,10 +164,15 @@ export function AsistentePage() {
                   <p className="py-6 text-center text-sm text-muted-foreground">Sin datos aún.</p>
                 ) : (
                   <ol className="space-y-3">
-                    {(stats.data?.topPreguntas ?? []).filter(p => p.total > 5).map((p, i) => (
+                    {(stats.data?.topPreguntas ?? []).map((p, i) => (
                       <li key={i} className="flex items-start gap-3">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">{i + 1}</span>
-                        <p className="text-sm text-foreground line-clamp-2">{p.pregunta}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-foreground line-clamp-2">{p.pregunta}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {p.total} {p.total === 1 ? 'vez' : 'veces'}
+                          </p>
+                        </div>
                       </li>
                     ))}
                   </ol>

@@ -125,7 +125,7 @@ export interface Responsable {
 export interface Actividad {
   id: string;
   organizacion_id: string;
-  tipo_actividad_id: string;
+  tipo_actividad_id: string | null;
   ubicacion_id: string | null;
   responsable_id: string | null;
   nombre: string;
@@ -138,6 +138,7 @@ export interface Actividad {
   patron_recurrencia: PatronRecurrencia | null;
   pisos_objetivo: string[] | null;
   activo: boolean;
+  plantilla_id: string | null;
   created_at: string;
   updated_at: string;
 }
