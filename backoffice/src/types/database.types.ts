@@ -153,6 +153,14 @@ export interface Actividad {
   updated_at: string;
 }
 
+// Excepción puntual de visibilidad: incluye o excluye a un residente
+// puntual sin importar si su piso coincide con pisos_objetivo
+export interface ActividadResidenteOverride {
+  actividad_id: string;
+  residente_id: string;
+  incluido: boolean;
+}
+
 export interface PatronRecurrencia {
   dias_semana?: number[]; // 0=Dom, 1=Lun ... 6=Sab
   hasta?: string; // 'YYYY-MM-DD'

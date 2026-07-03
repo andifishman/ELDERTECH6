@@ -156,11 +156,10 @@ export interface ActividadCompleta extends Actividad {
 }
 
 // Actividad con prioridad personalizada para la pantalla de Horarios
-// 1=interés+piso  2=solo interés  3=general (todos)  4=sin coincidencia
-export type PrioridadActividad = 1 | 2 | 3 | 4;
+// 1=coincide piso objetivo (o incluido por excepción)  3=general (sin restricción de piso)
+export type PrioridadActividad = 1 | 3;
 
 export interface ActividadConPrioridad extends ActividadCompleta {
-  actividad_intereses: Array<{ interes_id: string }>;
   prioridad: PrioridadActividad;
   recomendada: boolean;
 }

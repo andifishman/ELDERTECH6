@@ -8,14 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingState } from '@/components/common/states';
 import { cn } from '@/lib/utils';
 import { notify } from '@/components/ui/toast';
 import { subirAudioTutorial, subirImagenTutorial, type PasoInput } from '@/services/articulosService';
-import { useArticulo, useCategoriasArticulo, useEliminarArticulo, useGuardarArticulo, usePasosTutorial } from './useArticulos';
+import {
+  useArticulo,
+  useCategoriasArticulo,
+  useCrearCategoriaTutorial,
+  useEliminarArticulo,
+  useGuardarArticulo,
+  usePasosTutorial,
+} from './useArticulos';
 import type { FormatoTutorial } from '@/types/database.types';
 
 interface CamposPrincipales {
@@ -41,6 +47,7 @@ export function ArticuloFormPage() {
   const { data: pasosExistentes } = usePasosTutorial(id);
   const guardar = useGuardarArticulo();
   const eliminar = useEliminarArticulo();
+  const crearCategoria = useCrearCategoriaTutorial();
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
 
   // ── Diálogo inicial: cuántos pasos ──────────────────────────────────────────
@@ -55,6 +62,25 @@ export function ArticuloFormPage() {
   const [formato, setFormato] = useState<FormatoTutorial>('video');
   const [nivel, setNivel] = useState<'principiante' | 'intermedio' | 'avanzado'>('principiante');
   const [loQueAprenderas, setLoQueAprenderas] = useState<string[]>(['']);
+
+  // ── Nueva categoría (inline) ─────────────────────────────────────────────────
+  const [mostrarFormCategoria, setMostrarFormCategoria] = useState(false);
+  const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: '', emoji: '' });
+
+  const handleCrearCategoria = () => {
+    if (!nuevaCategoria.nombre.trim()) return;
+    crearCategoria.mutate(
+      { nombre: nuevaCategoria.nombre.trim(), emoji: nuevaCategoria.emoji.trim() || undefined },
+      {
+        onSuccess: (newId) => {
+          setCategoriaId(newId);
+          setErrorCategoria('');
+          setNuevaCategoria({ nombre: '', emoji: '' });
+          setMostrarFormCategoria(false);
+        },
+      },
+    );
+  };
 
   // ── Thumbnail ────────────────────────────────────────────────────────────────
   const [thumbnailUrl, setThumbnailUrl] = useState('');
@@ -264,30 +290,105 @@ export function ArticuloFormPage() {
               {errors.titulo && <p className="text-xs text-destructive">{errors.titulo.message}</p>}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
                 <Label>Categoría *</Label>
-                <Select value={categoriaId} onValueChange={(v) => { setCategoriaId(v); setErrorCategoria(''); }}>
-                  <SelectTrigger className={errorCategoria ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Elegir categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(categorias ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.emoji} {c.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errorCategoria && <p className="text-xs text-destructive">{errorCategoria}</p>}
+                <button
+                  type="button"
+                  onClick={() => setMostrarFormCategoria((v) => !v)}
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Nueva categoría
+                </button>
               </div>
-              <div className="space-y-1.5">
-                <Label>Formato</Label>
-                <Select value={formato} onValueChange={(v) => setFormato(v as FormatoTutorial)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="guia">Guía</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              <div className="flex flex-wrap gap-2">
+                {(categorias ?? []).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { setCategoriaId(c.id); setErrorCategoria(''); }}
+                    className={cn(
+                      'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                      categoriaId === c.id
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border hover:bg-accent',
+                    )}
+                  >
+                    {c.emoji ? `${c.emoji} ${c.nombre}` : c.nombre}
+                  </button>
+                ))}
+                {(categorias ?? []).length === 0 && (
+                  <p className="text-sm text-muted-foreground">Todavía no hay categorías — creá la primera.</p>
+                )}
+              </div>
+              {errorCategoria && <p className="text-xs text-destructive">{errorCategoria}</p>}
+
+              {mostrarFormCategoria && (
+                <div className="rounded-lg border border-dashed border-primary/50 bg-primary/5 p-4 space-y-3">
+                  <p className="text-xs font-semibold text-primary">Nueva categoría</p>
+                  <div className="flex gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Emoji (opcional)</Label>
+                      <Input
+                        value={nuevaCategoria.emoji}
+                        onChange={(e) => setNuevaCategoria((p) => ({ ...p, emoji: e.target.value }))}
+                        placeholder="📱"
+                        maxLength={4}
+                        className="w-16 text-center"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Nombre de la categoría *</Label>
+                      <Input
+                        value={nuevaCategoria.nombre}
+                        onChange={(e) => setNuevaCategoria((p) => ({ ...p, nombre: e.target.value }))}
+                        placeholder="Ej: WhatsApp, Fotos, Videollamadas…"
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCrearCategoria(); } }}
+                      />
+                    </div>
+                    <div className="flex items-end gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!nuevaCategoria.nombre.trim() || crearCategoria.isPending}
+                        onClick={handleCrearCategoria}
+                      >
+                        {crearCategoria.isPending ? 'Creando…' : 'Crear'}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setMostrarFormCategoria(false); setNuevaCategoria({ nombre: '', emoji: '' }); }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Formato</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { v: 'video', label: 'Video' },
+                  { v: 'guia', label: 'Guía' },
+                ] as const).map((f) => (
+                  <button
+                    key={f.v}
+                    type="button"
+                    onClick={() => setFormato(f.v)}
+                    className={cn(
+                      'rounded-lg border p-2.5 text-sm font-medium transition-colors',
+                      formato === f.v ? 'border-primary bg-primary-50 text-primary-700' : 'border-border hover:bg-accent',
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
 

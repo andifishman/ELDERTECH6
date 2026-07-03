@@ -1,5 +1,5 @@
 import { supabase, ORG_ID } from '@/lib/supabase';
-import type { TipoActividad, Ubicacion, Responsable, Interes, Piso } from '@/types/database.types';
+import type { TipoActividad, Ubicacion, Responsable, Piso } from '@/types/database.types';
 import { extraerMensajeError } from './actividadesService';
 
 export type { extraerMensajeError };
@@ -8,7 +8,6 @@ export interface Catalogos {
   tiposActividad: TipoActividad[];
   ubicaciones: Ubicacion[];
   responsables: Responsable[];
-  intereses: Interes[];
   pisos: Piso[];
 }
 
@@ -19,7 +18,7 @@ const PISOS_HARDCODED: Piso[] = [
 ];
 
 export async function obtenerCatalogos(): Promise<Catalogos> {
-  const [tipos, ubic, resp, inter] = await Promise.all([
+  const [tipos, ubic, resp] = await Promise.all([
     supabase
       .from('tipos_actividad')
       .select('*')
@@ -33,14 +32,12 @@ export async function obtenerCatalogos(): Promise<Catalogos> {
       .or(`organizacion_id.is.null,organizacion_id.eq.${ORG_ID}`)
       .eq('activo', true)
       .order('nombre'),
-    supabase.from('intereses').select('*').eq('activo', true).order('nombre'),
   ]);
 
   return {
     tiposActividad: (tipos.data ?? []) as TipoActividad[],
     ubicaciones: (ubic.data ?? []) as Ubicacion[],
     responsables: (resp.data ?? []) as Responsable[],
-    intereses: (inter.data ?? []) as Interes[],
     pisos: PISOS_HARDCODED,
   };
 }

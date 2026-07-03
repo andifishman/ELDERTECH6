@@ -9,8 +9,8 @@ import { toSupabaseDate } from '@/utils/dateUtils';
 import { useEffect } from 'react';
 
 // Función helper para armar la queryKey de un día dado (exportada para prefetch)
-export function actividadesKey(fecha: Date, residenteId: string | null, interesesKey: string, piso: string | null) {
-  return ['actividades', toSupabaseDate(fecha), residenteId, interesesKey, piso];
+export function actividadesKey(fecha: Date, residenteId: string | null, piso: string | null) {
+  return ['actividades', toSupabaseDate(fecha), residenteId, piso];
 }
 
 export function useActividades(fecha: Date) {
@@ -18,13 +18,11 @@ export function useActividades(fecha: Date) {
   const queryClient = useQueryClient();
 
   const residenteId = profile?.residente?.id ?? null;
-  const misInteresesIds = [...(profile?.residente_interes_ids ?? [])].sort();
   const miPiso = profile?.residente?.piso ?? null;
-  const interesesKey = misInteresesIds.join(',');
 
   const fetchFn = (d: Date) =>
     residenteId
-      ? getActividadesPersonalizadas(d, misInteresesIds, miPiso)
+      ? getActividadesPersonalizadas(d, residenteId, miPiso)
       : getActividadesPorFecha(d);
 
   // Key estable del día (Date cambia de identidad en cada render)
@@ -37,16 +35,16 @@ export function useActividades(fecha: Date) {
       const d = new Date(fecha);
       d.setDate(fecha.getDate() + offset);
       queryClient.prefetchQuery({
-        queryKey: actividadesKey(d, residenteId, interesesKey, miPiso),
+        queryKey: actividadesKey(d, residenteId, miPiso),
         queryFn: () => fetchFn(d),
         staleTime: 30 * 60 * 1000,
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fechaKey, residenteId, interesesKey, miPiso, authLoading]);
+  }, [fechaKey, residenteId, miPiso, authLoading]);
 
   return useQuery({
-    queryKey: actividadesKey(fecha, residenteId, interesesKey, miPiso),
+    queryKey: actividadesKey(fecha, residenteId, miPiso),
     queryFn: () => fetchFn(fecha),
     enabled: !authLoading,
     staleTime: 0,                // siempre refetch al volver al primer plano (AppState listener)
