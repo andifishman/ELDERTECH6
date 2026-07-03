@@ -1,14 +1,15 @@
 // ========================================
 // PANTALLA: UsuariosPage
 // DESCRIPCIÓN:
-// Administración de residentes: tabla con foto, datos y
-// estado. Alta/edición en un diálogo modal y activación/
-// desactivación (que da o quita acceso a la app).
+// Alta y administración de usuarios de la app. Se elige un
+// nombre de usuario y una sección; la contraseña es el DNI.
+// No usa email ni foto de perfil. Activar/desactivar da o
+// quita acceso a la app.
 // ========================================
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -17,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -31,46 +32,50 @@ import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { iniciales } from '@/lib/utils';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useGuardarResidente, useResidentes, useToggleResidente } from './useResidentes';
-import type { NivelDificultad, Residente } from '@/types/database.types';
+import {
+  useActualizarResidente,
+  useCrearUsuario,
+  useResetearPassword,
+  useResidentes,
+  useToggleResidente,
+} from './useResidentes';
+import { SECCIONES } from '@/types/database.types';
+import type { Residente, SeccionResidente } from '@/types/database.types';
 import type { ResidenteConCuenta } from '@/services/residentesService';
 
 interface Campos {
   nombre: string;
   apellido: string;
-  habitacion: string;
-  piso: string;
-  fecha_nacimiento: string;
-  email: string;
-  telefono: string;
-  nivel_dificultad: NivelDificultad;
+  username: string;
+  dni: string;
+  seccion: SeccionResidente | '';
 }
 
-const NIVEL_LABEL: Record<NivelDificultad, string> = {
-  independiente: 'Independiente',
-  necesita_ayuda: 'Necesita ayuda',
-  dependiente: 'Dependiente',
+const CAMPOS_VACIOS: Campos = {
+  nombre: '', apellido: '', username: '', dni: '', seccion: '',
 };
 
 export function UsuariosPage() {
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useResidentes();
-  const guardar = useGuardarResidente();
+  const crearUsuario = useCrearUsuario();
+  const actualizar = useActualizarResidente();
+  const resetearPassword = useResetearPassword();
   const toggle = useToggleResidente();
   useRealtime('residentes', [['residentes']]);
 
   const [busqueda, setBusqueda] = useState('');
-  const [filtroNivel, setFiltroNivel] = useState<NivelDificultad | 'todos'>('todos');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'activo' | 'inactivo'>('todos');
-  const [ordenarPor, setOrdenarPor] = useState<'nombre' | 'habitacion' | 'piso' | 'nivel' | 'conexion'>('nombre');
+  const [ordenarPor, setOrdenarPor] = useState<'nombre' | 'habitacion' | 'seccion' | 'conexion'>('nombre');
   const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('asc');
   const [abierto, setAbierto] = useState(false);
   const [editando, setEditando] = useState<Residente | null>(null);
+  const [nuevoDni, setNuevoDni] = useState('');
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Campos>({
-    defaultValues: { nivel_dificultad: 'independiente' },
+    defaultValues: CAMPOS_VACIOS,
   });
-  const nivel = watch('nivel_dificultad');
+  const seccion = watch('seccion');
 
   const toggleOrden = (col: typeof ordenarPor) => {
     if (ordenarPor === col) setOrdenDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -81,7 +86,6 @@ export function UsuariosPage() {
     const q = busqueda.toLowerCase();
     let lista = (data ?? []).filter((r) => {
       if (!`${r.nombre} ${r.apellido}`.toLowerCase().includes(q)) return false;
-      if (filtroNivel !== 'todos' && r.nivel_dificultad !== filtroNivel) return false;
       if (filtroEstado === 'activo' && !r.activo) return false;
       if (filtroEstado === 'inactivo' && r.activo) return false;
       if (!(r as ResidenteConCuenta).tiene_cuenta) return false;
@@ -91,8 +95,7 @@ export function UsuariosPage() {
       let va: string | number = '', vb: string | number = '';
       if (ordenarPor === 'nombre') { va = `${a.nombre} ${a.apellido}`; vb = `${b.nombre} ${b.apellido}`; }
       else if (ordenarPor === 'habitacion') { va = a.habitacion ?? ''; vb = b.habitacion ?? ''; }
-      else if (ordenarPor === 'piso') { va = a.piso ?? ''; vb = b.piso ?? ''; }
-      else if (ordenarPor === 'nivel') { va = a.nivel_dificultad; vb = b.nivel_dificultad; }
+      else if (ordenarPor === 'seccion') { va = a.seccion ?? ''; vb = b.seccion ?? ''; }
       else if (ordenarPor === 'conexion') {
         va = a.ultima_conexion ? new Date(a.ultima_conexion).getTime() : 0;
         vb = b.ultima_conexion ? new Date(b.ultima_conexion).getTime() : 0;
@@ -102,66 +105,79 @@ export function UsuariosPage() {
       return 0;
     });
     return lista;
-  }, [data, busqueda, filtroNivel, filtroEstado, ordenarPor, ordenDir]);
+  }, [data, busqueda, filtroEstado, ordenarPor, ordenDir]);
 
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ nombre: '', apellido: '', habitacion: '', piso: '', fecha_nacimiento: '', email: '', telefono: '', nivel_dificultad: 'independiente' });
+    setNuevoDni('');
+    reset(CAMPOS_VACIOS);
     setAbierto(true);
   };
 
   const abrirEditar = (r: Residente) => {
     setEditando(r);
+    setNuevoDni('');
     reset({
       nombre: r.nombre,
       apellido: r.apellido,
-      habitacion: r.habitacion ?? '',
-      piso: r.piso ?? '',
-      fecha_nacimiento: r.fecha_nacimiento ?? '',
-      email: r.email ?? '',
-      telefono: r.telefono ?? '',
-      nivel_dificultad: r.nivel_dificultad,
+      username: '',
+      dni: '',
+      seccion: r.seccion ?? '',
     });
     setAbierto(true);
   };
 
   const onSubmit = (c: Campos) => {
-    const input = {
-      nombre: c.nombre,
-      apellido: c.apellido,
-      habitacion: c.habitacion || null,
-      piso: c.piso || null,
-      fecha_nacimiento: c.fecha_nacimiento || null,
-      email: c.email || null,
-      telefono: c.telefono || null,
-      nivel_dificultad: c.nivel_dificultad,
-    };
-    guardar.mutate({ id: editando?.id, input }, { onSuccess: () => setAbierto(false) });
+    if (!editando) {
+      crearUsuario.mutate(
+        {
+          nombre: c.nombre,
+          apellido: c.apellido,
+          username: c.username,
+          dni: c.dni,
+          seccion: c.seccion || null,
+        },
+        { onSuccess: () => setAbierto(false) },
+      );
+      return;
+    }
+
+    actualizar.mutate(
+      {
+        id: editando.id,
+        input: {
+          nombre: c.nombre,
+          apellido: c.apellido,
+          seccion: c.seccion || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          if (nuevoDni.trim()) {
+            resetearPassword.mutate({ id: editando.id, dni: nuevoDni.trim() });
+          }
+          setAbierto(false);
+        },
+      },
+    );
   };
+
+  const guardando = crearUsuario.isPending || actualizar.isPending;
 
   return (
     <div className="space-y-5">
       <PageHeader
         titulo="Usuarios"
-        descripcion="Administración de residentes del geriátrico."
-        acciones={<Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Nuevo residente</Button>}
+        descripcion="Creá y administrá los usuarios que acceden a la app. Elegís un nombre de usuario y la contraseña es el DNI."
+        acciones={<Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>}
       />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-xs flex-1 min-w-[180px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar residente…" className="pl-9" />
+          <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar usuario…" className="pl-9" />
         </div>
         <span className="text-sm text-muted-foreground font-medium whitespace-nowrap">Filtrar por:</span>
-        <Select value={filtroNivel} onValueChange={(v) => setFiltroNivel(v as NivelDificultad | 'todos')}>
-          <SelectTrigger className="w-auto min-w-max"><SelectValue placeholder="Nivel" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos los niveles</SelectItem>
-            <SelectItem value="independiente">Independiente</SelectItem>
-            <SelectItem value="necesita_ayuda">Necesita ayuda</SelectItem>
-            <SelectItem value="dependiente">Dependiente</SelectItem>
-          </SelectContent>
-        </Select>
         <Select value={filtroEstado} onValueChange={(v) => setFiltroEstado(v as 'todos' | 'activo' | 'inactivo')}>
           <SelectTrigger className="w-auto min-w-max"><SelectValue placeholder="Estado" /></SelectTrigger>
           <SelectContent>
@@ -170,8 +186,8 @@ export function UsuariosPage() {
             <SelectItem value="inactivo">Inactivo</SelectItem>
           </SelectContent>
         </Select>
-        {(filtroNivel !== 'todos' || filtroEstado !== 'todos' || busqueda) && (
-          <Button variant="ghost" size="sm" onClick={() => { setBusqueda(''); setFiltroNivel('todos'); setFiltroEstado('todos'); }}>
+        {(filtroEstado !== 'todos' || busqueda) && (
+          <Button variant="ghost" size="sm" onClick={() => { setBusqueda(''); setFiltroEstado('todos'); }}>
             Limpiar filtros
           </Button>
         )}
@@ -184,18 +200,18 @@ export function UsuariosPage() {
           <div className="p-5"><ErrorState onReintentar={() => void refetch()} /></div>
         ) : filtrados.length === 0 ? (
           <div className="p-5">
-            <EmptyState icono={UserCog} titulo="Sin residentes" descripcion="Agregá el primer residente." accion={<Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Nuevo residente</Button>} />
+            <EmptyState icono={UserCog} titulo="Sin usuarios" descripcion="Creá el primer usuario." accion={<Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>} />
           </div>
         ) : (
           <div className="overflow-x-auto">
           <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
-                {(['nombre', 'habitacion', 'piso', 'nivel', 'conexion'] as const).map((col, i) => {
-                  const labels = { nombre: 'Residente', habitacion: 'Habitación', piso: 'Piso', nivel: 'Nivel', conexion: 'Última conexión' };
+                {(['nombre', 'habitacion', 'seccion', 'conexion'] as const).map((col) => {
+                  const labels = { nombre: 'Usuario', habitacion: 'Habitación', seccion: 'Sección', conexion: 'Última conexión' };
                   const Icon = ordenarPor !== col ? ChevronsUpDown : ordenDir === 'asc' ? ChevronUp : ChevronDown;
                   return (
-                    <TableHead key={col} className={i === 4 ? '' : ''}>
+                    <TableHead key={col}>
                       <button
                         type="button"
                         onClick={() => toggleOrden(col)}
@@ -221,15 +237,13 @@ export function UsuariosPage() {
                       className="flex items-center gap-3 rounded-md hover:underline text-left"
                     >
                       <Avatar className="h-9 w-9">
-                        {r.foto_url && <AvatarImage src={r.foto_url} alt="" />}
                         <AvatarFallback>{iniciales(`${r.nombre} ${r.apellido}`)}</AvatarFallback>
                       </Avatar>
                       <span className="font-medium text-foreground">{r.nombre} {r.apellido}</span>
                     </button>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{r.habitacion ?? '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{r.piso ?? '—'}</TableCell>
-                  <TableCell><Badge variant="outline">{NIVEL_LABEL[r.nivel_dificultad]}</Badge></TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.seccion ?? '—'}</TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       {r.ultima_conexion
@@ -274,7 +288,7 @@ export function UsuariosPage() {
       <Dialog open={abierto} onOpenChange={setAbierto}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{editando ? 'Editar residente' : 'Nuevo residente'}</DialogTitle>
+            <DialogTitle>{editando ? 'Editar usuario' : 'Crear usuario'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -288,41 +302,55 @@ export function UsuariosPage() {
                 <Input id="apellido" {...register('apellido', { required: 'Requerido' })} />
                 {errors.apellido && <p className="text-xs text-destructive">{errors.apellido.message}</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="habitacion">Habitación</Label>
-                <Input id="habitacion" {...register('habitacion')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="piso">Piso</Label>
-                <Input id="piso" {...register('piso')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fnac">Fecha de nacimiento</Label>
-                <Input id="fnac" type="date" {...register('fecha_nacimiento')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Nivel de dificultad</Label>
-                <Select value={nivel} onValueChange={(v) => setValue('nivel_dificultad', v as NivelDificultad)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+
+              {!editando && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="username">Nombre de usuario</Label>
+                    <Input
+                      id="username"
+                      autoCapitalize="none"
+                      {...register('username', { required: 'Requerido', minLength: { value: 3, message: 'Mínimo 3 caracteres' } })}
+                    />
+                    {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dni">DNI (será la contraseña)</Label>
+                    <Input id="dni" {...register('dni', { required: 'Requerido', minLength: { value: 4, message: 'Mínimo 4 caracteres' } })} />
+                    {errors.dni && <p className="text-xs text-destructive">{errors.dni.message}</p>}
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Sección</Label>
+                <Select value={seccion} onValueChange={(v) => setValue('seccion', v as SeccionResidente)}>
+                  <SelectTrigger><SelectValue placeholder="Elegí una sección" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="independiente">Independiente</SelectItem>
-                    <SelectItem value="necesita_ayuda">Necesita ayuda</SelectItem>
-                    <SelectItem value="dependiente">Dependiente</SelectItem>
+                    {SECCIONES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...register('email')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="telefono">Teléfono</Label>
-                <Input id="telefono" {...register('telefono')} />
-              </div>
+
+              {editando && (
+                <div className="space-y-1.5 sm:col-span-2 rounded-lg border border-dashed p-3">
+                  <Label htmlFor="nuevoDni" className="flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5" /> Restablecer contraseña (nuevo DNI)
+                  </Label>
+                  <Input
+                    id="nuevoDni"
+                    placeholder="Dejar vacío para no cambiarla"
+                    value={nuevoDni}
+                    onChange={(e) => setNuevoDni(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAbierto(false)}>Cancelar</Button>
-              <Button type="submit" disabled={guardar.isPending}>{guardar.isPending ? 'Guardando…' : 'Guardar'}</Button>
+              <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

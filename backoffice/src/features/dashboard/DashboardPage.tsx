@@ -14,7 +14,7 @@ import { KpiCard } from '@/components/common/KpiCard';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { BarChartCard } from '@/components/charts/BarChartCard';
 import { DonutChartCard } from '@/components/charts/DonutChartCard';
 import { LoadingState } from '@/components/common/states';
@@ -151,7 +151,6 @@ export function DashboardPage() {
                       className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
                     >
                       <Avatar className="h-9 w-9">
-                        {r.foto_url && <AvatarImage src={r.foto_url} alt="" />}
                         <AvatarFallback>{iniciales(`${r.nombre} ${r.apellido}`)}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">

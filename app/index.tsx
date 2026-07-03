@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAuth } from '@/context/AuthContext';
 import { usePrefetchHome } from '@/hooks/usePrefetchHome';
 import { ProximaActividadWidget } from '@/components/home/ProximaActividadWidget';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -88,7 +87,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const fecha = getFechaHoy();
-  const { profile } = useAuth();
   usePrefetchHome();
 
   const speak = (text: string) => {
@@ -102,14 +100,6 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <View style={styles.headerRow}>
           <Text style={styles.logoText}>ElderTech</Text>
-          <TouchableOpacity
-            onPress={() => router.push('/profile')}
-            style={styles.profileBtn}
-            accessibilityLabel="Mi perfil"
-            accessibilityRole="button"
-          >
-            <Text style={styles.profileBtnText}>Mi Perfil</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -212,35 +202,19 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#4CAF50',
     paddingBottom: 8,
-    paddingLeft: 40,
-    paddingRight: 16,
+    paddingHorizontal: 16,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     minHeight: 52,
   },
   logoText: {
-    flex: 1,
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 46,
-  },
-  profileBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 22,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.7)',
-  },
-  profileBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    textAlign: 'center',
   },
 
   // Welcome

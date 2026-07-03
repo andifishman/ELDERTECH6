@@ -1,5 +1,6 @@
 import { supabase, ORG_ID } from '@/lib/supabase';
-import type { TipoActividad, Ubicacion, Responsable, Interes, Piso } from '@/types/database.types';
+import { SECCIONES } from '@/types/database.types';
+import type { TipoActividad, Ubicacion, Responsable, Interes, SeccionResidente } from '@/types/database.types';
 import { extraerMensajeError } from './actividadesService';
 
 export type { extraerMensajeError };
@@ -9,14 +10,8 @@ export interface Catalogos {
   ubicaciones: Ubicacion[];
   responsables: Responsable[];
   intereses: Interes[];
-  pisos: Piso[];
+  secciones: SeccionResidente[];
 }
-
-const PISOS_HARDCODED: Piso[] = [
-  { id: '1', organizacion_id: ORG_ID, numero: 1, nombre: 'Piso 1', descripcion: null, activo: true },
-  { id: '2', organizacion_id: ORG_ID, numero: 2, nombre: 'Piso 2', descripcion: null, activo: true },
-  { id: '3', organizacion_id: ORG_ID, numero: 3, nombre: 'Piso 3', descripcion: null, activo: true },
-];
 
 export async function obtenerCatalogos(): Promise<Catalogos> {
   const [tipos, ubic, resp, inter] = await Promise.all([
@@ -41,7 +36,7 @@ export async function obtenerCatalogos(): Promise<Catalogos> {
     ubicaciones: (ubic.data ?? []) as Ubicacion[],
     responsables: (resp.data ?? []) as Responsable[],
     intereses: (inter.data ?? []) as Interes[],
-    pisos: PISOS_HARDCODED,
+    secciones: SECCIONES,
   };
 }
 

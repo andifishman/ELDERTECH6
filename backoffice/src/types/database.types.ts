@@ -17,6 +17,19 @@ export type NivelArticulo = 'principiante' | 'intermedio' | 'avanzado';
 export type RolUsuario = 'residente' | 'admin' | 'staff';
 export type UnidadTemperatura = 'celsius' | 'fahrenheit';
 
+export type SeccionResidente =
+  | '1 AC' | '1 B' | '1 FRAGA'
+  | '2 AC' | '2 B' | '2 MODERADO' | '2 REHABILITACION'
+  | '3 AC' | '3B'
+  | 'BAIT';
+
+export const SECCIONES: SeccionResidente[] = [
+  '1 AC', '1 B', '1 FRAGA',
+  '2 AC', '2 B', '2 MODERADO', '2 REHABILITACION',
+  '3 AC', '3B',
+  'BAIT',
+];
+
 // ─── Núcleo ──────────────────────────────────────────────────────────────────
 
 export interface Organizacion {
@@ -35,35 +48,6 @@ export interface Organizacion {
   updated_at: string;
 }
 
-export interface Sector {
-  id: string;
-  organizacion_id: string;
-  nombre: string;
-  descripcion: string | null;
-  es_default: boolean;
-  activo: boolean;
-  created_at: string;
-}
-
-export interface Piso {
-  id: string;
-  organizacion_id: string;
-  numero: number;
-  nombre: string | null;
-  descripcion: string | null;
-  activo: boolean;
-}
-
-export interface Habitacion {
-  id: string;
-  piso_id: string;
-  organizacion_id: string;
-  numero: string;
-  capacidad: number;
-  tipo: string | null;
-  activo: boolean;
-}
-
 export interface Interes {
   id: string;
   nombre: string;
@@ -79,11 +63,10 @@ export interface Residente {
   nombre: string;
   apellido: string;
   fecha_nacimiento: string | null;
-  foto_url: string | null;
   nivel_dificultad: NivelDificultad;
-  piso: string | null;
+  seccion: SeccionResidente | null;
   habitacion: string | null;
-  email: string | null;
+  dni: string | null;
   telefono: string | null;
   notas: string | null;
   fecha_ingreso: string | null;
@@ -111,7 +94,6 @@ export interface TipoActividad {
 export interface Ubicacion {
   id: string;
   organizacion_id: string;
-  piso_id: string | null;
   nombre: string;
   descripcion: string | null;
   activo: boolean;
@@ -146,7 +128,7 @@ export interface Actividad {
   hora_fin: string | null;
   es_recurrente: boolean;
   patron_recurrencia: PatronRecurrencia | null;
-  pisos_objetivo: string[] | null;
+  secciones_objetivo: SeccionResidente[] | null;
   activo: boolean;
   plantilla_id: string | null; // UUID del row-plantilla del grupo (self-ref si es plantilla, ID externo si es ocurrencia)
   created_at: string;

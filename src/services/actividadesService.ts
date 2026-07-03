@@ -32,17 +32,17 @@ export async function getActividadesPorFecha(fecha: Date): Promise<ActividadComp
 
 /**
  * Devuelve las actividades del día con prioridad personalizada según
- * los intereses y el piso del residente.
+ * los intereses y la sección del residente.
  *
  * Prioridades:
- *  1 = ⭐ Recomendado: coincide interés + piso (o sin restricción de piso)
- *  2 = Coincide interés, piso no aplica
+ *  1 = ⭐ Recomendado: coincide interés + sección (o sin restricción de sección)
+ *  2 = Coincide interés, sección no aplica
  *  3 = General (sin filtro de interés)
  */
 export async function getActividadesPersonalizadas(
   fecha: Date,
   misInteresesIds: string[],
-  miPiso: string | null,
+  miSeccion: string | null,
 ): Promise<ActividadConPrioridad[]> {
   const fechaStr = toSupabaseDate(fecha);
   const actividades = await fetchActividadesPorFecha(fechaStr);
@@ -51,26 +51,26 @@ export async function getActividadesPersonalizadas(
 
   const resultado = actividadesTyped
     .filter((a) => {
-      const actPisos: string[] | null = a.pisos_objetivo ?? null;
+      const actSecciones: string[] | null = a.secciones_objetivo ?? null;
       const actIntereses = a.actividad_intereses?.map((ai) => ai.interes_id) ?? [];
 
-      const pisoOk = !miPiso || !actPisos?.length || actPisos.includes(miPiso);
+      const seccionOk = !miSeccion || !actSecciones?.length || actSecciones.includes(miSeccion);
       const interestOk = actIntereses.length === 0 || actIntereses.some((id) => misInteresesIds.includes(id));
 
-      return pisoOk && interestOk;
+      return seccionOk && interestOk;
     })
     .map((a) => {
       const actIntereses = a.actividad_intereses?.map((ai) => ai.interes_id) ?? [];
-      const actPisos: string[] | null = a.pisos_objetivo ?? null;
+      const actSecciones: string[] | null = a.secciones_objetivo ?? null;
 
       const matchesInterest = actIntereses.length > 0 && actIntereses.some((id) => misInteresesIds.includes(id));
-      const hasPisoTarget = !!actPisos?.length;
-      const matchesPiso = !hasPisoTarget || (!!miPiso && actPisos!.includes(miPiso));
+      const hasSeccionTarget = !!actSecciones?.length;
+      const matchesSeccion = !hasSeccionTarget || (!!miSeccion && actSecciones!.includes(miSeccion));
 
       let prioridad: 1 | 2 | 3;
       let recomendada: boolean;
 
-      if (matchesInterest && matchesPiso && hasPisoTarget) {
+      if (matchesInterest && matchesSeccion && hasSeccionTarget) {
         prioridad = 1;
         recomendada = true;
       } else if (matchesInterest) {

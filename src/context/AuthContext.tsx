@@ -41,7 +41,6 @@ interface AuthContextValue {
   profile: AuthProfile | null;
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
-  updateLocalProfile: (updates: Partial<AuthProfile['residente']>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -49,7 +48,6 @@ const AuthContext = createContext<AuthContextValue>({
   profile: null,
   isLoading: true,
   refreshProfile: async () => {},
-  updateLocalProfile: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -68,20 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         writeCache(uid, p);
       }
     } catch {}
-  }, []);
-
-  // Actualiza campos del residente localmente sin ir a Supabase
-  const updateLocalProfile = useCallback((updates: Partial<AuthProfile['residente']>) => {
-    setProfile((prev) => {
-      if (!prev) return prev;
-      const updated: AuthProfile = {
-        ...prev,
-        residente: prev.residente ? { ...prev.residente, ...updates } : prev.residente,
-      };
-      const uid = currentUidRef.current;
-      if (uid) writeCache(uid, updated);
-      return updated;
-    });
   }, []);
 
   useEffect(() => {
@@ -230,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, profile, isLoading, refreshProfile, updateLocalProfile }}>
+    <AuthContext.Provider value={{ session, profile, isLoading, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

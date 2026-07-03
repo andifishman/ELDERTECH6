@@ -108,7 +108,7 @@ export function ActividadFormPage() {
   const [preset, setPreset] = useState<PresetRecurrencia>('lun_vie');
   const [dias, setDias] = useState<number[]>([1, 2, 3, 4, 5]);
   const [intereses, setIntereses] = useState<string[]>([]);
-  const [pisos, setPisos] = useState<string[]>([]);
+  const [secciones, setSecciones] = useState<string[]>([]);
   // Notificar residentes: desactivado por defecto
   const [notificar, setNotificar] = useState(false);
 
@@ -162,7 +162,7 @@ export function ActividadFormPage() {
     setTipoId(actividad.tipo_actividad_id ?? '');
     setUbicacionId(actividad.ubicacion_id ?? '');
     setResponsableId(actividad.responsable_id ?? '');
-    setPisos(actividad.pisos_objetivo ?? []);
+    setSecciones(actividad.secciones_objetivo ?? []);
     const d = actividad.patron_recurrencia?.dias_semana;
     if (!actividad.es_recurrente) setPreset('unica');
     else if (d?.length === 7) setPreset('diaria');
@@ -209,7 +209,7 @@ export function ActividadFormPage() {
       hora_fin: campos.hora_fin || null,
       es_recurrente,
       patron_recurrencia: patronFinal,
-      pisos_objetivo: pisos,
+      secciones_objetivo: secciones,
       intereses,
     };
 
@@ -509,26 +509,23 @@ export function ActividadFormPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Pisos objetivo (vacío = todos los pisos)</Label>
+            <Label>Secciones objetivo (vacío = todas las secciones)</Label>
             <div className="flex flex-wrap gap-2">
-              {(catalogos?.pisos ?? []).map((p) => {
-                const valor = String(p.numero);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => toggleEn(pisos, setPisos, valor)}
-                    className={cn(
-                      'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-                      pisos.includes(valor)
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border hover:bg-accent',
-                    )}
-                  >
-                    {p.nombre ?? `Piso ${p.numero}`}
-                  </button>
-                );
-              })}
+              {(catalogos?.secciones ?? []).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleEn(secciones, setSecciones, s)}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                    secciones.includes(s)
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border hover:bg-accent',
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
           </div>
         </CardContent>
