@@ -25,13 +25,8 @@ export interface ActividadInput {
   hora_fin?: string | null;
   es_recurrente: boolean;
   patron_recurrencia?: PatronRecurrencia | null;
-<<<<<<< HEAD
   pisos_objetivo?: string[] | null;
   residentesOverride?: ResidenteOverrideInput[];
-=======
-  secciones_objetivo?: string[] | null;
-  intereses?: string[];
->>>>>>> rama-andi
 }
 
 // Extrae el mensaje de un error de Supabase (PostgrestError no extiende Error)
@@ -104,7 +99,7 @@ async function generarOcurrencias(plantillaId: string, input: ActividadInput): P
         hora_fin: normalizarHora(input.hora_fin),
         es_recurrente: true,
         patron_recurrencia: input.patron_recurrencia,
-        secciones_objetivo: input.secciones_objetivo?.length ? input.secciones_objetivo : null,
+        pisos_objetivo: input.pisos_objetivo?.length ? input.pisos_objetivo : null,
         activo: true,
         plantilla_id: plantillaId,
       });
@@ -155,7 +150,7 @@ export async function crearActividad(input: ActividadInput): Promise<string> {
       organizacion_id: ORG_ID,
       hora_inicio: normalizarHora(resto.hora_inicio)!,
       hora_fin: normalizarHora(resto.hora_fin),
-      secciones_objetivo: resto.secciones_objetivo?.length ? resto.secciones_objetivo : null,
+      pisos_objetivo: resto.pisos_objetivo?.length ? resto.pisos_objetivo : null,
       activo: true,
     })
     .select('id')
@@ -205,7 +200,7 @@ export async function actualizarActividad(id: string, input: ActividadInput): Pr
     hora_fin: normalizarHora(resto.hora_fin),
     es_recurrente: resto.es_recurrente,
     patron_recurrencia: resto.patron_recurrencia ?? null,
-    secciones_objetivo: resto.secciones_objetivo?.length ? resto.secciones_objetivo : null,
+    pisos_objetivo: resto.pisos_objetivo?.length ? resto.pisos_objetivo : null,
     updated_at: new Date().toISOString(),
   };
 

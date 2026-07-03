@@ -1,4 +1,4 @@
-import { NivelDificultad } from './database.types';
+import { NivelDificultad, SeccionResidente } from './database.types';
 
 export type RolUsuario = 'residente' | 'admin' | 'staff';
 
@@ -19,10 +19,8 @@ export interface ResidenteAuth {
   nombre: string;
   apellido: string;
   fecha_nacimiento: string | null;
-  foto_url: string | null;
   nivel_dificultad: NivelDificultad;
-  email: string | null;
-  piso: string | null;
+  seccion: SeccionResidente | null;
   habitacion: string | null;
   activo: boolean;
 }
@@ -32,39 +30,6 @@ export interface AuthProfile {
   residente: ResidenteAuth | null;
   residente_interes_ids: string[];
 }
-
-/** Ciudad buscada libremente (Open-Meteo), no existe en la tabla ciudades_familiares */
-export interface CiudadCustom {
-  nombre: string;
-  pais_codigo: string;
-  lat: number;
-  lon: number;
-  timezone: string;
-}
-
-export interface RegisterFormData {
-  // Step 1
-  nombre: string;
-  apellido: string;
-  fecha_nacimiento: string;
-  foto_uri: string | null;
-  // Step 2
-  username: string;
-  email: string;
-  password: string;
-  confirmar_password: string;
-  // Step 3
-  piso: string;
-  habitacion: string;
-  nivel_dificultad: NivelDificultad;
-  intereses: string[];
-  /** IDs de ciudades predeterminadas de la tabla ciudades_familiares */
-  ciudades_familiares: string[];
-  /** Ciudades buscadas libremente que no están en la tabla predeterminada */
-  ciudades_familiares_custom: CiudadCustom[];
-}
-
-export type RegisterStep = 1 | 2 | 3;
 
 export interface Interes {
   id: string;
@@ -78,5 +43,3 @@ export interface CiudadFamiliar {
   pais_codigo: string;
   orden: number;
 }
-
-export type ValidationErrors = Partial<Record<string, string>>;

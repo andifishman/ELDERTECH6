@@ -62,13 +62,12 @@ export interface MensajeHistorial {
   created_at: string;
   residente_nombre: string | null;
   residente_apellido: string | null;
-  residente_foto: string | null;
 }
 
 export async function obtenerHistorialMensajes(limite = 50): Promise<MensajeHistorial[]> {
   const { data, error } = await supabase
     .from('mensajes_asistente')
-    .select('id, contenido, created_at, residente:residentes(nombre, apellido, foto_url)')
+    .select('id, contenido, created_at, residente:residentes(nombre, apellido)')
     .eq('rol', 'usuario')
     .order('created_at', { ascending: false })
     .limit(limite);
@@ -79,7 +78,6 @@ export async function obtenerHistorialMensajes(limite = 50): Promise<MensajeHist
     created_at: m.created_at,
     residente_nombre: m.residente?.nombre ?? null,
     residente_apellido: m.residente?.apellido ?? null,
-    residente_foto: m.residente?.foto_url ?? null,
   }));
 }
 

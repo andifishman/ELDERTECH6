@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { iniciales } from '@/lib/utils';
 import { usePermisos } from '@/hooks/usePermisos';
 import { useRealtime } from '@/hooks/useRealtime';
@@ -199,7 +199,6 @@ export function AsistentePage() {
                   {(historial.data ?? []).map((m) => (
                     <li key={m.id} className="flex items-start gap-3 py-3">
                       <Avatar className="h-8 w-8 shrink-0">
-                        {m.residente_foto && <AvatarImage src={m.residente_foto} alt="" />}
                         <AvatarFallback className="text-xs">
                           {m.residente_nombre ? iniciales(`${m.residente_nombre} ${m.residente_apellido ?? ''}`) : <User className="h-4 w-4" />}
                         </AvatarFallback>

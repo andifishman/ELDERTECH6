@@ -1,10 +1,5 @@
 import { supabase, ORG_ID } from '@/lib/supabase';
-<<<<<<< HEAD
 import type { TipoActividad, Ubicacion, Responsable, Piso } from '@/types/database.types';
-=======
-import { SECCIONES } from '@/types/database.types';
-import type { TipoActividad, Ubicacion, Responsable, Interes, SeccionResidente } from '@/types/database.types';
->>>>>>> rama-andi
 import { extraerMensajeError } from './actividadesService';
 
 export type { extraerMensajeError };
@@ -13,13 +8,14 @@ export interface Catalogos {
   tiposActividad: TipoActividad[];
   ubicaciones: Ubicacion[];
   responsables: Responsable[];
-<<<<<<< HEAD
   pisos: Piso[];
-=======
-  intereses: Interes[];
-  secciones: SeccionResidente[];
->>>>>>> rama-andi
 }
+
+const PISOS_HARDCODED: Piso[] = [
+  { id: '1', organizacion_id: ORG_ID, numero: 1, nombre: 'Piso 1', descripcion: null, activo: true },
+  { id: '2', organizacion_id: ORG_ID, numero: 2, nombre: 'Piso 2', descripcion: null, activo: true },
+  { id: '3', organizacion_id: ORG_ID, numero: 3, nombre: 'Piso 3', descripcion: null, activo: true },
+];
 
 export async function obtenerCatalogos(): Promise<Catalogos> {
   const [tipos, ubic, resp] = await Promise.all([
@@ -42,12 +38,7 @@ export async function obtenerCatalogos(): Promise<Catalogos> {
     tiposActividad: (tipos.data ?? []) as TipoActividad[],
     ubicaciones: (ubic.data ?? []) as Ubicacion[],
     responsables: (resp.data ?? []) as Responsable[],
-<<<<<<< HEAD
     pisos: PISOS_HARDCODED,
-=======
-    intereses: (inter.data ?? []) as Interes[],
-    secciones: SECCIONES,
->>>>>>> rama-andi
   };
 }
 

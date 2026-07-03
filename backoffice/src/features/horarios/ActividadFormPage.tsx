@@ -110,11 +110,16 @@ export function ActividadFormPage() {
   const [responsableId, setResponsableId] = useState('');
   const [preset, setPreset] = useState<PresetRecurrencia>('lun_vie');
   const [dias, setDias] = useState<number[]>([1, 2, 3, 4, 5]);
+<<<<<<< HEAD
   const [pisos, setPisos] = useState<string[]>([]);
   // Excepciones puntuales: residente_id -> incluido forzado (true/false).
   // Solo se guardan las que difieren del cálculo automático por piso.
   const [residentesOverride, setResidentesOverride] = useState<Record<string, boolean>>({});
   const [filtroResidente, setFiltroResidente] = useState('');
+=======
+  const [intereses, setIntereses] = useState<string[]>([]);
+  const [secciones, setSecciones] = useState<string[]>([]);
+>>>>>>> rama-andi
   // Notificar residentes: desactivado por defecto
   const [notificar, setNotificar] = useState(false);
 
@@ -168,7 +173,7 @@ export function ActividadFormPage() {
     setTipoId(actividad.tipo_actividad_id ?? '');
     setUbicacionId(actividad.ubicacion_id ?? '');
     setResponsableId(actividad.responsable_id ?? '');
-    setPisos(actividad.pisos_objetivo ?? []);
+    setSecciones(actividad.secciones_objetivo ?? []);
     const d = actividad.patron_recurrencia?.dias_semana;
     if (!actividad.es_recurrente) setPreset('unica');
     else if (d?.length === 7) setPreset('diaria');
@@ -221,8 +226,13 @@ export function ActividadFormPage() {
       hora_fin: campos.hora_fin || null,
       es_recurrente,
       patron_recurrencia: patronFinal,
+<<<<<<< HEAD
       pisos_objetivo: pisos,
       residentesOverride: overridesInput,
+=======
+      secciones_objetivo: secciones,
+      intereses,
+>>>>>>> rama-andi
     };
 
     if (esEdicion && id) {
@@ -500,26 +510,48 @@ export function ActividadFormPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
+<<<<<<< HEAD
             <Label>Pisos objetivo (vacío = todos los pisos)</Label>
+=======
+            <Label>Intereses (vacío = todos los residentes)</Label>
             <div className="flex flex-wrap gap-2">
-              {(catalogos?.pisos ?? []).map((p) => {
-                const valor = String(p.numero);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => toggleEn(pisos, setPisos, valor)}
-                    className={cn(
-                      'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-                      pisos.includes(valor)
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border hover:bg-accent',
-                    )}
-                  >
-                    {p.nombre ?? `Piso ${p.numero}`}
-                  </button>
-                );
-              })}
+              {(catalogos?.intereses ?? []).map((i) => (
+                <button
+                  key={i.id}
+                  type="button"
+                  onClick={() => toggleEn(intereses, setIntereses, i.id)}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                    intereses.includes(i.id)
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-accent',
+                  )}
+                >
+                  {i.emoji} {i.nombre}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Secciones objetivo (vacío = todas las secciones)</Label>
+>>>>>>> rama-andi
+            <div className="flex flex-wrap gap-2">
+              {(catalogos?.secciones ?? []).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleEn(secciones, setSecciones, s)}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                    secciones.includes(s)
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border hover:bg-accent',
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
           </div>
 

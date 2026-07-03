@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -98,29 +97,11 @@ export default function LoginScreen() {
               required
             />
 
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/forgot-password')}
-              style={styles.forgotLink}
-              accessibilityRole="link"
-            >
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
-
             <LoadingButton
               title="Ingresar →"
               onPress={handleLogin}
               loading={loading}
               style={styles.loginButton}
-            />
-
-            <View style={styles.divider}>
-              <Text style={styles.dividerText}>¿Sos nuevo?</Text>
-            </View>
-
-            <LoadingButton
-              title="Crear una cuenta nueva"
-              onPress={() => router.push('/(auth)/register')}
-              variant="outline"
             />
           </View>
         </ScrollView>
@@ -188,30 +169,7 @@ const styles = StyleSheet.create({
     color: Colors.brand.red,
     fontWeight: Typography.weight.medium,
   },
-  forgotLink: {
-    alignSelf: 'flex-start',
-    marginTop: -Spacing.sm,
-    marginBottom: Spacing.xl,
-    paddingVertical: Spacing.sm,
-    minHeight: Spacing.touch.min,
-    justifyContent: 'center',
-  },
-  forgotText: {
-    fontSize: Typography.size.md,
-    color: Colors.brand.greenDark,
-    fontWeight: Typography.weight.medium,
-    textDecorationLine: 'underline',
-  },
   loginButton: {
     marginBottom: Spacing.xxl,
-  },
-  divider: {
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  dividerText: {
-    fontSize: Typography.size.xl,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.text.primary,
   },
 });

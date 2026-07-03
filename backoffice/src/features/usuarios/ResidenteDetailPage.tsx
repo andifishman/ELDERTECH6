@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users } from 'lucide-react';
 import { formatDistanceToNow, format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -41,7 +41,6 @@ export function ResidenteDetailPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <Avatar className="h-20 w-20 ring-4 ring-primary-100">
-          {r.foto_url && <AvatarImage src={r.foto_url} alt="" />}
           <AvatarFallback className="text-2xl bg-primary-100 text-primary-700">
             {iniciales(`${r.nombre} ${r.apellido}`)}
           </AvatarFallback>
@@ -49,10 +48,10 @@ export function ResidenteDetailPage() {
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-foreground">{r.nombre} {r.apellido}</h2>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            {r.habitacion && (
+            {(r.habitacion || r.seccion) && (
               <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" /> Hab. {r.habitacion}
-                {r.piso ? ` · Piso ${r.piso}` : ''}
+                <MapPin className="h-3.5 w-3.5" /> {r.habitacion ? `Hab. ${r.habitacion}` : ''}
+                {r.seccion ? ` · Sección ${r.seccion}` : ''}
               </span>
             )}
             <Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge>
@@ -87,12 +86,6 @@ export function ResidenteDetailPage() {
                 <span>{format(new Date(r.fecha_nacimiento + 'T00:00:00'), "d 'de' MMMM 'de' yyyy", { locale: es })}</span>
               </div>
             )}
-            {r.email && (
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{r.email}</span>
-              </div>
-            )}
             {r.telefono && (
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -105,7 +98,7 @@ export function ResidenteDetailPage() {
                 <span>Ingresó el {format(new Date(r.fecha_ingreso + 'T00:00:00'), "d MMM yyyy", { locale: es })}</span>
               </div>
             )}
-            {!r.fecha_nacimiento && !r.email && !r.telefono && (
+            {!r.fecha_nacimiento && !r.telefono && (
               <p className="text-muted-foreground">Sin datos cargados.</p>
             )}
           </CardContent>

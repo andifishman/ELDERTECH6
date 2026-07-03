@@ -5,10 +5,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import {
   actualizarResidente,
-  crearResidente,
+  crearUsuario,
   listarResidentes,
   obtenerResidenteDetalle,
+  resetearPassword,
   setActivoResidente,
+  type CrearUsuarioInput,
   type ResidenteInput,
 } from '@/services/residentesService';
 import { notify } from '@/components/ui/toast';
@@ -33,16 +35,35 @@ function useInvalidar() {
   };
 }
 
-export function useGuardarResidente() {
+export function useCrearUsuario() {
   const invalidar = useInvalidar();
   return useMutation({
-    mutationFn: ({ id, input }: { id?: string; input: ResidenteInput }) =>
-      id ? actualizarResidente(id, input).then(() => id) : crearResidente(input),
-    onSuccess: () => {
-      notify.success('Residente guardado');
+    mutationFn: (input: CrearUsuarioInput) => crearUsuario(input),
+    onSuccess: (data) => {
+      notify.success('Usuario creado', `Usuario: ${data.username}`);
       invalidar();
     },
-    onError: () => notify.error('No se pudo guardar el residente'),
+    onError: (err: Error) => notify.error('No se pudo crear el usuario', err.message),
+  });
+}
+
+export function useActualizarResidente() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ResidenteInput }) => actualizarResidente(id, input),
+    onSuccess: () => {
+      notify.success('Usuario guardado');
+      invalidar();
+    },
+    onError: () => notify.error('No se pudo guardar el usuario'),
+  });
+}
+
+export function useResetearPassword() {
+  return useMutation({
+    mutationFn: ({ id, dni }: { id: string; dni: string }) => resetearPassword(id, dni),
+    onSuccess: () => notify.success('Contraseña actualizada'),
+    onError: (err: Error) => notify.error('No se pudo actualizar la contraseña', err.message),
   });
 }
 

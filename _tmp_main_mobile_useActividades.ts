@@ -9,13 +9,8 @@ import { toSupabaseDate } from '@/utils/dateUtils';
 import { useEffect } from 'react';
 
 // Función helper para armar la queryKey de un día dado (exportada para prefetch)
-<<<<<<< HEAD
 export function actividadesKey(fecha: Date, residenteId: string | null, piso: string | null) {
   return ['actividades', toSupabaseDate(fecha), residenteId, piso];
-=======
-export function actividadesKey(fecha: Date, residenteId: string | null, interesesKey: string, seccion: string | null) {
-  return ['actividades', toSupabaseDate(fecha), residenteId, interesesKey, seccion];
->>>>>>> rama-andi
 }
 
 export function useActividades(fecha: Date) {
@@ -23,21 +18,11 @@ export function useActividades(fecha: Date) {
   const queryClient = useQueryClient();
 
   const residenteId = profile?.residente?.id ?? null;
-<<<<<<< HEAD
   const miPiso = profile?.residente?.piso ?? null;
 
   const fetchFn = (d: Date) =>
     residenteId
       ? getActividadesPersonalizadas(d, residenteId, miPiso)
-=======
-  const misInteresesIds = [...(profile?.residente_interes_ids ?? [])].sort();
-  const miSeccion = profile?.residente?.seccion ?? null;
-  const interesesKey = misInteresesIds.join(',');
-
-  const fetchFn = (d: Date) =>
-    residenteId
-      ? getActividadesPersonalizadas(d, misInteresesIds, miSeccion)
->>>>>>> rama-andi
       : getActividadesPorFecha(d);
 
   // Key estable del día (Date cambia de identidad en cada render)
@@ -50,27 +35,16 @@ export function useActividades(fecha: Date) {
       const d = new Date(fecha);
       d.setDate(fecha.getDate() + offset);
       queryClient.prefetchQuery({
-<<<<<<< HEAD
         queryKey: actividadesKey(d, residenteId, miPiso),
-=======
-        queryKey: actividadesKey(d, residenteId, interesesKey, miSeccion),
->>>>>>> rama-andi
         queryFn: () => fetchFn(d),
         staleTime: 30 * 60 * 1000,
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-<<<<<<< HEAD
   }, [fechaKey, residenteId, miPiso, authLoading]);
 
   return useQuery({
     queryKey: actividadesKey(fecha, residenteId, miPiso),
-=======
-  }, [fechaKey, residenteId, interesesKey, miSeccion, authLoading]);
-
-  return useQuery({
-    queryKey: actividadesKey(fecha, residenteId, interesesKey, miSeccion),
->>>>>>> rama-andi
     queryFn: () => fetchFn(fecha),
     enabled: !authLoading,
     staleTime: 0,                // siempre refetch al volver al primer plano (AppState listener)

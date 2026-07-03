@@ -1,24 +1,26 @@
 // ========================================
-// SERVICIO: Residentes
+// SERVICIO: Residentes / Usuarios
 // DESCRIPCIÓN:
-// CRUD de residentes del geriátrico. Desactivar un
-// residente le quita acceso a la app.
+// CRUD de residentes del geriátrico. El alta de un usuario
+// nuevo (con acceso a la app) se hace vía Edge Function
+// admin-usuarios, ya que crea también el usuario de auth
+// (username + DNI como contraseña, sin email). Desactivar
+// un residente le quita acceso a la app.
 // ========================================
 import { supabase, ORG_ID } from '@/lib/supabase';
-import type { ContactoResumen, NivelDificultad, Residente } from '@/types/database.types';
+import type { ContactoResumen, Residente, SeccionResidente } from '@/types/database.types';
 import { registrarAuditoria } from './auditService';
 
 export interface ResidenteInput {
   nombre: string;
   apellido: string;
-  fecha_nacimiento?: string | null;
-  habitacion?: string | null;
-  piso?: string | null;
-  nivel_dificultad: NivelDificultad;
-  email?: string | null;
-  telefono?: string | null;
-  foto_url?: string | null;
+  seccion?: SeccionResidente | null;
   notas?: string | null;
+}
+
+export interface CrearUsuarioInput extends ResidenteInput {
+  username: string;
+  dni: string;
 }
 
 export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean };
@@ -52,20 +54,20 @@ export async function listarResidentes(): Promise<ResidenteConCuenta[]> {
   }));
 }
 
-export async function crearResidente(input: ResidenteInput): Promise<string> {
-  const { data, error } = await supabase
-    .from('residentes')
-    .insert({ ...input, organizacion_id: ORG_ID, activo: true })
-    .select('id')
-    .single();
+export async function crearUsuario(input: CrearUsuarioInput): Promise<{ id: string; username: string }> {
+  const { data, error } = await supabase.functions.invoke('admin-usuarios', {
+    body: { accion: 'crear', ...input },
+  });
   if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+
   await registrarAuditoria({
     accion: 'crear',
     tabla: 'residentes',
     registroId: data.id,
-    descripcion: `Creó al residente ${input.nombre} ${input.apellido}`,
+    descripcion: `Creó al usuario ${input.nombre} ${input.apellido} (usuario: ${data.username})`,
   });
-  return data.id;
+  return data as { id: string; username: string };
 }
 
 export async function actualizarResidente(id: string, input: ResidenteInput): Promise<void> {
@@ -79,6 +81,21 @@ export async function actualizarResidente(id: string, input: ResidenteInput): Pr
     tabla: 'residentes',
     registroId: id,
     descripcion: `Editó al residente ${input.nombre} ${input.apellido}`,
+  });
+}
+
+export async function resetearPassword(residenteId: string, dni: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('admin-usuarios', {
+    body: { accion: 'resetear_password', residente_id: residenteId, dni },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+
+  await registrarAuditoria({
+    accion: 'editar',
+    tabla: 'residentes',
+    registroId: residenteId,
+    descripcion: 'Reseteó la contraseña (DNI) del usuario',
   });
 }
 
