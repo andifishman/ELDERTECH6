@@ -1,5 +1,8 @@
 import { supabase, ORG_ID } from '@/lib/supabase';
 import type { TipoActividad, Ubicacion, Responsable, Interes, Piso } from '@/types/database.types';
+import { extraerMensajeError } from './actividadesService';
+
+export type { extraerMensajeError };
 
 export interface Catalogos {
   tiposActividad: TipoActividad[];
@@ -42,13 +45,30 @@ export async function obtenerCatalogos(): Promise<Catalogos> {
   };
 }
 
-export async function crearTipoActividad(nombre: string, emoji: string): Promise<string> {
+export interface CrearTipoActividadInput {
+  nombre: string;
+  emoji?: string;
+  hora_inicio_default?: string;
+  hora_fin_default?: string;
+}
+
+export async function crearTipoActividad(input: CrearTipoActividadInput): Promise<string> {
   const { data, error } = await supabase
     .from('tipos_actividad')
-    .insert({ nombre, emoji: emoji || null, organizacion_id: ORG_ID, activo: true })
+    .insert({
+      nombre: input.nombre,
+      emoji: input.emoji || null,
+      hora_inicio_default: input.hora_inicio_default || null,
+      hora_fin_default: input.hora_fin_default || null,
+      organizacion_id: ORG_ID,
+      activo: true,
+    })
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    const msg = extraerMensajeError(error);
+    throw new Error(msg ?? 'Error al crear tipo de actividad');
+  }
   return data.id as string;
 }
 
@@ -58,7 +78,10 @@ export async function crearUbicacion(nombre: string): Promise<string> {
     .insert({ nombre, organizacion_id: ORG_ID, activo: true })
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    const msg = extraerMensajeError(error);
+    throw new Error(msg ?? 'Error al crear ubicación');
+  }
   return data.id as string;
 }
 
@@ -71,6 +94,9 @@ export async function crearResponsable(nombreCompleto: string): Promise<string> 
     .insert({ nombre, apellido, organizacion_id: ORG_ID, activo: true, es_externo: false })
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    const msg = extraerMensajeError(error);
+    throw new Error(msg ?? 'Error al crear responsable');
+  }
   return data.id as string;
 }

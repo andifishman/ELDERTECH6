@@ -201,7 +201,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           try {
-            const p = await getProfileForUser(s.user.id);
+            // Timeout de 5s: igual que en init(). Sin esto, si Supabase tarda
+            // o la red es lenta, isLoading queda en true para siempre.
+            const fetchTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+            const p = await Promise.race([getProfileForUser(s.user.id), fetchTimeout]);
             if (mounted) {
               setProfile(p);
               if (p) {

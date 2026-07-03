@@ -5,7 +5,7 @@
 // residente le quita acceso a la app.
 // ========================================
 import { supabase, ORG_ID } from '@/lib/supabase';
-import type { NivelDificultad, Residente } from '@/types/database.types';
+import type { ContactoResumen, NivelDificultad, Residente } from '@/types/database.types';
 import { registrarAuditoria } from './auditService';
 
 export interface ResidenteInput {
@@ -21,14 +21,35 @@ export interface ResidenteInput {
   notas?: string | null;
 }
 
-export async function listarResidentes(): Promise<Residente[]> {
-  const { data, error } = await supabase
-    .from('residentes')
-    .select('*')
-    .eq('organizacion_id', ORG_ID)
-    .order('apellido', { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as Residente[];
+export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean };
+
+export async function listarResidentes(): Promise<ResidenteConCuenta[]> {
+  const [residentesR, perfilesR] = await Promise.allSettled([
+    supabase
+      .from('residentes')
+      .select('*')
+      .eq('organizacion_id', ORG_ID)
+      .order('apellido', { ascending: true }),
+    supabase
+      .from('perfiles_usuario')
+      .select('residente_id')
+      .eq('organizacion_id', ORG_ID)
+      .not('residente_id', 'is', null),
+  ]);
+
+  if (residentesR.status === 'rejected') throw residentesR.reason;
+  if (residentesR.value.error) throw residentesR.value.error;
+
+  const verificadosIds = new Set(
+    perfilesR.status === 'fulfilled'
+      ? ((perfilesR.value.data ?? []) as { residente_id: string }[]).map((p) => p.residente_id)
+      : [],
+  );
+
+  return ((residentesR.value.data ?? []) as Residente[]).map((r) => ({
+    ...r,
+    tiene_cuenta: verificadosIds.has(r.id),
+  }));
 }
 
 export async function crearResidente(input: ResidenteInput): Promise<string> {
@@ -67,6 +88,7 @@ export interface ResidenteDetalle {
   intereses: { nombre: string; emoji: string | null }[];
   tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
   ciudadesClima: string[];
+  contactos: ContactoResumen[];
 }
 
 export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDetalle> {
@@ -77,7 +99,7 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
     .single();
   if (error) throw error;
 
-  const [mensajesR, interesesR, tutorialesR, climaR] = await Promise.allSettled([
+  const [mensajesR, interesesR, tutorialesR, climaR, contactosR] = await Promise.allSettled([
     supabase
       .from('mensajes_asistente')
       .select('id, contenido, created_at')
@@ -100,6 +122,14 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
       .from('residente_ciudades_familiares')
       .select('ciudad:ciudades_familiares(nombre, pais_codigo)')
       .eq('residente_id', id),
+    supabase
+      .from('contactos')
+      .select('id, nombre, apellido, telefono, whatsapp_disponible, foto_url, favorito, orden, tipo_contacto:tipos_contacto(id, nombre, emoji)')
+      .eq('residente_id', id)
+      .eq('activo', true)
+      .order('favorito', { ascending: false })
+      .order('orden', { ascending: true })
+      .order('nombre', { ascending: true }),
   ]);
 
   return {
@@ -124,6 +154,12 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
             return `${bandera} ${ciudad.nombre}`;
           })
           .filter(Boolean) as string[]
+      : [],
+    contactos: contactosR.status === 'fulfilled'
+      ? ((contactosR.value.data ?? []) as any[]).map((r) => ({
+          ...r,
+          tipo_contacto: Array.isArray(r.tipo_contacto) ? r.tipo_contacto[0] ?? null : r.tipo_contacto,
+        })) as ContactoResumen[]
       : [],
   };
 }

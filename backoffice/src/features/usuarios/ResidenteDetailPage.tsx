@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users } from 'lucide-react';
 import { formatDistanceToNow, format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,11 +21,14 @@ export function ResidenteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useResidenteDetalle(id);
+  const [verTodosTutoriales, setVerTodosTutoriales] = useState(false);
+  const [verTodosContactos, setVerTodosContactos] = useState(false);
+  const [verTodosMensajes, setVerTodosMensajes] = useState(false);
 
   if (isLoading) return <LoadingState mensaje="Cargando perfil del residente…" />;
   if (isError || !data) return <ErrorState onReintentar={() => void refetch()} />;
 
-  const { residente: r, mensajes, intereses, tutorialesCompletados, ciudadesClima } = data;
+  const { residente: r, mensajes, intereses, tutorialesCompletados, ciudadesClima, contactos } = data;
   const edad = r.fecha_nacimiento ? differenceInYears(new Date(), new Date(r.fecha_nacimiento)) : null;
   const nivel = NIVEL_LABEL[r.nivel_dificultad] ?? NIVEL_LABEL['independiente'];
 
@@ -166,45 +170,119 @@ export function ResidenteDetailPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Tutoriales completados */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
-              <BookOpen className="h-4 w-4" /> Tutoriales completados
-              {tutorialesCompletados.length > 0 && (
-                <Badge variant="outline" className="ml-auto normal-case">{tutorialesCompletados.length}</Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {tutorialesCompletados.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sin tutoriales completados aún.</p>
-            ) : (
-              <ul className="space-y-2">
-                {tutorialesCompletados.map((t, idx) => (
-                  <li key={idx} className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 overflow-hidden">
-                      {t.thumbnail_url
-                        ? <img src={t.thumbnail_url} alt="" className="h-full w-full object-cover" />
-                        : <BookOpen className="h-4 w-4 text-primary-400" />
-                      }
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{t.titulo}</p>
-                      {t.completado_at && (
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(t.completado_at), { addSuffix: true, locale: es })}
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Mensajes al asistente */}
+        {/* Columna izquierda: Tutoriales + Contactos */}
+        <div className="flex flex-col gap-4">
+
+          {/* Tutoriales completados */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+                <BookOpen className="h-4 w-4" /> Tutoriales completados
+                {tutorialesCompletados.length > 0 && (
+                  <Badge variant="outline" className="ml-auto normal-case">{tutorialesCompletados.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {tutorialesCompletados.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin tutoriales completados aún.</p>
+              ) : (
+                <>
+                  <ul className="space-y-2">
+                    {(verTodosTutoriales ? tutorialesCompletados : tutorialesCompletados.slice(0, 3)).map((t, idx) => (
+                      <li key={idx} className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 overflow-hidden">
+                          {t.thumbnail_url
+                            ? <img src={t.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                            : <BookOpen className="h-4 w-4 text-primary-400" />
+                          }
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{t.titulo}</p>
+                          {t.completado_at && (
+                            <p className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(t.completado_at), { addSuffix: true, locale: es })}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {tutorialesCompletados.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setVerTodosTutoriales((v) => !v)}
+                      className="mt-3 text-xs font-medium text-primary hover:underline"
+                    >
+                      {verTodosTutoriales ? 'Ver menos' : `Ver todos (${tutorialesCompletados.length})`}
+                    </button>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Contactos */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+                <Users className="h-4 w-4" /> Contactos
+                {contactos.length > 0 && (
+                  <Badge variant="outline" className="ml-auto normal-case">{contactos.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {contactos.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin contactos agregados aún.</p>
+              ) : (
+                <>
+                  <ul className="space-y-2">
+                    {(verTodosContactos ? contactos : contactos.slice(0, 3)).map((c) => (
+                      <li key={c.id} className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 shrink-0">
+                          {c.foto_url && <AvatarImage src={c.foto_url} alt="" />}
+                          <AvatarFallback className="bg-primary-50 text-primary-700 text-xs">
+                            {iniciales(`${c.nombre} ${c.apellido ?? ''}`)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {c.nombre}{c.apellido ? ` ${c.apellido}` : ''}
+                            {c.favorito && <span className="ml-1.5 text-yellow-400">★</span>}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Phone className="h-3 w-3 shrink-0" />
+                            {c.telefono}
+                            {c.whatsapp_disponible && <span className="ml-1 text-green-600">· WhatsApp</span>}
+                          </p>
+                        </div>
+                        {c.tipo_contacto && (
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {c.tipo_contacto.emoji} {c.tipo_contacto.nombre}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  {contactos.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setVerTodosContactos((v) => !v)}
+                      className="mt-3 text-xs font-medium text-primary hover:underline"
+                    >
+                      {verTodosContactos ? 'Ver menos' : `Ver todos (${contactos.length})`}
+                    </button>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+        </div>
+
+        {/* Columna derecha: Mensajes al asistente */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
@@ -218,19 +296,31 @@ export function ResidenteDetailPage() {
             {mensajes.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin consultas al asistente aún.</p>
             ) : (
-              <ul className="divide-y divide-border">
-                {mensajes.map((m) => (
-                  <li key={m.id} className="py-2.5">
-                    <p className="text-sm text-foreground line-clamp-2">{m.contenido}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: es })}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="divide-y divide-border">
+                  {(verTodosMensajes ? mensajes : mensajes.slice(0, 5)).map((m) => (
+                    <li key={m.id} className="py-2.5">
+                      <p className="text-sm text-foreground line-clamp-2">{m.contenido}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: es })}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                {mensajes.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setVerTodosMensajes((v) => !v)}
+                    className="mt-3 text-sm font-medium text-primary hover:underline"
+                  >
+                    {verTodosMensajes ? 'Ver menos' : `Ver todos (${mensajes.length})`}
+                  </button>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
+
       </div>
     </div>
   );

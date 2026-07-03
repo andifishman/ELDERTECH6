@@ -239,7 +239,11 @@ export function HorariosPage() {
         abierto={!!aEliminar}
         onOpenChange={(v) => !v && setAEliminar(null)}
         titulo="¿Eliminar actividad?"
-        descripcion={`"${aEliminar?.nombre}" se eliminará de forma permanente y dejará de verse en la app.`}
+        descripcion={
+          aEliminar?.es_recurrente
+            ? `"${aEliminar.nombre}" es una actividad recurrente. Se eliminará la actividad y TODAS sus repeticiones de forma permanente.`
+            : `"${aEliminar?.nombre}" se eliminará de forma permanente y dejará de verse en la app.`
+        }
         textoConfirmar="Eliminar"
         cargando={eliminar.isPending}
         onConfirmar={() => {

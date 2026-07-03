@@ -1,10 +1,5 @@
 // ========================================
 // PANTALLA: ActividadFormPage
-// DESCRIPCIÓN:
-// Formulario de alta/edición de actividades. Cubre datos
-// básicos, recurrencia, intereses, pisos objetivo y
-// opciones avanzadas. Al guardar impacta de inmediato en
-// la app de los residentes (Supabase Realtime).
 // ========================================
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -25,6 +20,7 @@ import { notify } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { crearUbicacion, crearResponsable, crearTipoActividad } from '@/services/catalogosService';
+import type { CrearTipoActividadInput } from '@/services/catalogosService';
 import {
   useActividad,
   useActualizarActividad,
@@ -46,6 +42,7 @@ interface CamposTexto {
   fecha: string;
   descripcion: string;
   capacidad: string;
+  fecha_hasta: string;
 }
 
 const PRESETS: { valor: PresetRecurrencia; titulo: string; desc: string }[] = [
@@ -75,9 +72,9 @@ export function ActividadFormPage() {
 
   const handleCrearUbicacion = async (nombre: string) => {
     try {
-      const id = await crearUbicacion(nombre);
+      const newId = await crearUbicacion(nombre);
       void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
-      return id;
+      return newId;
     } catch (err) {
       notify.error('No se pudo crear el lugar', err instanceof Error ? err.message : undefined);
       throw err;
@@ -86,20 +83,25 @@ export function ActividadFormPage() {
 
   const handleCrearResponsable = async (nombre: string) => {
     try {
-      const id = await crearResponsable(nombre);
+      const newId = await crearResponsable(nombre);
       void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
-      return id;
+      return newId;
     } catch (err) {
       notify.error('No se pudo crear el responsable', err instanceof Error ? err.message : undefined);
       throw err;
     }
   };
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CamposTexto>({
-    defaultValues: { fecha: format(new Date(), 'yyyy-MM-dd'), hora_inicio: '09:00', hora_fin: '10:00', capacidad: '' },
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<CamposTexto>({
+    defaultValues: {
+      fecha: format(new Date(), 'yyyy-MM-dd'),
+      hora_inicio: '09:00',
+      hora_fin: '10:00',
+      capacidad: '',
+      fecha_hasta: '',
+    },
   });
 
-  // selecciones que no son inputs de texto simples
   const [tipoId, setTipoId] = useState('');
   const [ubicacionId, setUbicacionId] = useState('');
   const [responsableId, setResponsableId] = useState('');
@@ -107,33 +109,44 @@ export function ActividadFormPage() {
   const [dias, setDias] = useState<number[]>([1, 2, 3, 4, 5]);
   const [intereses, setIntereses] = useState<string[]>([]);
   const [pisos, setPisos] = useState<string[]>([]);
-  const [notificar, setNotificar] = useState(true);
+  // Notificar residentes: desactivado por defecto
+  const [notificar, setNotificar] = useState(false);
 
-  // mini-formulario para crear tipo de actividad nuevo
+  // mini-formulario nueva categoría — ahora con defaults de hora
   const [mostrarFormTipo, setMostrarFormTipo] = useState(false);
-  const [nuevoTipoNombre, setNuevoTipoNombre] = useState('');
-  const [nuevoTipoEmoji, setNuevoTipoEmoji] = useState('');
+  const [nuevoTipo, setNuevoTipo] = useState<CrearTipoActividadInput>({
+    nombre: '', emoji: '', hora_inicio_default: '', hora_fin_default: '',
+  });
   const [creandoTipo, setCreandoTipo] = useState(false);
 
   const handleCrearTipo = async () => {
-    if (!nuevoTipoNombre.trim()) return;
+    if (!nuevoTipo.nombre.trim()) return;
     setCreandoTipo(true);
     try {
-      const id = await crearTipoActividad(nuevoTipoNombre.trim(), nuevoTipoEmoji.trim());
+      const newId = await crearTipoActividad({
+        nombre: nuevoTipo.nombre.trim(),
+        emoji: nuevoTipo.emoji?.trim(),
+        hora_inicio_default: nuevoTipo.hora_inicio_default?.trim(),
+        hora_fin_default: nuevoTipo.hora_fin_default?.trim(),
+      });
       void qc.invalidateQueries({ queryKey: queryKeys.catalogos });
-      aplicarPredefinida(id, nuevoTipoNombre.trim(), nuevoTipoEmoji.trim() || null);
-      setNuevoTipoNombre('');
-      setNuevoTipoEmoji('');
+      // Pre-seleccionar la categoría recién creada y aplicar sus defaults
+      setTipoId(newId);
+      if (nuevoTipo.nombre.trim()) setValue('nombre', nuevoTipo.nombre.trim());
+      if (nuevoTipo.emoji?.trim()) setValue('emoji', nuevoTipo.emoji.trim());
+      if (nuevoTipo.hora_inicio_default?.trim()) setValue('hora_inicio', nuevoTipo.hora_inicio_default.trim());
+      if (nuevoTipo.hora_fin_default?.trim()) setValue('hora_fin', nuevoTipo.hora_fin_default.trim());
+      setNuevoTipo({ nombre: '', emoji: '', hora_inicio_default: '', hora_fin_default: '' });
       setMostrarFormTipo(false);
-      notify.success('Tipo de actividad creado');
+      notify.success('Categoría creada y seleccionada');
     } catch (err) {
-      notify.error('No se pudo crear el tipo', err instanceof Error ? err.message : undefined);
+      notify.error('No se pudo crear la categoría', err instanceof Error ? err.message : undefined);
     } finally {
       setCreandoTipo(false);
     }
   };
 
-  // precargamos el formulario en modo edición
+  // Carga el formulario en modo edición
   useEffect(() => {
     if (!actividad) return;
     reset({
@@ -144,8 +157,9 @@ export function ActividadFormPage() {
       fecha: actividad.fecha,
       descripcion: actividad.descripcion ?? '',
       capacidad: '',
+      fecha_hasta: actividad.patron_recurrencia?.hasta ?? '',
     });
-    setTipoId(actividad.tipo_actividad_id);
+    setTipoId(actividad.tipo_actividad_id ?? '');
     setUbicacionId(actividad.ubicacion_id ?? '');
     setResponsableId(actividad.responsable_id ?? '');
     setPisos(actividad.pisos_objetivo ?? []);
@@ -162,10 +176,13 @@ export function ActividadFormPage() {
     if (ints) setIntereses(ints.map((i) => i.interes_id));
   }, [actividad, reset]);
 
-  // aplica una actividad predefinida del catálogo
-  const aplicarPredefinida = (tId: string, nombre: string, emoji: string | null) => {
-    setTipoId(tId);
-    reset((prev) => ({ ...prev, nombre, emoji: emoji ?? '' }));
+  // Seleccionar categoría existente: rellena todos sus defaults
+  const aplicarCategoria = (tipo: { id: string; nombre: string; emoji: string | null; hora_inicio_default?: string | null; hora_fin_default?: string | null }) => {
+    setTipoId(tipo.id);
+    setValue('nombre', tipo.nombre);
+    if (tipo.emoji) setValue('emoji', tipo.emoji);
+    if (tipo.hora_inicio_default) setValue('hora_inicio', tipo.hora_inicio_default);
+    if (tipo.hora_fin_default) setValue('hora_fin', tipo.hora_fin_default);
   };
 
   const previa = useMemo(() => vistaPreviaRecurrencia(preset, dias), [preset, dias]);
@@ -174,15 +191,16 @@ export function ActividadFormPage() {
     set(lista.includes(valor) ? lista.filter((x) => x !== valor) : [...lista, valor]);
 
   const onSubmit = (campos: CamposTexto) => {
-    if (!tipoId) {
-      notify.error('Elegí un tipo de actividad');
-      return;
-    }
     const { es_recurrente, patron } = construirPatron(preset, dias);
+    // Agregar fecha_hasta al patrón si se proporcionó y la actividad es recurrente
+    const patronFinal = es_recurrente && campos.fecha_hasta
+      ? { ...patron, hasta: campos.fecha_hasta }
+      : patron;
+
     const input = {
       nombre: campos.nombre,
       descripcion: campos.descripcion || null,
-      tipo_actividad_id: tipoId,
+      tipo_actividad_id: tipoId || null,
       ubicacion_id: ubicacionId || null,
       responsable_id: responsableId || null,
       emoji_icono: campos.emoji || null,
@@ -190,7 +208,7 @@ export function ActividadFormPage() {
       hora_inicio: campos.hora_inicio,
       hora_fin: campos.hora_fin || null,
       es_recurrente,
-      patron_recurrencia: patron,
+      patron_recurrencia: patronFinal,
       pisos_objetivo: pisos,
       intereses,
     };
@@ -212,7 +230,11 @@ export function ActividadFormPage() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pb-10">
       <PageHeader
         titulo={esEdicion ? 'Editar actividad' : 'Nueva actividad'}
-        descripcion="Completá los datos y configurá la repetición."
+        descripcion={
+          esEdicion
+            ? 'Los cambios se aplican a todas las repeticiones de esta actividad.'
+            : 'Completá los datos y configurá la repetición.'
+        }
       />
 
       {/* 1. Datos básicos */}
@@ -233,11 +255,12 @@ export function ActividadFormPage() {
             </div>
           </div>
 
-          {/* actividades predefinidas */}
+          {/* Categorías */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <Sparkles className="h-4 w-4 text-primary" /> Categoría de actividad
+                <span className="text-xs text-muted-foreground/70">(opcional)</span>
               </p>
               <button
                 type="button"
@@ -249,14 +272,26 @@ export function ActividadFormPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {/* Opción "Sin categoría" para des-seleccionar */}
+              {tipoId && (
+                <button
+                  type="button"
+                  onClick={() => setTipoId('')}
+                  className="rounded-lg border border-dashed border-muted-foreground/40 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                >
+                  ✕ Sin categoría
+                </button>
+              )}
               {(catalogos?.tiposActividad ?? []).map((t) => (
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => aplicarPredefinida(t.id, t.nombre, t.emoji)}
+                  onClick={() => aplicarCategoria(t)}
                   className={cn(
                     'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-                    tipoId === t.id ? 'border-primary bg-primary-50 text-primary-700' : 'border-border hover:bg-accent',
+                    tipoId === t.id
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-accent',
                   )}
                 >
                   {t.emoji} {t.nombre}
@@ -264,43 +299,70 @@ export function ActividadFormPage() {
               ))}
             </div>
 
+            {/* Mini-form nueva categoría — ahora con hora de inicio/fin */}
             {mostrarFormTipo && (
-              <div className="flex items-end gap-2 rounded-lg border border-dashed border-primary/50 bg-primary-50/40 p-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Emoji</Label>
-                  <Input
-                    value={nuevoTipoEmoji}
-                    onChange={(e) => setNuevoTipoEmoji(e.target.value)}
-                    placeholder="🎨"
-                    maxLength={4}
-                    className="w-16 text-center"
-                  />
+              <div className="rounded-lg border border-dashed border-primary/50 bg-primary/5 p-4 space-y-3">
+                <p className="text-xs font-semibold text-primary">Nueva categoría — los datos se usan como valores predeterminados</p>
+                <div className="flex gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Emoji</Label>
+                    <Input
+                      value={nuevoTipo.emoji ?? ''}
+                      onChange={(e) => setNuevoTipo((p) => ({ ...p, emoji: e.target.value }))}
+                      placeholder="🎨"
+                      maxLength={4}
+                      className="w-16 text-center"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Nombre de la categoría *</Label>
+                    <Input
+                      value={nuevoTipo.nombre}
+                      onChange={(e) => setNuevoTipo((p) => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Ej: Yoga, Teatro, Cocina…"
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleCrearTipo(); } }}
+                    />
+                  </div>
                 </div>
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Nombre de la categoría</Label>
-                  <Input
-                    value={nuevoTipoNombre}
-                    onChange={(e) => setNuevoTipoNombre(e.target.value)}
-                    placeholder="Ej: Yoga, Teatro, Cocina…"
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleCrearTipo(); } }}
-                  />
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Hora inicio predeterminada</Label>
+                    <Input
+                      type="time"
+                      value={nuevoTipo.hora_inicio_default ?? ''}
+                      onChange={(e) => setNuevoTipo((p) => ({ ...p, hora_inicio_default: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Hora fin predeterminada</Label>
+                    <Input
+                      type="time"
+                      value={nuevoTipo.hora_fin_default ?? ''}
+                      onChange={(e) => setNuevoTipo((p) => ({ ...p, hora_fin_default: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex items-end gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!nuevoTipo.nombre.trim() || creandoTipo}
+                      onClick={() => void handleCrearTipo()}
+                    >
+                      {creandoTipo ? 'Creando…' : 'Crear'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setMostrarFormTipo(false);
+                        setNuevoTipo({ nombre: '', emoji: '', hora_inicio_default: '', hora_fin_default: '' });
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!nuevoTipoNombre.trim() || creandoTipo}
-                  onClick={() => void handleCrearTipo()}
-                >
-                  {creandoTipo ? 'Creando…' : 'Crear'}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => { setMostrarFormTipo(false); setNuevoTipoNombre(''); setNuevoTipoEmoji(''); }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
             )}
           </div>
@@ -315,7 +377,7 @@ export function ActividadFormPage() {
               <Input id="hora_fin" type="time" {...register('hora_fin')} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="fecha">Fecha</Label>
+              <Label htmlFor="fecha">Fecha de inicio</Label>
               <Input id="fecha" type="date" {...register('fecha', { required: true })} />
             </div>
             <div className="space-y-1.5">
@@ -323,7 +385,7 @@ export function ActividadFormPage() {
               <Combobox
                 options={ubicacionOpts}
                 value={ubicacionId}
-                onChange={(id) => setUbicacionId(id)}
+                onChange={(newId) => setUbicacionId(newId)}
                 placeholder="Elegir o escribir lugar"
                 placeholderSearch="Buscar o crear lugar…"
                 onCrear={handleCrearUbicacion}
@@ -337,7 +399,7 @@ export function ActividadFormPage() {
               <Combobox
                 options={responsableOpts}
                 value={responsableId}
-                onChange={(id) => setResponsableId(id)}
+                onChange={(newId) => setResponsableId(newId)}
                 placeholder="Elegir o escribir responsable"
                 placeholderSearch="Buscar o crear responsable…"
                 onCrear={handleCrearResponsable}
@@ -365,7 +427,7 @@ export function ActividadFormPage() {
                 onClick={() => setPreset(p.valor)}
                 className={cn(
                   'rounded-xl border p-3 text-left transition-colors',
-                  preset === p.valor ? 'border-primary bg-primary-50' : 'border-border hover:bg-accent',
+                  preset === p.valor ? 'border-primary bg-primary/10' : 'border-border hover:bg-accent',
                 )}
               >
                 <p className="text-sm font-semibold text-foreground">{p.titulo}</p>
@@ -382,10 +444,14 @@ export function ActividadFormPage() {
                   <button
                     key={d.valor}
                     type="button"
-                    onClick={() => setDias((prev) => (prev.includes(d.valor) ? prev.filter((x) => x !== d.valor) : [...prev, d.valor]))}
+                    onClick={() =>
+                      setDias((prev) => (prev.includes(d.valor) ? prev.filter((x) => x !== d.valor) : [...prev, d.valor]))
+                    }
                     className={cn(
                       'h-10 w-12 rounded-lg border text-sm font-semibold transition-colors',
-                      dias.includes(d.valor) ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent',
+                      dias.includes(d.valor)
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border hover:bg-accent',
                     )}
                   >
                     {d.label}
@@ -395,14 +461,27 @@ export function ActividadFormPage() {
             </div>
           )}
 
-          <div className="rounded-lg border-l-4 border-primary bg-primary-50 p-3 text-sm text-primary-800">
+          {/* Fecha hasta — solo si es recurrente */}
+          {preset !== 'unica' && (
+            <div className="flex items-end gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="fecha_hasta">
+                  Repetir hasta <span className="text-muted-foreground">(opcional)</span>
+                </Label>
+                <Input id="fecha_hasta" type="date" {...register('fecha_hasta')} />
+              </div>
+              <p className="mb-1.5 text-xs text-muted-foreground">Dejá vacío para repetir indefinidamente</p>
+            </div>
+          )}
+
+          <div className="rounded-lg border-l-4 border-primary bg-primary/5 p-3 text-sm text-primary-800">
             <span className="font-semibold">Vista previa: </span>
             {previa}
           </div>
         </CardContent>
       </Card>
 
-      {/* 3. Segmentación: intereses + pisos */}
+      {/* 3. Para quién */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">3 · Para quién</CardTitle>
@@ -418,7 +497,9 @@ export function ActividadFormPage() {
                   onClick={() => toggleEn(intereses, setIntereses, i.id)}
                   className={cn(
                     'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                    intereses.includes(i.id) ? 'border-primary bg-primary-50 text-primary-700' : 'border-border hover:bg-accent',
+                    intereses.includes(i.id)
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-accent',
                   )}
                 >
                   {i.emoji} {i.nombre}
@@ -439,7 +520,9 @@ export function ActividadFormPage() {
                     onClick={() => toggleEn(pisos, setPisos, valor)}
                     className={cn(
                       'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-                      pisos.includes(valor) ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent',
+                      pisos.includes(valor)
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border hover:bg-accent',
                     )}
                   >
                     {p.nombre ?? `Piso ${p.numero}`}
@@ -460,7 +543,7 @@ export function ActividadFormPage() {
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
               <p className="text-sm font-medium">Notificar a residentes al crear</p>
-              <p className="text-xs text-muted-foreground">Envía un aviso a los residentes correspondientes.</p>
+              <p className="text-xs text-muted-foreground">Envía un aviso push a los residentes correspondientes.</p>
             </div>
             <Switch checked={notificar} onCheckedChange={setNotificar} />
           </div>
@@ -473,7 +556,7 @@ export function ActividadFormPage() {
         </CardContent>
       </Card>
 
-      {/* acciones */}
+      {/* Acciones */}
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={() => navigate('/horarios')}>
           <X className="h-4 w-4" /> Cancelar
