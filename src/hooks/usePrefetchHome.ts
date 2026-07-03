@@ -27,13 +27,7 @@ export function usePrefetchHome() {
   const { profile, isLoading } = useAuth();
 
   const residenteId = profile?.residente?.id ?? null;
-<<<<<<< HEAD
-  const miPiso = profile?.residente?.piso ?? null;
-=======
   const miSeccion = profile?.residente?.seccion ?? null;
-  // Key estable: misma construcción que useActividades para que coincida la queryKey
-  const interesesKey = [...(profile?.residente_interes_ids ?? [])].sort().join(',');
->>>>>>> rama-andi
 
   useEffect(() => {
     if (isLoading) return;
@@ -42,17 +36,10 @@ export function usePrefetchHome() {
 
     // Actividades de hoy (lo primero que suele abrirse)
     qc.prefetchQuery({
-<<<<<<< HEAD
-      queryKey: actividadesKey(hoy, residenteId, miPiso),
+      queryKey: actividadesKey(hoy, residenteId, miSeccion),
       queryFn: () =>
         residenteId
-          ? getActividadesPersonalizadas(hoy, residenteId, miPiso)
-=======
-      queryKey: actividadesKey(hoy, residenteId, interesesKey, miSeccion),
-      queryFn: () =>
-        residenteId
-          ? getActividadesPersonalizadas(hoy, misInteresesIds, miSeccion)
->>>>>>> rama-andi
+          ? getActividadesPersonalizadas(hoy, residenteId, miSeccion)
           : getActividadesPorFecha(hoy),
       staleTime: 30 * 60 * 1000,
     });
@@ -91,9 +78,5 @@ export function usePrefetchHome() {
         staleTime: 30 * 60 * 1000,
       });
     }
-<<<<<<< HEAD
-  }, [qc, isLoading, residenteId, miPiso]);
-=======
-  }, [qc, isLoading, residenteId, interesesKey, miSeccion]);
->>>>>>> rama-andi
+  }, [qc, isLoading, residenteId, miSeccion]);
 }

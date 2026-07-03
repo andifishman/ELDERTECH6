@@ -136,7 +136,7 @@ export interface Actividad {
 }
 
 // Excepción puntual de visibilidad: incluye o excluye a un residente
-// puntual sin importar si su piso coincide con pisos_objetivo
+// puntual sin importar si su sección coincide con secciones_objetivo
 export interface ActividadResidenteOverride {
   actividad_id: string;
   residente_id: string;

@@ -110,16 +110,11 @@ export function ActividadFormPage() {
   const [responsableId, setResponsableId] = useState('');
   const [preset, setPreset] = useState<PresetRecurrencia>('lun_vie');
   const [dias, setDias] = useState<number[]>([1, 2, 3, 4, 5]);
-<<<<<<< HEAD
-  const [pisos, setPisos] = useState<string[]>([]);
+  const [secciones, setSecciones] = useState<string[]>([]);
   // Excepciones puntuales: residente_id -> incluido forzado (true/false).
-  // Solo se guardan las que difieren del cálculo automático por piso.
+  // Solo se guardan las que difieren del cálculo automático por sección.
   const [residentesOverride, setResidentesOverride] = useState<Record<string, boolean>>({});
   const [filtroResidente, setFiltroResidente] = useState('');
-=======
-  const [intereses, setIntereses] = useState<string[]>([]);
-  const [secciones, setSecciones] = useState<string[]>([]);
->>>>>>> rama-andi
   // Notificar residentes: desactivado por defecto
   const [notificar, setNotificar] = useState(false);
 
@@ -226,13 +221,8 @@ export function ActividadFormPage() {
       hora_fin: campos.hora_fin || null,
       es_recurrente,
       patron_recurrencia: patronFinal,
-<<<<<<< HEAD
-      pisos_objetivo: pisos,
-      residentesOverride: overridesInput,
-=======
       secciones_objetivo: secciones,
-      intereses,
->>>>>>> rama-andi
+      residentesOverride: overridesInput,
     };
 
     if (esEdicion && id) {
@@ -510,32 +500,7 @@ export function ActividadFormPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-<<<<<<< HEAD
-            <Label>Pisos objetivo (vacío = todos los pisos)</Label>
-=======
-            <Label>Intereses (vacío = todos los residentes)</Label>
-            <div className="flex flex-wrap gap-2">
-              {(catalogos?.intereses ?? []).map((i) => (
-                <button
-                  key={i.id}
-                  type="button"
-                  onClick={() => toggleEn(intereses, setIntereses, i.id)}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                    intereses.includes(i.id)
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:bg-accent',
-                  )}
-                >
-                  {i.emoji} {i.nombre}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <Label>Secciones objetivo (vacío = todas las secciones)</Label>
->>>>>>> rama-andi
             <div className="flex flex-wrap gap-2">
               {(catalogos?.secciones ?? []).map((s) => (
                 <button
@@ -555,7 +520,7 @@ export function ActividadFormPage() {
             </div>
           </div>
 
-          {/* Lista de residentes: quién queda incluido/excluido según el piso, con excepciones puntuales */}
+          {/* Lista de residentes: quién queda incluido/excluido según la sección, con excepciones puntuales */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Residentes que ven esta actividad</Label>
@@ -570,7 +535,7 @@ export function ActividadFormPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Por defecto, un residente ve la actividad si su piso está entre los pisos objetivo (o si no elegiste ningún piso). Podés forzar una excepción individual.
+              Por defecto, un residente ve la actividad si su sección está entre las secciones objetivo (o si no elegiste ninguna sección). Podés forzar una excepción individual.
             </p>
 
             {cargandoResidentes ? (
@@ -581,26 +546,26 @@ export function ActividadFormPage() {
                   `${r.nombre} ${r.apellido}`.toLowerCase().includes(filtroResidente.toLowerCase()),
                 );
                 const conEstado = lista.map((r) => {
-                  const coincidePiso = pisos.length === 0 || (!!r.piso && pisos.includes(r.piso));
+                  const coincideSeccion = secciones.length === 0 || (!!r.seccion && secciones.includes(r.seccion));
                   const override = residentesOverride[r.id];
-                  const incluido = override ?? coincidePiso;
+                  const incluido = override ?? coincideSeccion;
                   return { residente: r, incluido, esExcepcion: override !== undefined };
                 });
                 const incluidos = conEstado.filter((c) => c.incluido);
                 const excluidos = conEstado.filter((c) => !c.incluido);
 
-                const toggle = (residenteId: string, coincidePiso: boolean, incluidoActual: boolean) => {
+                const toggle = (residenteId: string, coincideSeccion: boolean, incluidoActual: boolean) => {
                   setResidentesOverride((prev) => {
                     const yaEsExcepcion = prev[residenteId] !== undefined;
                     if (yaEsExcepcion) {
-                      // Ya tiene excepción → quitarla, vuelve al cálculo automático por piso
+                      // Ya tiene excepción → quitarla, vuelve al cálculo automático por sección
                       const { [residenteId]: _omit, ...resto } = prev;
                       return resto;
                     }
                     // Forzar lo opuesto a su estado actual
                     return { ...prev, [residenteId]: !incluidoActual };
                   });
-                  void coincidePiso;
+                  void coincideSeccion;
                 };
 
                 if (lista.length === 0) {
@@ -619,12 +584,12 @@ export function ActividadFormPage() {
                           <li key={r.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
                             <span className="truncate">
                               {r.nombre} {r.apellido}
-                              {r.piso ? <span className="text-xs text-muted-foreground"> · Piso {r.piso}</span> : null}
+                              {r.seccion ? <span className="text-xs text-muted-foreground"> · {r.seccion}</span> : null}
                               {esExcepcion && <span className="ml-1 text-[10px] font-semibold text-primary">(excepción)</span>}
                             </span>
                             <button
                               type="button"
-                              onClick={() => toggle(r.id, pisos.length === 0 || (!!r.piso && pisos.includes(r.piso)), incluido)}
+                              onClick={() => toggle(r.id, secciones.length === 0 || (!!r.seccion && secciones.includes(r.seccion)), incluido)}
                               className="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-destructive hover:bg-destructive/10"
                             >
                               Excluir
@@ -643,12 +608,12 @@ export function ActividadFormPage() {
                           <li key={r.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
                             <span className="truncate">
                               {r.nombre} {r.apellido}
-                              {r.piso ? <span className="text-xs text-muted-foreground"> · Piso {r.piso}</span> : null}
+                              {r.seccion ? <span className="text-xs text-muted-foreground"> · {r.seccion}</span> : null}
                               {esExcepcion && <span className="ml-1 text-[10px] font-semibold text-primary">(excepción)</span>}
                             </span>
                             <button
                               type="button"
-                              onClick={() => toggle(r.id, pisos.length === 0 || (!!r.piso && pisos.includes(r.piso)), incluido)}
+                              onClick={() => toggle(r.id, secciones.length === 0 || (!!r.seccion && secciones.includes(r.seccion)), incluido)}
                               className="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
                             >
                               Incluir

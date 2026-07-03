@@ -138,13 +138,8 @@ export interface ActividadCompleta extends Actividad {
 }
 
 // Actividad con prioridad personalizada para la pantalla de Horarios
-<<<<<<< HEAD
-// 1=coincide piso objetivo (o incluido por excepción)  3=general (sin restricción de piso)
+// 1=coincide sección objetivo (o incluido por excepción)  3=general (sin restricción de sección)
 export type PrioridadActividad = 1 | 3;
-=======
-// 1=interés+sección  2=solo interés  3=general (todos)  4=sin coincidencia
-export type PrioridadActividad = 1 | 2 | 3 | 4;
->>>>>>> rama-andi
 
 export interface ActividadConPrioridad extends ActividadCompleta {
   prioridad: PrioridadActividad;

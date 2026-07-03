@@ -1,5 +1,5 @@
 import { supabase, ORG_ID } from './supabase';
-import type { ActividadCompleta, ActividadConPrioridad, PatronRecurrencia, PrioridadActividad } from '@/types/database.types';
+import type { ActividadCompleta, ActividadConPrioridad, PrioridadActividad } from '@/types/database.types';
 import { toSupabaseDate } from '@/utils/dateUtils';
 
 const ACTIVIDAD_SELECT = `
@@ -31,38 +31,23 @@ export async function getActividadesPorFecha(fecha: Date): Promise<ActividadComp
 }
 
 /**
-<<<<<<< HEAD
  * Devuelve las actividades del día visibles para este residente, según su
- * piso y las excepciones puntuales cargadas desde el backoffice.
+ * sección y las excepciones puntuales cargadas desde el backoffice.
  *
  * Regla de visibilidad para cada actividad:
  *  - Si el residente tiene una excepción explícita → manda la excepción
  *    (incluido=true la muestra igual, incluido=false la oculta igual).
- *  - Si no hay excepción → se muestra si no tiene pisos objetivo, o si el
- *    piso del residente está entre los pisos objetivo.
+ *  - Si no hay excepción → se muestra si no tiene secciones objetivo, o si la
+ *    sección del residente está entre las secciones objetivo.
  *
- * Prioridad/recomendada: 1 (⭐) cuando la actividad apunta a un piso
- * específico y el residente coincide (o fue incluido por excepción);
- * 3 = general (sin restricción de piso).
+ * Prioridad/recomendada: 1 (⭐) cuando la actividad apunta a una sección
+ * específica y el residente coincide (o fue incluido por excepción);
+ * 3 = general (sin restricción de sección).
  */
 export async function getActividadesPersonalizadas(
   fecha: Date,
   residenteId: string,
-  miPiso: string | null,
-=======
- * Devuelve las actividades del día con prioridad personalizada según
- * los intereses y la sección del residente.
- *
- * Prioridades:
- *  1 = ⭐ Recomendado: coincide interés + sección (o sin restricción de sección)
- *  2 = Coincide interés, sección no aplica
- *  3 = General (sin filtro de interés)
- */
-export async function getActividadesPersonalizadas(
-  fecha: Date,
-  misInteresesIds: string[],
   miSeccion: string | null,
->>>>>>> rama-andi
 ): Promise<ActividadConPrioridad[]> {
   const fechaStr = toSupabaseDate(fecha);
   const actividades = await fetchActividadesPorFecha(fechaStr);
@@ -72,48 +57,16 @@ export async function getActividadesPersonalizadas(
   >;
 
   const resultado = actividadesTyped
-<<<<<<< HEAD
     .map((a) => {
-      const actPisos: string[] | null = a.pisos_objetivo ?? null;
-      const hasPisoTarget = !!actPisos?.length;
-      const matchesPiso = !hasPisoTarget || (!!miPiso && actPisos!.includes(miPiso));
-=======
-    .filter((a) => {
       const actSecciones: string[] | null = a.secciones_objetivo ?? null;
-      const actIntereses = a.actividad_intereses?.map((ai) => ai.interes_id) ?? [];
-
-      const seccionOk = !miSeccion || !actSecciones?.length || actSecciones.includes(miSeccion);
-      const interestOk = actIntereses.length === 0 || actIntereses.some((id) => misInteresesIds.includes(id));
-
-      return seccionOk && interestOk;
-    })
-    .map((a) => {
-      const actIntereses = a.actividad_intereses?.map((ai) => ai.interes_id) ?? [];
-      const actSecciones: string[] | null = a.secciones_objetivo ?? null;
-
-      const matchesInterest = actIntereses.length > 0 && actIntereses.some((id) => misInteresesIds.includes(id));
       const hasSeccionTarget = !!actSecciones?.length;
       const matchesSeccion = !hasSeccionTarget || (!!miSeccion && actSecciones!.includes(miSeccion));
->>>>>>> rama-andi
 
       const override = a.actividad_residentes_override?.find((o) => o.residente_id === residenteId);
-      const visible = override ? override.incluido : matchesPiso;
+      const visible = override ? override.incluido : matchesSeccion;
 
-<<<<<<< HEAD
-      const prioridad: PrioridadActividad = hasPisoTarget && (override?.incluido ?? matchesPiso) ? 1 : 3;
+      const prioridad: PrioridadActividad = hasSeccionTarget && (override?.incluido ?? matchesSeccion) ? 1 : 3;
       const recomendada = prioridad === 1;
-=======
-      if (matchesInterest && matchesSeccion && hasSeccionTarget) {
-        prioridad = 1;
-        recomendada = true;
-      } else if (matchesInterest) {
-        prioridad = 2;
-        recomendada = false;
-      } else {
-        prioridad = 3;
-        recomendada = false;
-      }
->>>>>>> rama-andi
 
       return { actividad: a, visible, prioridad, recomendada };
     })

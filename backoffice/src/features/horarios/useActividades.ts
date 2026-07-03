@@ -43,7 +43,7 @@ export function useCatalogos() {
   });
 }
 
-// Residentes activos para la sección "Para quién" (incluir/excluir por piso)
+// Residentes activos para la sección "Para quién" (incluir/excluir por sección)
 export function useResidentesActivos() {
   return useQuery({
     queryKey: ['residentes-activos'],

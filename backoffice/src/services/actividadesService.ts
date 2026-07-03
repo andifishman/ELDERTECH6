@@ -25,13 +25,8 @@ export interface ActividadInput {
   hora_fin?: string | null;
   es_recurrente: boolean;
   patron_recurrencia?: PatronRecurrencia | null;
-<<<<<<< HEAD
-  pisos_objetivo?: string[] | null;
-  residentesOverride?: ResidenteOverrideInput[];
-=======
   secciones_objetivo?: string[] | null;
-  intereses?: string[];
->>>>>>> rama-andi
+  residentesOverride?: ResidenteOverrideInput[];
 }
 
 // Extrae el mensaje de un error de Supabase (PostgrestError no extiende Error)
