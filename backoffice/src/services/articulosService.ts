@@ -79,6 +79,26 @@ export async function listarCategoriasArticulo(): Promise<CategoriaTutorial[]> {
   return (data ?? []) as CategoriaTutorial[];
 }
 
+// Crea una nueva categoría de tutoriales. El emoji es opcional: si no se
+// completa, la categoría se muestra solo con el nombre.
+export async function crearCategoriaTutorial(nombre: string, emoji?: string): Promise<string> {
+  const { data: ultima } = await supabase
+    .from('categorias_tutorial')
+    .select('orden')
+    .order('orden', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const orden = ((ultima as { orden?: number } | null)?.orden ?? 0) + 1;
+
+  const { data, error } = await supabase
+    .from('categorias_tutorial')
+    .insert({ nombre, emoji: emoji || null, orden, activo: true })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
 export async function obtenerArticulo(id: string): Promise<TutorialConCategoria | null> {
   const { data, error } = await supabase
     .from('tutoriales')

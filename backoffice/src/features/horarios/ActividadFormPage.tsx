@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Save, X, Sparkles, Plus } from 'lucide-react';
+import { Save, X, Sparkles, Plus, Search, UserCheck, UserX } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,11 +21,13 @@ import { cn } from '@/lib/utils';
 import { queryKeys } from '@/lib/queryClient';
 import { crearUbicacion, crearResponsable, crearTipoActividad } from '@/services/catalogosService';
 import type { CrearTipoActividadInput } from '@/services/catalogosService';
+import type { ResidenteOverrideInput } from '@/services/actividadesService';
 import {
   useActividad,
   useActualizarActividad,
   useCatalogos,
   useCrearActividad,
+  useResidentesActivos,
 } from './useActividades';
 import {
   DIAS_SEMANA,
@@ -61,6 +63,7 @@ export function ActividadFormPage() {
   const qc = useQueryClient();
   const { data: catalogos, isLoading: cargandoCat } = useCatalogos();
   const { data: actividad, isLoading: cargandoAct } = useActividad(id);
+  const { data: residentes, isLoading: cargandoResidentes } = useResidentesActivos();
   const crear = useCrearActividad();
   const actualizar = useActualizarActividad();
 
@@ -107,8 +110,11 @@ export function ActividadFormPage() {
   const [responsableId, setResponsableId] = useState('');
   const [preset, setPreset] = useState<PresetRecurrencia>('lun_vie');
   const [dias, setDias] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [intereses, setIntereses] = useState<string[]>([]);
   const [pisos, setPisos] = useState<string[]>([]);
+  // Excepciones puntuales: residente_id -> incluido forzado (true/false).
+  // Solo se guardan las que difieren del cálculo automático por piso.
+  const [residentesOverride, setResidentesOverride] = useState<Record<string, boolean>>({});
+  const [filtroResidente, setFiltroResidente] = useState('');
   // Notificar residentes: desactivado por defecto
   const [notificar, setNotificar] = useState(false);
 
@@ -172,8 +178,10 @@ export function ActividadFormPage() {
       setPreset('especificos');
       setDias(d);
     }
-    const ints = (actividad as unknown as { actividad_intereses?: { interes_id: string }[] }).actividad_intereses;
-    if (ints) setIntereses(ints.map((i) => i.interes_id));
+    const overrides = (actividad as unknown as { actividad_residentes_override?: { residente_id: string; incluido: boolean }[] }).actividad_residentes_override;
+    if (overrides) {
+      setResidentesOverride(Object.fromEntries(overrides.map((o) => [o.residente_id, o.incluido])));
+    }
   }, [actividad, reset]);
 
   // Seleccionar categoría existente: rellena todos sus defaults
@@ -197,6 +205,10 @@ export function ActividadFormPage() {
       ? { ...patron, hasta: campos.fecha_hasta }
       : patron;
 
+    const overridesInput: ResidenteOverrideInput[] = Object.entries(residentesOverride).map(
+      ([residente_id, incluido]) => ({ residente_id, incluido }),
+    );
+
     const input = {
       nombre: campos.nombre,
       descripcion: campos.descripcion || null,
@@ -210,7 +222,7 @@ export function ActividadFormPage() {
       es_recurrente,
       patron_recurrencia: patronFinal,
       pisos_objetivo: pisos,
-      intereses,
+      residentesOverride: overridesInput,
     };
 
     if (esEdicion && id) {
@@ -488,27 +500,6 @@ export function ActividadFormPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label>Intereses (vacío = todos los residentes)</Label>
-            <div className="flex flex-wrap gap-2">
-              {(catalogos?.intereses ?? []).map((i) => (
-                <button
-                  key={i.id}
-                  type="button"
-                  onClick={() => toggleEn(intereses, setIntereses, i.id)}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                    intereses.includes(i.id)
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:bg-accent',
-                  )}
-                >
-                  {i.emoji} {i.nombre}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <Label>Pisos objetivo (vacío = todos los pisos)</Label>
             <div className="flex flex-wrap gap-2">
               {(catalogos?.pisos ?? []).map((p) => {
@@ -530,6 +521,114 @@ export function ActividadFormPage() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Lista de residentes: quién queda incluido/excluido según el piso, con excepciones puntuales */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Residentes que ven esta actividad</Label>
+              <div className="relative w-52">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={filtroResidente}
+                  onChange={(e) => setFiltroResidente(e.target.value)}
+                  placeholder="Buscar residente…"
+                  className="h-8 pl-8 text-xs"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Por defecto, un residente ve la actividad si su piso está entre los pisos objetivo (o si no elegiste ningún piso). Podés forzar una excepción individual.
+            </p>
+
+            {cargandoResidentes ? (
+              <p className="text-sm text-muted-foreground py-2">Cargando residentes…</p>
+            ) : (
+              (() => {
+                const lista = (residentes ?? []).filter((r) =>
+                  `${r.nombre} ${r.apellido}`.toLowerCase().includes(filtroResidente.toLowerCase()),
+                );
+                const conEstado = lista.map((r) => {
+                  const coincidePiso = pisos.length === 0 || (!!r.piso && pisos.includes(r.piso));
+                  const override = residentesOverride[r.id];
+                  const incluido = override ?? coincidePiso;
+                  return { residente: r, incluido, esExcepcion: override !== undefined };
+                });
+                const incluidos = conEstado.filter((c) => c.incluido);
+                const excluidos = conEstado.filter((c) => !c.incluido);
+
+                const toggle = (residenteId: string, coincidePiso: boolean, incluidoActual: boolean) => {
+                  setResidentesOverride((prev) => {
+                    const yaEsExcepcion = prev[residenteId] !== undefined;
+                    if (yaEsExcepcion) {
+                      // Ya tiene excepción → quitarla, vuelve al cálculo automático por piso
+                      const { [residenteId]: _omit, ...resto } = prev;
+                      return resto;
+                    }
+                    // Forzar lo opuesto a su estado actual
+                    return { ...prev, [residenteId]: !incluidoActual };
+                  });
+                  void coincidePiso;
+                };
+
+                if (lista.length === 0) {
+                  return <p className="text-sm text-muted-foreground py-2">No hay residentes activos que coincidan con la búsqueda.</p>;
+                }
+
+                return (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-border">
+                      <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground">
+                        <UserCheck className="h-3.5 w-3.5 text-primary" /> Incluidos ({incluidos.length})
+                      </div>
+                      <ul className="max-h-56 divide-y divide-border overflow-y-auto">
+                        {incluidos.length === 0 && <li className="px-3 py-2 text-xs text-muted-foreground">Nadie por ahora</li>}
+                        {incluidos.map(({ residente: r, incluido, esExcepcion }) => (
+                          <li key={r.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+                            <span className="truncate">
+                              {r.nombre} {r.apellido}
+                              {r.piso ? <span className="text-xs text-muted-foreground"> · Piso {r.piso}</span> : null}
+                              {esExcepcion && <span className="ml-1 text-[10px] font-semibold text-primary">(excepción)</span>}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggle(r.id, pisos.length === 0 || (!!r.piso && pisos.includes(r.piso)), incluido)}
+                              className="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-destructive hover:bg-destructive/10"
+                            >
+                              Excluir
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="rounded-lg border border-border">
+                      <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground">
+                        <UserX className="h-3.5 w-3.5 text-muted-foreground" /> Excluidos ({excluidos.length})
+                      </div>
+                      <ul className="max-h-56 divide-y divide-border overflow-y-auto">
+                        {excluidos.length === 0 && <li className="px-3 py-2 text-xs text-muted-foreground">Nadie por ahora</li>}
+                        {excluidos.map(({ residente: r, incluido, esExcepcion }) => (
+                          <li key={r.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+                            <span className="truncate">
+                              {r.nombre} {r.apellido}
+                              {r.piso ? <span className="text-xs text-muted-foreground"> · Piso {r.piso}</span> : null}
+                              {esExcepcion && <span className="ml-1 text-[10px] font-semibold text-primary">(excepción)</span>}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggle(r.id, pisos.length === 0 || (!!r.piso && pisos.includes(r.piso)), incluido)}
+                              className="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                            >
+                              Incluir
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
           </div>
         </CardContent>
       </Card>

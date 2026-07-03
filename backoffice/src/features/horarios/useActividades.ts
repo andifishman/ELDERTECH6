@@ -17,6 +17,7 @@ import {
   type ActividadInput,
 } from '@/services/actividadesService';
 import { obtenerCatalogos } from '@/services/catalogosService';
+import { listarResidentes } from '@/services/residentesService';
 import { notify } from '@/components/ui/toast';
 
 export function useActividades(fecha?: string) {
@@ -39,6 +40,15 @@ export function useCatalogos() {
     queryKey: queryKeys.catalogos,
     queryFn: obtenerCatalogos,
     staleTime: 1000 * 60 * 10, // catálogos cambian poco
+  });
+}
+
+// Residentes activos para la sección "Para quién" (incluir/excluir por piso)
+export function useResidentesActivos() {
+  return useQuery({
+    queryKey: ['residentes-activos'],
+    queryFn: () => listarResidentes().then((rs) => rs.filter((r) => r.activo)),
+    staleTime: 1000 * 60 * 5,
   });
 }
 

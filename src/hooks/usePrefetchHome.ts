@@ -28,21 +28,18 @@ export function usePrefetchHome() {
 
   const residenteId = profile?.residente?.id ?? null;
   const miPiso = profile?.residente?.piso ?? null;
-  // Key estable: misma construcción que useActividades para que coincida la queryKey
-  const interesesKey = [...(profile?.residente_interes_ids ?? [])].sort().join(',');
 
   useEffect(() => {
     if (isLoading) return;
 
     const hoy = new Date();
-    const misInteresesIds = interesesKey ? interesesKey.split(',') : [];
 
     // Actividades de hoy (lo primero que suele abrirse)
     qc.prefetchQuery({
-      queryKey: actividadesKey(hoy, residenteId, interesesKey, miPiso),
+      queryKey: actividadesKey(hoy, residenteId, miPiso),
       queryFn: () =>
         residenteId
-          ? getActividadesPersonalizadas(hoy, misInteresesIds, miPiso)
+          ? getActividadesPersonalizadas(hoy, residenteId, miPiso)
           : getActividadesPorFecha(hoy),
       staleTime: 30 * 60 * 1000,
     });
@@ -81,5 +78,5 @@ export function usePrefetchHome() {
         staleTime: 30 * 60 * 1000,
       });
     }
-  }, [qc, isLoading, residenteId, interesesKey, miPiso]);
+  }, [qc, isLoading, residenteId, miPiso]);
 }

@@ -1,5 +1,5 @@
 import { supabase, ORG_ID } from './supabase';
-import type { ActividadCompleta, ActividadConPrioridad, PatronRecurrencia } from '@/types/database.types';
+import type { ActividadCompleta, ActividadConPrioridad, PatronRecurrencia, PrioridadActividad } from '@/types/database.types';
 import { toSupabaseDate } from '@/utils/dateUtils';
 
 const ACTIVIDAD_SELECT = `
@@ -7,7 +7,7 @@ const ACTIVIDAD_SELECT = `
   tipo_actividad:tipos_actividad(*),
   ubicacion:ubicaciones(*),
   responsable:responsables(*),
-  actividad_intereses(interes_id)
+  actividad_residentes_override(residente_id, incluido)
 `;
 
 // Devuelve todas las actividades para una fecha dada.
@@ -31,58 +31,47 @@ export async function getActividadesPorFecha(fecha: Date): Promise<ActividadComp
 }
 
 /**
- * Devuelve las actividades del día con prioridad personalizada según
- * los intereses y el piso del residente.
+ * Devuelve las actividades del día visibles para este residente, según su
+ * piso y las excepciones puntuales cargadas desde el backoffice.
  *
- * Prioridades:
- *  1 = ⭐ Recomendado: coincide interés + piso (o sin restricción de piso)
- *  2 = Coincide interés, piso no aplica
- *  3 = General (sin filtro de interés)
+ * Regla de visibilidad para cada actividad:
+ *  - Si el residente tiene una excepción explícita → manda la excepción
+ *    (incluido=true la muestra igual, incluido=false la oculta igual).
+ *  - Si no hay excepción → se muestra si no tiene pisos objetivo, o si el
+ *    piso del residente está entre los pisos objetivo.
+ *
+ * Prioridad/recomendada: 1 (⭐) cuando la actividad apunta a un piso
+ * específico y el residente coincide (o fue incluido por excepción);
+ * 3 = general (sin restricción de piso).
  */
 export async function getActividadesPersonalizadas(
   fecha: Date,
-  misInteresesIds: string[],
+  residenteId: string,
   miPiso: string | null,
 ): Promise<ActividadConPrioridad[]> {
   const fechaStr = toSupabaseDate(fecha);
   const actividades = await fetchActividadesPorFecha(fechaStr);
 
-  const actividadesTyped = actividades as Array<ActividadCompleta & { actividad_intereses: Array<{ interes_id: string }> }>;
+  const actividadesTyped = actividades as Array<
+    ActividadCompleta & { actividad_residentes_override: Array<{ residente_id: string; incluido: boolean }> }
+  >;
 
   const resultado = actividadesTyped
-    .filter((a) => {
-      const actPisos: string[] | null = a.pisos_objetivo ?? null;
-      const actIntereses = a.actividad_intereses?.map((ai) => ai.interes_id) ?? [];
-
-      const pisoOk = !miPiso || !actPisos?.length || actPisos.includes(miPiso);
-      const interestOk = actIntereses.length === 0 || actIntereses.some((id) => misInteresesIds.includes(id));
-
-      return pisoOk && interestOk;
-    })
     .map((a) => {
-      const actIntereses = a.actividad_intereses?.map((ai) => ai.interes_id) ?? [];
       const actPisos: string[] | null = a.pisos_objetivo ?? null;
-
-      const matchesInterest = actIntereses.length > 0 && actIntereses.some((id) => misInteresesIds.includes(id));
       const hasPisoTarget = !!actPisos?.length;
       const matchesPiso = !hasPisoTarget || (!!miPiso && actPisos!.includes(miPiso));
 
-      let prioridad: 1 | 2 | 3;
-      let recomendada: boolean;
+      const override = a.actividad_residentes_override?.find((o) => o.residente_id === residenteId);
+      const visible = override ? override.incluido : matchesPiso;
 
-      if (matchesInterest && matchesPiso && hasPisoTarget) {
-        prioridad = 1;
-        recomendada = true;
-      } else if (matchesInterest) {
-        prioridad = 2;
-        recomendada = false;
-      } else {
-        prioridad = 3;
-        recomendada = false;
-      }
+      const prioridad: PrioridadActividad = hasPisoTarget && (override?.incluido ?? matchesPiso) ? 1 : 3;
+      const recomendada = prioridad === 1;
 
-      return { ...a, prioridad, recomendada } satisfies ActividadConPrioridad;
-    });
+      return { actividad: a, visible, prioridad, recomendada };
+    })
+    .filter((r) => r.visible)
+    .map(({ actividad, prioridad, recomendada }) => ({ ...actividad, prioridad, recomendada }) satisfies ActividadConPrioridad);
 
   return resultado.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
 }

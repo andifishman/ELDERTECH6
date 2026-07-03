@@ -6,7 +6,12 @@ import type { ActividadCompleta, PatronRecurrencia } from '@/types/database.type
 import { registrarAuditoria } from './auditService';
 
 const SELECT_COMPLETO =
-  '*, tipo_actividad:tipos_actividad(*), ubicacion:ubicaciones(*), responsable:responsables(*), actividad_intereses(interes_id)';
+  '*, tipo_actividad:tipos_actividad(*), ubicacion:ubicaciones(*), responsable:responsables(*), actividad_residentes_override(residente_id, incluido)';
+
+export interface ResidenteOverrideInput {
+  residente_id: string;
+  incluido: boolean;
+}
 
 export interface ActividadInput {
   nombre: string;
@@ -21,7 +26,7 @@ export interface ActividadInput {
   es_recurrente: boolean;
   patron_recurrencia?: PatronRecurrencia | null;
   pisos_objetivo?: string[] | null;
-  intereses?: string[];
+  residentesOverride?: ResidenteOverrideInput[];
 }
 
 // Extrae el mensaje de un error de Supabase (PostgrestError no extiende Error)
@@ -36,20 +41,33 @@ function normalizarHora(h?: string | null): string | null {
   return h.length === 5 ? `${h}:00` : h;
 }
 
-async function sincronizarIntereses(actividadId: string, intereses?: string[]) {
-  await supabase.from('actividad_intereses').delete().eq('actividad_id', actividadId);
-  if (intereses && intereses.length > 0) {
+async function sincronizarResidentesOverride(actividadId: string, overrides?: ResidenteOverrideInput[]) {
+  await supabase.from('actividad_residentes_override').delete().eq('actividad_id', actividadId);
+  if (overrides && overrides.length > 0) {
     await supabase
-      .from('actividad_intereses')
-      .insert(intereses.map((interes_id) => ({ actividad_id: actividadId, interes_id })));
+      .from('actividad_residentes_override')
+      .insert(overrides.map((o) => ({ actividad_id: actividadId, residente_id: o.residente_id, incluido: o.incluido })));
+  }
+}
+
+// Copia las excepciones de la plantilla a cada ocurrencia recién generada
+// (cada ocurrencia es una fila independiente con su propio id)
+async function propagarOverrideAOcurrencias(occurrenceIds: string[], overrides?: ResidenteOverrideInput[]) {
+  if (!overrides || overrides.length === 0 || occurrenceIds.length === 0) return;
+  const rows = occurrenceIds.flatMap((actividad_id) =>
+    overrides.map((o) => ({ actividad_id, residente_id: o.residente_id, incluido: o.incluido })),
+  );
+  for (let i = 0; i < rows.length; i += 500) {
+    await supabase.from('actividad_residentes_override').insert(rows.slice(i, i + 500));
   }
 }
 
 // Genera una fila por ocurrencia futura para una actividad recurrente.
 // La plantilla (primer row) ya existe; esta función crea todas las demás.
-async function generarOcurrencias(plantillaId: string, input: ActividadInput): Promise<void> {
+// Devuelve los ids de las ocurrencias creadas (para propagar excepciones de residentes).
+async function generarOcurrencias(plantillaId: string, input: ActividadInput): Promise<string[]> {
   const { patron_recurrencia } = input;
-  if (!patron_recurrencia?.dias_semana?.length) return;
+  if (!patron_recurrencia?.dias_semana?.length) return [];
 
   const diasSemana = patron_recurrencia.dias_semana;
   const fechaInicio = new Date(input.fecha + 'T00:00:00');
@@ -90,10 +108,13 @@ async function generarOcurrencias(plantillaId: string, input: ActividadInput): P
   }
 
   // Insertar en lotes de 100 para no exceder límites de payload
+  const idsCreados: string[] = [];
   for (let i = 0; i < rows.length; i += 100) {
-    const { error } = await supabase.from('actividades').insert(rows.slice(i, i + 100));
+    const { data, error } = await supabase.from('actividades').insert(rows.slice(i, i + 100)).select('id');
     if (error) console.warn('Error al generar ocurrencias:', error.message);
+    if (data) idsCreados.push(...data.map((r: { id: string }) => r.id));
   }
+  return idsCreados;
 }
 
 // Lista actividades de una fecha. Con el enfoque multi-row, cada ocurrencia
@@ -120,7 +141,7 @@ export async function listarActividades(fecha?: string): Promise<ActividadComple
 }
 
 export async function crearActividad(input: ActividadInput): Promise<string> {
-  const { intereses, ...resto } = input;
+  const { residentesOverride, ...resto } = input;
   const { data, error } = await supabase
     .from('actividades')
     .insert({
@@ -136,13 +157,14 @@ export async function crearActividad(input: ActividadInput): Promise<string> {
     .single();
   if (error) throw error;
 
-  await sincronizarIntereses(data.id, intereses);
+  await sincronizarResidentesOverride(data.id, residentesOverride);
 
   if (input.es_recurrente && input.patron_recurrencia?.dias_semana?.length) {
     // Marcar la plantilla con plantilla_id = su propio id (self-reference)
     await supabase.from('actividades').update({ plantilla_id: data.id }).eq('id', data.id);
-    // Generar todas las ocurrencias futuras
-    await generarOcurrencias(data.id, input);
+    // Generar todas las ocurrencias futuras y propagarles las mismas excepciones
+    const idsOcurrencias = await generarOcurrencias(data.id, input);
+    await propagarOverrideAOcurrencias(idsOcurrencias, residentesOverride);
   }
 
   await registrarAuditoria({
@@ -156,7 +178,7 @@ export async function crearActividad(input: ActividadInput): Promise<string> {
 }
 
 export async function actualizarActividad(id: string, input: ActividadInput): Promise<void> {
-  const { intereses, ...resto } = input;
+  const { residentesOverride, ...resto } = input;
 
   // Obtener el plantilla_id del row que se está editando
   const { data: atual } = await supabase
@@ -203,9 +225,10 @@ export async function actualizarActividad(id: string, input: ActividadInput): Pr
 
       // Regenerar ocurrencias con el nuevo patrón, usando la fecha original de la plantilla
       const fechaInicio = atual?.fecha ?? resto.fecha;
-      await generarOcurrencias(plantillaId, { ...input, fecha: fechaInicio });
+      const idsOcurrencias = await generarOcurrencias(plantillaId, { ...input, fecha: fechaInicio });
+      await propagarOverrideAOcurrencias(idsOcurrencias, residentesOverride);
     }
-    await sincronizarIntereses(plantillaId, intereses);
+    await sincronizarResidentesOverride(plantillaId, residentesOverride);
 
     await registrarAuditoria({
       accion: 'editar',
@@ -221,13 +244,14 @@ export async function actualizarActividad(id: string, input: ActividadInput): Pr
       await supabase.from('actividades')
         .update({ ...camposComunes, fecha: resto.fecha, plantilla_id: id })
         .eq('id', id);
-      await generarOcurrencias(id, input);
+      const idsOcurrencias = await generarOcurrencias(id, input);
+      await propagarOverrideAOcurrencias(idsOcurrencias, residentesOverride);
     } else {
       const { error } = await supabase.from('actividades')
         .update({ ...camposComunes, fecha: resto.fecha }).eq('id', id);
       if (error) throw error;
     }
-    await sincronizarIntereses(id, intereses);
+    await sincronizarResidentesOverride(id, residentesOverride);
 
     await registrarAuditoria({
       accion: 'editar',
@@ -271,13 +295,11 @@ export async function eliminarActividad(id: string, nombre?: string): Promise<vo
   const plantillaId = atual?.plantilla_id ?? null;
 
   if (plantillaId) {
-    // Borrar intereses de la plantilla
-    await supabase.from('actividad_intereses').delete().eq('actividad_id', plantillaId);
     // Borrar plantilla + todas las ocurrencias en un solo query
+    // (las excepciones de residentes se borran solas por ON DELETE CASCADE)
     await supabase.from('actividades').delete()
       .or(`id.eq.${plantillaId},plantilla_id.eq.${plantillaId}`);
   } else {
-    await supabase.from('actividad_intereses').delete().eq('actividad_id', id);
     const { error } = await supabase.from('actividades').delete().eq('id', id);
     if (error) throw error;
   }

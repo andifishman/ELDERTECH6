@@ -3,6 +3,7 @@ import { queryKeys } from '@/lib/queryClient';
 import {
   actualizarArticulo,
   crearArticulo,
+  crearCategoriaTutorial,
   eliminarArticulo,
   eliminarDefinitivamente,
   listarArticulos,
@@ -15,15 +16,29 @@ import {
 } from '@/services/articulosService';
 import { notify } from '@/components/ui/toast';
 
+const QUERY_CATEGORIAS = ['categorias-tutorial'];
+
 export function useArticulos() {
   return useQuery({ queryKey: queryKeys.tutoriales, queryFn: listarArticulos });
 }
 
 export function useCategoriasArticulo() {
   return useQuery({
-    queryKey: ['categorias-tutorial'],
+    queryKey: QUERY_CATEGORIAS,
     queryFn: listarCategoriasArticulo,
     staleTime: 1000 * 60 * 10,
+  });
+}
+
+export function useCrearCategoriaTutorial() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ nombre, emoji }: { nombre: string; emoji?: string }) => crearCategoriaTutorial(nombre, emoji),
+    onSuccess: () => {
+      notify.success('Categoría creada');
+      void qc.invalidateQueries({ queryKey: QUERY_CATEGORIAS });
+    },
+    onError: (err: any) => notify.error('No se pudo crear la categoría', err?.message),
   });
 }
 

@@ -53,7 +53,7 @@ export const Colors = {
   // Texto
   text: {
     primary: '#212121',
-    secondary: '#616161',
+    secondary: '#212121', // negro, no gris — se distingue de los títulos por peso de fuente (bold), no por color
     hint: '#9E9E9E',
     onDark: '#FFFFFF',
     onDarkSecondary: 'rgba(255,255,255,0.75)',
