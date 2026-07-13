@@ -19,8 +19,20 @@ Organización inicial: **Ledor Vador** (Buenos Aires, Argentina).
 
 ## Arquitectura del proyecto
 
+**En migración a BFF (backend-for-frontend)**: existe `backend/` (Node/TS,
+Express, deploy como Vercel Functions) con un framework de Providers
+(`backend/src/core/provider/`: ProviderManager + CircuitBreaker + Metrics +
+RateLimitDetector) para todo módulo que hable con un vendor externo
+intercambiable. Los módulos **Asistente, Clima y Radio ya están migrados** —
+el cliente habla con `backend/`, nunca con Groq / Open-Meteo / las tablas de
+Supabase de esos módulos directo. Actividades, Tutoriales, Contactos y el
+backoffice siguen pendientes de migrar (ver el plan en
+`C:\Users\49373638\.claude\plans\cuddly-tickling-spark.md`). Detalle completo
+del framework de providers y el mapeo módulo→endpoint: ese mismo plan.
+
 ```
 ELDERTECH6/
+├── backend/                  # BFF — Node/TS/Express, Vercel Functions (ver arriba)
 ├── app/                      # Expo Router (file-based navigation)
 │   ├── _layout.tsx           # Root: SafeArea + QueryProvider + RadioProvider
 │   ├── index.tsx             # Home screen
@@ -42,7 +54,7 @@ ELDERTECH6/
 │   ├── context/              # RadioContext (estado global del reproductor)
 │   ├── hooks/                # useActividades, useClima, useRadios
 │   ├── providers/            # QueryProvider (React Query)
-│   ├── services/             # supabase.ts, actividadesService, climaService, radioService
+│   ├── services/             # apiClient.ts (fetch al backend), supabase.ts (hoy todavía general — se angosta a solo auth cuando el resto de los módulos migre), actividadesService, climaService, radioService
 │   ├── types/                # database.types, clima.types, radio.types
 │   └── utils/                # dateUtils, tts
 └── assets/

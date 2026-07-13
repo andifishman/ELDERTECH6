@@ -78,7 +78,10 @@ export function ProximaActividadWidget() {
       onPress={() => router.push(`/horarios/${proxima.id}` as never)}
       activeOpacity={0.85}
       accessibilityLabel={textoHablar}
-      accessibilityRole="button"
+      // Sin accessibilityRole="button" acá: contiene el botón "Escuchar" adentro,
+      // y en web RNWeb convierte el role en un <button> real — anidar dos
+      // <button> es HTML inválido. El onPress/accessibilityLabel ya la hacen
+      // tocable e identificable igual.
     >
       {/* Izquierda: label arriba, nombre abajo a la misma altura que Escuchar */}
       <View style={styles.left}>

@@ -18,53 +18,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { LoadingState, ErrorState } from '@/components/common/LoadingState';
 import { useClima, useClimaCiudad } from '@/hooks/useClima';
-import { buscarCiudades } from '@/services/climaService';
+import { buscarCiudades, getCiudadesFamiliares, sincronizarCiudades, eliminarCiudadFamiliar } from '@/services/climaService';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/services/supabase';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { PronosticoDia, GeocodingResult, CiudadGuardada } from '@/types/clima.types';
-
-/**
- * Resuelve el ID de una ciudad en `ciudades_familiares`.
- * Primero intenta SELECT (siempre permitido), luego INSERT si no existe.
- */
-async function resolverCiudadId(nombre: string, pais: string, lat: number, lon: number, timezone: string): Promise<string | null> {
-  // 1. Buscar por nombre + país (el SELECT funciona aunque el INSERT esté restringido)
-  const { data: existente } = await supabase
-    .from('ciudades_familiares')
-    .select('id')
-    .eq('nombre', nombre)
-    .eq('pais_codigo', pais)
-    .maybeSingle();
-  if (existente?.id) return existente.id;
-
-  // 2. No existe — intentar insertar
-  const { data: nueva } = await supabase
-    .from('ciudades_familiares')
-    .insert({ nombre, pais_codigo: pais, lat, lon, timezone, activo: false, orden: 999 })
-    .select('id')
-    .single();
-  return nueva?.id ?? null;
-}
-
-/** Sincroniza una lista de ciudades desde AsyncStorage a Supabase. Fallo silencioso por ciudad. */
-async function sincronizarConSupabase(residenteId: string, ciudades: CiudadGuardada[]) {
-  for (const ciudad of ciudades) {
-    try {
-      const ciudadId = await resolverCiudadId(ciudad.nombre, ciudad.pais, ciudad.lat, ciudad.lon, ciudad.timezone);
-      if (ciudadId) {
-        await supabase
-          .from('residente_ciudades_familiares')
-          .upsert(
-            { residente_id: residenteId, ciudad_id: ciudadId },
-            { onConflict: 'residente_id,ciudad_id', ignoreDuplicates: true },
-          );
-      }
-    } catch {}
-  }
-}
 
 const PAIS_NOMBRE: Record<string, string> = {
   AR: 'Argentina',
@@ -150,8 +109,8 @@ export default function ClimaScreen() {
           const guardadas: CiudadGuardada[] = JSON.parse(json);
           const sinNatal = guardadas.filter((c) => !c.esNatal);
           setCiudades([CIUDAD_NATAL, ...sinNatal]);
-          // Sincronizar con Supabase en background para que el backoffice las vea
-          if (residenteId) void sincronizarConSupabase(residenteId, sinNatal);
+          // Sincronizar con el backend para que el backoffice las vea
+          if (residenteId) void sincronizarCiudades(sinNatal);
           return;
         }
       } catch {}
@@ -159,15 +118,11 @@ export default function ClimaScreen() {
       // Primera vez: si el usuario tiene familiares, pre-cargar sus ciudades
       if (residenteId) {
         try {
-          const { data } = await supabase
-            .from('residente_ciudades_familiares')
-            .select('ciudad_familiar:ciudades_familiares(id, nombre, pais_codigo, lat, lon, timezone)')
-            .eq('residente_id', residenteId);
+          const data = await getCiudadesFamiliares();
 
-          const familiares: CiudadGuardada[] = (data ?? [])
-            .map((row: any) => row.ciudad_familiar)
-            .filter((c: any) => c?.lat && c?.lon && c?.timezone)
-            .map((c: any) => ({
+          const familiares: CiudadGuardada[] = data
+            .filter((c) => c.lat && c.lon && c.timezone)
+            .map((c) => ({
               id: `fam_${c.id}`,
               nombre: c.nombre,
               pais: c.pais_codigo,
@@ -257,8 +212,8 @@ export default function ClimaScreen() {
     setBusqueda('');
     setResultados([]);
 
-    // Sincronizar con Supabase en background para que el backoffice pueda verlo
-    if (residenteId) void sincronizarConSupabase(residenteId, [nueva]);
+    // Sincronizar con el backend en background para que el backoffice pueda verlo
+    if (residenteId) void sincronizarCiudades([nueva]);
   }
 
   /** Elimina la ciudad activa (solo funciona si no es la natal) */
@@ -272,36 +227,11 @@ export default function ClimaScreen() {
     setCiudadActiva(CIUDAD_NATAL);
     setModalEliminar(false);
 
-    // Borrar de Supabase en background para mantener sincronía con el backoffice
+    // Borrar en el backend en background para mantener sincronía con el backoffice
     if (residenteId) {
       const ciudadSnapshot = ciudadActiva;
-      void (async () => {
-        try {
-          let ciudadId: string | undefined = ciudadSnapshot.dbId;
-
-          if (!ciudadId && ciudadSnapshot.id.startsWith('fam_')) {
-            ciudadId = ciudadSnapshot.id.slice(4);
-          }
-
-          if (!ciudadId) {
-            const { data } = await supabase
-              .from('ciudades_familiares')
-              .select('id')
-              .eq('nombre', ciudadSnapshot.nombre)
-              .eq('pais_codigo', ciudadSnapshot.pais)
-              .maybeSingle();
-            ciudadId = data?.id;
-          }
-
-          if (ciudadId) {
-            await supabase
-              .from('residente_ciudades_familiares')
-              .delete()
-              .eq('residente_id', residenteId)
-              .eq('ciudad_id', ciudadId);
-          }
-        } catch {}
-      })();
+      const dbId = ciudadSnapshot.dbId ?? (ciudadSnapshot.id.startsWith('fam_') ? ciudadSnapshot.id.slice(4) : undefined);
+      void eliminarCiudadFamiliar({ nombre: ciudadSnapshot.nombre, pais: ciudadSnapshot.pais, dbId });
     }
   }
 

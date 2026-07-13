@@ -12,14 +12,13 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { ORG_ID } from '@/services/supabase';
 import { getContactos } from '@/services/contactosService';
+import { getClimaOrg } from '@/services/climaService';
 import { getCategoriasTutorial, getTutorialesConProgreso } from '@/services/tutorialesService';
 import { getActividadesPersonalizadas, getActividadesPorFecha } from '@/services/actividadesService';
 import { contactosKey } from './useContactos';
 import { actividadesKey } from './useActividades';
 import { KEYS as TUTORIALES_KEYS } from './useTutoriales';
-import { fetchClimaOrg } from './useClima';
 import { RADIO_DATA_KEY, fetchRadioDataConFallback } from './useRadio';
 
 export function usePrefetchHome() {
@@ -53,8 +52,8 @@ export function usePrefetchHome() {
 
     // Clima de la organización
     qc.prefetchQuery({
-      queryKey: ['clima', 'org', ORG_ID],
-      queryFn: fetchClimaOrg,
+      queryKey: ['clima', 'org'],
+      queryFn: getClimaOrg,
       staleTime: 10 * 60 * 1000,
     });
 
