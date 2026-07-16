@@ -1,6 +1,7 @@
 import { getCacheStore } from '../../cache';
 import { env } from '../../config/env';
 import { ProviderManager, type IProvider } from '../../core/provider';
+import { MetNoProvider } from '../../providers/weather/MetNoProvider';
 import { buscarCiudadesOpenMeteo, OpenMeteoProvider } from '../../providers/weather/OpenMeteoProvider';
 import { OpenWeatherProvider } from '../../providers/weather/OpenWeatherProvider';
 import type { GeocodingResult, WeatherData, WeatherProviderInput } from '../../providers/weather/WeatherTypes';
@@ -22,15 +23,22 @@ let weatherManager: ProviderManager<WeatherProviderInput, WeatherData> | null = 
 function getWeatherManager(): ProviderManager<WeatherProviderInput, WeatherData> {
   if (weatherManager) return weatherManager;
 
-  const providers: IProvider<WeatherProviderInput, WeatherData>[] = [new OpenMeteoProvider()];
+  // Dos providers gratis y SIN API key (tier 1 y 2): garantizan que el fallback
+  // funcione de fábrica aunque no se cargue ninguna key paga. Si Open-Meteo se
+  // cae, MET Norway responde sin configurar nada.
+  const providers: IProvider<WeatherProviderInput, WeatherData>[] = [
+    new OpenMeteoProvider(),
+    new MetNoProvider(2),
+  ];
 
-  if (env.openWeatherApiKey) providers.push(new OpenWeatherProvider(env.openWeatherApiKey, 2));
+  // Provider pago opcional (tier 3): solo se suma a la cadena si su key está en env.
+  if (env.openWeatherApiKey) providers.push(new OpenWeatherProvider(env.openWeatherApiKey, 3));
 
   // Slots listos para sumar más vendors si se cargan esas keys en env — cada
   // uno implementaría IProvider<WeatherProviderInput, WeatherData>
   // normalizando su respuesta al mismo WeatherData, igual que OpenWeatherProvider:
-  //   env.weatherApiApiKey && new WeatherApiProvider(env.weatherApiApiKey, 3)
-  //   env.tomorrowIoApiKey && new TomorrowIoProvider(env.tomorrowIoApiKey, 4)
+  //   env.weatherApiApiKey && new WeatherApiProvider(env.weatherApiApiKey, 4)
+  //   env.tomorrowIoApiKey && new TomorrowIoProvider(env.tomorrowIoApiKey, 5)
 
   weatherManager = new ProviderManager(providers, getCacheStore(), {
     timeoutMs: 8_000,
