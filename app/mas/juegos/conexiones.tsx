@@ -93,6 +93,7 @@ export default function ConexionesScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   const [hintCategory, setHintCategory] = useState<string | null>(null);
   const [hintGroupIdx, setHintGroupIdx] = useState<number | null>(null);
+  const [showHintModal, setShowHintModal] = useState(false);
   const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('conexiones');
   const errorTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -120,6 +121,7 @@ export default function ConexionesScreen() {
     const pick = unsolvedIndices[Math.floor(Math.random() * unsolvedIndices.length)];
     setHintCategory(groups[pick].category);
     setHintGroupIdx(pick);
+    setShowHintModal(true);
   };
 
   useEffect(() => { initGame(); }, []);
@@ -239,14 +241,11 @@ export default function ConexionesScreen() {
           <Text style={styles.checkBtnText}>Confirmar seleccion</Text>
         </TouchableOpacity>
 
-        {/* Banner de pista */}
-        {hintCategory && (
-          <View style={styles.hintBanner}>
-            <Text style={styles.hintBannerText}>
-              💡 Una de las categorías es:{' '}
-              <Text style={styles.hintBannerCategory}>{hintCategory}</Text>
-            </Text>
-          </View>
+        {/* Volver a ver la pista ya revelada */}
+        {hintCategory && !showHintModal && (
+          <TouchableOpacity style={styles.hintRecallBtn} onPress={() => setShowHintModal(true)}>
+            <Text style={styles.hintRecallBtnText}>💡 Ver la pista de nuevo</Text>
+          </TouchableOpacity>
         )}
 
         <View style={styles.bottomRow}>
@@ -309,6 +308,20 @@ export default function ConexionesScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalBtnSecondary} onPress={() => router.back()}>
               <Text style={styles.modalBtnSecondaryText}>Volver</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de pista */}
+      <Modal visible={showHintModal} transparent animationType="fade" onRequestClose={() => setShowHintModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalIcon}>💡</Text>
+            <Text style={styles.modalTitle}>Una de las categorías es:</Text>
+            <Text style={styles.hintModalCategory}>{hintCategory}</Text>
+            <TouchableOpacity style={styles.modalBtnPrimary} onPress={() => setShowHintModal(false)}>
+              <Text style={styles.modalBtnPrimaryText}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -407,7 +420,7 @@ const styles = StyleSheet.create({
   },
   modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.xl, fontWeight: 'bold' },
 
-  hintBanner: {
+  hintRecallBtn: {
     backgroundColor: '#FFF3E0',
     borderWidth: 2,
     borderColor: '#FF9800',
@@ -415,9 +428,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     alignItems: 'center',
+    width: '100%',
   },
-  hintBannerText: { fontSize: FontSizes.lg, color: '#E65100', textAlign: 'center' },
-  hintBannerCategory: { fontWeight: 'bold', fontSize: FontSizes.xl },
+  hintRecallBtnText: { fontSize: FontSizes.md, color: '#E65100', fontWeight: 'bold', textAlign: 'center' },
+  hintModalCategory: {
+    fontSize: FontSizes.xxl,
+    fontWeight: 'bold',
+    color: '#E65100',
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
   hintBtn: {
     borderWidth: 2,
     borderColor: '#FF9800',

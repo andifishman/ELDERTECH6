@@ -7,6 +7,9 @@ trustSystemCertificates();
 
 // Vercel Node runtime acepta un handler (req, res) => void como default export —
 // una app de Express ya tiene exactamente esa forma, así que se exporta directo.
-// Este catch-all (`[[...path]]`) es el único archivo bajo /api: todas las rutas
-// reales viven en src/routes/*, montadas por createApp().
+// Este es el único archivo bajo /api: el rewrite en vercel.json manda TODO
+// tráfico acá (antes se usaba un catch-all `[[...path]].ts`, pero Vercel solo
+// enrutaba paths de un segmento tipo /api/tutorials — cualquier ruta anidada
+// como /api/assistant/faq daba 404 antes de llegar a Express). Todas las
+// rutas reales viven en src/routes/*, montadas por createApp().
 export default createApp();
