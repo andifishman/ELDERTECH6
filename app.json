@@ -2,6 +2,7 @@
   "expo": {
     "name": "ElderTech",
     "slug": "eldertech",
+    "owner": "eldertech6",
     "version": "1.0.0",
     "scheme": "eldertech",
     "orientation": "portrait",
@@ -17,8 +18,13 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.eldertech.app",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
-        "LSApplicationQueriesSchemes": ["whatsapp", "tel"]
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "LSApplicationQueriesSchemes": [
+          "whatsapp",
+          "tel"
+        ]
       }
     },
     "android": {
@@ -27,7 +33,12 @@
         "backgroundColor": "#1B5E3B"
       },
       "package": "com.eldertech.app",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -59,6 +70,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cd37f089-a57f-4b84-975e-06c93e94c09f"
+      }
     }
   }
 }

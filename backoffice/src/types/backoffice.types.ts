@@ -36,7 +36,7 @@ export interface Faq {
 }
 
 // ─── Auditoría ───────────────────────────────────────────────────────────────
-export type AccionAuditoria = 'crear' | 'editar' | 'eliminar' | 'pausar' | 'reactivar' | 'publicar';
+export type AccionAuditoria = 'crear' | 'editar' | 'eliminar' | 'pausar' | 'reactivar' | 'publicar' | 'resolver';
 
 export interface AuditLog {
   id: string;

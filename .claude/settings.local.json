@@ -47,5 +47,8 @@
       "Bash(xargs grep -l \"actividad\\\\|Actividad\")",
       "mcp__claude_ai_Supabase__list_projects"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

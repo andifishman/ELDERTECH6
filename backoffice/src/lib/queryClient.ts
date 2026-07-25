@@ -34,4 +34,5 @@ export const queryKeys = {
   asistenteStats: ['asistente-stats'] as const,
   auditoria: ['auditoria'] as const,
   organizacion: ['organizacion'] as const,
+  pedidos: (filtros: object) => ['pedidos', filtros] as const,
 } as const;

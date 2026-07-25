@@ -18,7 +18,7 @@ import { SearchModal } from '@/components/common/SearchModal';
 import { EditarPerfilDialog } from '@/features/auth/EditarPerfilDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useQuery } from '@tanstack/react-query';
-import { supabase, ORG_ID } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import type { AuditLog } from '@/types/backoffice.types';
 
 const ACCION_ICONO: Record<string, React.ReactNode> = {
@@ -39,15 +39,7 @@ const TABLA_ICONO: Record<string, React.ReactNode> = {
 function useNotificaciones() {
   return useQuery({
     queryKey: ['notificaciones'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .or(`organizacion_id.is.null,organizacion_id.eq.${ORG_ID}`)
-        .order('created_at', { ascending: false })
-        .limit(8);
-      return (data ?? []) as AuditLog[];
-    },
+    queryFn: () => apiClient.get<AuditLog[]>('/api/admin/audit?limit=8'),
     refetchInterval: 30000,
   });
 }

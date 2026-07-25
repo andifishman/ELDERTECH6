@@ -9,6 +9,7 @@
 import * as React from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import type { PerfilUsuario, RolBackoffice } from '@/types/backoffice.types';
 
 // Cuentas con acceso total al backoffice y gestión de administradores
@@ -118,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const actualizarPerfil = React.useCallback(async (data: { nombre_completo?: string; avatar_url?: string }) => {
     if (!session?.user.id) return;
-    await supabase.from('perfiles_usuario').update(data).eq('id', session.user.id);
+    await apiClient.patch<void>('/api/admin/profile', data);
     setPerfil((prev) => (prev ? { ...prev, ...data } : null));
   }, [session]);
 

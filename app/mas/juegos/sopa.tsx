@@ -157,7 +157,7 @@ export default function SopaScreen() {
   // Try adding a cell to selection and auto-confirm if word matches
   const tryAddCell = (r: number, c: number, current: [number, number][]) => {
     if (current.some(([sr, sc]) => sr === r && sc === c)) return current;
-    const next = [...current, [r, c]];
+    const next: [number, number][] = [...current, [r, c]];
 
     const cellKey = (row: number, col: number) => `${row},${col}`;
     const keys = new Set(next.map(([row, col]) => cellKey(row, col)));

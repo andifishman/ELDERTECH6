@@ -6,7 +6,7 @@
 // Solo accesible para cuentas super_admin.
 // ========================================
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { notify } from '@/components/ui/toast';
 
 export type RolUsuarioDB = 'residente' | 'admin' | 'staff';
@@ -19,7 +19,9 @@ export interface PerfilAdmin {
   created_at: string;
 }
 
-// IDs de las cuentas protegidas — no se puede modificar su rol desde la UI
+// IDs de las cuentas protegidas — no se puede modificar su rol desde la UI.
+// El chequeo real (server-side) vive en AdministradoresService del backend;
+// esto es solo para no mostrar la opción en la UI antes de intentarlo.
 const SUPER_ADMIN_IDS = [
   'b035a808-2a4b-4296-9a69-76ac491b1367', // andresfishman@gmail.com
   '9cb4b7a5-759b-432d-a805-bd4722954c88', // eldertech6@gmail.com
@@ -28,15 +30,7 @@ const SUPER_ADMIN_IDS = [
 export function useAdministradores() {
   return useQuery({
     queryKey: ['administradores'],
-    queryFn: async (): Promise<PerfilAdmin[]> => {
-      const { data, error } = await supabase
-        .from('perfiles_usuario')
-        .select('id, username, rol, activo, created_at')
-        .order('username', { ascending: true });
-
-      if (error) throw error;
-      return (data ?? []) as PerfilAdmin[];
-    },
+    queryFn: () => apiClient.get<PerfilAdmin[]>('/api/admin/administradores'),
   });
 }
 
@@ -48,11 +42,7 @@ export function useCambiarRol() {
       if (SUPER_ADMIN_IDS.includes(id)) {
         throw new Error('No se puede modificar el rol de una cuenta super admin.');
       }
-      const { error } = await supabase
-        .from('perfiles_usuario')
-        .update({ rol })
-        .eq('id', id);
-      if (error) throw error;
+      await apiClient.patch<void>(`/api/admin/administradores/${id}/role`, { rol });
     },
     onSuccess: (_data, vars) => {
       const esAdmin = vars.rol === 'admin' || vars.rol === 'staff';

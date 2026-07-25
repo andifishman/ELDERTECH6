@@ -50,6 +50,14 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     ruta: '/mas/juegos',
     textoHablar: 'Juegos. Divertite con ElderTech.',
   },
+  {
+    id: 'pedidos',
+    emoji: '📋',
+    titulo: 'Pedidos y Sugerencias',
+    descripcion: 'Enviá un mensaje al personal',
+    ruta: '/mas/pedidos',
+    textoHablar: 'Pedidos y Sugerencias. Enviá un pedido, comentario o sugerencia al personal.',
+  },
 ];
 
 // Opciones próximamente — aparecen abajo de la línea, bloqueadas y tachadas
@@ -62,7 +70,7 @@ export default function MasScreen() {
         titulo="Más"
         mostrarVolver
         tituloGrande
-        textoHablar="Más opciones: Clima, Radio y Juegos."
+        textoHablar="Más opciones: Clima, Radio, Juegos, y Pedidos y Sugerencias."
       />
 
       <ScrollView

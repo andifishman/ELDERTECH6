@@ -44,3 +44,32 @@ export interface TutorialConProgreso extends Tutorial {
   categoria: CategoriaTutorial | null;
   progreso: ProgresoTutorial | null;
 }
+
+/** Vista admin (backoffice) — incluye campos que la vista de residente no necesita. */
+export interface TutorialAdmin extends Tutorial {
+  nivel: string;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  categoria: CategoriaTutorial | null;
+}
+
+export interface TutorialAdminInput {
+  titulo: string;
+  descripcion?: string | null;
+  categoria_id?: string | null;
+  formato: string;
+  nivel: string;
+  url_video?: string | null;
+  thumbnail_url?: string | null;
+  duracion_segundos?: number | null;
+  lo_que_aprenderas?: string[] | null;
+  activo: boolean;
+  pasos?: Array<{
+    orden: number;
+    titulo: string;
+    descripcion: string;
+    imagen_url: string | null;
+    tip: string | null;
+  }>;
+}

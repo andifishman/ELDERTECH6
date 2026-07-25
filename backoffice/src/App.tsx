@@ -28,6 +28,8 @@ const AsistentePage = lazy(() => import('@/features/asistente/AsistentePage').th
 const AuditoriaPage = lazy(() => import('@/features/auditoria/AuditoriaPage').then((m) => ({ default: m.AuditoriaPage })));
 const ConfiguracionPage = lazy(() => import('@/features/configuracion/ConfiguracionPage').then((m) => ({ default: m.ConfiguracionPage })));
 const AdministradoresPage = lazy(() => import('@/features/administradores/AdministradoresPage').then((m) => ({ default: m.AdministradoresPage })));
+const PedidosPage = lazy(() => import('@/features/pedidos/PedidosPage').then((m) => ({ default: m.PedidosPage })));
+const PedidoDetailPage = lazy(() => import('@/features/pedidos/PedidoDetailPage').then((m) => ({ default: m.PedidoDetailPage })));
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -52,6 +54,8 @@ const router = createBrowserRouter([
           { path: '/auditoria', element: <AuditoriaPage />, handle: { titulo: 'Auditoría' } },
           { path: '/configuracion', element: <ConfiguracionPage />, handle: { titulo: 'Configuración' } },
           { path: '/administradores', element: <AdministradoresPage />, handle: { titulo: 'Administradores' } },
+          { path: '/pedidos', element: <PedidosPage />, handle: { titulo: 'Pedidos y Sugerencias' } },
+          { path: '/pedidos/:id', element: <PedidoDetailPage />, handle: { titulo: 'Detalle de solicitud' } },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

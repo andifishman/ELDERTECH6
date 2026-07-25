@@ -9,7 +9,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save, Building2 } from 'lucide-react';
-import { supabase, ORG_ID } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { queryKeys } from '@/lib/queryClient';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingState } from '@/components/common/states';
 import { notify } from '@/components/ui/toast';
-import { registrarAuditoria } from '@/services/auditService';
 import type { Organizacion } from '@/types/database.types';
 
 interface Campos {
@@ -31,9 +30,7 @@ interface Campos {
 }
 
 async function obtenerOrganizacion(): Promise<Organizacion | null> {
-  const { data, error } = await supabase.from('organizaciones').select('*').eq('id', ORG_ID).maybeSingle();
-  if (error) throw error;
-  return (data as Organizacion) ?? null;
+  return apiClient.get<Organizacion>('/api/admin/configuracion');
 }
 
 export function ConfiguracionPage() {
@@ -53,21 +50,14 @@ export function ConfiguracionPage() {
   }, [data, reset]);
 
   const guardar = useMutation({
-    mutationFn: async (c: Campos) => {
-      const { error } = await supabase
-        .from('organizaciones')
-        .update({
-          nombre: c.nombre,
-          direccion: c.direccion || null,
-          telefono: c.telefono || null,
-          email: c.email || null,
-          logo_url: c.logo_url || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', ORG_ID);
-      if (error) throw error;
-      await registrarAuditoria({ accion: 'editar', tabla: 'organizaciones', registroId: ORG_ID, descripcion: 'Actualizó la configuración general' });
-    },
+    mutationFn: (c: Campos) =>
+      apiClient.put<void>('/api/admin/configuracion', {
+        nombre: c.nombre,
+        direccion: c.direccion || null,
+        telefono: c.telefono || null,
+        email: c.email || null,
+        logo_url: c.logo_url || null,
+      }),
     onSuccess: () => {
       notify.success('Configuración guardada');
       void qc.invalidateQueries({ queryKey: queryKeys.organizacion });

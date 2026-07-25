@@ -1,5 +1,4 @@
-import { supabase, ORG_ID } from '@/lib/supabase';
-import { SECCIONES } from '@/types/database.types';
+import { apiClient } from '@/lib/apiClient';
 import type { TipoActividad, Ubicacion, Responsable, SeccionResidente } from '@/types/database.types';
 import { extraerMensajeError } from './actividadesService';
 
@@ -13,28 +12,7 @@ export interface Catalogos {
 }
 
 export async function obtenerCatalogos(): Promise<Catalogos> {
-  const [tipos, ubic, resp] = await Promise.all([
-    supabase
-      .from('tipos_actividad')
-      .select('*')
-      .or(`organizacion_id.is.null,organizacion_id.eq.${ORG_ID}`)
-      .eq('activo', true)
-      .order('nombre'),
-    supabase.from('ubicaciones').select('*').eq('organizacion_id', ORG_ID).eq('activo', true).order('nombre'),
-    supabase
-      .from('responsables')
-      .select('*')
-      .or(`organizacion_id.is.null,organizacion_id.eq.${ORG_ID}`)
-      .eq('activo', true)
-      .order('nombre'),
-  ]);
-
-  return {
-    tiposActividad: (tipos.data ?? []) as TipoActividad[],
-    ubicaciones: (ubic.data ?? []) as Ubicacion[],
-    responsables: (resp.data ?? []) as Responsable[],
-    secciones: SECCIONES,
-  };
+  return apiClient.get<Catalogos>('/api/admin/catalogs');
 }
 
 export interface CrearTipoActividadInput {
@@ -45,50 +23,33 @@ export interface CrearTipoActividadInput {
 }
 
 export async function crearTipoActividad(input: CrearTipoActividadInput): Promise<string> {
-  const { data, error } = await supabase
-    .from('tipos_actividad')
-    .insert({
+  try {
+    const { id } = await apiClient.post<{ id: string }>('/api/admin/catalogs/tipos-actividad', {
       nombre: input.nombre,
-      emoji: input.emoji || null,
-      hora_inicio_default: input.hora_inicio_default || null,
-      hora_fin_default: input.hora_fin_default || null,
-      organizacion_id: ORG_ID,
-      activo: true,
-    })
-    .select('id')
-    .single();
-  if (error) {
-    const msg = extraerMensajeError(error);
-    throw new Error(msg ?? 'Error al crear tipo de actividad');
+      emoji: input.emoji,
+      horaInicioDefault: input.hora_inicio_default,
+      horaFinDefault: input.hora_fin_default,
+    });
+    return id;
+  } catch (err) {
+    throw new Error(extraerMensajeError(err) ?? 'Error al crear tipo de actividad');
   }
-  return data.id as string;
 }
 
 export async function crearUbicacion(nombre: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('ubicaciones')
-    .insert({ nombre, organizacion_id: ORG_ID, activo: true })
-    .select('id')
-    .single();
-  if (error) {
-    const msg = extraerMensajeError(error);
-    throw new Error(msg ?? 'Error al crear ubicación');
+  try {
+    const { id } = await apiClient.post<{ id: string }>('/api/admin/catalogs/ubicaciones', { nombre });
+    return id;
+  } catch (err) {
+    throw new Error(extraerMensajeError(err) ?? 'Error al crear ubicación');
   }
-  return data.id as string;
 }
 
 export async function crearResponsable(nombreCompleto: string): Promise<string> {
-  const partes = nombreCompleto.trim().split(/\s+/);
-  const nombre = partes[0] ?? nombreCompleto;
-  const apellido = partes.slice(1).join(' ') || '';
-  const { data, error } = await supabase
-    .from('responsables')
-    .insert({ nombre, apellido, organizacion_id: ORG_ID, activo: true, es_externo: false })
-    .select('id')
-    .single();
-  if (error) {
-    const msg = extraerMensajeError(error);
-    throw new Error(msg ?? 'Error al crear responsable');
+  try {
+    const { id } = await apiClient.post<{ id: string }>('/api/admin/catalogs/responsables', { nombreCompleto });
+    return id;
+  } catch (err) {
+    throw new Error(extraerMensajeError(err) ?? 'Error al crear responsable');
   }
-  return data.id as string;
 }

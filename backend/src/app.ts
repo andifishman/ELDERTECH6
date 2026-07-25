@@ -3,11 +3,23 @@ import helmet from 'helmet';
 import { corsMiddleware } from './middlewares/cors';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 import { activitiesRouter } from './routes/activities.routes';
+import { activitiesAdminRouter } from './routes/activitiesAdmin.routes';
+import { administradoresRouter } from './routes/administradores.routes';
 import { assistantRouter } from './routes/assistant.routes';
+import { assistantAdminRouter } from './routes/assistantAdmin.routes';
+import { auditRouter } from './routes/audit.routes';
+import { catalogsRouter } from './routes/catalogs.routes';
+import { configuracionRouter } from './routes/configuracion.routes';
 import { contactsRouter } from './routes/contacts.routes';
+import { dashboardRouter } from './routes/dashboard.routes';
+import { profileRouter } from './routes/profile.routes';
 import { providersRouter } from './routes/providers.routes';
+import { requestsRouter } from './routes/requests.routes';
+import { requestsAdminRouter } from './routes/requestsAdmin.routes';
+import { residentsAdminRouter } from './routes/residentsAdmin.routes';
 import { radioRouter } from './routes/radio.routes';
 import { tutorialsRouter } from './routes/tutorials.routes';
+import { tutorialsAdminRouter } from './routes/tutorialsAdmin.routes';
 import { weatherRouter } from './routes/weather.routes';
 
 export function createApp(): Express {
@@ -28,6 +40,18 @@ export function createApp(): Express {
   app.use('/api/tutorials', tutorialsRouter);
   app.use('/api/contacts', contactsRouter);
   app.use('/api/admin/providers', providersRouter);
+  app.use('/api/admin/catalogs', catalogsRouter);
+  app.use('/api/admin/tutorials', tutorialsAdminRouter);
+  app.use('/api/admin/activities', activitiesAdminRouter);
+  app.use('/api/admin/assistant', assistantAdminRouter);
+  app.use('/api/admin/residents', residentsAdminRouter);
+  app.use('/api/admin/administradores', administradoresRouter);
+  app.use('/api/admin/audit', auditRouter);
+  app.use('/api/admin/configuracion', configuracionRouter);
+  app.use('/api/admin/dashboard', dashboardRouter);
+  app.use('/api/admin/profile', profileRouter);
+  app.use('/api/requests', requestsRouter);
+  app.use('/api/admin/requests', requestsAdminRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
 import { useAuth } from './AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -26,14 +26,10 @@ export function EditarPerfilDialog({ abierto, onCerrar }: Props) {
   const subirAvatar = async (archivo: File) => {
     setSubiendoAvatar(true);
     try {
-      const ext = archivo.name.split('.').pop() ?? 'jpg';
-      const nombre_archivo = `avatars/${perfil?.id ?? 'user'}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage
-        .from('tutorial-images')
-        .upload(nombre_archivo, archivo, { cacheControl: '3600', upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from('tutorial-images').getPublicUrl(nombre_archivo);
-      setAvatarUrl(data.publicUrl);
+      const form = new FormData();
+      form.append('archivo', archivo);
+      const { url } = await apiClient.postForm<{ url: string }>('/api/admin/profile/avatar', form);
+      setAvatarUrl(url);
     } catch {
       notify.error('No se pudo subir la foto');
     } finally {

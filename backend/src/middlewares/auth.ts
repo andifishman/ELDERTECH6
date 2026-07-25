@@ -4,7 +4,9 @@ import { getSupabaseAdmin } from '../repositories/supabaseAdmin';
 
 export interface AuthUser {
   supabaseUserId: string;
+  email: string | null;
   residenteId: string | null;
+  organizacionId: string | null;
   rol: 'residente' | 'admin' | 'staff' | null;
 }
 
@@ -48,7 +50,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const { data, error } = await supabase
     .from('perfiles_usuario')
-    .select('residente_id, rol')
+    .select('residente_id, organizacion_id, rol')
     .eq('id', userData.user.id)
     .maybeSingle();
 
@@ -59,7 +61,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   req.user = {
     supabaseUserId: userData.user.id,
+    email: userData.user.email ?? null,
     residenteId: data?.residente_id ?? null,
+    organizacionId: data?.organizacion_id ?? null,
     rol: (data?.rol as AuthUser['rol']) ?? null,
   };
   next();

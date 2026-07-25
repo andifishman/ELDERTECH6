@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { History } from 'lucide-react';
-import { supabase, ORG_ID } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { queryKeys } from '@/lib/queryClient';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/ui/card';
@@ -27,17 +27,11 @@ const ACCION_BADGE: Record<AccionAuditoria, 'success' | 'info' | 'danger' | 'war
   pausar: 'warning',
   reactivar: 'success',
   publicar: 'purple',
+  resolver: 'success',
 };
 
 async function listarAuditoria(): Promise<AuditLog[]> {
-  const { data, error } = await supabase
-    .from('audit_logs')
-    .select('*')
-    .or(`organizacion_id.is.null,organizacion_id.eq.${ORG_ID}`)
-    .order('created_at', { ascending: false })
-    .limit(200);
-  if (error) throw error;
-  return (data ?? []) as AuditLog[];
+  return apiClient.get<AuditLog[]>('/api/admin/audit?limit=200');
 }
 
 export function AuditoriaPage() {

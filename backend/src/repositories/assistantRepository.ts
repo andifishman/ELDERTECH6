@@ -140,3 +140,108 @@ export async function getFaq(): Promise<FaqAsistente[]> {
   if (error) return [];
   return (data ?? []) as FaqAsistente[];
 }
+
+// ─── Admin (backoffice) ──────────────────────────────────────────────────────
+// Porteo de `backoffice/src/services/faqService.ts`.
+
+export interface FaqAdmin {
+  id: string;
+  pregunta: string;
+  categoria: string | null;
+  emoji: string | null;
+  orden: number;
+  activo: boolean;
+}
+
+export interface FaqAdminInput {
+  pregunta: string;
+  categoria?: string | null;
+  emoji?: string | null;
+  activo: boolean;
+}
+
+export async function listarFaqsAdmin(): Promise<FaqAdmin[]> {
+  const { data, error } = await getSupabaseAdmin().from('faq_asistente').select('*').order('orden', { ascending: true });
+  if (error) throw new Error(`Error al cargar FAQs: ${error.message}`);
+  return (data ?? []) as FaqAdmin[];
+}
+
+export async function crearFaqAdmin(input: FaqAdminInput): Promise<string> {
+  const { data: last } = await getSupabaseAdmin().from('faq_asistente').select('orden').order('orden', { ascending: false }).limit(1).maybeSingle();
+  const orden = ((last as { orden?: number } | null)?.orden ?? 0) + 1;
+
+  const { data, error } = await getSupabaseAdmin().from('faq_asistente').insert({ ...input, orden }).select('id').single();
+  if (error) throw new Error(`Error al crear la FAQ: ${error.message}`);
+  return data.id as string;
+}
+
+export async function actualizarFaqAdmin(id: string, input: FaqAdminInput): Promise<void> {
+  const { error } = await getSupabaseAdmin().from('faq_asistente').update({ ...input }).eq('id', id);
+  if (error) throw new Error(`Error al actualizar la FAQ: ${error.message}`);
+}
+
+export async function eliminarFaqAdmin(id: string): Promise<void> {
+  const { error } = await getSupabaseAdmin().from('faq_asistente').delete().eq('id', id);
+  if (error) throw new Error(`Error al eliminar la FAQ: ${error.message}`);
+}
+
+export async function reordenarFaqAdmin(faqs: { id: string; orden: number }[]): Promise<void> {
+  await Promise.all(faqs.map(({ id, orden }) => getSupabaseAdmin().from('faq_asistente').update({ orden }).eq('id', id)));
+}
+
+export interface MensajeHistorial {
+  id: string;
+  contenido: string;
+  created_at: string;
+  residente_nombre: string | null;
+  residente_apellido: string | null;
+}
+
+interface HistorialRow {
+  id: string;
+  contenido: string;
+  created_at: string;
+  residente: { nombre?: string; apellido?: string } | { nombre?: string; apellido?: string }[] | null;
+}
+
+export async function obtenerHistorialMensajesAdmin(limite = 50): Promise<MensajeHistorial[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('mensajes_asistente')
+    .select('id, contenido, created_at, residente:residentes(nombre, apellido)')
+    .eq('rol', 'usuario')
+    .order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) throw new Error(`Error al cargar el historial: ${error.message}`);
+
+  return ((data ?? []) as unknown as HistorialRow[]).map((m) => {
+    const residente = Array.isArray(m.residente) ? m.residente[0] : m.residente;
+    return {
+      id: m.id,
+      contenido: m.contenido,
+      created_at: m.created_at,
+      residente_nombre: residente?.nombre ?? null,
+      residente_apellido: residente?.apellido ?? null,
+    };
+  });
+}
+
+export async function obtenerStatsRaw(): Promise<{ totalConsultas: number; sesionesHoy: number; contenidos: string[] }> {
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const [{ count: totalConsultas }, { count: sesionesHoy }, { data: topData }] = await Promise.all([
+    getSupabaseAdmin().from('mensajes_asistente').select('*', { count: 'exact', head: true }).eq('rol', 'usuario'),
+    getSupabaseAdmin()
+      .from('mensajes_asistente')
+      .select('*', { count: 'exact', head: true })
+      .eq('rol', 'usuario')
+      .gte('created_at', `${hoy}T00:00:00.000Z`)
+      .lte('created_at', `${hoy}T23:59:59.999Z`),
+    getSupabaseAdmin().from('mensajes_asistente').select('contenido').eq('rol', 'usuario').limit(500),
+  ]);
+
+  return {
+    totalConsultas: totalConsultas ?? 0,
+    sesionesHoy: sesionesHoy ?? 0,
+    contenidos: ((topData ?? []) as Array<{ contenido: string }>).map((m) => m.contenido).filter(Boolean),
+  };
+}

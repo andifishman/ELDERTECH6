@@ -1,0 +1,5 @@
+-- Seed puntual de datos: carga de actividades de una semana específica de junio 2026.
+-- No se transcribe el contenido completo acá porque es un seed de datos de un momento
+-- puntual (no estructura de schema) — las filas ya existen en la tabla `actividades`.
+-- Si hace falta reproducir este estado exacto en un ambiente nuevo, restaurar desde un
+-- backup de la base en vez de re-ejecutar este seed histórico.
