@@ -39,3 +39,5 @@ scripts/
 
 expo-env.d.ts
 # @end expo-cli
+.vercel
+.env*
