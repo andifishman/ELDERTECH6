@@ -1,6 +1,7 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
+import { registrarPartida } from '@/services/juegosService';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -150,6 +151,7 @@ export default function ConexionesScreen() {
       }
       if (newSolved.length === GROUPS_COUNT) {
         setGameResult('won');
+        void registrarPartida('conexiones', 'ganado');
       }
     } else {
       const newMistakes = mistakes + 1;
@@ -157,6 +159,7 @@ export default function ConexionesScreen() {
       setSelected([]);
       if (newMistakes >= maxMistakes) {
         setGameResult('lost');
+        void registrarPartida('conexiones', 'perdido');
       } else {
         if (errorTimer.current) clearTimeout(errorTimer.current);
         setErrorMsg('❌ Esas palabras no son del mismo grupo. Intentá de nuevo.');

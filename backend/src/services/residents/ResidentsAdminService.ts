@@ -2,6 +2,7 @@ import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/residentsRepository';
 import * as auditService from '../audit/AuditService';
+import * as gamesRepo from '../../repositories/gamesRepository';
 
 /** Porteo de `backoffice/src/services/residentesService.ts` — operaciones admin-only (backoffice). */
 
@@ -58,13 +59,14 @@ export async function resetearPassword(user: AuthUser, callerToken: string, resi
 
 export interface ResidenteDetalle extends repo.ResidenteDetalleRaw {
   residente: repo.Residente;
+  partidasPorJuego: gamesRepo.ConteoPorJuego[];
 }
 
 export async function obtenerDetalle(id: string): Promise<ResidenteDetalle> {
   const residente = await repo.obtenerResidenteAdmin(id);
   if (!residente) throw new HttpError(404, 'Residente no encontrado.');
-  const raw = await repo.obtenerResidenteDetalleRaw(id);
-  return { residente, ...raw };
+  const [raw, partidasPorJuego] = await Promise.all([repo.obtenerResidenteDetalleRaw(id), gamesRepo.contarPartidasPorJuego(id)]);
+  return { residente, ...raw, partidasPorJuego };
 }
 
 export async function setActivo(user: AuthUser, id: string, activo: boolean, nombre?: string): Promise<void> {

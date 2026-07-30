@@ -1,6 +1,7 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
+import { registrarPartida } from '@/services/juegosService';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -133,6 +134,7 @@ export default function AhorcadoScreen() {
         setPalabraFinal(palabra);
         setGameOver(true);
         setGanó(false);
+        void registrarPartida('ahorcado', 'perdido');
       }
     } else {
       const todasDescubiertas = palabra.split('').every(l => nuevasUsadas.has(l));
@@ -140,6 +142,7 @@ export default function AhorcadoScreen() {
         setPalabraFinal(palabra);
         setGameOver(true);
         setGanó(true);
+        void registrarPartida('ahorcado', 'ganado');
       }
     }
   };

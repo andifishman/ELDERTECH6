@@ -40,6 +40,11 @@ export async function resetearPassword(residenteId: string, dni: string): Promis
   await apiClient.post<void>(`/api/admin/residents/${residenteId}/reset-password`, { dni });
 }
 
+export interface ConteoPorJuego {
+  juego: string;
+  cantidad: number;
+}
+
 export interface ResidenteDetalle {
   residente: Residente;
   mensajes: { id: string; contenido: string; created_at: string }[];
@@ -47,6 +52,7 @@ export interface ResidenteDetalle {
   tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
   ciudadesClima: string[];
   contactos: ContactoResumen[];
+  partidasPorJuego: ConteoPorJuego[];
 }
 
 export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDetalle> {

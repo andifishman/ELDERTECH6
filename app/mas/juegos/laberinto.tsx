@@ -1,6 +1,7 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
+import { registrarPartida } from '@/services/juegosService';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Modal, PanResponder,
@@ -98,7 +99,10 @@ export default function LaberintoScreen() {
     posRef.current = next;
     setPos(next);
     setMoves(m => m + 1);
-    if (nr === diffRef.current.rows - 1 && nc === diffRef.current.cols - 1) setWon(true);
+    if (nr === diffRef.current.rows - 1 && nc === diffRef.current.cols - 1) {
+      setWon(true);
+      void registrarPartida('laberinto', 'ganado');
+    }
   };
 
   // Arrastre continuo: el personaje sigue el dedo celda a celda

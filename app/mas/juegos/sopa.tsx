@@ -1,6 +1,7 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
+import { registrarPartida } from '@/services/juegosService';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -175,7 +176,10 @@ export default function SopaScreen() {
       setFoundWords(newFound);
       updateSel([]);
       if (hintWordRef.current === match.word) updateHint(null, null);
-      if (newFound.length === ps.length) updateWon(true);
+      if (newFound.length === ps.length) {
+        updateWon(true);
+        void registrarPartida('sopa', 'ganado');
+      }
       return [];
     }
 

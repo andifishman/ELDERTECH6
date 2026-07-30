@@ -1,6 +1,7 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
+import { registrarPartida } from '@/services/juegosService';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
@@ -106,7 +107,10 @@ export default function MemotestScreen() {
         if (match) {
           setCards(prev => {
             const next = prev.map((c, i) => i === i1 || i === i2 ? { ...c, matched: true } : c);
-            if (next.every(c => c.matched)) setWon(true);
+            if (next.every(c => c.matched)) {
+              setWon(true);
+              void registrarPartida('memotest', 'ganado');
+            }
             return next;
           });
         } else {

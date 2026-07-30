@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users, Gamepad2 } from 'lucide-react';
 import { formatDistanceToNow, format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,6 +17,15 @@ const NIVEL_LABEL: Record<string, { label: string; variant: 'success' | 'warning
   dependiente: { label: 'Dependiente', variant: 'danger' },
 };
 
+const JUEGOS_INFO: Record<string, { emoji: string; titulo: string }> = {
+  ahorcado: { emoji: '🪢', titulo: 'Ahorcado' },
+  memotest: { emoji: '🃏', titulo: 'Memotest' },
+  simon: { emoji: '🎮', titulo: 'Simón' },
+  conexiones: { emoji: '🔗', titulo: 'Conexiones' },
+  laberinto: { emoji: '🌀', titulo: 'Laberinto' },
+  sopa: { emoji: '🔤', titulo: 'Sopa de Letras' },
+};
+
 export function ResidenteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -28,7 +37,8 @@ export function ResidenteDetailPage() {
   if (isLoading) return <LoadingState mensaje="Cargando perfil del residente…" />;
   if (isError || !data) return <ErrorState onReintentar={() => void refetch()} />;
 
-  const { residente: r, mensajes, intereses, tutorialesCompletados, ciudadesClima, contactos } = data;
+  const { residente: r, mensajes, intereses, tutorialesCompletados, ciudadesClima, contactos, partidasPorJuego } = data;
+  const totalPartidas = partidasPorJuego.reduce((sum, p) => sum + p.cantidad, 0);
   const edad = r.fecha_nacimiento ? differenceInYears(new Date(), new Date(r.fecha_nacimiento)) : null;
   const nivel = NIVEL_LABEL[r.nivel_dificultad] ?? NIVEL_LABEL['independiente'];
 
@@ -161,6 +171,40 @@ export function ResidenteDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Juegos jugados */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+            <Gamepad2 className="h-4 w-4" /> Juegos
+            {totalPartidas > 0 && (
+              <Badge variant="outline" className="ml-auto normal-case">{totalPartidas} partidas</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {totalPartidas === 0 ? (
+            <p className="text-sm text-muted-foreground">Todavía no jugó ningún juego.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {partidasPorJuego.map(({ juego, cantidad }) => {
+                const info = JUEGOS_INFO[juego] ?? { emoji: '🎲', titulo: juego };
+                return (
+                  <div
+                    key={juego}
+                    className="flex flex-col items-center gap-1 rounded-lg border border-border bg-muted/30 px-3 py-3 text-center"
+                  >
+                    <span className="text-2xl">{info.emoji}</span>
+                    <span className="text-xs font-medium text-foreground">{info.titulo}</span>
+                    <span className="text-lg font-bold text-primary">{cantidad}</span>
+                    <span className="text-[11px] text-muted-foreground">{cantidad === 1 ? 'partida' : 'partidas'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 

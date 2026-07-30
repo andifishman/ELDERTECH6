@@ -1,6 +1,7 @@
 import AppHeader from '@/components/ui/AppHeader';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
+import { registrarPartida } from '@/services/juegosService';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -99,6 +100,7 @@ export default function SimonScreen() {
       setBestRound(prev => Math.max(prev, roundRef.current));
       setGameState('over');
       gameStateRef.current = 'over';
+      void registrarPartida('simon', null);
       return;
     }
 
