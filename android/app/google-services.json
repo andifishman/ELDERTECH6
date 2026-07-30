@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "468165810140",
+    "project_id": "eldertech-d7db7",
+    "storage_bucket": "eldertech-d7db7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:468165810140:android:49d7eb0fc17f4bbca62119",
+        "android_client_info": {
+          "package_name": "com.eldertech.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTvFGczkVwdyFQGDUGr36hyWgRQ5-tSgU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
