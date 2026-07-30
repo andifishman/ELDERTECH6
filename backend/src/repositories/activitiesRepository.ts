@@ -188,3 +188,47 @@ export async function propagarOverrideAOcurrencias(occurrenceIds: string[], over
     if (error) throw new Error(`Error al propagar las excepciones: ${error.message}`);
   }
 }
+
+// ─── Recordatorios automáticos (módulo Notificaciones) ──────────────────────────
+
+export interface ActividadPendienteRecordatorio {
+  id: string;
+  organizacion_id: string;
+  nombre: string;
+  fecha: string;
+  hora_inicio: string;
+  ubicacion: { nombre: string } | null;
+  recordatorio_minutos_antes: number;
+  secciones_objetivo: string[] | null;
+}
+
+/**
+ * Candidatas a recordatorio: hoy o mañana, con `recordatorio_minutos_antes`
+ * configurado y todavía no enviado. El filtro exacto de la ventana (ahora
+ * está a <= X minutos del inicio) se hace en el Service, en JS, porque
+ * combinar `fecha` (date) + `hora_inicio` (time) en una sola comparación de
+ * timestamp no es directo en PostgREST.
+ */
+export async function listarCandidatasRecordatorio(): Promise<ActividadPendienteRecordatorio[]> {
+  const hoy = toSupabaseDate(new Date());
+  const mañana = toSupabaseDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+
+  const { data, error } = await getSupabaseAdmin()
+    .from('actividades')
+    .select('id, organizacion_id, nombre, fecha, hora_inicio, ubicacion:ubicaciones(nombre), recordatorio_minutos_antes, secciones_objetivo')
+    .not('recordatorio_minutos_antes', 'is', null)
+    .eq('recordatorio_enviado', false)
+    .eq('activo', true)
+    .in('fecha', [hoy, mañana]);
+
+  if (error) throw new Error(`Error al buscar recordatorios de actividades: ${error.message}`);
+  return ((data ?? []) as unknown as Array<ActividadPendienteRecordatorio & { ubicacion: { nombre: string } | { nombre: string }[] | null }>).map((a) => ({
+    ...a,
+    ubicacion: Array.isArray(a.ubicacion) ? (a.ubicacion[0] ?? null) : a.ubicacion,
+  }));
+}
+
+export async function marcarRecordatorioEnviado(actividadId: string, notificationId: string): Promise<void> {
+  const { error } = await getSupabaseAdmin().from('actividades').update({ recordatorio_enviado: true, notificacion_id: notificationId }).eq('id', actividadId);
+  if (error) throw new Error(`Error al marcar el recordatorio como enviado: ${error.message}`);
+}

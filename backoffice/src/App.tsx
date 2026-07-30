@@ -30,6 +30,9 @@ const ConfiguracionPage = lazy(() => import('@/features/configuracion/Configurac
 const AdministradoresPage = lazy(() => import('@/features/administradores/AdministradoresPage').then((m) => ({ default: m.AdministradoresPage })));
 const PedidosPage = lazy(() => import('@/features/pedidos/PedidosPage').then((m) => ({ default: m.PedidosPage })));
 const PedidoDetailPage = lazy(() => import('@/features/pedidos/PedidoDetailPage').then((m) => ({ default: m.PedidoDetailPage })));
+const NotificacionesPage = lazy(() => import('@/features/notificaciones/NotificacionesPage').then((m) => ({ default: m.NotificacionesPage })));
+const NotificacionFormPage = lazy(() => import('@/features/notificaciones/NotificacionFormPage').then((m) => ({ default: m.NotificacionFormPage })));
+const NotificacionDetailPage = lazy(() => import('@/features/notificaciones/NotificacionDetailPage').then((m) => ({ default: m.NotificacionDetailPage })));
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -56,6 +59,10 @@ const router = createBrowserRouter([
           { path: '/administradores', element: <AdministradoresPage />, handle: { titulo: 'Administradores' } },
           { path: '/pedidos', element: <PedidosPage />, handle: { titulo: 'Pedidos y Sugerencias' } },
           { path: '/pedidos/:id', element: <PedidoDetailPage />, handle: { titulo: 'Detalle de solicitud' } },
+          { path: '/notificaciones', element: <NotificacionesPage />, handle: { titulo: 'Notificaciones' } },
+          { path: '/notificaciones/nueva', element: <NotificacionFormPage />, handle: { titulo: 'Nueva notificación' } },
+          { path: '/notificaciones/:id', element: <NotificacionDetailPage />, handle: { titulo: 'Detalle de notificación' } },
+          { path: '/notificaciones/:id/editar', element: <NotificacionFormPage />, handle: { titulo: 'Editar notificación' } },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

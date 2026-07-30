@@ -14,6 +14,7 @@ import {
   History,
   ShieldCheck,
   Inbox,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 import type { Permisos } from '@/types/backoffice.types';
@@ -32,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Tutoriales', to: '/tutoriales', icon: GraduationCap },
   { label: 'Usuarios', to: '/usuarios', icon: Users, visible: (p) => p.puedeGestionarUsuarios },
   { label: 'Pedidos y Sugerencias', to: '/pedidos', icon: Inbox },
+  { label: 'Notificaciones', to: '/notificaciones', icon: Bell },
   { label: 'Asistente / FAQ', to: '/asistente', icon: Bot },
   { label: 'Residentes', to: '/usuarios', icon: Users, visible: (p) => !p.puedeGestionarUsuarios },
   { label: 'Auditoría', to: '/auditoria', icon: History, visible: (p) => p.puedeGestionarUsuarios },

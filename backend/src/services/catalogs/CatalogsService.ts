@@ -16,6 +16,7 @@ export interface Catalogos {
   ubicaciones: repo.Ubicacion[];
   responsables: repo.Responsable[];
   secciones: readonly string[];
+  intereses: repo.Interes[];
 }
 
 function requireOrganizacionId(user: AuthUser): string {
@@ -25,12 +26,13 @@ function requireOrganizacionId(user: AuthUser): string {
 
 export async function obtenerCatalogos(user: AuthUser): Promise<Catalogos> {
   const organizacionId = requireOrganizacionId(user);
-  const [tiposActividad, ubicaciones, responsables] = await Promise.all([
+  const [tiposActividad, ubicaciones, responsables, intereses] = await Promise.all([
     repo.findTiposActividad(organizacionId),
     repo.findUbicaciones(organizacionId),
     repo.findResponsables(organizacionId),
+    repo.findIntereses(),
   ]);
-  return { tiposActividad, ubicaciones, responsables, secciones: SECCIONES };
+  return { tiposActividad, ubicaciones, responsables, secciones: SECCIONES, intereses };
 }
 
 export async function crearTipoActividad(

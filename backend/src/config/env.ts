@@ -36,5 +36,12 @@ export const env = {
   weatherApiApiKey: optional('WEATHERAPI_API_KEY'),
   tomorrowIoApiKey: optional('TOMORROW_IO_API_KEY'),
 
-  internalCronSecret: optional('INTERNAL_CRON_SECRET'),
+  // Vercel inyecta automáticamente `Authorization: Bearer <CRON_SECRET>` en las
+  // llamadas de sus Cron Jobs SOLO si la env var se llama exactamente así — es
+  // el mecanismo estándar de Vercel, no algo que armamos nosotros. Reemplaza a
+  // la vieja INTERNAL_CRON_SECRET (declarada pero nunca usada por ningún endpoint).
+  cronSecret: optional('CRON_SECRET'),
+
+  // Opcional — sube los límites de rate-limit de Expo Push. Sin esto también funciona.
+  expoAccessToken: optional('EXPO_ACCESS_TOKEN'),
 };

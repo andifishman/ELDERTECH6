@@ -37,7 +37,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_CONTACTS",
-        "android.permission.WRITE_CONTACTS"
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -65,6 +66,13 @@
         "expo-contacts",
         {
           "contactsPermission": "ElderTech necesita acceso a tus contactos para que puedas agregar fácilmente a tu familia y amigos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo-puente.png",
+          "color": "#1B5E3B"
         }
       ]
     ],

@@ -54,6 +54,20 @@ export async function findUbicaciones(organizacionId: string): Promise<Ubicacion
   return (data ?? []) as Ubicacion[];
 }
 
+export interface Interes {
+  id: string;
+  nombre: string;
+  emoji: string | null;
+  activo: boolean;
+}
+
+/** Catálogo global de intereses — usado por el módulo Notificaciones para targeting "por intereses". */
+export async function findIntereses(): Promise<Interes[]> {
+  const { data, error } = await getSupabaseAdmin().from('intereses').select('id, nombre, emoji, activo').eq('activo', true).order('nombre');
+  if (error) throw new Error(`Error al cargar intereses: ${error.message}`);
+  return (data ?? []) as Interes[];
+}
+
 export async function findResponsables(organizacionId: string): Promise<Responsable[]> {
   const { data, error } = await getSupabaseAdmin()
     .from('responsables')

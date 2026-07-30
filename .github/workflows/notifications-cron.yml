@@ -1,0 +1,22 @@
+name: Procesar notificaciones pendientes
+
+# El cron de Vercel (plan gratuito) solo corre una vez por día — para que las
+# notificaciones programadas y los recordatorios de actividades disparen con
+# precisión de minutos, este workflow llama al mismo endpoint cada 5 minutos.
+# Requiere dos secrets configurados en Settings → Secrets and variables →
+# Actions del repo: BACKEND_URL (ej. https://backend-beta-flax-82.vercel.app)
+# y CRON_SECRET (el mismo valor que está configurado en las env vars de Vercel).
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al procesador de notificaciones
+        run: |
+          curl -sf -X POST "${{ secrets.BACKEND_URL }}/api/internal/notifications/process" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

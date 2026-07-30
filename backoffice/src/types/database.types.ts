@@ -131,6 +131,8 @@ export interface Actividad {
   secciones_objetivo: SeccionResidente[] | null;
   activo: boolean;
   plantilla_id: string | null; // UUID del row-plantilla del grupo (self-ref si es plantilla, ID externo si es ocurrencia)
+  recordatorio_minutos_antes: number | null;
+  recordatorio_enviado: boolean;
   created_at: string;
   updated_at: string;
 }

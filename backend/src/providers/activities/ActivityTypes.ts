@@ -77,6 +77,9 @@ export interface ActividadAdminInput {
   patron_recurrencia?: PatronRecurrencia | null;
   secciones_objetivo?: string[] | null;
   residentesOverride?: ResidenteOverrideInput[];
+  /** Módulo Notificaciones — ver `ActivitiesAdminService`. */
+  notificar_al_crear?: boolean;
+  recordatorio_minutos_antes?: number | null;
 }
 
 /** Fila lista para insert/update en `actividades` — ya sin `residentesOverride` y con horas normalizadas. */
@@ -96,4 +99,6 @@ export interface ActividadInputRow {
   secciones_objetivo: string[] | null;
   activo?: boolean;
   plantilla_id?: string | null;
+  recordatorio_minutos_antes?: number | null;
+  recordatorio_enviado?: boolean;
 }

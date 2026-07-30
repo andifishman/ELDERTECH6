@@ -24,6 +24,8 @@ export const actividadAdminInputSchema = z.object({
   patron_recurrencia: patronRecurrenciaSchema.nullable().optional(),
   secciones_objetivo: z.array(z.string()).nullable().optional(),
   residentesOverride: z.array(residenteOverrideSchema).optional(),
+  notificar_al_crear: z.boolean().optional(),
+  recordatorio_minutos_antes: z.number().int().positive().nullable().optional(),
 });
 
 export const listarActividadesQuerySchema = z.object({

@@ -12,6 +12,9 @@ import { catalogsRouter } from './routes/catalogs.routes';
 import { configuracionRouter } from './routes/configuracion.routes';
 import { contactsRouter } from './routes/contacts.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
+import { notificationsRouter } from './routes/notifications.routes';
+import { notificationsAdminRouter } from './routes/notificationsAdmin.routes';
+import { notificationsCronRouter } from './routes/notificationsCron.routes';
 import { profileRouter } from './routes/profile.routes';
 import { providersRouter } from './routes/providers.routes';
 import { requestsRouter } from './routes/requests.routes';
@@ -52,6 +55,9 @@ export function createApp(): Express {
   app.use('/api/admin/profile', profileRouter);
   app.use('/api/requests', requestsRouter);
   app.use('/api/admin/requests', requestsAdminRouter);
+  app.use('/api/notifications', notificationsRouter);
+  app.use('/api/admin/notifications', notificationsAdminRouter);
+  app.use('/api/internal/notifications', notificationsCronRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -3,6 +3,8 @@ import { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
 import { getProfileForUser } from '@/services/authService';
+import { registrarPushToken } from '@/services/notificationsService';
+import { pedirPermisoYObtenerToken, plataformaActual, nombreDispositivo } from '@/utils/pushNotifications';
 import type { AuthProfile } from '@/types/auth.types';
 
 async function registrarConexion(residenteId: string): Promise<void> {
@@ -12,6 +14,17 @@ async function registrarConexion(residenteId: string): Promise<void> {
       .update({ ultima_conexion: new Date().toISOString() })
       .eq('id', residenteId);
   } catch {}
+}
+
+/** Best-effort — si falla (sin permiso, emulador, red), no bloquea el login. */
+async function registrarDispositivoParaPush(): Promise<void> {
+  try {
+    const token = await pedirPermisoYObtenerToken();
+    if (!token) return;
+    await registrarPushToken(token, plataformaActual(), nombreDispositivo());
+  } catch (err) {
+    console.warn('[push] no se pudo registrar el dispositivo', err);
+  }
 }
 
 const cacheKey = (uid: string) => `@et_profile_v1_${uid}`;
@@ -123,7 +136,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setProfile(p);
                 if (p) {
                   writeCache(uid, p);
-                  if (p.residente?.id) void registrarConexion(p.residente.id);
+                  if (p.residente?.id) {
+                    void registrarConexion(p.residente.id);
+                    void registrarDispositivoParaPush();
+                  }
                 }
               }
             } catch {}
@@ -193,7 +209,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setProfile(p);
               if (p) {
                 writeCache(s.user.id, p);
-                if (event === 'SIGNED_IN' && p.residente?.id) void registrarConexion(p.residente.id);
+                if (event === 'SIGNED_IN' && p.residente?.id) {
+                  void registrarConexion(p.residente.id);
+                  void registrarDispositivoParaPush();
+                }
               }
             }
           } catch {

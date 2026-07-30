@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Combobox } from '@/components/ui/combobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingState } from '@/components/common/states';
 import { notify } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
@@ -117,6 +118,7 @@ export function ActividadFormPage() {
   const [filtroResidente, setFiltroResidente] = useState('');
   // Notificar residentes: desactivado por defecto
   const [notificar, setNotificar] = useState(false);
+  const [recordatorioMinutos, setRecordatorioMinutos] = useState<string>('');
 
   // mini-formulario nueva categoría — ahora con defaults de hora
   const [mostrarFormTipo, setMostrarFormTipo] = useState(false);
@@ -169,6 +171,7 @@ export function ActividadFormPage() {
     setUbicacionId(actividad.ubicacion_id ?? '');
     setResponsableId(actividad.responsable_id ?? '');
     setSecciones(actividad.secciones_objetivo ?? []);
+    setRecordatorioMinutos(actividad.recordatorio_minutos_antes ? String(actividad.recordatorio_minutos_antes) : '');
     const d = actividad.patron_recurrencia?.dias_semana;
     if (!actividad.es_recurrente) setPreset('unica');
     else if (d?.length === 7) setPreset('diaria');
@@ -223,6 +226,8 @@ export function ActividadFormPage() {
       patron_recurrencia: patronFinal,
       secciones_objetivo: secciones,
       residentesOverride: overridesInput,
+      notificar_al_crear: notificar,
+      recordatorio_minutos_antes: recordatorioMinutos ? Number(recordatorioMinutos) : null,
     };
 
     if (esEdicion && id) {
@@ -636,17 +641,35 @@ export function ActividadFormPage() {
           <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">4 · Opciones avanzadas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Notificar a residentes al crear</p>
-              <p className="text-xs text-muted-foreground">Envía un aviso push a los residentes correspondientes.</p>
+          {!esEdicion && (
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium">Notificar a residentes al crear</p>
+                <p className="text-xs text-muted-foreground">Envía un aviso push a los residentes correspondientes en el momento de crear la actividad.</p>
+              </div>
+              <Switch checked={notificar} onCheckedChange={setNotificar} />
             </div>
-            <Switch checked={notificar} onCheckedChange={setNotificar} />
-          </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="capacidad">Capacidad máxima (opcional)</Label>
               <Input id="capacidad" type="number" min={0} placeholder="20" {...register('capacidad')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Recordatorio automático antes de empezar</Label>
+              <Select value={recordatorioMinutos || 'ninguno'} onValueChange={(v) => setRecordatorioMinutos(v === 'ninguno' ? '' : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ninguno">Sin recordatorio</SelectItem>
+                  <SelectItem value="5">5 minutos antes</SelectItem>
+                  <SelectItem value="10">10 minutos antes</SelectItem>
+                  <SelectItem value="15">15 minutos antes</SelectItem>
+                  <SelectItem value="30">30 minutos antes</SelectItem>
+                  <SelectItem value="60">1 hora antes</SelectItem>
+                  <SelectItem value="120">2 horas antes</SelectItem>
+                  <SelectItem value="1440">24 horas antes</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

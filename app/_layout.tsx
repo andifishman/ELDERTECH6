@@ -7,6 +7,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as Notifications from 'expo-notifications';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
@@ -15,6 +16,23 @@ import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
+import { PANTALLA_A_RUTA } from '@/utils/pushNotifications';
+import { marcarNotificacionAbierta } from '@/services/notificationsService';
+
+/** Al tocar una notificación (app en background/cerrada), navega a la pantalla indicada y la marca como abierta. */
+function useNotificationTapHandler() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { notificationId?: string; pantallaDestino?: string } | undefined;
+      if (data?.notificationId) void marcarNotificacionAbierta(data.notificationId).catch(() => {});
+      const ruta = data?.pantallaDestino ? PANTALLA_A_RUTA[data.pantallaDestino] : undefined;
+      if (ruta) router.push(ruta as never);
+    });
+    return () => sub.remove();
+  }, [router]);
+}
 
 function NavigationGuard({ children }: { children: React.ReactNode }) {
   const { session, isLoading } = useAuth();
@@ -58,6 +76,7 @@ function useHideNavigationBar() {
 
 export default function RootLayout() {
   useHideNavigationBar();
+  useNotificationTapHandler();
   return (
     <SafeAreaProvider>
       <QueryProvider>

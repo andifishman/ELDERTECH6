@@ -23,6 +23,8 @@ export interface ActividadInput {
   patron_recurrencia?: PatronRecurrencia | null;
   secciones_objetivo?: string[] | null;
   residentesOverride?: ResidenteOverrideInput[];
+  notificar_al_crear?: boolean;
+  recordatorio_minutos_antes?: number | null;
 }
 
 // Extrae el mensaje de un error (ApiError extiende Error)

@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
-import type { TipoActividad, Ubicacion, Responsable, SeccionResidente } from '@/types/database.types';
+import type { TipoActividad, Ubicacion, Responsable, SeccionResidente, Interes } from '@/types/database.types';
 import { extraerMensajeError } from './actividadesService';
 
 export type { extraerMensajeError };
@@ -9,6 +9,7 @@ export interface Catalogos {
   ubicaciones: Ubicacion[];
   responsables: Responsable[];
   secciones: SeccionResidente[];
+  intereses: Interes[];
 }
 
 export async function obtenerCatalogos(): Promise<Catalogos> {

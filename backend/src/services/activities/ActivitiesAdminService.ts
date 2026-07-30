@@ -3,6 +3,8 @@ import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/activitiesRepository';
 import type { ActividadAdminInput, ActividadCompleta, ActividadInputRow, ResidenteOverrideInput } from '../../providers/activities/ActivityTypes';
 import * as auditService from '../audit/AuditService';
+import * as notificationsService from '../notifications/NotificationsAdminService';
+import { logger } from '../../logging/logger';
 
 /** Porteo de `backoffice/src/services/actividadesService.ts` — operaciones admin-only (backoffice). */
 
@@ -31,7 +33,40 @@ function aRow(organizacionId: string, input: ActividadAdminInput): ActividadInpu
     es_recurrente: input.es_recurrente,
     patron_recurrencia: input.patron_recurrencia ?? null,
     secciones_objetivo: input.secciones_objetivo?.length ? input.secciones_objetivo : null,
+    recordatorio_minutos_antes: input.recordatorio_minutos_antes ?? null,
   };
+}
+
+/**
+ * "Notificar a residentes al crear" (módulo Notificaciones) — desactivado por
+ * defecto en el form, el admin decide si tildarlo. Reutiliza el mismo destino
+ * (secciones_objetivo) que ya tiene la actividad; si apunta a varias secciones,
+ * se manda una notificación por sección (mismo criterio que los recordatorios
+ * automáticos en `NotificationsProcessorService`). Best-effort: si falla el
+ * envío, no rompe la creación/edición de la actividad en sí.
+ */
+async function notificarActividad(user: AuthUser, organizacionId: string, input: ActividadAdminInput): Promise<void> {
+  if (!input.notificar_al_crear) return;
+  try {
+    const secciones = input.secciones_objetivo?.length ? input.secciones_objetivo : [null];
+    for (const seccion of secciones) {
+      await notificationsService.crear(
+        user,
+        {
+          titulo: '📅 Nueva actividad',
+          mensaje: `Hoy a las ${input.hora_inicio} comienza "${input.nombre}".`,
+          tipo: 'actividad',
+          destino_tipo: seccion ? 'seccion' : 'todos',
+          destino_filtro: seccion ? { seccion } : null,
+          programacion_tipo: 'instantanea',
+          pantalla_destino: 'horarios',
+        },
+        'enviar',
+      );
+    }
+  } catch (err) {
+    logger.warn('[actividades] no se pudo notificar la actividad', { error: err instanceof Error ? err.message : String(err) });
+  }
 }
 
 /**
@@ -99,6 +134,8 @@ export async function crear(user: AuthUser, input: ActividadAdminInput): Promise
     descripcion: `Creó la actividad "${input.nombre}"`,
     datosNuevos: { ...input, residentesOverride: undefined },
   });
+
+  await notificarActividad(user, organizacionId, input);
   return id;
 }
 
