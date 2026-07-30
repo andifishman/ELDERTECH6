@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { logger } from '../logging/logger';
 import { getSupabaseAdmin } from '../repositories/supabaseAdmin';
+import { SUPER_ADMIN_EMAILS } from '../config/superAdmins';
 
 export interface AuthUser {
   supabaseUserId: string;
@@ -8,6 +9,8 @@ export interface AuthUser {
   residenteId: string | null;
   organizacionId: string | null;
   rol: 'residente' | 'admin' | 'staff' | null;
+  /** Cuenta del allowlist de super-admins — ver `config/superAdmins.ts`. Bypassa el chequeo de `rol`. */
+  isSuperAdmin: boolean;
 }
 
 declare global {
@@ -59,19 +62,28 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
+  const email = userData.user.email ?? null;
+
   req.user = {
     supabaseUserId: userData.user.id,
-    email: userData.user.email ?? null,
+    email,
     residenteId: data?.residente_id ?? null,
     organizacionId: data?.organizacion_id ?? null,
     rol: (data?.rol as AuthUser['rol']) ?? null,
+    isSuperAdmin: !!email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase()),
   };
   next();
 }
 
-/** Para rutas /api/admin/* — exige rol admin o staff, además de estar autenticado. */
+/**
+ * Para rutas /api/admin/* — exige rol admin/staff, o ser una cuenta del
+ * allowlist de super-admins. Esto último es necesario porque las cuentas
+ * super-admin de este proyecto tienen `perfiles_usuario.rol = 'residente'`
+ * (su acceso total viene 100% del email, nunca de esa columna — mismo
+ * mecanismo que ya usaba el backoffice antes de esta migración).
+ */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (req.user?.rol !== 'admin' && req.user?.rol !== 'staff') {
+  if (!req.user?.isSuperAdmin && req.user?.rol !== 'admin' && req.user?.rol !== 'staff') {
     res.status(403).json({ error: 'No autorizado' });
     return;
   }
