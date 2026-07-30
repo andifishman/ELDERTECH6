@@ -23,14 +23,18 @@ interface ResidenteBasico {
 /**
  * Devuelve los residentes activos que matchean el destino elegido. `especificos`
  * usa `destino_filtro.residente_ids` tal cual; el resto arma un query sobre
- * `residentes` (o `residente_intereses` para el caso de intereses). Siempre se
- * excluyen los ids de `excluirResidenteIds` al final, sin importar el destino.
+ * `residentes` (o `residente_intereses` para el caso de intereses). Los ids de
+ * `incluirResidenteIds` se suman al resultado (para agregar puntualmente a
+ * alguien fuera del filtro) y luego siempre se excluyen los de
+ * `excluirResidenteIds` — la exclusión manual siempre gana, incluso sobre una
+ * inclusión manual del mismo id.
  */
 export async function resolverAudiencia(
   organizacionId: string,
   destinoTipo: DestinoTipo,
   destinoFiltro: DestinoFiltro | null,
   excluirResidenteIds: string[] | null,
+  incluirResidenteIds?: string[] | null,
 ): Promise<ResidenteBasico[]> {
   const db = getSupabaseAdmin();
   let residentes: ResidenteBasico[] = [];
@@ -68,6 +72,21 @@ export async function resolverAudiencia(
     residentes = (data ?? []) as ResidenteBasico[];
   }
 
+  if (incluirResidenteIds && incluirResidenteIds.length > 0) {
+    const yaPresentes = new Set(residentes.map((r) => r.id));
+    const idsAAgregar = incluirResidenteIds.filter((id) => !yaPresentes.has(id));
+    if (idsAAgregar.length > 0) {
+      const { data, error } = await db
+        .from('residentes')
+        .select('id, nombre, apellido')
+        .in('id', idsAAgregar)
+        .eq('organizacion_id', organizacionId)
+        .eq('activo', true);
+      if (error) throw new Error(`Error al resolver destinatarios incluidos: ${error.message}`);
+      residentes = [...residentes, ...((data ?? []) as ResidenteBasico[])];
+    }
+  }
+
   if (excluirResidenteIds && excluirResidenteIds.length > 0) {
     const excluidos = new Set(excluirResidenteIds);
     residentes = residentes.filter((r) => !excluidos.has(r.id));
@@ -90,6 +109,7 @@ export async function crear(organizacionId: string, creadoPor: string | null, in
       destino_tipo: input.destino_tipo,
       destino_filtro: input.destino_filtro ?? null,
       excluir_residente_ids: input.excluir_residente_ids ?? null,
+      incluir_residente_ids: input.incluir_residente_ids ?? null,
       programacion_tipo: input.programacion_tipo,
       programada_para: input.programada_para ?? null,
       recurrencia: input.recurrencia ?? 'ninguna',

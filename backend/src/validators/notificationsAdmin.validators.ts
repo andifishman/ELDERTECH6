@@ -17,6 +17,7 @@ export const notificationInputSchema = z.object({
   destino_tipo: z.enum(['todos', 'residentes', 'especificos', 'seccion', 'habitacion', 'intereses', 'nivel_dificultad']),
   destino_filtro: destinoFiltroSchema.nullable().optional(),
   excluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),
+  incluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),
   programacion_tipo: z.enum(['instantanea', 'programada']),
   programada_para: z.string().nullable().optional(),
   recurrencia: z.enum(['ninguna', 'diaria', 'semanal', 'mensual']).optional(),
@@ -49,4 +50,5 @@ export const previewAudienciaSchema = z.object({
   destino_tipo: z.enum(['todos', 'residentes', 'especificos', 'seccion', 'habitacion', 'intereses', 'nivel_dificultad']),
   destino_filtro: destinoFiltroSchema.nullable().optional(),
   excluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),
+  incluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),
 });

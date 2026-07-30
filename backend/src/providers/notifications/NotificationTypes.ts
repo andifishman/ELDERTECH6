@@ -25,6 +25,7 @@ export interface Notification {
   destino_tipo: DestinoTipo;
   destino_filtro: DestinoFiltro | null;
   excluir_residente_ids: string[] | null;
+  incluir_residente_ids: string[] | null;
   programacion_tipo: ProgramacionTipo;
   programada_para: string | null;
   recurrencia: Recurrencia;
@@ -52,6 +53,7 @@ export interface NotificationInput {
   destino_tipo: DestinoTipo;
   destino_filtro?: DestinoFiltro | null;
   excluir_residente_ids?: string[] | null;
+  incluir_residente_ids?: string[] | null;
   programacion_tipo: ProgramacionTipo;
   programada_para?: string | null;
   recurrencia?: Recurrencia;

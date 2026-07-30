@@ -74,6 +74,7 @@ export function NotificacionFormPage() {
   const [interesIds, setInteresIds] = useState<string[]>([]);
   const [residenteIds, setResidenteIds] = useState<string[]>([]);
   const [excluirIds, setExcluirIds] = useState<string[]>([]);
+  const [incluirIds, setIncluirIds] = useState<string[]>([]);
   const [busquedaUsuarios, setBusquedaUsuarios] = useState('');
 
   const [programacionTipo, setProgramacionTipo] = useState<'instantanea' | 'programada'>('instantanea');
@@ -101,6 +102,7 @@ export function NotificacionFormPage() {
     setInteresIds(n.destino_filtro?.interes_ids ?? []);
     setResidenteIds(n.destino_filtro?.residente_ids ?? []);
     setExcluirIds(n.excluir_residente_ids ?? []);
+    setIncluirIds(n.incluir_residente_ids ?? []);
     setProgramacionTipo(n.programacion_tipo);
     setProgramadaPara(n.programada_para?.slice(0, 16) ?? '');
     setRecurrencia(n.recurrencia);
@@ -132,7 +134,36 @@ export function NotificacionFormPage() {
     return null;
   }, [destinoTipo, seccion, habitacion, nivelDificultad, interesIds, residenteIds]);
 
-  const { data: preview } = usePreviewAudiencia(destinoTipo, destinoFiltro, excluirIds.length ? excluirIds : null, true);
+  // Ids que matchean el filtro de destino elegido, sin considerar los ajustes manuales
+  // de incluir/excluir — se usan para saber qué aparece tildado por defecto en el picker.
+  const { data: baseAudiencia } = usePreviewAudiencia(destinoTipo, destinoFiltro, null, null, true);
+  const baseMatchIds = useMemo(() => new Set(baseAudiencia?.ids ?? []), [baseAudiencia]);
+
+  const { data: preview } = usePreviewAudiencia(
+    destinoTipo,
+    destinoFiltro,
+    excluirIds.length ? excluirIds : null,
+    incluirIds.length ? incluirIds : null,
+    true,
+  );
+
+  const toggleDestinatario = (id: string) => {
+    if (baseMatchIds.has(id)) {
+      setExcluirIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    } else {
+      setIncluirIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    }
+  };
+
+  const seleccionarTodosDestinatarios = () => {
+    setExcluirIds([]);
+    setIncluirIds(residentesFiltrados.filter((r) => !baseMatchIds.has(r.id)).map((r) => r.id));
+  };
+
+  const deseleccionarTodosDestinatarios = () => {
+    setExcluirIds(residentesFiltrados.filter((r) => baseMatchIds.has(r.id)).map((r) => r.id));
+    setIncluirIds([]);
+  };
 
   const construirInput = (): NotificacionInput => ({
     titulo,
@@ -143,6 +174,7 @@ export function NotificacionFormPage() {
     destino_tipo: destinoTipo,
     destino_filtro: destinoFiltro,
     excluir_residente_ids: excluirIds.length ? excluirIds : null,
+    incluir_residente_ids: incluirIds.length ? incluirIds : null,
     programacion_tipo: programacionTipo,
     programada_para: programacionTipo === 'programada' && programadaPara ? new Date(programadaPara).toISOString() : null,
     recurrencia: programacionTipo === 'programada' ? recurrencia : 'ninguna',
@@ -284,14 +316,20 @@ export function NotificacionFormPage() {
           )}
 
           <div className="space-y-1.5 border-t border-border pt-3">
-            <Label>Excluir usuarios (opcional)</Label>
-            <UsuariosPicker
+            <Label>Ajustar destinatarios (opcional)</Label>
+            <p className="text-xs text-muted-foreground">
+              Los usuarios que coinciden con el destino elegido aparecen tildados. Destildá para excluirlos, o tildá otros para sumarlos igual.
+            </p>
+            <DestinatariosPicker
               residentes={residentesFiltrados}
-              seleccionados={excluirIds}
-              onChange={setExcluirIds}
+              baseMatchIds={baseMatchIds}
+              excluirIds={excluirIds}
+              incluirIds={incluirIds}
+              onToggle={toggleDestinatario}
+              onSeleccionarTodos={seleccionarTodosDestinatarios}
+              onDeseleccionarTodos={deseleccionarTodosDestinatarios}
               busqueda={busquedaUsuarios}
               onBusqueda={setBusquedaUsuarios}
-              compacto
             />
           </div>
 
@@ -434,20 +472,71 @@ interface Residente {
   seccion?: string | null;
 }
 
+function DestinatariosPicker({
+  residentes,
+  baseMatchIds,
+  excluirIds,
+  incluirIds,
+  onToggle,
+  onSeleccionarTodos,
+  onDeseleccionarTodos,
+  busqueda,
+  onBusqueda,
+}: {
+  residentes: Residente[];
+  baseMatchIds: Set<string>;
+  excluirIds: string[];
+  incluirIds: string[];
+  onToggle: (id: string) => void;
+  onSeleccionarTodos: () => void;
+  onDeseleccionarTodos: () => void;
+  busqueda: string;
+  onBusqueda: (v: string) => void;
+}) {
+  const estaSeleccionado = (id: string) => (baseMatchIds.has(id) ? !excluirIds.includes(id) : incluirIds.includes(id));
+  const seleccionadosCount = residentes.filter((r) => estaSeleccionado(r.id)).length;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Input value={busqueda} onChange={(e) => onBusqueda(e.target.value)} placeholder="Buscar usuario…" className="max-w-xs" />
+        <Button type="button" variant="outline" size="sm" onClick={onSeleccionarTodos}>Seleccionar todos</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onDeseleccionarTodos}>Deseleccionar todos</Button>
+        <Badge variant="muted">{seleccionadosCount} seleccionados</Badge>
+      </div>
+      <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
+        {residentes.length === 0 ? (
+          <p className="p-3 text-xs text-muted-foreground">Sin resultados.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {residentes.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+                <span className="truncate">
+                  {r.nombre} {r.apellido}
+                  {r.seccion ? <span className="text-xs text-muted-foreground"> · {r.seccion}</span> : null}
+                </span>
+                <input type="checkbox" checked={estaSeleccionado(r.id)} onChange={() => onToggle(r.id)} className="h-4 w-4 shrink-0" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function UsuariosPicker({
   residentes,
   seleccionados,
   onChange,
   busqueda,
   onBusqueda,
-  compacto,
 }: {
   residentes: Residente[];
   seleccionados: string[];
   onChange: (ids: string[]) => void;
   busqueda: string;
   onBusqueda: (v: string) => void;
-  compacto?: boolean;
 }) {
   const toggle = (id: string) => onChange(seleccionados.includes(id) ? seleccionados.filter((x) => x !== id) : [...seleccionados, id]);
 
@@ -459,7 +548,7 @@ function UsuariosPicker({
         <Button type="button" variant="ghost" size="sm" onClick={() => onChange([])}>Deseleccionar todos</Button>
         <Badge variant="muted">{seleccionados.length} seleccionados</Badge>
       </div>
-      <div className={`overflow-y-auto rounded-lg border border-border ${compacto ? 'max-h-32' : 'max-h-56'}`}>
+      <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
         {residentes.length === 0 ? (
           <p className="p-3 text-xs text-muted-foreground">Sin resultados.</p>
         ) : (

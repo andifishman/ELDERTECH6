@@ -26,8 +26,16 @@ export async function getListado(req: Request, res: Response): Promise<void> {
 }
 
 export async function postPreviewAudiencia(req: Request, res: Response): Promise<void> {
-  const { destino_tipo, destino_filtro, excluir_residente_ids } = previewAudienciaSchema.parse(req.body);
-  res.json(await service.previsualizarAudiencia(requireUser(req), destino_tipo, destino_filtro ?? null, excluir_residente_ids ?? null));
+  const { destino_tipo, destino_filtro, excluir_residente_ids, incluir_residente_ids } = previewAudienciaSchema.parse(req.body);
+  res.json(
+    await service.previsualizarAudiencia(
+      requireUser(req),
+      destino_tipo,
+      destino_filtro ?? null,
+      excluir_residente_ids ?? null,
+      incluir_residente_ids ?? null,
+    ),
+  );
 }
 
 export async function postCrear(req: Request, res: Response): Promise<void> {

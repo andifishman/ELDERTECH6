@@ -24,10 +24,11 @@ export async function previsualizarAudiencia(
   destinoTipo: DestinoTipo,
   destinoFiltro: DestinoFiltro | null,
   excluirResidenteIds: string[] | null,
-): Promise<{ total: number; muestra: Array<{ id: string; nombre: string; apellido: string }> }> {
+  incluirResidenteIds?: string[] | null,
+): Promise<{ total: number; ids: string[]; muestra: Array<{ id: string; nombre: string; apellido: string }> }> {
   const organizacionId = requireOrganizacionId(user);
-  const residentes = await repo.resolverAudiencia(organizacionId, destinoTipo, destinoFiltro, excluirResidenteIds);
-  return { total: residentes.length, muestra: residentes.slice(0, 20) };
+  const residentes = await repo.resolverAudiencia(organizacionId, destinoTipo, destinoFiltro, excluirResidenteIds, incluirResidenteIds);
+  return { total: residentes.length, ids: residentes.map((r) => r.id), muestra: residentes.slice(0, 20) };
 }
 
 /**
@@ -43,6 +44,7 @@ async function ejecutarEnvio(notification: Notification): Promise<void> {
     notification.destino_tipo,
     notification.destino_filtro,
     notification.excluir_residente_ids,
+    notification.incluir_residente_ids,
   );
 
   if (residentes.length === 0) {
@@ -216,6 +218,7 @@ export async function duplicar(user: AuthUser, id: string): Promise<Notification
       destino_tipo: original.destino_tipo,
       destino_filtro: original.destino_filtro,
       excluir_residente_ids: original.excluir_residente_ids,
+      incluir_residente_ids: original.incluir_residente_ids,
       programacion_tipo: 'instantanea',
       silenciosa: original.silenciosa,
       sonido: original.sonido,

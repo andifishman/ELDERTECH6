@@ -41,10 +41,16 @@ export function useNotificacionLogs(id?: string) {
   return useQuery({ queryKey: ['notificacion-logs', id], queryFn: () => listarLogs(id!), enabled: !!id });
 }
 
-export function usePreviewAudiencia(destinoTipo: DestinoTipo, destinoFiltro: DestinoFiltro | null, excluir: string[] | null, habilitado: boolean) {
+export function usePreviewAudiencia(
+  destinoTipo: DestinoTipo,
+  destinoFiltro: DestinoFiltro | null,
+  excluir: string[] | null,
+  incluir: string[] | null,
+  habilitado: boolean,
+) {
   return useQuery({
-    queryKey: ['preview-audiencia', destinoTipo, destinoFiltro, excluir],
-    queryFn: () => previsualizarAudiencia(destinoTipo, destinoFiltro, excluir),
+    queryKey: ['preview-audiencia', destinoTipo, destinoFiltro, excluir, incluir],
+    queryFn: () => previsualizarAudiencia(destinoTipo, destinoFiltro, excluir, incluir),
     enabled: habilitado,
     staleTime: 1000 * 10,
   });

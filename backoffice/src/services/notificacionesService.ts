@@ -30,6 +30,7 @@ export interface Notificacion {
   destino_tipo: DestinoTipo;
   destino_filtro: DestinoFiltro | null;
   excluir_residente_ids: string[] | null;
+  incluir_residente_ids: string[] | null;
   programacion_tipo: ProgramacionTipo;
   programada_para: string | null;
   recurrencia: Recurrencia;
@@ -58,6 +59,7 @@ export interface NotificacionInput {
   destino_tipo: DestinoTipo;
   destino_filtro?: DestinoFiltro | null;
   excluir_residente_ids?: string[] | null;
+  incluir_residente_ids?: string[] | null;
   programacion_tipo: ProgramacionTipo;
   programada_para?: string | null;
   recurrencia?: Recurrencia;
@@ -134,11 +136,13 @@ export async function previsualizarAudiencia(
   destinoTipo: DestinoTipo,
   destinoFiltro: DestinoFiltro | null,
   excluirResidenteIds: string[] | null,
-): Promise<{ total: number; muestra: Array<{ id: string; nombre: string; apellido: string }> }> {
+  incluirResidenteIds?: string[] | null,
+): Promise<{ total: number; ids: string[]; muestra: Array<{ id: string; nombre: string; apellido: string }> }> {
   return apiClient.post('/api/admin/notifications/preview-audience', {
     destino_tipo: destinoTipo,
     destino_filtro: destinoFiltro,
     excluir_residente_ids: excluirResidenteIds,
+    incluir_residente_ids: incluirResidenteIds,
   });
 }
 
