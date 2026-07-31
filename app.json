@@ -80,6 +80,12 @@
     "experiments": {
       "typedRoutes": true
     },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cd37f089-a57f-4b84-975e-06c93e94c09f"
+    },
     "extra": {
       "router": {},
       "eas": {
