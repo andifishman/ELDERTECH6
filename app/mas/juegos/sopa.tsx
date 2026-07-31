@@ -121,11 +121,11 @@ export default function SopaScreen() {
   const gridViewRef = useRef<View>(null);
   const gridMeasure = useRef({ x: 0, y: 0 });
   const measureGrid = () => {
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       gridViewRef.current?.measureInWindow((x, y) => {
         gridMeasure.current = { x, y };
       });
-    }, 100);
+    });
   };
   const getCellAt = (pageX: number, pageY: number): [number, number] | null => {
     const col = Math.floor((pageX - gridMeasure.current.x) / CELL_SIZE);
@@ -194,10 +194,17 @@ export default function SopaScreen() {
 
       onPanResponderGrant: (e) => {
         if (wonRef.current) return;
-        dragStartCell.current = getCellAt(e.nativeEvent.pageX, e.nativeEvent.pageY);
-        dragStartPos.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+        const { pageX, pageY } = e.nativeEvent;
+        dragStartPos.current = { x: pageX, y: pageY };
         isDragging.current = false;
         lastDragKey.current = null;
+        // Medir la posición de la grilla recién ahora (no la del onLayout inicial, que
+        // queda desactualizada si el usuario scrolleó antes de tocar) — así el cálculo
+        // de celda siempre usa la posición real en pantalla en el momento del toque.
+        gridViewRef.current?.measureInWindow((x, y) => {
+          gridMeasure.current = { x, y };
+          dragStartCell.current = getCellAt(pageX, pageY);
+        });
       },
 
       onPanResponderMove: (e) => {
@@ -299,8 +306,8 @@ export default function SopaScreen() {
       >
         {/* Progreso */}
         <View style={[styles.progressRow, { width: GRID_PX }]}>
-          <Text style={styles.progressText}>
-            Palabras: <Text style={styles.progressBold}>{foundWords.length}/{placements.length}</Text>
+          <Text style={styles.progressText} maxFontSizeMultiplier={1.3}>
+            Palabras: <Text style={styles.progressBold} maxFontSizeMultiplier={1.3}>{foundWords.length}/{placements.length}</Text>
           </Text>
           <View style={styles.progressActions}>
             <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>

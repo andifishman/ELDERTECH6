@@ -172,7 +172,7 @@ export default function LaberintoScreen() {
               style={[styles.diffBtn, diffIdx === i && styles.diffBtnActive]}
               onPress={() => initGame(i)}
             >
-              <Text style={[styles.diffBtnText, diffIdx === i && styles.diffBtnTextActive]}>
+              <Text style={[styles.diffBtnText, diffIdx === i && styles.diffBtnTextActive]} maxFontSizeMultiplier={1.3}>
                 {d.label}
               </Text>
             </TouchableOpacity>
@@ -180,13 +180,13 @@ export default function LaberintoScreen() {
         </View>
         {/* Info: movimientos + leyenda */}
         <View style={styles.infoRow}>
-          <Text style={styles.statText}>
-            Movimientos: <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{moves}</Text>
+          <Text style={styles.statText} maxFontSizeMultiplier={1.3}>
+            Movimientos: <Text style={{ fontWeight: 'bold', color: Colors.primary }} maxFontSizeMultiplier={1.3}>{moves}</Text>
           </Text>
           <View style={styles.legend}>
-            <Text style={styles.legendItem}>⭐ Inicio</Text>
-            <Text style={styles.legendItem}>🚪 Salida</Text>
-            <Text style={styles.legendItem}>🧑 Vos</Text>
+            <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>⭐ Inicio</Text>
+            <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>🚪 Salida</Text>
+            <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>🧑 Vos</Text>
           </View>
         </View>
 
@@ -308,9 +308,9 @@ const styles = StyleSheet.create({
   diffBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   diffBtnText: { fontSize: FontSizes.md, color: Colors.textSecondary, fontWeight: '700' },
   diffBtnTextActive: { color: Colors.white },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statText: { fontSize: FontSizes.md, color: Colors.textSecondary },
-  legend: { flexDirection: 'row', gap: Spacing.sm },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: Spacing.xs },
+  statText: { fontSize: FontSizes.md, color: Colors.textSecondary, flexShrink: 1 },
+  legend: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap', flexShrink: 1 },
   legendItem: { fontSize: FontSizes.sm, color: Colors.textSecondary },
   btnRow: { flexDirection: 'row', gap: Spacing.sm },
   newBtn: {

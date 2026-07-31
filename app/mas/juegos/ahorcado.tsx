@@ -156,14 +156,14 @@ export default function AhorcadoScreen() {
       {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Errores</Text>
-          <Text style={[styles.statValue, errores > 3 && { color: Colors.danger }]}>
+          <Text style={styles.statLabel} maxFontSizeMultiplier={1.3}>Errores</Text>
+          <Text style={[styles.statValue, errores > 3 && { color: Colors.danger }]} maxFontSizeMultiplier={1.3}>
             {errores} / {MAX_ERRORES}
           </Text>
         </View>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Letras usadas</Text>
-          <Text style={styles.statValue}>{letrasUsadas.size}</Text>
+          <Text style={styles.statLabel} maxFontSizeMultiplier={1.3}>Letras usadas</Text>
+          <Text style={styles.statValue} maxFontSizeMultiplier={1.3}>{letrasUsadas.size}</Text>
         </View>
         <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial} accessibilityLabel="¿Cómo se juega?">
           <Text style={styles.helpBtnText}>❓ ¿Cómo se juega?</Text>
@@ -266,11 +266,14 @@ export default function AhorcadoScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalIcon}>{ganó ? '🎉' : '😢'}</Text>
             <Text style={styles.modalTitle}>{ganó ? '¡Ganaste!' : '¡Perdiste!'}</Text>
-            <Text style={styles.modalSub}>
-              {ganó
-                ? '¡Muy bien! Descubriste la palabra.'
-                : `La palabra era: ${palabraFinal}`}
-            </Text>
+            {ganó ? (
+              <Text style={[styles.modalSub, { marginBottom: Spacing.xl }]}>¡Muy bien! Descubriste la palabra.</Text>
+            ) : (
+              <>
+                <Text style={styles.modalSub}>La palabra era:</Text>
+                <Text style={styles.modalWord}>{palabraFinal}</Text>
+              </>
+            )}
             <TouchableOpacity style={styles.modalBtnPrimary} onPress={initGame}>
               <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
             </TouchableOpacity>
@@ -289,6 +292,7 @@ const styles = StyleSheet.create({
 
   statsRow: {
     flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
+    flexWrap: 'wrap', rowGap: Spacing.xs,
     backgroundColor: Colors.white, paddingVertical: Spacing.md,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
@@ -380,7 +384,11 @@ const styles = StyleSheet.create({
   },
   modalSub: {
     fontSize: FontSizes.lg, color: Colors.textSecondary,
-    textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26,
+    textAlign: 'center', marginBottom: Spacing.sm, lineHeight: 26,
+  },
+  modalWord: {
+    fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.primary,
+    textAlign: 'center', marginBottom: Spacing.xl, letterSpacing: 1,
   },
   modalBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,

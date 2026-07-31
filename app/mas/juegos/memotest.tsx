@@ -143,8 +143,8 @@ export default function MemotestScreen() {
 
           {/* Centro: nivel + nombre + dots */}
           <View style={styles.diffCenter}>
-            <Text style={styles.diffLevel}>Nivel {diffIdx + 1} de {DIFFICULTIES.length}</Text>
-            <Text style={styles.diffName}>{diff.label}</Text>
+            <Text style={styles.diffLevel} maxFontSizeMultiplier={1.3}>Nivel {diffIdx + 1} de {DIFFICULTIES.length}</Text>
+            <Text style={styles.diffName} maxFontSizeMultiplier={1.3}>{diff.label}</Text>
             <View style={styles.dotsRow}>
               {DIFFICULTIES.map((_, i) => (
                 <View key={i} style={[styles.dot, i === diffIdx && styles.dotActive]} />
@@ -164,8 +164,12 @@ export default function MemotestScreen() {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <Text style={styles.stat}>Jugadas: <Text style={styles.statBold}>{moves}</Text></Text>
-          <Text style={styles.stat}>Pares: <Text style={styles.statBold}>{matchedCount}/{diff.pairs}</Text></Text>
+          <Text style={styles.stat} maxFontSizeMultiplier={1.3}>
+            Jugadas: <Text style={styles.statBold} maxFontSizeMultiplier={1.3}>{moves}</Text>
+          </Text>
+          <Text style={styles.stat} maxFontSizeMultiplier={1.3}>
+            Pares: <Text style={styles.statBold} maxFontSizeMultiplier={1.3}>{matchedCount}/{diff.pairs}</Text>
+          </Text>
         </View>
 
         {/* Acciones */}
@@ -273,7 +277,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.border },
   dotActive: { width: 24, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
 
-  statsRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', rowGap: 4 },
   stat: { fontSize: FontSizes.lg, color: Colors.textSecondary },
   statBold: { fontWeight: 'bold', color: Colors.textPrimary, fontSize: FontSizes.xl },
 

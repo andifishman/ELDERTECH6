@@ -141,13 +141,13 @@ export default function SimonScreen() {
         {/* Rondas */}
         <View style={styles.scoreboard}>
           <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>Ronda</Text>
-            <Text style={styles.scoreValue}>{gameState === 'idle' ? '—' : round}</Text>
+            <Text style={styles.scoreLabel} maxFontSizeMultiplier={1.3}>Ronda</Text>
+            <Text style={styles.scoreValue} maxFontSizeMultiplier={1.3}>{gameState === 'idle' ? '—' : round}</Text>
           </View>
           <View style={styles.scoreDivider} />
           <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>Mejor</Text>
-            <Text style={[styles.scoreValue, { color: Colors.success }]}>{bestRound || '—'}</Text>
+            <Text style={styles.scoreLabel} maxFontSizeMultiplier={1.3}>Mejor</Text>
+            <Text style={[styles.scoreValue, { color: Colors.success }]} maxFontSizeMultiplier={1.3}>{bestRound || '—'}</Text>
           </View>
         </View>
 
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  scoreItem: { alignItems: 'center', minWidth: 70 },
+  scoreItem: { alignItems: 'center', minWidth: 70, flexShrink: 1 },
   scoreLabel: { fontSize: FontSizes.md, color: Colors.textSecondary },
   scoreValue: {
     fontSize: 48, fontWeight: 'bold',
