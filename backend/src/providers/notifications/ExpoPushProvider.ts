@@ -46,11 +46,12 @@ function headers(): Record<string, string> {
 
 /**
  * Envía mensajes a través del servicio de Push de Expo (relay gratuito a
- * FCM/APNs — la opción recomendada para una app Expo-managed, no hace falta
- * configurar Firebase directo). Devuelve un ticket por mensaje, en el mismo
- * orden que la entrada. Un ticket `ok` NO garantiza entrega — para eso hay
- * que consultar `getReceipts` más tarde (los recibos tardan un rato en estar
- * listos y expiran a las 24hs).
+ * FCM/APNs). En Android, Expo solo hace de relay — igual hace falta FCM v1
+ * configurado (google-services.json en el cliente + service account subida
+ * a EAS Credentials) para que el relay tenga con qué entregar. Devuelve un
+ * ticket por mensaje, en el mismo orden que la entrada. Un ticket `ok` NO
+ * garantiza entrega — para eso hay que consultar `getReceipts` más tarde
+ * (los recibos tardan un rato en estar listos y expiran a las 24hs).
  */
 export async function sendPushMessages(messages: ExpoPushMessage[]): Promise<ExpoPushTicket[]> {
   const tickets: ExpoPushTicket[] = [];

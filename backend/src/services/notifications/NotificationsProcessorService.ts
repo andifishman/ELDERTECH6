@@ -34,6 +34,7 @@ export async function procesarProgramadas(): Promise<{ procesadas: number }> {
             destino_tipo: n.destino_tipo,
             destino_filtro: n.destino_filtro,
             excluir_residente_ids: n.excluir_residente_ids,
+            incluir_residente_ids: n.incluir_residente_ids,
             programacion_tipo: 'programada',
             programada_para: proxima,
             recurrencia: n.recurrencia,
