@@ -119,6 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (cached) {
             setProfile(cached);
             setIsLoading(false); // App visible instantly
+            if (cached.residente?.id) {
+              void registrarConexion(cached.residente.id);
+              void registrarDispositivoParaPush();
+            }
             // Step 3: background refresh usando userId ya conocido — sin roundtrip extra
             getProfileForUser(uid)
               .then(fresh => {
