@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.sm,
     borderRadius: Spacing.radius.full,
     alignSelf: 'flex-start',
   },

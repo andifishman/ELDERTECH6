@@ -1,9 +1,11 @@
 import AppHeader from '@/components/ui/AppHeader';
+import { SpeakRow } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
 import React, { useCallback, useRef, useState } from 'react';
 import {
+  LayoutChangeEvent,
   Modal, PanResponder,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -20,7 +22,36 @@ interface Cell {
   visited: boolean;
 }
 
-function generateMaze(rows: number, cols: number): Cell[][] {
+// Un laberinto "perfecto" (árbol de expansión, sin loops) tiene por definición
+// un único camino entre dos celdas cualquiera — por eso siempre se ve "un solo
+// camino lógico". El trenzado (braiding) rompe esa propiedad a propósito: busca
+// callejones sin salida y les abre un pasaje extra hacia una celda vecina,
+// generando loops y rutas alternativas que hay que descartar pensando.
+function braidMaze(maze: Cell[][], rows: number, cols: number, braidFactor: number): void {
+  if (braidFactor <= 0) return;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = maze[r][c];
+      const abiertos = [cell.n, cell.s, cell.e, cell.w].filter((pared) => !pared).length;
+      if (abiertos !== 1) continue; // solo nos interesan los callejones sin salida
+      if (Math.random() > braidFactor) continue;
+
+      const candidatos: { dir: Direction; nr: number; nc: number; opuesta: Direction }[] = [];
+      if (cell.n && r > 0)          candidatos.push({ dir: 'n', nr: r - 1, nc: c,     opuesta: 's' });
+      if (cell.s && r < rows - 1)   candidatos.push({ dir: 's', nr: r + 1, nc: c,     opuesta: 'n' });
+      if (cell.w && c > 0)          candidatos.push({ dir: 'w', nr: r,     nc: c - 1, opuesta: 'e' });
+      if (cell.e && c < cols - 1)   candidatos.push({ dir: 'e', nr: r,     nc: c + 1, opuesta: 'w' });
+      if (candidatos.length === 0) continue;
+
+      const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+      cell[elegido.dir] = false;
+      maze[elegido.nr][elegido.nc][elegido.opuesta] = false;
+    }
+  }
+}
+
+function generateMaze(rows: number, cols: number, braidFactor = 0): Cell[][] {
   const maze: Cell[][] = Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => ({ n: true, s: true, e: true, w: true, visited: false }))
   );
@@ -43,26 +74,38 @@ function generateMaze(rows: number, cols: number): Cell[][] {
     maze[nr][nc].visited = true;
     stack.push([nr, nc]);
   }
+
+  braidMaze(maze, rows, cols, braidFactor);
   return maze;
 }
 
 const DIFFICULTIES = [
-  { label: 'Fácil',   rows: 7,  cols: 7  },
-  { label: 'Normal',  rows: 10, cols: 10 },
-  { label: 'Difícil', rows: 13, cols: 13 },
+  { label: 'Fácil',   rows: 7,  cols: 7,  braid: 0    },
+  { label: 'Normal',  rows: 10, cols: 10, braid: 0.2  },
+  { label: 'Difícil', rows: 13, cols: 13, braid: 0.55 },
 ];
 
 export default function LaberintoScreen() {
   const insets = useSafeAreaInsets();
   const [diffIdx, setDiffIdx] = useState(0);
-  const [maze, setMaze] = useState<Cell[][]>(() => generateMaze(7, 7));
+  const [maze, setMaze] = useState<Cell[][]>(() => generateMaze(DIFFICULTIES[0].rows, DIFFICULTIES[0].cols, DIFFICULTIES[0].braid));
   const [pos, setPos] = useState<[number, number]>([0, 0]);
   const [moves, setMoves] = useState(0);
   const [won, setWon] = useState(false);
   const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('laberinto');
 
   const diff = DIFFICULTIES[diffIdx];
-  const CELL_SIZE = Math.min(36, Math.floor(300 / diff.cols));
+
+  // Tamaño de celda calculado a partir del espacio real disponible (medido con
+  // onLayout), no de un ancho fijo — así el laberinto siempre entra en pantalla
+  // sin superponerse con los controles, sea cual sea el tamaño del celular.
+  const [mazeBoxSize, setMazeBoxSize] = useState(280);
+  const handleMazeAreaLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    const usable = Math.max(0, Math.min(width, height) - Spacing.md * 2);
+    setMazeBoxSize(usable);
+  }, []);
+  const CELL_SIZE = Math.max(16, Math.min(48, Math.floor(mazeBoxSize / diff.cols)));
 
   // Refs para acceder al estado actual desde el PanResponder sin closures stale
   const posRef      = useRef(pos);
@@ -78,7 +121,7 @@ export default function LaberintoScreen() {
 
   const initGame = useCallback((idx: number) => {
     const d = DIFFICULTIES[idx];
-    setMaze(generateMaze(d.rows, d.cols));
+    setMaze(generateMaze(d.rows, d.cols, d.braid));
     setPos([0, 0]);
     setMoves(0);
     setWon(false);
@@ -178,31 +221,15 @@ export default function LaberintoScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        {/* Info: movimientos + leyenda */}
-        <View style={styles.infoRow}>
-          <Text style={styles.statText} maxFontSizeMultiplier={1.3}>
-            Movimientos: <Text style={{ fontWeight: 'bold', color: Colors.primary }} maxFontSizeMultiplier={1.3}>{moves}</Text>
-          </Text>
-          <View style={styles.legend}>
-            <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>⭐ Inicio</Text>
-            <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>🚪 Salida</Text>
-            <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>🧑 Vos</Text>
-          </View>
-        </View>
-
-        {/* Botones */}
-        <View style={styles.btnRow}>
-          <TouchableOpacity style={styles.newBtn} onPress={() => initGame(diffIdx)}>
-            <Text style={styles.newBtnText}>🔄 Nuevo juego</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>
-            <Text style={styles.helpBtnText}>¿Cómo se juega?</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Movimientos — la leyenda de emojis vive en "¿Cómo se juega?" para dejarle más espacio al laberinto */}
+        <Text style={styles.statText} maxFontSizeMultiplier={1.3}>
+          Movimientos: <Text style={{ fontWeight: 'bold', color: Colors.primary }} maxFontSizeMultiplier={1.3}>{moves}</Text>
+        </Text>
       </View>
 
-      {/* Laberinto con PanResponder para deslizar */}
-      <View style={styles.mazeArea} {...panResponder.panHandlers}>
+      {/* Laberinto con PanResponder para deslizar — mide su propio espacio
+          disponible para que la celda nunca desborde la pantalla */}
+      <View style={styles.mazeArea} onLayout={handleMazeAreaLayout} {...panResponder.panHandlers}>
         <View style={[styles.maze, { width: CELL_SIZE * diff.cols + 2 }]}>
           {maze.map((row, r) => (
             <View key={r} style={styles.mazeRow}>
@@ -236,11 +263,10 @@ export default function LaberintoScreen() {
             </View>
           ))}
         </View>
-        <Text style={styles.swipeHint}>👆 Arrastrá el dedo sobre el laberinto{'\n'}o usá las flechas de abajo para moverte</Text>
       </View>
 
-      {/* Controles fijos abajo */}
-      <View style={[styles.controls, { paddingBottom: insets.bottom + 8 }]}>
+      {/* Controles — lo más importante, van justo debajo del laberinto */}
+      <View style={styles.controls}>
         <TouchableOpacity style={styles.arrowBtn} onPress={() => handleMove(-1, 0)} accessibilityLabel="Arriba">
           <Text style={styles.arrowText}>▲</Text>
         </TouchableOpacity>
@@ -258,12 +284,32 @@ export default function LaberintoScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Secundario: ayuda + acciones, debajo de todo lo importante */}
+      <Text style={styles.swipeHint}>👆 Arrastrá el dedo sobre el laberinto{'\n'}o usá las flechas de arriba para moverte</Text>
+
+      <View style={[styles.btnRow, { paddingBottom: insets.bottom + Spacing.sm }]}>
+        <TouchableOpacity style={styles.newBtn} onPress={() => initGame(diffIdx)}>
+          <Text style={styles.newBtnText}>🔄 Nuevo juego</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>
+          <Text style={styles.helpBtnText}>¿Cómo se juega?</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Tutorial */}
       <Modal visible={showTutorial} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalIcon}>🌀</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
+            <View style={styles.speakRowWrapper}>
+              <SpeakRow texto="Empezás en la esquina superior izquierda. Tenés que llegar a la puerta en la esquina inferior derecha. Arrastrá el dedo sobre el laberinto y el personaje te sigue, o usá las flechas de abajo para moverte de a un paso. Podés cambiar la dificultad cuando quieras." />
+            </View>
+            <View style={styles.legend}>
+              <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>⭐ Inicio</Text>
+              <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>🚪 Salida</Text>
+              <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>🧑 Vos</Text>
+            </View>
             <View style={styles.tutorialList}>
               <Text style={styles.tutorialItem}>⭐ Empezás en la esquina superior izquierda</Text>
               <Text style={styles.tutorialItem}>🚪 Tenés que llegar a la puerta en la esquina inferior derecha</Text>
@@ -308,11 +354,10 @@ const styles = StyleSheet.create({
   diffBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   diffBtnText: { fontSize: FontSizes.md, color: Colors.textSecondary, fontWeight: '700' },
   diffBtnTextActive: { color: Colors.white },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: Spacing.xs },
-  statText: { fontSize: FontSizes.md, color: Colors.textSecondary, flexShrink: 1 },
-  legend: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap', flexShrink: 1 },
+  statText: { fontSize: FontSizes.md, color: Colors.textSecondary, textAlign: 'center' },
+  legend: { flexDirection: 'row', gap: Spacing.md, flexWrap: 'wrap', justifyContent: 'center', marginBottom: Spacing.md },
   legendItem: { fontSize: FontSizes.sm, color: Colors.textSecondary },
-  btnRow: { flexDirection: 'row', gap: Spacing.sm },
+  btnRow: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.md, marginTop: Spacing.sm },
   newBtn: {
     flex: 1, backgroundColor: Colors.primary, borderRadius: Radius.md,
     paddingVertical: Spacing.md, alignItems: 'center',
@@ -323,7 +368,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md, alignItems: 'center', backgroundColor: Colors.white,
   },
   helpBtnText: { color: Colors.primary, fontSize: FontSizes.md, fontWeight: 'bold' },
-  mazeArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+  mazeArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   maze: { borderWidth: 1, borderColor: Colors.textPrimary },
   mazeRow: { flexDirection: 'row' },
   mazeCell: { backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
@@ -332,7 +377,7 @@ const styles = StyleSheet.create({
   wallE: { borderRightWidth: WALL, borderRightColor: Colors.textPrimary },
   wallW: { borderLeftWidth: WALL, borderLeftColor: Colors.textPrimary },
   endCell: { backgroundColor: '#E8F5E9' },
-  controls: { alignItems: 'center', gap: Spacing.sm, paddingTop: Spacing.sm },
+  controls: { alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
   arrowMiddle: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   arrowCenter: { width: 60, height: 60 },
   arrowBtn: {
@@ -342,11 +387,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2, shadowRadius: 3, elevation: 3,
   },
   arrowText: { color: Colors.white, fontSize: 28, fontWeight: 'bold' },
-  swipeHint: { fontSize: FontSizes.lg, color: Colors.textSecondary, textAlign: 'center', lineHeight: 28 },
+  swipeHint: {
+    fontSize: FontSizes.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22,
+    paddingHorizontal: Spacing.lg,
+  },
   modalOverlay: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center' },
   modalBox: { backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.xxl, width: '85%', alignItems: 'center' },
   modalIcon: { fontSize: 64, marginBottom: Spacing.md },
   modalTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.md },
+  speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   modalSub: { fontSize: FontSizes.md, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
   tutorialList: { width: '100%', gap: Spacing.sm, marginBottom: Spacing.xl },
   tutorialItem: { fontSize: FontSizes.lg, color: Colors.textPrimary, lineHeight: 28 },

@@ -1,4 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
+import { SpeakRow } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -247,6 +248,9 @@ export default function AhorcadoScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalIcon}>🪢</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
+            <View style={styles.speakRowWrapper}>
+              <SpeakRow texto="Hay una palabra secreta escondida. Tocá las letras del teclado para adivinarla de a una. Si la letra está en la palabra, aparece en su lugar. Si no, se dibuja una parte del ahorcado. Tenés 6 errores antes de perder." />
+            </View>
             <Text style={styles.modalSub}>
               Hay una palabra secreta escondida.{'\n\n'}
               Tocá las letras del teclado para adivinarla de a una.{'\n\n'}
@@ -293,7 +297,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
     flexWrap: 'wrap', rowGap: Spacing.xs,
-    backgroundColor: Colors.white, paddingVertical: Spacing.md,
+    backgroundColor: Colors.white, paddingVertical: Spacing.sm,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   stat: { alignItems: 'center' },
@@ -306,13 +310,13 @@ const styles = StyleSheet.create({
   },
   helpBtnText: { color: Colors.primary, fontSize: FontSizes.sm, fontWeight: 'bold' },
 
-  content: { padding: Spacing.lg, alignItems: 'center' },
+  content: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, alignItems: 'center' },
 
   hangmanContainer: {
-    marginVertical: Spacing.md,
+    marginVertical: Spacing.xs,
     backgroundColor: Colors.white,
     borderRadius: Radius.md,
-    padding: Spacing.md,
+    padding: Spacing.sm,
     alignItems: 'center',
   },
 
@@ -320,7 +324,7 @@ const styles = StyleSheet.create({
   wordRow: {
     flexDirection: 'row', flexWrap: 'wrap',
     justifyContent: 'center', gap: 4,
-    marginVertical: Spacing.lg, paddingHorizontal: Spacing.md,
+    marginVertical: Spacing.sm, paddingHorizontal: Spacing.md,
   },
   letterBox: { alignItems: 'center', minWidth: 32 },
   letterText: {
@@ -333,7 +337,7 @@ const styles = StyleSheet.create({
   },
 
   // Letras incorrectas
-  wrongSection: { alignItems: 'center', marginBottom: Spacing.md },
+  wrongSection: { alignItems: 'center', marginBottom: Spacing.sm },
   wrongLabel: { fontSize: FontSizes.md, color: Colors.textSecondary, marginBottom: Spacing.xs },
   wrongRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.xs },
   wrongBadge: {
@@ -347,7 +351,7 @@ const styles = StyleSheet.create({
   keyboard: {
     flexDirection: 'row', flexWrap: 'wrap',
     justifyContent: 'center', gap: 6,
-    marginVertical: Spacing.md, paddingHorizontal: Spacing.sm,
+    marginVertical: Spacing.sm, paddingHorizontal: Spacing.sm,
   },
   key: {
     width: 50, height: 50, borderRadius: Radius.sm,
@@ -364,7 +368,7 @@ const styles = StyleSheet.create({
   newGameBtn: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, alignItems: 'center',
-    width: '100%', marginTop: Spacing.md,
+    width: '100%', marginTop: Spacing.sm,
   },
   newGameBtnText: { color: Colors.white, fontSize: FontSizes.lg, fontWeight: 'bold' },
 
@@ -382,6 +386,7 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xxl, fontWeight: 'bold',
     color: Colors.textPrimary, marginBottom: Spacing.sm,
   },
+  speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   modalSub: {
     fontSize: FontSizes.lg, color: Colors.textSecondary,
     textAlign: 'center', marginBottom: Spacing.sm, lineHeight: 26,

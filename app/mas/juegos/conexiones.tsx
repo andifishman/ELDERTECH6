@@ -1,4 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
+import { SpeakRow } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -268,6 +269,9 @@ export default function ConexionesScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalIcon}>🔗</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
+            <View style={styles.speakRowWrapper}>
+              <SpeakRow texto="Hay 15 palabras divididas en 5 grupos secretos de 3 palabras cada uno. Tocá 3 palabras que creas que van juntas y presioná Confirmar selección. Si acertás, el grupo se revela. Si te equivocás, perdés un intento. Tenés 3 intentos antes de perder." />
+            </View>
             <View style={styles.answersBox}>
               <Text style={styles.instructionText}>
                 Hay 15 palabras divididas en 5 grupos secretos de 3 palabras cada uno.{'\n\n'}
@@ -407,6 +411,7 @@ const styles = StyleSheet.create({
   },
   modalIcon: { fontSize: 64, marginBottom: Spacing.md },
   modalTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.sm },
+  speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   modalSub: { fontSize: FontSizes.md, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.md },
   answersBox: { width: '100%', marginBottom: Spacing.lg },
   answersTitle: { fontWeight: 'bold', fontSize: FontSizes.md, color: Colors.textPrimary, marginBottom: Spacing.xs },

@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
   Platform,
+  Linking,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +53,7 @@ export function SeleccionarContactoModal({
   const [contactos, setContactos] = useState<ContactoDispositivo[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [permisoDenegado, setPermisoDenegado] = useState(false);
+  const [puedeVolverAPreguntar, setPuedeVolverAPreguntar] = useState(true);
   const [cargado, setCargado] = useState(false);
 
   const cargarContactos = useCallback(async () => {
@@ -59,10 +61,18 @@ export function SeleccionarContactoModal({
     setPermisoDenegado(false);
 
     try {
-      const { status } = await Contacts.requestPermissionsAsync();
+      // Si ya se denegó antes y el sistema no va a volver a mostrar el diálogo
+      // (canAskAgain: false), pedirlo de nuevo no hace nada — hay que mandar
+      // al usuario a Configuración en vez de reintentar en el vacío.
+      let { status, canAskAgain } = await Contacts.getPermissionsAsync();
+
+      if (status !== 'granted' && canAskAgain) {
+        ({ status, canAskAgain } = await Contacts.requestPermissionsAsync());
+      }
 
       if (status !== 'granted') {
         setPermisoDenegado(true);
+        setPuedeVolverAPreguntar(canAskAgain);
         return;
       }
 
@@ -227,14 +237,18 @@ export function SeleccionarContactoModal({
             <Text style={styles.estadoEmoji}>🔒</Text>
             <Text style={styles.estadoTitulo}>Permiso requerido</Text>
             <Text style={styles.estadoTexto}>
-              Para agregar contactos de tu teléfono, ElderTech necesita acceso a tu libreta de contactos.
+              {puedeVolverAPreguntar
+                ? 'Para agregar contactos de tu teléfono, ElderTech necesita acceso a tu libreta de contactos.'
+                : 'El acceso a contactos fue denegado. Activalo manualmente en Configuración del teléfono para poder agregar contactos.'}
             </Text>
             <TouchableOpacity
               style={styles.btnPermiso}
-              onPress={cargarContactos}
+              onPress={puedeVolverAPreguntar ? cargarContactos : Linking.openSettings}
               accessibilityRole="button"
             >
-              <Text style={styles.btnPermisoTexto}>Permitir acceso</Text>
+              <Text style={styles.btnPermisoTexto}>
+                {puedeVolverAPreguntar ? 'Permitir acceso' : 'Abrir Configuración'}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : contactosFiltrados.length === 0 ? (

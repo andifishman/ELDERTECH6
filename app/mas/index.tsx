@@ -89,7 +89,7 @@ export default function MasScreen() {
               <View style={styles.emojiContainer}>
                 <Text style={styles.opcionEmoji}>{opcion.emoji}</Text>
               </View>
-              <Text style={styles.opcionTitulo} numberOfLines={1}>{opcion.titulo}</Text>
+              <Text style={styles.opcionTitulo}>{opcion.titulo}</Text>
             </View>
 
             {/* Fila inferior: Ver más + Escuchar */}
@@ -187,7 +187,8 @@ const styles = StyleSheet.create({
   },
   opcionTitulo: {
     flex: 1,
-    fontSize: 26,
+    fontSize: 22,
+    lineHeight: 27,
     fontWeight: Typography.weight.medium,
     color: Colors.text.primary,
   },

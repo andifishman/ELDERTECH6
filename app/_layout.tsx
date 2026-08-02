@@ -3,7 +3,7 @@ if (Platform.OS !== 'web') {
   require('react-native-gesture-handler');
 }
 import React, { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -18,6 +18,16 @@ import { Colors } from '@/constants/Colors';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { PANTALLA_A_RUTA } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
+import { detenerHabla } from '@/utils/tts';
+
+/** Corta cualquier lectura en voz alta (botón "Escuchar") al cambiar de pantalla —
+ * si no, el audio de una sección sigue sonando aunque el usuario ya se haya ido. */
+function useStopSpeechOnNavigate() {
+  const pathname = usePathname();
+  useEffect(() => {
+    void detenerHabla();
+  }, [pathname]);
+}
 
 /** Al tocar una notificación (app en background/cerrada), navega a la pantalla indicada y la marca como abierta. */
 function useNotificationTapHandler() {
@@ -77,6 +87,7 @@ function useHideNavigationBar() {
 export default function RootLayout() {
   useHideNavigationBar();
   useNotificationTapHandler();
+  useStopSpeechOnNavigate();
   return (
     <SafeAreaProvider>
       <QueryProvider>

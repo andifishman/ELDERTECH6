@@ -41,13 +41,6 @@ export default function ChatAsistenteScreen() {
   const { pregunta: preguntaInicial, sesionId: sesionIdParam, mensajeId: mensajeIdParam } = useLocalSearchParams<{ pregunta?: string; sesionId?: string; mensajeId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [androidKbHeight, setAndroidKbHeight] = useState(0);
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => setAndroidKbHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setAndroidKbHeight(0));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
   const { config } = useAsistenteConfig();
@@ -537,7 +530,7 @@ export default function ChatAsistenteScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 72 : 0}
       >
-        <View style={[styles.flex, { paddingBottom: androidKbHeight }]}>
+        <View style={styles.flex}>
         {cargandoHistorial ? (
           <View style={styles.centrado}>
             <ActivityIndicator size="large" color={Colors.brand.blueDark} />
@@ -593,7 +586,7 @@ export default function ChatAsistenteScreen() {
         )}
 
         {/* Input */}
-        <View style={[styles.inputWrapper, { paddingBottom: (Platform.OS === 'android' && androidKbHeight > 0) ? Spacing.sm : insets.bottom + Spacing.sm }]}>
+        <View style={[styles.inputWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
           <TextInput
             ref={inputRef}
             style={[styles.input, { fontSize: Typography.size.md * scale }]}

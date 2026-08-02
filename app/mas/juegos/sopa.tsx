@@ -1,4 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
+import { SpeakRow } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -394,6 +395,9 @@ export default function SopaScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalIcon}>🔤</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
+            <View style={styles.speakRowWrapper}>
+              <SpeakRow texto="Hay palabras escondidas en la grilla de letras. Arrastrá el dedo sobre las letras, o tocá cada letra por separado, en cualquier orden. Cuando seleccionás todas las letras correctas, se marca sola automáticamente. Las palabras que tenés que encontrar aparecen abajo de la grilla." />
+            </View>
             <Text style={styles.modalSub}>
               Hay palabras escondidas en la grilla de letras.{'\n\n'}
               Arrastrá el dedo sobre las letras, o tocá cada letra por separado (en cualquier orden).{'\n\n'}
@@ -521,6 +525,7 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xxl, fontWeight: 'bold',
     color: Colors.textPrimary, marginBottom: Spacing.sm,
   },
+  speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   modalSub: {
     fontSize: FontSizes.lg, color: Colors.textSecondary,
     textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26,

@@ -20,7 +20,7 @@ const NIVEL_LABEL: Record<string, { label: string; variant: 'success' | 'warning
 const JUEGOS_INFO: Record<string, { emoji: string; titulo: string }> = {
   ahorcado: { emoji: '🪢', titulo: 'Ahorcado' },
   memotest: { emoji: '🃏', titulo: 'Memotest' },
-  simon: { emoji: '🎮', titulo: 'Simón' },
+  simon: { emoji: '🎮', titulo: 'Simon' },
   conexiones: { emoji: '🔗', titulo: 'Conexiones' },
   laberinto: { emoji: '🌀', titulo: 'Laberinto' },
   sopa: { emoji: '🔤', titulo: 'Sopa de Letras' },

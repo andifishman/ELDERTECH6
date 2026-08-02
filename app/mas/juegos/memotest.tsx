@@ -1,11 +1,12 @@
 import AppHeader from '@/components/ui/AppHeader';
+import { SpeakRow } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  Dimensions,
+  LayoutChangeEvent,
   Modal,
   StyleSheet,
   Text,
@@ -47,18 +48,16 @@ function createCards(pairs: number): Card[] {
   }));
 }
 
-const { width: SW, height: SH } = Dimensions.get('window');
 const CARD_GAP = 10;
-// Altura estimada de AppHeader + topBar + insets — ajustado para que quepa sin scroll
-const FIXED_UI_H = 310;
-
 const CARD_MAX = 130; // tope para que las cartas no sean demasiado grandes
 
-function calcCardSize(cols: number, pairs: number): number {
+// Tamaño de carta a partir del espacio real disponible (medido con onLayout)
+// en vez de una altura fija estimada — así el tablero nunca se superpone con
+// lo que haya arriba o abajo, sea cual sea el layout de la pantalla.
+function calcCardSize(cols: number, pairs: number, availW: number, availH: number): number {
   const rows = Math.ceil((pairs * 2) / cols);
-  const byW = Math.floor((SW - 32 - (cols - 1) * CARD_GAP) / cols);
-  const availH = SH - FIXED_UI_H;
-  const byH = Math.floor((availH - (rows - 1) * CARD_GAP - 24) / rows);
+  const byW = Math.floor((availW - (cols - 1) * CARD_GAP) / cols);
+  const byH = Math.floor((availH - (rows - 1) * CARD_GAP) / rows);
   return Math.max(56, Math.min(byW, byH, CARD_MAX));
 }
 
@@ -74,7 +73,16 @@ export default function MemotestScreen() {
   const isChecking = useRef(false);
 
   const diff = DIFFICULTIES[diffIdx];
-  const CARD_SIZE = calcCardSize(diff.cols, diff.pairs);
+
+  const [gridBox, setGridBox] = useState({ width: 0, height: 0 });
+  const handleGridLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setGridBox({ width: Math.max(0, width - Spacing.md), height: Math.max(0, height - Spacing.md) });
+  }, []);
+
+  const CARD_SIZE = gridBox.width > 0 && gridBox.height > 0
+    ? calcCardSize(diff.cols, diff.pairs, gridBox.width, gridBox.height)
+    : CARD_MAX; // valor antes de conocer el layout real — se recalcula al toque
   // Ancho exacto de la grilla para que flexWrap funcione con alignItems:center del padre
   const GRID_W = diff.cols * CARD_SIZE + (diff.cols - 1) * CARD_GAP;
 
@@ -171,21 +179,10 @@ export default function MemotestScreen() {
             Pares: <Text style={styles.statBold} maxFontSizeMultiplier={1.3}>{matchedCount}/{diff.pairs}</Text>
           </Text>
         </View>
-
-        {/* Acciones */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.newBtn} onPress={() => initGame(diffIdx)}>
-            <Text style={styles.newBtnTxt}>🔄 Nuevo juego</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>
-            <Text style={styles.helpBtnTxt}>❓ ¿Cómo se juega?</Text>
-          </TouchableOpacity>
-        </View>
-
       </View>
 
-      {/* Grilla — ocupa el espacio restante sin scroll */}
-      <View style={styles.gridArea}>
+      {/* Grilla — ocupa el espacio restante sin scroll, medido en tiempo real */}
+      <View style={styles.gridArea} onLayout={handleGridLayout}>
         <View style={[styles.grid, { width: GRID_W, gap: CARD_GAP }]}>
           {cards.map((card, idx) => {
             const visible = card.flipped || card.matched;
@@ -211,12 +208,25 @@ export default function MemotestScreen() {
         </View>
       </View>
 
+      {/* Acciones — debajo del tablero, como pidió el usuario */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.newBtn} onPress={() => initGame(diffIdx)}>
+          <Text style={styles.newBtnTxt}>🔄 Nuevo juego</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial}>
+          <Text style={styles.helpBtnTxt}>❓ ¿Cómo se juega?</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Tutorial */}
       <Modal visible={showTutorial} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.mIcon}>🃏</Text>
             <Text style={styles.mTitle}>¿Cómo se juega?</Text>
+            <View style={styles.speakRowWrapper}>
+              <SpeakRow texto="Hay cartas boca abajo con emojis escondidos. Tocá dos cartas para darlas vuelta. Si son iguales, quedan descubiertas. Si no, se vuelven a tapar. Encontrá todos los pares con la menor cantidad de jugadas." />
+            </View>
             <Text style={styles.mSub}>
               Hay cartas boca abajo con emojis escondidos.{'\n\n'}
               Tocá dos cartas para darlas vuelta.{'\n\n'}
@@ -281,7 +291,10 @@ const styles = StyleSheet.create({
   stat: { fontSize: FontSizes.lg, color: Colors.textSecondary },
   statBold: { fontWeight: 'bold', color: Colors.textPrimary, fontSize: FontSizes.xl },
 
-  actionRow: { flexDirection: 'row', gap: Spacing.sm },
+  actionRow: {
+    flexDirection: 'row', gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.md,
+  },
   newBtn: {
     flex: 1, backgroundColor: Colors.primary, borderRadius: Radius.md,
     paddingVertical: Spacing.md, alignItems: 'center',
@@ -322,6 +335,7 @@ const styles = StyleSheet.create({
   },
   mIcon: { fontSize: 64, marginBottom: Spacing.md },
   mTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.sm },
+  speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   mSub: { fontSize: FontSizes.lg, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26 },
   mBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,

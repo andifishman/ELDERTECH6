@@ -12,12 +12,12 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
+import { SpeakRow } from '@/components/common/SpeakButton';
 import { useAuth } from '@/context/AuthContext';
 import { useFaq, useSesionesRecientes } from '@/hooks/useAsistente';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { hablar } from '@/utils/tts';
 import type { FaqAsistente } from '@/types/asistente.types';
 
 export default function AsistenteScreen() {
@@ -89,13 +89,7 @@ export default function AsistenteScreen() {
         {/* ── Preguntas frecuentes ── */}
         <View style={styles.seccionHeader}>
           <Text style={styles.seccionTitulo}>Preguntas frecuentes</Text>
-          <TouchableOpacity
-            onPress={() => hablar('Preguntas frecuentes. Toque cualquier pregunta para que el asistente la responda.')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="Escuchar descripción de preguntas frecuentes"
-          >
-            <Ionicons name="volume-medium" size={22} color={Colors.brand.blueDark} />
-          </TouchableOpacity>
+          <SpeakRow texto="Preguntas frecuentes. Toque cualquier pregunta para que el asistente la responda." />
         </View>
 
         {cargandoFaq ? (

@@ -1,4 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
+import { SpeakRow } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -135,7 +136,7 @@ export default function SimonScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Simón" showBack />
+      <AppHeader title="Simon" showBack />
 
       <View style={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
         {/* Rondas */}
@@ -202,6 +203,9 @@ export default function SimonScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalIcon}>🎮</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
+            <View style={styles.speakRowWrapper}>
+              <SpeakRow texto="La computadora muestra una secuencia de colores que se iluminan uno por uno. Cuando es tu turno, repetí la secuencia tocando los botones en el mismo orden. Cada ronda se agrega un color más. ¿Hasta dónde llegás?" />
+            </View>
             <Text style={styles.modalSub}>
               La computadora muestra una secuencia de colores que se iluminan uno por uno.{'\n\n'}
               Cuando es tu turno, repetí la secuencia tocando los botones en el mismo orden.{'\n\n'}
@@ -350,6 +354,7 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xxl, fontWeight: 'bold',
     color: Colors.textPrimary, marginBottom: Spacing.sm,
   },
+  speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   modalSub: {
     fontSize: FontSizes.lg, color: Colors.textSecondary,
     textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26,

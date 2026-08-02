@@ -24,7 +24,7 @@ const JUEGOS = [
   {
     id: 'simon',
     emoji: '🎮',
-    titulo: 'Simón',
+    titulo: 'Simon',
     descripcion: 'Repetí la secuencia de colores',
     color: '#6A1B9A',
   },
@@ -58,7 +58,7 @@ export default function JuegosScreen() {
         titulo="Juegos"
         subtitulo="Elegí un juego para jugar"
         mostrarVolver
-        textoHablar="Juegos. Ahorcado, Memotest, Simón, Conexiones, Laberinto y Sopa de Letras."
+        textoHablar="Juegos. Ahorcado, Memotest, Simon, Conexiones, Laberinto y Sopa de Letras."
       />
 
       <ScrollView
