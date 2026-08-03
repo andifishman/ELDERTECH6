@@ -17,11 +17,31 @@ Toda la documentación del proyecto para Claude está en `.claude/`:
 `@/*` → `./src/*` (configurado en tsconfig.json y babel.config.js)
 
 ## Comandos útiles
+
+**El backend (`backend/`) tiene que estar corriendo siempre** — la app y el
+backoffice ya no hablan con Supabase directo para la mayoría de los módulos,
+sino con este BFF (`http://localhost:3001` en dev). Si no está levantado, el
+dashboard del backoffice y las pantallas de la app quedan sin datos (todo en 0
+o "sin datos aún"), sin ningún error visible.
+
 ```bash
+# Backend (BFF) — dejarlo corriendo en su propia terminal
+cd backend && npm install   # solo la primera vez (o si package.json cambió)
+cd backend && npm run dev   # queda escuchando en :3001
+
+# App móvil
 npx expo start          # Iniciar en modo desarrollo
 npx expo start --android
 npx expo start --ios
+
+# Backoffice
+cd backoffice && npm run dev   # Vite, queda en :5173
 ```
+
+Si en Windows ves `SELF_SIGNED_CERT_IN_CHAIN` en los logs del backend (típico
+en redes corporativas/escolares con inspección TLS), corré
+`cd backend && npm run setup:certs` — también se corre solo antes de cada
+`npm run dev` (`predev`), así que normalmente no hace falta a mano.
 
 ## Reglas de desarrollo
 1. **Accesibilidad primero**: botones mínimo 48×48pt, texto mínimo 17px body

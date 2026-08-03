@@ -37,6 +37,11 @@ const NIVEL_BADGE: Record<string, { label: string; variant: 'success' | 'warning
   avanzado: { label: 'Avanzado', variant: 'danger' },
 };
 
+// Borde de color según estado — para distinguir de un vistazo en el grid.
+const BORDE_PUBLICADO = 'border-4 border-primary-400';
+const BORDE_BORRADOR = 'border-4 border-amber-400';
+const BORDE_PAPELERA = 'border-l-8 border-destructive/60';
+
 export function TutorialesPage() {
   const navigate = useNavigate();
   const permisos = usePermisos();
@@ -114,10 +119,10 @@ export function TutorialesPage() {
               {(eliminados.data ?? []).map((a) => {
                 const dias = a.deleted_at ? diasRestantes(a.deleted_at) : 7;
                 return (
-                  <li key={a.id}>
+                  <li key={a.id} className="py-1.5">
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 py-3 px-1 text-left transition-colors hover:bg-accent/50 rounded-lg"
+                      className={`flex w-full items-center gap-3 ${BORDE_PAPELERA} bg-destructive/5 py-3 pl-3 pr-1 text-left transition-colors hover:bg-destructive/10 rounded-lg`}
                       onClick={() => setSelectedEnPapelera(a)}
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted overflow-hidden">
@@ -160,7 +165,7 @@ export function TutorialesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtrados.map((a) => (
-            <Card key={a.id} className="flex flex-col overflow-hidden">
+            <Card key={a.id} className={`flex flex-col overflow-hidden ${a.activo ? BORDE_PUBLICADO : BORDE_BORRADOR}`}>
               <div className="relative flex aspect-video items-center justify-center bg-primary-50">
                 {a.thumbnail_url ? (
                   <img src={a.thumbnail_url} alt="" className="h-full w-full object-cover" />
@@ -180,7 +185,9 @@ export function TutorialesPage() {
                   {a.duracion_segundos ? ` · ${Math.round(a.duracion_segundos / 60)} min` : ''}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Badge variant={a.activo ? 'success' : 'muted'}>{a.activo ? 'Publicado' : 'Borrador'}</Badge>
+                  <Badge variant={a.activo ? 'success' : 'warning'} className={a.activo ? undefined : 'font-bold'}>
+                    {a.activo ? 'Publicado' : '⚠ Borrador'}
+                  </Badge>
                   <Badge variant={(NIVEL_BADGE[a.nivel] ?? NIVEL_BADGE['principiante']).variant}>{(NIVEL_BADGE[a.nivel] ?? NIVEL_BADGE['principiante']).label}</Badge>
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
