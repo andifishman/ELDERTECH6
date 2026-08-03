@@ -2,7 +2,7 @@
 // cuántas veces jugó cada residente a cada juego). Habla con el backend propio.
 import { apiClient } from './apiClient';
 
-export type Juego = 'ahorcado' | 'memotest' | 'simon' | 'conexiones' | 'laberinto' | 'sopa';
+export type Juego = 'ahorcado' | 'memotest' | 'simon' | 'conexiones' | 'laberinto' | 'sopa' | 'puntos';
 
 /** Best-effort — si falla (sin red, etc.) no interrumpe la experiencia de juego. */
 export async function registrarPartida(juego: Juego, resultado?: 'ganado' | 'perdido' | null): Promise<void> {

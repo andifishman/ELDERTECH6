@@ -16,8 +16,8 @@ import { AppHeader } from '@/components/common/AppHeader';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { usePedidos, useEnviarPedido } from '@/hooks/usePedidos';
-import type { EstadoPedido, TipoPedido } from '@/services/pedidosService';
+import { usePedidos, useEnviarPedido, useEditarPedido } from '@/hooks/usePedidos';
+import type { EstadoPedido, PedidoSugerencia, TipoPedido } from '@/services/pedidosService';
 
 interface TipoInfo {
   id: TipoPedido;
@@ -54,10 +54,12 @@ function formatearDuracion(segundos: number): string {
 export default function PedidosScreen() {
   const { data: pedidos, isLoading } = usePedidos();
   const enviarMutation = useEnviarPedido();
+  const editarMutation = useEditarPedido();
 
   const [tipo, setTipo] = useState<TipoPedido>('pedido');
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
   const [grabando, setGrabando] = useState(false);
   const [audioUri, setAudioUri] = useState<string | null>(null);
@@ -146,9 +148,37 @@ export default function PedidosScreen() {
     setReproduciendo(false);
   }, []);
 
+  const iniciarEdicion = useCallback((p: PedidoSugerencia) => {
+    setEditandoId(p.id);
+    setTipo(p.tipo);
+    setTitulo(p.titulo);
+    setDescripcion(p.descripcion ?? '');
+  }, []);
+
+  const cancelarEdicion = useCallback(() => {
+    setEditandoId(null);
+    setTipo('pedido');
+    setTitulo('');
+    setDescripcion('');
+  }, []);
+
   const handleEnviar = useCallback(async () => {
     if (!titulo.trim()) {
       Alert.alert('Falta el título', 'Escribí un título breve para tu mensaje.');
+      return;
+    }
+    if (editandoId) {
+      try {
+        await editarMutation.mutateAsync({
+          id: editandoId,
+          input: { titulo: titulo.trim(), descripcion: descripcion.trim() || undefined },
+        });
+        cancelarEdicion();
+        Alert.alert('¡Listo!', 'Tu mensaje fue actualizado.');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'No se pudo guardar los cambios.';
+        Alert.alert('Error', msg);
+      }
       return;
     }
     try {
@@ -167,7 +197,7 @@ export default function PedidosScreen() {
       const msg = err instanceof Error ? err.message : 'No se pudo enviar tu mensaje.';
       Alert.alert('Error', msg);
     }
-  }, [tipo, titulo, descripcion, audioUri, duracionSegundos, enviarMutation, borrarAudio]);
+  }, [editandoId, tipo, titulo, descripcion, audioUri, duracionSegundos, enviarMutation, editarMutation, borrarAudio, cancelarEdicion]);
 
   const tipoActivo = TIPOS.find((t) => t.id === tipo) ?? TIPOS[0];
   const tieneTexto = descripcion.trim().length > 0;
@@ -183,25 +213,34 @@ export default function PedidosScreen() {
       />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.seccionTitulo}>¿Qué querés enviar?</Text>
-        <View style={styles.tiposGrid}>
-          {TIPOS.map((t) => {
-            const activo = t.id === tipo;
-            return (
-              <TouchableOpacity
-                key={t.id}
-                style={[styles.tipoChip, activo && { backgroundColor: t.color, borderColor: t.color }]}
-                onPress={() => setTipo(t.id)}
-                accessibilityRole="button"
-                accessibilityLabel={t.label}
-                accessibilityState={{ selected: activo }}
-              >
-                <Text style={styles.tipoEmoji}>{t.emoji}</Text>
-                <Text style={[styles.tipoLabel, activo && styles.tipoLabelActivo]}>{t.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {editandoId ? (
+          <View style={styles.editandoAviso}>
+            <Ionicons name="pencil" size={20} color={Colors.brand.blueDark} />
+            <Text style={styles.editandoTexto}>Editando: {tipoActivo.emoji} {tipoActivo.label}</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.seccionTitulo}>¿Qué querés enviar?</Text>
+            <View style={styles.tiposGrid}>
+              {TIPOS.map((t) => {
+                const activo = t.id === tipo;
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[styles.tipoChip, activo && { backgroundColor: t.color, borderColor: t.color }]}
+                    onPress={() => setTipo(t.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t.label}
+                    accessibilityState={{ selected: activo }}
+                  >
+                    <Text style={styles.tipoEmoji}>{t.emoji}</Text>
+                    <Text style={[styles.tipoLabel, activo && styles.tipoLabelActivo]}>{t.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         <Text style={styles.campoLabel}>Título</Text>
         <TextInput
@@ -213,83 +252,100 @@ export default function PedidosScreen() {
           maxLength={120}
         />
 
-        <Text style={styles.campoLabel}>Descripción o audio (opcional)</Text>
+        <Text style={styles.campoLabel}>{editandoId ? 'Descripción' : 'Descripción o audio (opcional)'}</Text>
         <View style={styles.combinadoBox}>
           <TextInput
-            style={[styles.inputCombo, tieneAudio && styles.inputComboDeshabilitado]}
+            style={[styles.inputCombo, !editandoId && tieneAudio && styles.inputComboDeshabilitado]}
             value={descripcion}
             onChangeText={setDescripcion}
             placeholder="Contanos más detalles..."
             placeholderTextColor={Colors.text.hint}
             multiline
             numberOfLines={4}
-            editable={!tieneAudio}
+            editable={editandoId ? true : !tieneAudio}
           />
 
-          <View style={styles.divisorRow}>
-            <View style={styles.divisorLinea} />
-            <Text style={styles.divisorTexto}>o</Text>
-            <View style={styles.divisorLinea} />
-          </View>
+          {!editandoId && (
+            <>
+              <View style={styles.divisorRow}>
+                <View style={styles.divisorLinea} />
+                <Text style={styles.divisorTexto}>o</Text>
+                <View style={styles.divisorLinea} />
+              </View>
 
-          {!audioUri && !grabando && (
-            <TouchableOpacity
-              style={[styles.grabarBtn, tieneTexto && styles.grabarBtnDeshabilitado]}
-              onPress={iniciarGrabacion}
-              disabled={tieneTexto}
-              accessibilityRole="button"
-              accessibilityLabel="Grabar audio"
-              accessibilityState={{ disabled: tieneTexto }}
-            >
-              <Ionicons name="mic" size={26} color={Colors.text.onDark} />
-              <Text style={styles.grabarTexto}>Grabar audio</Text>
-            </TouchableOpacity>
-          )}
+              {!audioUri && !grabando && (
+                <TouchableOpacity
+                  style={[styles.grabarBtn, tieneTexto && styles.grabarBtnDeshabilitado]}
+                  onPress={iniciarGrabacion}
+                  disabled={tieneTexto}
+                  accessibilityRole="button"
+                  accessibilityLabel="Grabar audio"
+                  accessibilityState={{ disabled: tieneTexto }}
+                >
+                  <Ionicons name="mic" size={26} color={Colors.text.onDark} />
+                  <Text style={styles.grabarTexto}>Grabar audio</Text>
+                </TouchableOpacity>
+              )}
 
-          {grabando && (
-            <TouchableOpacity style={styles.grabandoBtn} onPress={detenerGrabacion} accessibilityRole="button" accessibilityLabel="Detener grabación">
-              <View style={styles.puntoRojo} />
-              <Text style={styles.grabandoTexto}>Grabando... Tocá para detener</Text>
-            </TouchableOpacity>
-          )}
+              {grabando && (
+                <TouchableOpacity style={styles.grabandoBtn} onPress={detenerGrabacion} accessibilityRole="button" accessibilityLabel="Detener grabación">
+                  <View style={styles.puntoRojo} />
+                  <Text style={styles.grabandoTexto}>Grabando... Tocá para detener</Text>
+                </TouchableOpacity>
+              )}
 
-          {audioUri && !grabando && (
-            <View style={styles.audioPreview}>
-              <TouchableOpacity
-                style={styles.audioPlayBtn}
-                onPress={reproduciendo ? detenerAudio : reproducirAudio}
-                accessibilityRole="button"
-                accessibilityLabel={reproduciendo ? 'Pausar audio' : 'Escuchar audio grabado'}
-              >
-                <Ionicons name={reproduciendo ? 'pause' : 'play'} size={24} color={Colors.text.onDark} />
-              </TouchableOpacity>
-              <Text style={styles.audioDuracion}>{formatearDuracion(duracionSegundos)}</Text>
-              <TouchableOpacity style={styles.audioAccionBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar de nuevo">
-                <Ionicons name="refresh" size={22} color={Colors.brand.blueDark} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.audioAccionBtn} onPress={borrarAudio} accessibilityRole="button" accessibilityLabel="Borrar audio">
-                <Ionicons name="trash" size={22} color={Colors.brand.red} />
-              </TouchableOpacity>
-            </View>
+              {audioUri && !grabando && (
+                <View style={styles.audioPreview}>
+                  <TouchableOpacity
+                    style={styles.audioPlayBtn}
+                    onPress={reproduciendo ? detenerAudio : reproducirAudio}
+                    accessibilityRole="button"
+                    accessibilityLabel={reproduciendo ? 'Pausar audio' : 'Escuchar audio grabado'}
+                  >
+                    <Ionicons name={reproduciendo ? 'pause' : 'play'} size={24} color={Colors.text.onDark} />
+                  </TouchableOpacity>
+                  <Text style={styles.audioDuracion}>{formatearDuracion(duracionSegundos)}</Text>
+                  <TouchableOpacity style={styles.audioAccionBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar de nuevo">
+                    <Ionicons name="refresh" size={22} color={Colors.brand.blueDark} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.audioAccionBtn} onPress={borrarAudio} accessibilityRole="button" accessibilityLabel="Borrar audio">
+                    <Ionicons name="trash" size={22} color={Colors.brand.red} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.enviarBtn, enviarMutation.isPending && styles.enviarBtnDisabled]}
-          onPress={handleEnviar}
-          disabled={enviarMutation.isPending}
-          accessibilityRole="button"
-          accessibilityLabel="Enviar"
-        >
-          {enviarMutation.isPending ? (
-            <ActivityIndicator color={Colors.text.onDark} />
-          ) : (
-            <>
-              <Ionicons name="send" size={22} color={Colors.text.onDark} />
-              <Text style={styles.enviarTexto}>Enviar</Text>
-            </>
+        <View style={editandoId ? styles.accionesRow : undefined}>
+          {editandoId && (
+            <TouchableOpacity
+              style={styles.cancelarBtn}
+              onPress={cancelarEdicion}
+              disabled={editarMutation.isPending}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar edición"
+            >
+              <Text style={styles.cancelarTexto}>Cancelar</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.enviarBtn, editandoId && styles.enviarBtnEditando, (enviarMutation.isPending || editarMutation.isPending) && styles.enviarBtnDisabled]}
+            onPress={handleEnviar}
+            disabled={enviarMutation.isPending || editarMutation.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={editandoId ? 'Guardar cambios' : 'Enviar'}
+          >
+            {enviarMutation.isPending || editarMutation.isPending ? (
+              <ActivityIndicator color={Colors.text.onDark} />
+            ) : (
+              <>
+                <Ionicons name={editandoId ? 'checkmark' : 'send'} size={22} color={Colors.text.onDark} />
+                <Text style={styles.enviarTexto}>{editandoId ? 'Guardar cambios' : 'Enviar'}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* ── Historial de mis mensajes ── */}
         <Text style={[styles.seccionTitulo, { marginTop: Spacing.xxl }]}>Mis mensajes enviados</Text>
@@ -301,11 +357,22 @@ export default function PedidosScreen() {
           pedidos.map((p) => {
             const info = TIPOS.find((t) => t.id === p.tipo);
             const estado = ESTADO_INFO[p.estado];
+            const puedeEditar = p.estado === 'pendiente';
             return (
-              <View key={p.id} style={styles.historialCard}>
+              <View key={p.id} style={[styles.historialCard, p.id === editandoId && styles.historialCardEditando]}>
                 <View style={styles.historialTop}>
                   <Text style={styles.historialEmoji}>{info?.emoji ?? '📋'}</Text>
                   <Text style={styles.historialTitulo} numberOfLines={1}>{p.titulo}</Text>
+                  {puedeEditar && (
+                    <TouchableOpacity
+                      style={styles.editarBtn}
+                      onPress={() => iniciarEdicion(p)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Editar ${p.titulo}`}
+                    >
+                      <Ionicons name="pencil" size={20} color={Colors.brand.blueDark} />
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <View style={styles.historialBottom}>
                   <View style={[styles.estadoBadge, { backgroundColor: estado.bg }]}>
@@ -450,7 +517,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   enviarBtnDisabled: { opacity: 0.7 },
+  enviarBtnEditando: { flex: 1, marginTop: 0 },
   enviarTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
+  accionesRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
+  cancelarBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Spacing.radius.xl,
+    borderWidth: 2,
+    borderColor: Colors.ui.border,
+    paddingVertical: Spacing.xl,
+    minHeight: Spacing.touch.comfortable,
+  },
+  cancelarTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.primary },
+  editandoAviso: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#E3F2FD',
+    borderRadius: Spacing.radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.xl,
+    minHeight: Spacing.touch.min,
+  },
+  editandoTexto: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.brand.blueDark },
   vacioTexto: { fontSize: Typography.size.md, color: Colors.text.hint, fontStyle: 'italic' },
   historialCard: {
     backgroundColor: Colors.ui.surface,
@@ -464,9 +556,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 2,
   },
+  historialCardEditando: { borderWidth: 2, borderColor: Colors.brand.blueDark },
   historialTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   historialEmoji: { fontSize: 20 },
   historialTitulo: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.text.primary },
+  editarBtn: { width: Spacing.touch.min, height: Spacing.touch.min, alignItems: 'center', justifyContent: 'center' },
   historialBottom: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   estadoBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Spacing.radius.full },
   estadoTexto: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold },

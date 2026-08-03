@@ -214,8 +214,9 @@ export default function SopaScreen() {
 
       onPanResponderMove: (e) => {
         if (wonRef.current) return;
-        const dx = Math.abs(e.nativeEvent.pageX - dragStartPos.current.x);
-        const dy = Math.abs(e.nativeEvent.pageY - dragStartPos.current.y);
+        const { pageX, pageY } = e.nativeEvent;
+        const dx = Math.abs(pageX - dragStartPos.current.x);
+        const dy = Math.abs(pageY - dragStartPos.current.y);
 
         // Activate drag after minimal movement
         if (!isDragging.current && (dx > CELL_SIZE * 0.3 || dy > CELL_SIZE * 0.3)) {
@@ -229,7 +230,7 @@ export default function SopaScreen() {
         }
 
         if (!isDragging.current) return;
-        const cell = getCellAt(e.nativeEvent.pageX, e.nativeEvent.pageY);
+        const cell = getCellAt(pageX, pageY);
         if (!cell) return;
         const [r, c] = cell;
         const key = `${r},${c}`;
@@ -380,12 +381,21 @@ export default function SopaScreen() {
                   isHinted && styles.wordBadgeHint,
                 ]}
               >
-                <Text style={[
-                  styles.wordBadgeText,
-                  isFound && styles.wordBadgeTextFound,
-                  isHinted && styles.wordBadgeTextHint,
-                ]}>
-                  {isFound ? '✓ ' : isHinted ? '💡 ' : ''}{p.word}
+                {isHinted && (
+                  // Emoji en su propio Text: si va mezclado con texto en negrita dentro
+                  // del mismo Text, Android a veces resuelve toda la tipografía con la
+                  // fuente de emoji y la palabra queda sin glyphs (invisible).
+                  <Text style={styles.wordBadgeIcon} maxFontSizeMultiplier={1.3}>💡</Text>
+                )}
+                <Text
+                  style={[
+                    styles.wordBadgeText,
+                    isFound && styles.wordBadgeTextFound,
+                    isHinted && styles.wordBadgeTextHint,
+                  ]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  {isFound ? '✓ ' : ''}{p.word}
                 </Text>
               </View>
             );
@@ -493,6 +503,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   wordBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
     borderWidth: 2,
     borderColor: Colors.primary,
     borderRadius: Radius.full,
@@ -507,6 +520,9 @@ const styles = StyleSheet.create({
   wordBadgeHint: {
     backgroundColor: '#FFF3E0',
     borderColor: '#FF9800',
+  },
+  wordBadgeIcon: {
+    fontSize: FontSizes.lg,
   },
   wordBadgeText: {
     fontSize: FontSizes.lg,

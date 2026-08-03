@@ -12,3 +12,4 @@ requestsRouter.use(requireAuth);
 
 requestsRouter.get('/', asyncHandler(controller.getPropios));
 requestsRouter.post('/', upload.single('audio'), asyncHandler(controller.postPedido));
+requestsRouter.patch('/:id', asyncHandler(controller.patchPedido));

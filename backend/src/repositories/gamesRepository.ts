@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 
-export const JUEGOS = ['ahorcado', 'memotest', 'simon', 'conexiones', 'laberinto', 'sopa'] as const;
+export const JUEGOS = ['ahorcado', 'memotest', 'simon', 'conexiones', 'laberinto', 'sopa', 'puntos'] as const;
 export type Juego = (typeof JUEGOS)[number];
 export type ResultadoPartida = 'ganado' | 'perdido';
 

@@ -24,6 +24,7 @@ const JUEGOS_INFO: Record<string, { emoji: string; titulo: string }> = {
   conexiones: { emoji: '🔗', titulo: 'Conexiones' },
   laberinto: { emoji: '🌀', titulo: 'Laberinto' },
   sopa: { emoji: '🔤', titulo: 'Sopa de Letras' },
+  puntos: { emoji: '🔵', titulo: 'Une los Puntos' },
 };
 
 export function ResidenteDetailPage() {

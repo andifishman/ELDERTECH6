@@ -49,6 +49,13 @@ const JUEGOS = [
     descripcion: 'Encontrá las palabras escondidas',
     color: '#F57F17',
   },
+  {
+    id: 'puntos',
+    emoji: '🔵',
+    titulo: 'Une los Puntos',
+    descripcion: 'Conectá los puntos del mismo color',
+    color: '#AD1457',
+  },
 ];
 
 export default function JuegosScreen() {
@@ -58,7 +65,7 @@ export default function JuegosScreen() {
         titulo="Juegos"
         subtitulo="Elegí un juego para jugar"
         mostrarVolver
-        textoHablar="Juegos. Ahorcado, Memotest, Simon, Conexiones, Laberinto y Sopa de Letras."
+        textoHablar="Juegos. Ahorcado, Memotest, Simon, Conexiones, Laberinto, Sopa de Letras y Une los Puntos."
       />
 
       <ScrollView

@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/common/states';
@@ -37,17 +36,6 @@ const TIPOS: { valor: TipoNotificacion; label: string }[] = [
   { valor: 'actividad', label: '📅 Actividad' },
   { valor: 'tutorial', label: '🎓 Tutorial' },
   { valor: 'general', label: '🔔 General' },
-];
-
-const PANTALLAS = [
-  { valor: '', label: 'Ninguna (solo abre la app)' },
-  { valor: 'home', label: 'Inicio' },
-  { valor: 'horarios', label: 'Horarios' },
-  { valor: 'tutoriales', label: 'Tutoriales' },
-  { valor: 'asistente', label: 'Asistente' },
-  { valor: 'clima', label: 'Clima' },
-  { valor: 'radio', label: 'Radio' },
-  { valor: 'pedidos', label: 'Pedidos y Sugerencias' },
 ];
 
 export function NotificacionFormPage() {
@@ -392,49 +380,6 @@ export function NotificacionFormPage() {
                 </div>
                 <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{mensaje || 'El mensaje aparecerá acá.'}</p>
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 5. Avanzado */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">5 · Opciones avanzadas</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <span className="text-sm">Silenciosa</span>
-              <Switch checked={silenciosa} onCheckedChange={setSilenciosa} />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <span className="text-sm">Con sonido</span>
-              <Switch checked={sonido} onCheckedChange={setSonido} disabled={silenciosa} />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <span className="text-sm">Con vibración</span>
-              <Switch checked={vibracion} onCheckedChange={setVibracion} disabled={silenciosa} />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Prioridad</Label>
-              <Select value={prioridad} onValueChange={(v) => setPrioridad(v as PrioridadNotificacion)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="baja">Baja</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Abrir pantalla</Label>
-              <Select value={pantallaDestino || 'none'} onValueChange={(v) => setPantallaDestino(v === 'none' ? '' : v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PANTALLAS.map((p) => <SelectItem key={p.valor || 'none'} value={p.valor || 'none'}>{p.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </CardContent>

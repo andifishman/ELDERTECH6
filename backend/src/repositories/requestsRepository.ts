@@ -28,6 +28,25 @@ export async function crearPedido(input: CrearPedidoInput): Promise<PedidoSugere
   return mapRow(data);
 }
 
+export interface EditarPropioInput {
+  titulo: string;
+  descripcion?: string | null;
+}
+
+/** Solo permite editar mientras el residente sigue siendo el dueño y la solicitud sigue "pendiente" (nadie la tomó todavía). */
+export async function actualizarPropio(id: string, residenteId: string, input: EditarPropioInput): Promise<PedidoSugerenciaConResidente | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('pedidos_sugerencias')
+    .update({ titulo: input.titulo, descripcion: input.descripcion ?? null })
+    .eq('id', id)
+    .eq('residente_id', residenteId)
+    .eq('estado', 'pendiente')
+    .select(SELECT_CON_RESIDENTE)
+    .maybeSingle();
+  if (error) throw new Error(`Error al editar la solicitud: ${error.message}`);
+  return data ? mapRow(data) : null;
+}
+
 export async function listarPropios(residenteId: string): Promise<PedidoSugerenciaConResidente[]> {
   const { data, error } = await getSupabaseAdmin()
     .from('pedidos_sugerencias')

@@ -56,3 +56,17 @@ export async function listarPropios(user: AuthUser): Promise<PedidoSugerenciaCon
   const { residenteId } = requireResidente(user);
   return repo.listarPropios(residenteId);
 }
+
+export interface EditarInput {
+  titulo: string;
+  descripcion?: string | null;
+}
+
+export async function editarPropio(user: AuthUser, id: string, input: EditarInput): Promise<PedidoSugerenciaConResidente> {
+  const { residenteId } = requireResidente(user);
+  const actualizado = await repo.actualizarPropio(id, residenteId, input);
+  if (!actualizado) {
+    throw new HttpError(404, 'No se encontró la solicitud, no te pertenece, o ya no se puede editar porque el personal ya la está atendiendo.');
+  }
+  return actualizado;
+}

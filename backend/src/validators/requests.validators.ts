@@ -8,3 +8,8 @@ export const crearPedidoSchema = z.object({
   descripcion: z.string().trim().nullable().optional(),
   duracionSegundos: z.coerce.number().int().nonnegative().optional(),
 });
+
+export const editarPedidoPropioSchema = z.object({
+  titulo: z.string().trim().min(1),
+  descripcion: z.string().trim().nullable().optional(),
+});

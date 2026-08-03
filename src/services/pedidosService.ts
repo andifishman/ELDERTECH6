@@ -38,3 +38,16 @@ export async function enviarPedido(input: EnviarPedidoInput): Promise<PedidoSuge
   }
   return apiClient.postForm<PedidoSugerencia>('/api/requests', form);
 }
+
+export interface EditarPedidoInput {
+  titulo: string;
+  descripcion?: string;
+}
+
+/** Solo funciona mientras el pedido sigue "pendiente" — si el personal ya lo tomó, el backend lo rechaza. */
+export async function editarPedido(id: string, input: EditarPedidoInput): Promise<PedidoSugerencia> {
+  return apiClient.patch<PedidoSugerencia>(`/api/requests/${id}`, {
+    titulo: input.titulo,
+    descripcion: input.descripcion || null,
+  });
+}
