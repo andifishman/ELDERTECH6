@@ -1,5 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
-import { SpeakRow } from '@/components/common/SpeakButton';
+import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -249,7 +249,7 @@ export default function AhorcadoScreen() {
             <Text style={styles.modalIcon}>🪢</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
-              <SpeakRow texto="Hay una palabra secreta escondida. Tocá las letras del teclado para adivinarla de a una. Si la letra está en la palabra, aparece en su lugar. Si no, se dibuja una parte del ahorcado. Tenés 6 errores antes de perder." />
+              <SpeakButton texto="Hay una palabra secreta escondida. Tocá las letras del teclado para adivinarla de a una. Si la letra está en la palabra, aparece en su lugar. Si no, se dibuja una parte del ahorcado. Tenés 6 errores antes de perder." variante="escuchar" />
             </View>
             <Text style={styles.modalSub}>
               Hay una palabra secreta escondida.{'\n\n'}

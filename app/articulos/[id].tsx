@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,9 +32,16 @@ import { Spacing } from '@/constants/Spacing';
 import { formatearDuracion } from '@/services/tutorialesService';
 import { hablar } from '@/utils/tts';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const VIDEO_W = SCREEN_W - Spacing.screen.horizontal * 2;
 const VIDEO_H = Math.round(VIDEO_W * 9 / 16);
+
+// Foto del paso: mismo ancho que la card, alto según la proporción real de la
+// captura (se recalcula al cargar) — así se ve completa, sin recortar. El tope
+// evita que una captura muy alta empuje el texto de la instrucción fuera de vista.
+const STEP_PHOTO_W = VIDEO_W;
+const STEP_PHOTO_MAX_H = Math.round(SCREEN_H * 0.42);
+const STEP_PHOTO_DEFAULT_RATIO = 9 / 19.5; // proporción típica de un celular — evita salto de layout antes de cargar
 
 export default function TutorialDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -60,6 +68,8 @@ export default function TutorialDetalleScreen() {
   const [verPasos, setVerPasos] = useState(false);
   // pasoActual va de 0..pasos.length; === pasos.length significa "terminado".
   const [pasoActual, setPasoActual] = useState(0);
+  const [fotoRatio, setFotoRatio] = useState(STEP_PHOTO_DEFAULT_RATIO);
+  const [fotoAmpliada, setFotoAmpliada] = useState(false);
 
   const guardarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completadoRef = useRef(false);
@@ -77,6 +87,13 @@ export default function TutorialDetalleScreen() {
     setProgresoPct(0);
     completadoRef.current = false;
   }, [id]);
+
+  // Cada paso tiene su propia foto — al cambiar de paso, volvemos a la
+  // proporción por defecto hasta que la nueva imagen informe su tamaño real.
+  useEffect(() => {
+    setFotoRatio(STEP_PHOTO_DEFAULT_RATIO);
+    setFotoAmpliada(false);
+  }, [pasoActual]);
 
   useEffect(() => {
     if (tutorial?.formato === 'video') {
@@ -349,21 +366,43 @@ export default function TutorialDetalleScreen() {
       <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
         {!terminado && paso ? (
           <>
-            <View style={styles.stepPhotoWrap}>
+            <TouchableOpacity
+              style={[styles.stepPhotoWrap, { height: Math.min(STEP_PHOTO_W / fotoRatio, STEP_PHOTO_MAX_H) }]}
+              onPress={() => setFotoAmpliada(true)}
+              activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={`Ampliar foto del paso. ${paso.titulo ?? `Paso ${pasoActual + 1}`}`}
+            >
               <TutorialImage
                 uri={paso.imagen_url}
                 fallbackSeed={`${tutorial.id}-${paso.orden}`}
                 categoria={tutorial.categoria?.nombre}
                 iconSize={56}
-                style={StyleSheet.absoluteFillObject}
+                style={styles.stepPhotoImg}
+                resizeMode="contain"
                 accessibilityLabel={paso.titulo ?? `Paso ${pasoActual + 1}`}
+                onLoad={(e) => {
+                  // Nativo (iOS/Android) informa nativeEvent.source.{width,height}.
+                  // React Native Web informa el <img> del DOM en nativeEvent.target,
+                  // con naturalWidth/naturalHeight — formas distintas del mismo evento.
+                  const native = e.nativeEvent as unknown as {
+                    source?: { width: number; height: number };
+                    target?: { naturalWidth: number; naturalHeight: number };
+                  };
+                  const w = native.source?.width ?? native.target?.naturalWidth ?? 0;
+                  const h = native.source?.height ?? native.target?.naturalHeight ?? 0;
+                  if (w > 0 && h > 0) setFotoRatio(w / h);
+                }}
               />
               {paso.titulo ? (
                 <View style={styles.stepCaptionBand}>
                   <Text style={styles.stepCaption} numberOfLines={1}>{paso.titulo}</Text>
                 </View>
               ) : null}
-            </View>
+              <View style={styles.zoomBadge}>
+                <Ionicons name="expand" size={18} color={Colors.text.onDark} />
+              </View>
+            </TouchableOpacity>
 
             <View style={styles.stepRow}>
               <View style={styles.stepNumero}>
@@ -458,6 +497,37 @@ export default function TutorialDetalleScreen() {
           )}
         </View>
       )}
+
+      {/* Foto del paso ampliada — pantalla completa */}
+      <Modal visible={fotoAmpliada} transparent animationType="fade" onRequestClose={() => setFotoAmpliada(false)}>
+        <TouchableOpacity
+          style={styles.zoomOverlay}
+          activeOpacity={1}
+          onPress={() => setFotoAmpliada(false)}
+          accessibilityLabel="Cerrar foto ampliada"
+          accessibilityRole="button"
+        >
+          {paso ? (
+            <TutorialImage
+              uri={paso.imagen_url}
+              fallbackSeed={`${tutorial.id}-${paso.orden}`}
+              categoria={tutorial.categoria?.nombre}
+              iconSize={72}
+              style={styles.zoomImg}
+              resizeMode="contain"
+              accessibilityLabel={paso.titulo ?? `Paso ${pasoActual + 1}`}
+            />
+          ) : null}
+          <TouchableOpacity
+            style={[styles.zoomCloseBtn, { top: insets.top + Spacing.md }]}
+            onPress={() => setFotoAmpliada(false)}
+            accessibilityLabel="Cerrar"
+            accessibilityRole="button"
+          >
+            <Ionicons name="close" size={30} color={Colors.text.onDark} />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -683,9 +753,10 @@ const styles = StyleSheet.create({
   },
 
   // ── Paso ──
+  // El alto se fija inline (según el aspect ratio real de la foto, con tope) —
+  // acá solo lo que no cambia por imagen.
   stepPhotoWrap: {
     width: '100%',
-    height: 200,
     borderRadius: Spacing.radius.lg,
     overflow: 'hidden',
     backgroundColor: Colors.tutoriales.soft,
@@ -694,6 +765,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 12,
     elevation: 4,
+  },
+  stepPhotoImg: {
+    width: '100%',
+    height: '100%',
   },
   stepCaptionBand: {
     position: 'absolute',
@@ -708,6 +783,39 @@ const styles = StyleSheet.create({
     color: Colors.text.onDark,
     fontSize: Typography.size.sm,
     fontWeight: Typography.weight.bold,
+  },
+  zoomBadge: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.94)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomImg: {
+    width: SCREEN_W,
+    height: SCREEN_H * 0.85,
+  },
+  zoomCloseBtn: {
+    position: 'absolute',
+    right: Spacing.lg,
+    width: Spacing.touch.comfortable,
+    height: Spacing.touch.comfortable,
+    borderRadius: Spacing.touch.comfortable / 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
   stepNumero: {

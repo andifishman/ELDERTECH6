@@ -1,5 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
-import { SpeakRow } from '@/components/common/SpeakButton';
+import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -128,9 +128,13 @@ export default function SopaScreen() {
       });
     });
   };
+  // El dedo tapa la letra que se está tocando, así que el punto de contacto
+  // real que reporta la pantalla queda un poco más abajo de donde el usuario
+  // apunta visualmente — sin este ajuste, se selecciona la fila de abajo.
+  const TOUCH_Y_OFFSET = 16;
   const getCellAt = (pageX: number, pageY: number): [number, number] | null => {
     const col = Math.floor((pageX - gridMeasure.current.x) / CELL_SIZE);
-    const row = Math.floor((pageY - gridMeasure.current.y) / CELL_SIZE);
+    const row = Math.floor((pageY - TOUCH_Y_OFFSET - gridMeasure.current.y) / CELL_SIZE);
     if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) return [row, col];
     return null;
   };
@@ -396,7 +400,7 @@ export default function SopaScreen() {
             <Text style={styles.modalIcon}>🔤</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
-              <SpeakRow texto="Hay palabras escondidas en la grilla de letras. Arrastrá el dedo sobre las letras, o tocá cada letra por separado, en cualquier orden. Cuando seleccionás todas las letras correctas, se marca sola automáticamente. Las palabras que tenés que encontrar aparecen abajo de la grilla." />
+              <SpeakButton texto="Hay palabras escondidas en la grilla de letras. Arrastrá el dedo sobre las letras, o tocá cada letra por separado, en cualquier orden. Cuando seleccionás todas las letras correctas, se marca sola automáticamente. Las palabras que tenés que encontrar aparecen abajo de la grilla." variante="escuchar" />
             </View>
             <Text style={styles.modalSub}>
               Hay palabras escondidas en la grilla de letras.{'\n\n'}

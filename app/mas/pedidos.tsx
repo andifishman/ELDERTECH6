@@ -170,6 +170,8 @@ export default function PedidosScreen() {
   }, [tipo, titulo, descripcion, audioUri, duracionSegundos, enviarMutation, borrarAudio]);
 
   const tipoActivo = TIPOS.find((t) => t.id === tipo) ?? TIPOS[0];
+  const tieneTexto = descripcion.trim().length > 0;
+  const tieneAudio = grabando || !!audioUri;
 
   return (
     <View style={styles.root}>
@@ -211,51 +213,66 @@ export default function PedidosScreen() {
           maxLength={120}
         />
 
-        <Text style={styles.campoLabel}>Descripción (opcional)</Text>
-        <TextInput
-          style={[styles.input, styles.inputMultiline]}
-          value={descripcion}
-          onChangeText={setDescripcion}
-          placeholder="Contanos más detalles..."
-          placeholderTextColor={Colors.text.hint}
-          multiline
-          numberOfLines={4}
-        />
+        <Text style={styles.campoLabel}>Descripción o audio (opcional)</Text>
+        <View style={styles.combinadoBox}>
+          <TextInput
+            style={[styles.inputCombo, tieneAudio && styles.inputComboDeshabilitado]}
+            value={descripcion}
+            onChangeText={setDescripcion}
+            placeholder="Contanos más detalles..."
+            placeholderTextColor={Colors.text.hint}
+            multiline
+            numberOfLines={4}
+            editable={!tieneAudio}
+          />
 
-        <Text style={styles.campoLabel}>Audio (opcional)</Text>
-        {!audioUri && !grabando && (
-          <TouchableOpacity style={styles.grabarBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar audio">
-            <Ionicons name="mic" size={26} color={Colors.text.onDark} />
-            <Text style={styles.grabarTexto}>Grabar audio</Text>
-          </TouchableOpacity>
-        )}
-
-        {grabando && (
-          <TouchableOpacity style={styles.grabandoBtn} onPress={detenerGrabacion} accessibilityRole="button" accessibilityLabel="Detener grabación">
-            <View style={styles.puntoRojo} />
-            <Text style={styles.grabandoTexto}>Grabando... Tocá para detener</Text>
-          </TouchableOpacity>
-        )}
-
-        {audioUri && !grabando && (
-          <View style={styles.audioPreview}>
-            <TouchableOpacity
-              style={styles.audioPlayBtn}
-              onPress={reproduciendo ? detenerAudio : reproducirAudio}
-              accessibilityRole="button"
-              accessibilityLabel={reproduciendo ? 'Pausar audio' : 'Escuchar audio grabado'}
-            >
-              <Ionicons name={reproduciendo ? 'pause' : 'play'} size={24} color={Colors.text.onDark} />
-            </TouchableOpacity>
-            <Text style={styles.audioDuracion}>{formatearDuracion(duracionSegundos)}</Text>
-            <TouchableOpacity style={styles.audioAccionBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar de nuevo">
-              <Ionicons name="refresh" size={22} color={Colors.brand.blueDark} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.audioAccionBtn} onPress={borrarAudio} accessibilityRole="button" accessibilityLabel="Borrar audio">
-              <Ionicons name="trash" size={22} color={Colors.brand.red} />
-            </TouchableOpacity>
+          <View style={styles.divisorRow}>
+            <View style={styles.divisorLinea} />
+            <Text style={styles.divisorTexto}>o</Text>
+            <View style={styles.divisorLinea} />
           </View>
-        )}
+
+          {!audioUri && !grabando && (
+            <TouchableOpacity
+              style={[styles.grabarBtn, tieneTexto && styles.grabarBtnDeshabilitado]}
+              onPress={iniciarGrabacion}
+              disabled={tieneTexto}
+              accessibilityRole="button"
+              accessibilityLabel="Grabar audio"
+              accessibilityState={{ disabled: tieneTexto }}
+            >
+              <Ionicons name="mic" size={26} color={Colors.text.onDark} />
+              <Text style={styles.grabarTexto}>Grabar audio</Text>
+            </TouchableOpacity>
+          )}
+
+          {grabando && (
+            <TouchableOpacity style={styles.grabandoBtn} onPress={detenerGrabacion} accessibilityRole="button" accessibilityLabel="Detener grabación">
+              <View style={styles.puntoRojo} />
+              <Text style={styles.grabandoTexto}>Grabando... Tocá para detener</Text>
+            </TouchableOpacity>
+          )}
+
+          {audioUri && !grabando && (
+            <View style={styles.audioPreview}>
+              <TouchableOpacity
+                style={styles.audioPlayBtn}
+                onPress={reproduciendo ? detenerAudio : reproducirAudio}
+                accessibilityRole="button"
+                accessibilityLabel={reproduciendo ? 'Pausar audio' : 'Escuchar audio grabado'}
+              >
+                <Ionicons name={reproduciendo ? 'pause' : 'play'} size={24} color={Colors.text.onDark} />
+              </TouchableOpacity>
+              <Text style={styles.audioDuracion}>{formatearDuracion(duracionSegundos)}</Text>
+              <TouchableOpacity style={styles.audioAccionBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar de nuevo">
+                <Ionicons name="refresh" size={22} color={Colors.brand.blueDark} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.audioAccionBtn} onPress={borrarAudio} accessibilityRole="button" accessibilityLabel="Borrar audio">
+                <Ionicons name="trash" size={22} color={Colors.brand.red} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         <TouchableOpacity
           style={[styles.enviarBtn, enviarMutation.isPending && styles.enviarBtnDisabled]}
@@ -356,6 +373,25 @@ const styles = StyleSheet.create({
     minHeight: Spacing.touch.min,
   },
   inputMultiline: { minHeight: 100, textAlignVertical: 'top' },
+  combinadoBox: {
+    backgroundColor: Colors.ui.surface,
+    borderRadius: Spacing.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  inputCombo: {
+    fontSize: Typography.size.md,
+    color: Colors.text.primary,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    padding: 0,
+  },
+  inputComboDeshabilitado: { color: Colors.text.hint },
+  divisorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.md },
+  divisorLinea: { flex: 1, height: 1, backgroundColor: Colors.ui.border },
+  divisorTexto: { fontSize: Typography.size.sm, color: Colors.text.hint, fontWeight: Typography.weight.medium },
   grabarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -364,9 +400,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.brand.blueDark,
     borderRadius: Spacing.radius.lg,
     paddingVertical: Spacing.lg,
-    marginBottom: Spacing.lg,
     minHeight: Spacing.touch.comfortable,
   },
+  grabarBtnDeshabilitado: { backgroundColor: Colors.ui.border },
   grabarTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   grabandoBtn: {
     flexDirection: 'row',
@@ -376,7 +412,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFEBEE',
     borderRadius: Spacing.radius.lg,
     paddingVertical: Spacing.lg,
-    marginBottom: Spacing.lg,
     borderWidth: 2,
     borderColor: Colors.brand.red,
     minHeight: Spacing.touch.comfortable,
@@ -387,12 +422,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: Colors.ui.surface,
-    borderRadius: Spacing.radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.ui.border,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
   },
   audioPlayBtn: {
     width: 48,
