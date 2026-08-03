@@ -1,5 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
-import { SpeakRow } from '@/components/common/SpeakButton';
+import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -270,7 +270,7 @@ export default function ConexionesScreen() {
             <Text style={styles.modalIcon}>🔗</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
-              <SpeakRow texto="Hay 15 palabras divididas en 5 grupos secretos de 3 palabras cada uno. Tocá 3 palabras que creas que van juntas y presioná Confirmar selección. Si acertás, el grupo se revela. Si te equivocás, perdés un intento. Tenés 3 intentos antes de perder." />
+              <SpeakButton texto="Hay 15 palabras divididas en 5 grupos secretos de 3 palabras cada uno. Tocá 3 palabras que creas que van juntas y presioná Confirmar selección. Si acertás, el grupo se revela. Si te equivocás, perdés un intento. Tenés 3 intentos antes de perder." variante="escuchar" />
             </View>
             <View style={styles.answersBox}>
               <Text style={styles.instructionText}>

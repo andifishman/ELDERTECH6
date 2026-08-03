@@ -1,5 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
-import { SpeakRow } from '@/components/common/SpeakButton';
+import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -303,7 +303,7 @@ export default function LaberintoScreen() {
             <Text style={styles.modalIcon}>🌀</Text>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
-              <SpeakRow texto="Empezás en la esquina superior izquierda. Tenés que llegar a la puerta en la esquina inferior derecha. Arrastrá el dedo sobre el laberinto y el personaje te sigue, o usá las flechas de abajo para moverte de a un paso. Podés cambiar la dificultad cuando quieras." />
+              <SpeakButton texto="Empezás en la esquina superior izquierda. Tenés que llegar a la puerta en la esquina inferior derecha. Arrastrá el dedo sobre el laberinto y el personaje te sigue, o usá las flechas de abajo para moverte de a un paso. Podés cambiar la dificultad cuando quieras." variante="escuchar" />
             </View>
             <View style={styles.legend}>
               <Text style={styles.legendItem} maxFontSizeMultiplier={1.3}>⭐ Inicio</Text>

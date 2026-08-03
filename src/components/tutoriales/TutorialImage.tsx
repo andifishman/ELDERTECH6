@@ -3,7 +3,7 @@
 // guardada en la DB) no carga, mostramos una foto real de respaldo (picsum) usando
 // una semilla estable; y si tampoco hay nada, un placeholder con ícono de categoría.
 import React, { memo, useState } from 'react';
-import { View, Image, StyleSheet, type StyleProp, type ImageStyle, type ViewStyle } from 'react-native';
+import { View, Image, StyleSheet, type StyleProp, type ImageStyle, type ViewStyle, type ImageLoadEventData, type NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { getIconoCategoria } from './categoriaIcono';
@@ -20,6 +20,8 @@ interface TutorialImageProps {
   placeholderStyle?: StyleProp<ViewStyle>;
   resizeMode?: 'cover' | 'contain';
   accessibilityLabel?: string;
+  /** Para calcular el aspect ratio real de la imagen cargada (ej. adaptar el alto del contenedor). */
+  onLoad?: (e: NativeSyntheticEvent<ImageLoadEventData>) => void;
 }
 
 function picsumFallback(seed: string): string {
@@ -35,6 +37,7 @@ export const TutorialImage = memo(function TutorialImage({
   placeholderStyle,
   resizeMode = 'cover',
   accessibilityLabel,
+  onLoad,
 }: TutorialImageProps) {
   // 0 = uri original · 1 = fallback picsum · 2 = placeholder con ícono
   const [etapa, setEtapa] = useState<0 | 1 | 2>(uri ? 0 : 2);
@@ -57,6 +60,7 @@ export const TutorialImage = memo(function TutorialImage({
       accessibilityLabel={accessibilityLabel}
       accessible={!!accessibilityLabel}
       onError={() => setEtapa((e) => (e === 0 ? 1 : 2))}
+      onLoad={onLoad}
     />
   );
 });

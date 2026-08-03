@@ -1,5 +1,5 @@
 import AppHeader from '@/components/ui/AppHeader';
-import { SpeakRow } from '@/components/common/SpeakButton';
+import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { registrarPartida } from '@/services/juegosService';
@@ -225,7 +225,7 @@ export default function MemotestScreen() {
             <Text style={styles.mIcon}>🃏</Text>
             <Text style={styles.mTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
-              <SpeakRow texto="Hay cartas boca abajo con emojis escondidos. Tocá dos cartas para darlas vuelta. Si son iguales, quedan descubiertas. Si no, se vuelven a tapar. Encontrá todos los pares con la menor cantidad de jugadas." />
+              <SpeakButton texto="Hay cartas boca abajo con emojis escondidos. Tocá dos cartas para darlas vuelta. Si son iguales, quedan descubiertas. Si no, se vuelven a tapar. Encontrá todos los pares con la menor cantidad de jugadas." variante="escuchar" />
             </View>
             <Text style={styles.mSub}>
               Hay cartas boca abajo con emojis escondidos.{'\n\n'}

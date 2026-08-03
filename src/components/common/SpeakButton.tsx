@@ -202,6 +202,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#E8F5E9',
     elevation: 0,
+    minHeight: Spacing.touch.min,
   },
   escucharBtnActivo: {
     backgroundColor: Colors.speak.activeBg,
