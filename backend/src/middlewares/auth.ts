@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { logger } from '../logging/logger';
 import { getSupabaseAdmin } from '../repositories/supabaseAdmin';
 import { SUPER_ADMIN_EMAILS } from '../config/superAdmins';
+import { StatusCodes } from 'http-status-codes';
 
 export interface AuthUser {
   supabaseUserId: string;
@@ -34,7 +35,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     logger.warn('requireAuth: falta el header Authorization', { path: req.path });
-    res.status(401).json({ error: 'Falta el header Authorization: Bearer <token>' });
+    res.status(StatusCodes.UNAUTHORIZED).json({ error: 'Falta el header Authorization: Bearer <token>' });
     return;
   }
 
@@ -47,7 +48,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       path: req.path,
       reason: userError?.message,
     });
-    res.status(401).json({ error: 'Token inválido o expirado' });
+    res.status(StatusCodes.UNAUTHORIZED).json({ error: 'Token inválido o expirado' });
     return;
   }
 
@@ -58,7 +59,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     .maybeSingle();
 
   if (error) {
-    res.status(500).json({ error: 'No se pudo resolver el perfil del usuario' });
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'No se pudo resolver el perfil del usuario' });
     return;
   }
 
@@ -84,7 +85,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   if (!req.user?.isSuperAdmin && req.user?.rol !== 'admin' && req.user?.rol !== 'staff') {
-    res.status(403).json({ error: 'No autorizado' });
+    res.status(StatusCodes.FORBIDDEN).json({ error: 'No autorizado' });
     return;
   }
   next();

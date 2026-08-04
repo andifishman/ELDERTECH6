@@ -1,13 +1,14 @@
 import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/notificationsRepository';
-import * as deviceTokensRepo from '../../repositories/deviceTokensRepository';
+import * as deviceTokensService from './DeviceTokensService';
 import { sendPushMessages, type ExpoPushMessage } from '../../providers/notifications/ExpoPushProvider';
 import { logger } from '../../logging/logger';
 import type { DestinoFiltro, DestinoTipo, Notification, NotificationInput, RecipientStats } from '../../providers/notifications/NotificationTypes';
+import { StatusCodes } from 'http-status-codes';
 
 function requireOrganizacionId(user: AuthUser): string {
-  if (!user.organizacionId) throw new HttpError(403, 'Este usuario no tiene una organización asociada.');
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   return user.organizacionId;
 }
 
@@ -55,7 +56,7 @@ async function ejecutarEnvio(notification: Notification): Promise<void> {
 
   await repo.actualizarEstado(notification.id, { estado: 'enviando' });
 
-  const tokens = await deviceTokensRepo.findTokensActivosPorResidentes(residentes.map((r) => r.id));
+  const tokens = await deviceTokensService.findTokensActivosPorResidentes(residentes.map((r) => r.id));
   const tokensPorResidente = new Map<string, typeof tokens>();
   for (const t of tokens) {
     if (!t.residente_id) continue;
@@ -126,7 +127,7 @@ export async function crear(user: AuthUser, input: NotificationInput, accion: Ac
   const organizacionId = requireOrganizacionId(user);
 
   if (accion === 'programar' && !input.programada_para) {
-    throw new HttpError(400, 'Falta la fecha/hora de programación.');
+    throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta la fecha/hora de programación.');
   }
 
   const estadoInicial = accion === 'programar' ? 'programada' : 'borrador';
@@ -151,9 +152,9 @@ export async function crear(user: AuthUser, input: NotificationInput, accion: Ac
 
 export async function actualizar(user: AuthUser, id: string, input: Partial<NotificationInput>): Promise<Notification> {
   const actual = await repo.obtenerPorId(id);
-  if (!actual) throw new HttpError(404, 'Notificación no encontrada.');
+  if (!actual) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
   if (actual.estado !== 'borrador' && actual.estado !== 'programada') {
-    throw new HttpError(400, 'Solo se pueden editar notificaciones en borrador o programadas.');
+    throw new HttpError(StatusCodes.BAD_REQUEST, 'Solo se pueden editar notificaciones en borrador o programadas.');
   }
   const actualizada = await repo.actualizar(id, input);
   await log(id, user, 'editar', `Editó la notificación "${actualizada.titulo}"`);
@@ -162,9 +163,9 @@ export async function actualizar(user: AuthUser, id: string, input: Partial<Noti
 
 export async function enviarAhora(user: AuthUser, id: string): Promise<Notification> {
   const notification = await repo.obtenerPorId(id);
-  if (!notification) throw new HttpError(404, 'Notificación no encontrada.');
+  if (!notification) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
   if (notification.estado !== 'borrador' && notification.estado !== 'programada') {
-    throw new HttpError(400, 'Esta notificación ya fue procesada.');
+    throw new HttpError(StatusCodes.BAD_REQUEST, 'Esta notificación ya fue procesada.');
   }
   await repo.actualizarEstado(id, { enviado_por: user.supabaseUserId });
   await ejecutarEnvio({ ...notification, enviado_por: user.supabaseUserId });
@@ -174,8 +175,8 @@ export async function enviarAhora(user: AuthUser, id: string): Promise<Notificat
 
 export async function programar(user: AuthUser, id: string, programadaPara: string, recurrencia?: NotificationInput['recurrencia']): Promise<Notification> {
   const notification = await repo.obtenerPorId(id);
-  if (!notification) throw new HttpError(404, 'Notificación no encontrada.');
-  if (notification.estado !== 'borrador') throw new HttpError(400, 'Solo se pueden programar borradores.');
+  if (!notification) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
+  if (notification.estado !== 'borrador') throw new HttpError(StatusCodes.BAD_REQUEST, 'Solo se pueden programar borradores.');
 
   const actualizada = await repo.actualizar(id, { programacion_tipo: 'programada', programada_para: programadaPara, recurrencia: recurrencia ?? 'ninguna' });
   await repo.actualizarEstado(id, { estado: 'programada' });
@@ -185,15 +186,15 @@ export async function programar(user: AuthUser, id: string, programadaPara: stri
 
 export async function cancelar(user: AuthUser, id: string): Promise<void> {
   const notification = await repo.obtenerPorId(id);
-  if (!notification) throw new HttpError(404, 'Notificación no encontrada.');
-  if (notification.estado !== 'programada') throw new HttpError(400, 'Solo se pueden cancelar notificaciones programadas.');
+  if (!notification) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
+  if (notification.estado !== 'programada') throw new HttpError(StatusCodes.BAD_REQUEST, 'Solo se pueden cancelar notificaciones programadas.');
   await repo.actualizarEstado(id, { estado: 'cancelada', cancelada_en: new Date().toISOString() });
   await log(id, user, 'cancelar', 'Canceló la programación');
 }
 
 export async function reenviar(user: AuthUser, id: string): Promise<Notification> {
   const notification = await repo.obtenerPorId(id);
-  if (!notification) throw new HttpError(404, 'Notificación no encontrada.');
+  if (!notification) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
   await repo.eliminarDestinatarios(id);
   await repo.actualizarEstado(id, { enviado_por: user.supabaseUserId });
   await ejecutarEnvio({ ...notification, enviado_por: user.supabaseUserId });
@@ -204,7 +205,7 @@ export async function reenviar(user: AuthUser, id: string): Promise<Notification
 export async function duplicar(user: AuthUser, id: string): Promise<Notification> {
   const organizacionId = requireOrganizacionId(user);
   const original = await repo.obtenerPorId(id);
-  if (!original) throw new HttpError(404, 'Notificación no encontrada.');
+  if (!original) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
 
   const copia = await repo.crear(
     organizacionId,
@@ -234,7 +235,7 @@ export async function duplicar(user: AuthUser, id: string): Promise<Notification
 
 export async function eliminar(user: AuthUser, id: string): Promise<void> {
   const notification = await repo.obtenerPorId(id);
-  if (!notification) throw new HttpError(404, 'Notificación no encontrada.');
+  if (!notification) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
   await log(null, user, 'eliminar', `Eliminó la notificación "${notification.titulo}"`);
   await repo.eliminar(id);
 }
@@ -251,7 +252,7 @@ export interface NotificationDetalle {
 
 export async function obtenerDetalle(id: string): Promise<NotificationDetalle> {
   const notification = await repo.obtenerPorId(id);
-  if (!notification) throw new HttpError(404, 'Notificación no encontrada.');
+  if (!notification) throw new HttpError(StatusCodes.NOT_FOUND, 'Notificación no encontrada.');
   const stats = await repo.obtenerStats(id);
   return { notification, stats };
 }
@@ -262,6 +263,11 @@ export async function listarDestinatarios(id: string) {
 
 export async function listarLogs(id: string) {
   return repo.listarLogs(id);
+}
+
+/** Marca como abierta una notificación recibida — invocado por el residente, no por el backoffice. */
+export async function marcarAbierto(notificationId: string, residenteId: string): Promise<void> {
+  await repo.marcarAbierto(notificationId, residenteId);
 }
 
 export { ejecutarEnvio };

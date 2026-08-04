@@ -4,6 +4,7 @@ import { HardcodedRadioCatalogProvider } from '../../providers/radio/HardcodedRa
 import type { RadioData } from '../../providers/radio/RadioTypes';
 import { SupabaseRadioCatalogProvider } from '../../providers/radio/SupabaseRadioCatalogProvider';
 import { HttpError } from '../../middlewares/errorHandler';
+import { StatusCodes } from 'http-status-codes';
 
 const CATALOG_CACHE_KEY = 'radio:catalog';
 const CATALOG_CACHE_TTL_SECONDS = 60 * 60; // 1h — las radios cambian poco, igual al staleTime que ya usaba el cliente
@@ -45,7 +46,7 @@ export async function getRadioData(): Promise<RadioData> {
 export async function resolveStreamUrl(stationId: string): Promise<{ url: string }> {
   const catalogo = await getRadioData();
   const estacion = catalogo.radios.find((r) => r.id === stationId);
-  if (!estacion) throw new HttpError(404, 'Estación no encontrada.');
+  if (!estacion) throw new HttpError(StatusCodes.NOT_FOUND, 'Estación no encontrada.');
 
   if (!estacion.urlStream.includes(STREAMTHEWORLD_HOST)) {
     return { url: estacion.urlStream };

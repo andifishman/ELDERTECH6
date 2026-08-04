@@ -26,8 +26,8 @@ export default function HistorialAsistenteScreen() {
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
 
-  const { data: sesiones = [], isLoading } = useSesionesRecientes(residenteId);
-  const { data: favoritos = [] } = useMensajesFavoritos(residenteId);
+  const { data: sesiones = [], isLoading, isError: errorSesiones, refetch: refetchSesiones } = useSesionesRecientes(residenteId);
+  const { data: favoritos = [], isError: errorFavoritos, refetch: refetchFavoritos } = useMensajesFavoritos(residenteId);
 
   const formatearFecha = useCallback((iso: string): string => {
     const d = new Date(iso);
@@ -65,7 +65,20 @@ export default function HistorialAsistenteScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* ── Respuestas guardadas ── */}
-          {favoritos.length > 0 ? (
+          {errorFavoritos ? (
+            <>
+              <Text style={styles.seccionTitulo}>⭐  Respuestas guardadas</Text>
+              <TouchableOpacity
+                style={styles.errorCont}
+                onPress={() => refetchFavoritos()}
+                accessibilityRole="button"
+                accessibilityLabel="No se pudieron cargar las respuestas guardadas, tocar para reintentar"
+              >
+                <Ionicons name="warning-outline" size={22} color="#92400E" />
+                <Text style={styles.errorTexto}>No se pudieron cargar. Tocá para reintentar.</Text>
+              </TouchableOpacity>
+            </>
+          ) : favoritos.length > 0 ? (
             <>
               <Text style={styles.seccionTitulo}>⭐  Respuestas guardadas</Text>
               {favoritos.map((msg) => (
@@ -103,7 +116,17 @@ export default function HistorialAsistenteScreen() {
           {/* ── Historial de sesiones ── */}
           <Text style={[styles.seccionTitulo, { marginTop: Spacing.xl }]}>🕐  Conversaciones anteriores</Text>
 
-          {sesiones.length === 0 ? (
+          {errorSesiones ? (
+            <TouchableOpacity
+              style={styles.errorCont}
+              onPress={() => refetchSesiones()}
+              accessibilityRole="button"
+              accessibilityLabel="No se pudieron cargar las conversaciones, tocar para reintentar"
+            >
+              <Ionicons name="warning-outline" size={22} color="#92400E" />
+              <Text style={styles.errorTexto}>No se pudieron cargar. Tocá para reintentar.</Text>
+            </TouchableOpacity>
+          ) : sesiones.length === 0 ? (
             <View style={styles.vacioCont}>
               <Text style={styles.vacioEmoji}>💬</Text>
               <Text style={styles.vacioTexto}>
@@ -234,6 +257,24 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     color: Colors.text.hint,
     marginTop: 2,
+  },
+
+  // Error de carga (distinto de "vacío" — hay que reintentar, no ignorar)
+  errorCont: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: '#FEF3C7',
+    borderRadius: Spacing.radius.lg,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    padding: Spacing.lg,
+  },
+  errorTexto: {
+    flex: 1,
+    fontSize: Typography.size.md,
+    color: '#92400E',
+    fontWeight: Typography.weight.medium,
   },
 
   // Vacío

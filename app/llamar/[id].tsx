@@ -1,13 +1,11 @@
 // Pantalla de detalle de contacto — foto grande, nombre y dos botones enormes: Llamar y WhatsApp
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Image,
-  AppState,
-  AppStateStatus,
   Linking,
   Alert,
   ScrollView,
@@ -26,32 +24,7 @@ import { formatearTelefono, uploadFotoContacto } from '@/services/contactosServi
 import { useActualizarContacto } from '@/hooks/useContactos';
 import { pickImage, takePhoto } from '@/services/authService';
 import { hablar } from '@/utils/tts';
-import { useAuth } from '@/context/AuthContext';// ─────────────────────────────────────────────────────────────────────────────
-// ESTRATEGIA DE RETORNO A LA APP
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// ANDROID:
-//   • Al abrir el marcador con "tel:", el SO mueve ElderTech al background.
-//   • Cuando el usuario termina/rechaza/no contesta, Android restaura la app
-//     que estaba antes del marcador → ElderTech vuelve al primer plano.
-//   • Usamos AppState para detectar el retorno (background → active) y
-//     mostrar un banner de confirmación amigable.
-//   • Limitación: Si el usuario navega a otra app durante la llamada, no hay
-//     retorno automático garantizado. El banner le recuerda que puede volver.
-//
-// iOS:
-//   • iOS NO retorna automáticamente a la app luego de una llamada.
-//   • La mejor alternativa es una notificación local programada que aparece
-//     al terminar la llamada (expo-notifications), pero requiere permisos
-//     adicionales. Por ahora, mostramos un banner claro con el botón "Volver".
-//   • El banner usa AppState: cuando la app vuelve a active después de una
-//     llamada, muestra "¿Terminó la llamada? Tocá Volver." en tamaño grande.
-//
-// WHATSAPP:
-//   • Se abre con https://wa.me/<número> — abre directamente la conversación.
-//   • Retorno: igual que llamadas, detectado por AppState → active.
-//   • No hay deep link de WhatsApp → ElderTech, por restricciones de sandboxing.
-// ─────────────────────────────────────────────────────────────────────────────
+import { useAuth } from '@/context/AuthContext';
 
 export default function ContactoDetalleScreen() {
   const params = useLocalSearchParams<{
@@ -112,43 +85,6 @@ export default function ContactoDetalleScreen() {
     }
   }
 
-  // ─── Retorno automático via AppState ────────────────────────────────────────
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-  const accionPendienteRef = useRef<'llamada' | 'whatsapp' | null>(null);
-  const [mostrarBannerRetorno, setMostrarBannerRetorno] = React.useState(false);
-  const [textoAccion, setTextoAccion] = React.useState('');
-
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (nextState) => {
-      const prev = appStateRef.current;
-      appStateRef.current = nextState;
-
-      // App vuelve al primer plano después de haber ido al background
-      if (
-        (prev === 'background' || prev === 'inactive') &&
-        nextState === 'active' &&
-        accionPendienteRef.current
-      ) {
-        const accion = accionPendienteRef.current;
-        accionPendienteRef.current = null;
-
-        setTextoAccion(
-          accion === 'llamada'
-            ? '¿Terminó la llamada?'
-            : '¿Terminó la conversación?',
-        );
-        setMostrarBannerRetorno(true);
-
-        // En Android la app ya volvió — ocultar banner automáticamente a los 6s
-        if (Platform.OS === 'android') {
-          setTimeout(() => setMostrarBannerRetorno(false), 6000);
-        }
-      }
-    });
-
-    return () => sub.remove();
-  }, []);
-
   // ─── Llamada telefónica ────────────────────────────────────────────────────
   // No usar canOpenURL: en Android 11+ devuelve false sin <queries> en el
   // manifest aunque el teléfono pueda llamar. Intentar abrir y capturar el error.
@@ -159,13 +95,9 @@ export default function ContactoDetalleScreen() {
     // Hablar el nombre antes de llamar — útil para adultos mayores
     hablar(`Llamando a ${nombreCompleto}`);
 
-    accionPendienteRef.current = 'llamada';
-    setMostrarBannerRetorno(false);
-
     try {
       await Linking.openURL(`tel:${tel}`);
     } catch {
-      accionPendienteRef.current = null;
       Alert.alert(
         'No disponible',
         'Este dispositivo no puede realizar llamadas.',
@@ -191,9 +123,6 @@ export default function ContactoDetalleScreen() {
 
     hablar(`Abriendo WhatsApp de ${nombreCompleto}`);
 
-    accionPendienteRef.current = 'whatsapp';
-    setMostrarBannerRetorno(false);
-
     try {
       // Esquema nativo primero (abre directo la app).
       // No usar canOpenURL: en Android 11+ miente sin <queries> en el manifest.
@@ -203,7 +132,6 @@ export default function ContactoDetalleScreen() {
         // Fallback a URL web (si WhatsApp no está instalado, abre whatsapp.com)
         await Linking.openURL(urlWa);
       } catch {
-        accionPendienteRef.current = null;
         Alert.alert(
           'WhatsApp no disponible',
           'No se pudo abrir WhatsApp. Verificá que esté instalado.',
@@ -393,25 +321,6 @@ export default function ContactoDetalleScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Banner de retorno — aparece cuando la app vuelve al primer plano */}
-      {mostrarBannerRetorno && (
-        <View style={[styles.bannerRetorno, { bottom: insets.bottom + 16 }]}>
-          <Text style={styles.bannerTexto}>{textoAccion}</Text>
-          <TouchableOpacity
-            style={styles.bannerBtn}
-            onPress={() => {
-              setMostrarBannerRetorno(false);
-              router.back();
-            }}
-            accessibilityLabel="Volver a la lista de contactos"
-            accessibilityRole="button"
-          >
-            <Ionicons name="home" size={22} color="#66BB6A" />
-            <Text style={styles.bannerBtnTexto}>Volver</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 }
@@ -652,47 +561,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
     color: Colors.text.secondary,
     lineHeight: 20,
-  },
-  // Banner de retorno automático
-  bannerRetorno: {
-    position: 'absolute',
-    left: Spacing.screen.horizontal,
-    right: Spacing.screen.horizontal,
-    backgroundColor: Colors.ui.surface,
-    borderRadius: Spacing.radius.xl,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    elevation: 12,
-    borderWidth: 2,
-    borderColor: '#66BB6A',
-    gap: Spacing.md,
-  },
-  bannerTexto: {
-    flex: 1,
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.text.primary,
-  },
-  bannerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(102,187,106,0.12)',
-    borderRadius: Spacing.radius.lg,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    minHeight: Spacing.touch.comfortable,
-  },
-  bannerBtnTexto: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.bold,
-    color: '#388E3C',
   },
 });

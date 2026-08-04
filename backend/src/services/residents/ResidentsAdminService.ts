@@ -2,12 +2,14 @@ import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/residentsRepository';
 import * as auditService from '../audit/AuditService';
-import * as gamesRepo from '../../repositories/gamesRepository';
+import * as gamesService from '../games/GamesService';
+import type { ConteoPorJuego } from '../games/GamesService';
+import { StatusCodes } from 'http-status-codes';
 
 /** Porteo de `backoffice/src/services/residentesService.ts` — operaciones admin-only (backoffice). */
 
 function requireOrganizacionId(user: AuthUser): string {
-  if (!user.organizacionId) throw new HttpError(403, 'Este usuario no tiene una organización asociada.');
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   return user.organizacionId;
 }
 
@@ -26,7 +28,7 @@ export interface CrearUsuarioInput {
 
 export async function crearUsuario(user: AuthUser, callerToken: string, input: CrearUsuarioInput): Promise<{ id: string; username: string }> {
   const data = await repo.invocarAdminUsuarios(callerToken, { accion: 'crear', ...input });
-  if (!data.id || !data.username) throw new HttpError(500, 'La función de administración de usuarios no devolvió los datos esperados.');
+  if (!data.id || !data.username) throw new HttpError(StatusCodes.INTERNAL_SERVER_ERROR, 'La función de administración de usuarios no devolvió los datos esperados.');
 
   await auditService.registrarAuditoria(user, {
     accion: 'crear',
@@ -59,13 +61,13 @@ export async function resetearPassword(user: AuthUser, callerToken: string, resi
 
 export interface ResidenteDetalle extends repo.ResidenteDetalleRaw {
   residente: repo.Residente;
-  partidasPorJuego: gamesRepo.ConteoPorJuego[];
+  partidasPorJuego: ConteoPorJuego[];
 }
 
 export async function obtenerDetalle(id: string): Promise<ResidenteDetalle> {
   const residente = await repo.obtenerResidenteAdmin(id);
-  if (!residente) throw new HttpError(404, 'Residente no encontrado.');
-  const [raw, partidasPorJuego] = await Promise.all([repo.obtenerResidenteDetalleRaw(id), gamesRepo.contarPartidasPorJuego(id)]);
+  if (!residente) throw new HttpError(StatusCodes.NOT_FOUND, 'Residente no encontrado.');
+  const [raw, partidasPorJuego] = await Promise.all([repo.obtenerResidenteDetalleRaw(id), gamesService.contarPartidasPorJuego(id)]);
   return { residente, ...raw, partidasPorJuego };
 }
 

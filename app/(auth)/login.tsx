@@ -68,7 +68,7 @@ export default function LoginScreen() {
               />
             </View>
             <Text style={styles.title}>Iniciá sesión</Text>
-            <Text style={styles.subtitle}>Ingresá tu usuario o email y tu contraseña</Text>
+            <Text style={styles.subtitle}>Ingresá tu usuario y tu contraseña</Text>
           </View>
 
           {/* Form */}

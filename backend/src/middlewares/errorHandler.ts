@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { logger } from '../logging/logger';
+import { StatusCodes } from 'http-status-codes';
 
 export class HttpError extends Error {
   constructor(
@@ -13,13 +14,13 @@ export class HttpError extends Error {
 }
 
 export function notFoundHandler(req: Request, res: Response): void {
-  res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` });
+  res.status(StatusCodes.NOT_FOUND).json({ error: `Ruta no encontrada: ${req.method} ${req.path}` });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof ZodError) {
-    res.status(400).json({ error: 'Datos inválidos', details: err.flatten() });
+    res.status(StatusCodes.BAD_REQUEST).json({ error: 'Datos inválidos', details: err.flatten() });
     return;
   }
   if (err instanceof HttpError) {
@@ -33,5 +34,5 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
     error: err instanceof Error ? err.message : String(err),
     stack: err instanceof Error ? err.stack : undefined,
   });
-  res.status(500).json({ error: 'Error interno del servidor' });
+  res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Error interno del servidor' });
 }

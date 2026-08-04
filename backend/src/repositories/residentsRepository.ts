@@ -1,8 +1,11 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { env } from '../config/env';
+import { logger } from '../logging/logger';
 
 /** Resuelve la organización de un residente — la necesitan Actividades y Clima para filtrar por org. */
 export async function getOrganizacionIdDeResidente(residenteId: string): Promise<string | null> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'getOrganizacionIdDeResidente', residenteId });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('residentes')
     .select('organizacion_id')
@@ -11,6 +14,11 @@ export async function getOrganizacionIdDeResidente(residenteId: string): Promise
 
   if (error) throw new Error(`Error al resolver la organización del residente: ${error.message}`);
   return data?.organizacion_id ?? null;
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'getOrganizacionIdDeResidente', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export interface ResidenteContext {
@@ -20,6 +28,8 @@ export interface ResidenteContext {
 
 /** Organización + sección del residente — la necesita Actividades para el algoritmo de visibilidad. */
 export async function getResidenteContext(residenteId: string): Promise<ResidenteContext> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'getResidenteContext', residenteId });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('residentes')
     .select('organizacion_id, seccion')
@@ -28,6 +38,11 @@ export async function getResidenteContext(residenteId: string): Promise<Resident
 
   if (error) throw new Error(`Error al resolver el residente: ${error.message}`);
   return { organizacionId: data?.organizacion_id ?? null, seccion: data?.seccion ?? null };
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'getResidenteContext', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 // ─── Admin (backoffice) ──────────────────────────────────────────────────────
@@ -55,6 +70,8 @@ export interface Residente {
 export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean };
 
 export async function listarResidentesAdmin(organizacionId: string): Promise<ResidenteConCuenta[]> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'listarResidentesAdmin', organizacionId });
+  try {
   const [residentesR, perfilesR] = await Promise.allSettled([
     getSupabaseAdmin().from('residentes').select('*').eq('organizacion_id', organizacionId).order('apellido', { ascending: true }),
     getSupabaseAdmin().from('perfiles_usuario').select('residente_id').eq('organizacion_id', organizacionId).not('residente_id', 'is', null),
@@ -68,6 +85,11 @@ export async function listarResidentesAdmin(organizacionId: string): Promise<Res
   );
 
   return ((residentesR.value.data ?? []) as Residente[]).map((r) => ({ ...r, tiene_cuenta: verificadosIds.has(r.id) }));
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'listarResidentesAdmin', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export interface ResidenteAdminInput {
@@ -78,25 +100,46 @@ export interface ResidenteAdminInput {
 }
 
 export async function actualizarResidenteAdmin(id: string, input: ResidenteAdminInput): Promise<void> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'actualizarResidenteAdmin', id, input });
+  try {
   const { error } = await getSupabaseAdmin()
     .from('residentes')
     .update({ ...input, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw new Error(`Error al actualizar residente: ${error.message}`);
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'actualizarResidenteAdmin', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function setActivoResidenteAdmin(id: string, activo: boolean): Promise<void> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'setActivoResidenteAdmin', id, activo });
+  try {
   const { error } = await getSupabaseAdmin()
     .from('residentes')
     .update({ activo, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw new Error(`Error al actualizar residente: ${error.message}`);
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'setActivoResidenteAdmin', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function obtenerResidenteAdmin(id: string): Promise<Residente | null> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'obtenerResidenteAdmin', id });
+  try {
   const { data, error } = await getSupabaseAdmin().from('residentes').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(`Error al cargar residente: ${error.message}`);
   return (data as Residente) ?? null;
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'obtenerResidenteAdmin', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export interface ResidenteDetalleRaw {
@@ -108,6 +151,8 @@ export interface ResidenteDetalleRaw {
 }
 
 export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteDetalleRaw> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'obtenerResidenteDetalleRaw', id });
+  try {
   const [mensajesR, interesesR, tutorialesR, climaR, contactosR] = await Promise.allSettled([
     getSupabaseAdmin()
       .from('mensajes_asistente')
@@ -170,6 +215,11 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
           }))
         : [],
   };
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'obtenerResidenteDetalleRaw', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 /**
@@ -180,6 +230,8 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
  * backend, porque la Edge Function valida ella misma el rol del caller.
  */
 export async function invocarAdminUsuarios(callerToken: string, body: Record<string, unknown>): Promise<{ id?: string; username?: string; ok?: boolean }> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'invocarAdminUsuarios', accion: body.accion });
+  try {
   const res = await fetch(`${env.supabaseUrl}/functions/v1/admin-usuarios`, {
     method: 'POST',
     headers: {
@@ -192,4 +244,9 @@ export async function invocarAdminUsuarios(callerToken: string, body: Record<str
   const data = (await res.json().catch(() => ({}))) as { error?: string; id?: string; username?: string; ok?: boolean };
   if (!res.ok || data.error) throw new Error(data.error ?? 'Error al invocar la función de administración de usuarios');
   return data;
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'invocarAdminUsuarios', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }

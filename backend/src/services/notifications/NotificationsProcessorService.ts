@@ -1,6 +1,6 @@
 import { logger } from '../../logging/logger';
 import * as notifRepo from '../../repositories/notificationsRepository';
-import * as activitiesRepo from '../../repositories/activitiesRepository';
+import * as activitiesService from '../activities/ActivitiesService';
 import { getPushReceipts } from '../../providers/notifications/ExpoPushProvider';
 import { ejecutarEnvio } from './NotificationsAdminService';
 import type { NotificationInput, Recurrencia } from '../../providers/notifications/NotificationTypes';
@@ -81,7 +81,7 @@ const NOMBRES_DIA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'vier
 
 /** Genera y envía el recordatorio automático de una actividad cuando entra en su ventana configurada. */
 export async function procesarRecordatoriosActividades(): Promise<{ enviados: number }> {
-  const candidatas = await activitiesRepo.listarCandidatasRecordatorio();
+  const candidatas = await activitiesService.listarCandidatasRecordatorio();
   const ahora = Date.now();
   let enviados = 0;
 
@@ -120,7 +120,7 @@ export async function procesarRecordatoriosActividades(): Promise<{ enviados: nu
     }
 
     if (ultimaNotificacion) {
-      await activitiesRepo.marcarRecordatorioEnviado(act.id, ultimaNotificacion.id);
+      await activitiesService.marcarRecordatorioEnviado(act.id, ultimaNotificacion.id);
       enviados += 1;
     }
   }

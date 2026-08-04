@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
+import { logger } from '../logging/logger';
 
 export interface TipoActividad {
   id: string;
@@ -33,6 +34,8 @@ export interface Responsable {
 }
 
 export async function findTiposActividad(organizacionId: string): Promise<TipoActividad[]> {
+  logger.info('repo:call', { repository: 'catalogsRepository', action: 'findTiposActividad', organizacionId });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('tipos_actividad')
     .select('*')
@@ -41,9 +44,16 @@ export async function findTiposActividad(organizacionId: string): Promise<TipoAc
     .order('nombre');
   if (error) throw new Error(`Error al cargar tipos de actividad: ${error.message}`);
   return (data ?? []) as TipoActividad[];
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'catalogsRepository', action: 'findTiposActividad', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function findUbicaciones(organizacionId: string): Promise<Ubicacion[]> {
+  logger.info('repo:call', { repository: 'catalogsRepository', action: 'findUbicaciones', organizacionId });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('ubicaciones')
     .select('*')
@@ -52,6 +62,11 @@ export async function findUbicaciones(organizacionId: string): Promise<Ubicacion
     .order('nombre');
   if (error) throw new Error(`Error al cargar ubicaciones: ${error.message}`);
   return (data ?? []) as Ubicacion[];
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'catalogsRepository', action: 'findUbicaciones', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export interface Interes {
@@ -63,12 +78,21 @@ export interface Interes {
 
 /** Catálogo global de intereses — usado por el módulo Notificaciones para targeting "por intereses". */
 export async function findIntereses(): Promise<Interes[]> {
+  logger.info('repo:call', { repository: 'catalogsRepository', action: 'findIntereses' });
+  try {
   const { data, error } = await getSupabaseAdmin().from('intereses').select('id, nombre, emoji, activo').eq('activo', true).order('nombre');
   if (error) throw new Error(`Error al cargar intereses: ${error.message}`);
   return (data ?? []) as Interes[];
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'catalogsRepository', action: 'findIntereses', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function findResponsables(organizacionId: string): Promise<Responsable[]> {
+  logger.info('repo:call', { repository: 'catalogsRepository', action: 'findResponsables', organizacionId });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('responsables')
     .select('*')
@@ -77,6 +101,11 @@ export async function findResponsables(organizacionId: string): Promise<Responsa
     .order('nombre');
   if (error) throw new Error(`Error al cargar responsables: ${error.message}`);
   return (data ?? []) as Responsable[];
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'catalogsRepository', action: 'findResponsables', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function crearTipoActividad(input: {
@@ -86,6 +115,8 @@ export async function crearTipoActividad(input: {
   horaInicioDefault: string | null;
   horaFinDefault: string | null;
 }): Promise<string> {
+  logger.info('repo:call', { repository: 'catalogsRepository', action: 'crearTipoActividad', input });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('tipos_actividad')
     .insert({
@@ -100,9 +131,16 @@ export async function crearTipoActividad(input: {
     .single();
   if (error) throw new Error(`Error al crear tipo de actividad: ${error.message}`);
   return data.id as string;
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'catalogsRepository', action: 'crearTipoActividad', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function crearUbicacion(input: { organizacionId: string; nombre: string }): Promise<string> {
+  logger.info('repo:call', { repository: 'catalogsRepository', action: 'crearUbicacion', input });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('ubicaciones')
     .insert({ nombre: input.nombre, organizacion_id: input.organizacionId, activo: true })
@@ -110,6 +148,11 @@ export async function crearUbicacion(input: { organizacionId: string; nombre: st
     .single();
   if (error) throw new Error(`Error al crear ubicación: ${error.message}`);
   return data.id as string;
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'catalogsRepository', action: 'crearUbicacion', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function crearResponsable(input: {
@@ -117,6 +160,8 @@ export async function crearResponsable(input: {
   nombre: string;
   apellido: string;
 }): Promise<string> {
+  logger.info('repo:call', { repository: 'catalogsRepository', action: 'crearResponsable', input });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('responsables')
     .insert({
@@ -130,4 +175,9 @@ export async function crearResponsable(input: {
     .single();
   if (error) throw new Error(`Error al crear responsable: ${error.message}`);
   return data.id as string;
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'catalogsRepository', action: 'crearResponsable', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }

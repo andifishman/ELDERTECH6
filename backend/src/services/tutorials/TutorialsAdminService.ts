@@ -3,6 +3,7 @@ import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/tutorialsRepository';
 import type { TutorialAdmin, TutorialAdminInput, CategoriaTutorial } from '../../providers/tutorials/TutorialTypes';
 import * as auditService from '../audit/AuditService';
+import { StatusCodes } from 'http-status-codes';
 
 /** Porteo de `backoffice/src/services/articulosService.ts` — operaciones admin-only (backoffice). */
 
@@ -27,7 +28,7 @@ export async function crearCategoria(user: AuthUser, nombre: string, emoji?: str
 
 export async function obtenerPorId(id: string): Promise<TutorialAdmin> {
   const tutorial = await repo.obtenerAdminPorId(id);
-  if (!tutorial) throw new HttpError(404, 'Tutorial no encontrado.');
+  if (!tutorial) throw new HttpError(StatusCodes.NOT_FOUND, 'Tutorial no encontrado.');
   return tutorial;
 }
 

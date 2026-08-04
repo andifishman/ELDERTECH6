@@ -1,5 +1,4 @@
 import type { Request, Response } from 'express';
-import { HttpError } from '../middlewares/errorHandler';
 import * as tutorialsService from '../services/tutorials/TutorialsService';
 import {
   historialQuerySchema,
@@ -7,18 +6,8 @@ import {
   progresoSchema,
   relacionadosQuerySchema,
 } from '../validators/tutorials.validators';
-
-function requireResidenteId(req: Request): string {
-  const residenteId = req.user?.residenteId;
-  if (!residenteId) throw new HttpError(403, 'Este usuario no tiene un residente asociado.');
-  return residenteId;
-}
-
-function requireParam(req: Request, name: string): string {
-  const value = req.params[name];
-  if (!value) throw new HttpError(400, `Falta el parámetro ${name}.`);
-  return value;
-}
+import { requireParam, requireResidenteId } from '../utils/validators';
+import { StatusCodes } from 'http-status-codes';
 
 export async function getCategorias(_req: Request, res: Response): Promise<void> {
   res.json(await tutorialsService.getCategorias());
@@ -46,12 +35,12 @@ export async function getRelacionados(req: Request, res: Response): Promise<void
 export async function postProgreso(req: Request, res: Response): Promise<void> {
   const updates = progresoSchema.parse(req.body);
   await tutorialsService.guardarProgreso(requireResidenteId(req), requireParam(req, 'id'), updates);
-  res.status(204).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function postVista(req: Request, res: Response): Promise<void> {
   await tutorialsService.registrarVista(requireResidenteId(req), requireParam(req, 'id'));
-  res.status(204).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function getHistorial(req: Request, res: Response): Promise<void> {

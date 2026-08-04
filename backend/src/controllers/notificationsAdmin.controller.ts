@@ -1,5 +1,4 @@
 import type { Request, Response } from 'express';
-import { HttpError } from '../middlewares/errorHandler';
 import * as service from '../services/notifications/NotificationsAdminService';
 import {
   crearNotificationSchema,
@@ -8,17 +7,8 @@ import {
   previewAudienciaSchema,
   programarSchema,
 } from '../validators/notificationsAdmin.validators';
-
-function requireUser(req: Request) {
-  if (!req.user) throw new HttpError(401, 'No autenticado.');
-  return req.user;
-}
-
-function requireParam(req: Request, name: string): string {
-  const value = req.params[name];
-  if (!value) throw new HttpError(400, `Falta el parámetro ${name}.`);
-  return value;
-}
+import { requireParam, requireUser } from '../utils/validators';
+import { StatusCodes } from 'http-status-codes';
 
 export async function getListado(req: Request, res: Response): Promise<void> {
   const query = listarQuerySchema.parse(req.query);
@@ -41,7 +31,7 @@ export async function postPreviewAudiencia(req: Request, res: Response): Promise
 export async function postCrear(req: Request, res: Response): Promise<void> {
   const { notificacion, accion } = crearNotificationSchema.parse(req.body);
   const creada = await service.crear(requireUser(req), notificacion, accion);
-  res.status(201).json(creada);
+  res.status(StatusCodes.CREATED).json(creada);
 }
 
 export async function getDetalle(req: Request, res: Response): Promise<void> {
@@ -55,7 +45,7 @@ export async function patchActualizar(req: Request, res: Response): Promise<void
 
 export async function deleteEliminar(req: Request, res: Response): Promise<void> {
   await service.eliminar(requireUser(req), requireParam(req, 'id'));
-  res.status(204).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function postEnviarAhora(req: Request, res: Response): Promise<void> {
@@ -69,7 +59,7 @@ export async function postProgramar(req: Request, res: Response): Promise<void> 
 
 export async function postCancelar(req: Request, res: Response): Promise<void> {
   await service.cancelar(requireUser(req), requireParam(req, 'id'));
-  res.status(204).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function postReenviar(req: Request, res: Response): Promise<void> {
@@ -77,7 +67,7 @@ export async function postReenviar(req: Request, res: Response): Promise<void> {
 }
 
 export async function postDuplicar(req: Request, res: Response): Promise<void> {
-  res.status(201).json(await service.duplicar(requireUser(req), requireParam(req, 'id')));
+  res.status(StatusCodes.CREATED).json(await service.duplicar(requireUser(req), requireParam(req, 'id')));
 }
 
 export async function getDestinatarios(req: Request, res: Response): Promise<void> {

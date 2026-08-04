@@ -5,8 +5,8 @@ import type { ChatCompletionInput, ChatCompletionOutput, GroqToolCall } from '..
 import { GroqModelProvider } from '../../providers/chat/GroqModelProvider';
 import { GroqWhisperProvider, type TranscriptionInput, type TranscriptionOutput } from '../../providers/chat/GroqWhisperProvider';
 import { OpenRouterProvider } from '../../providers/chat/OpenRouterProvider';
-import { searchActivitiesByText } from '../../repositories/activitiesRepository';
-import { searchTutorialsByText } from '../../repositories/tutorialsRepository';
+import * as activitiesService from '../activities/ActivitiesService';
+import * as tutorialsService from '../tutorials/TutorialsService';
 import { buildSystemPrompt, HERRAMIENTAS_IA } from './prompt';
 import { esIntentLlamar, extraerNavegacionDelTexto } from './textUtils';
 import type { MensajeContexto, NavegacionAccion, RespuestaAsistente } from './types';
@@ -185,7 +185,7 @@ async function ejecutarHerramienta(
       const fechaStr = args.fecha as string | undefined;
       const busqueda = (args.busqueda as string | undefined) ?? '';
       const fecha = fechaStr ? new Date(fechaStr) : new Date();
-      const actividades = await searchActivitiesByText(organizacionId, busqueda, fecha);
+      const actividades = await activitiesService.searchActividades(organizacionId, busqueda, fecha);
       return actividades.length > 0
         ? JSON.stringify(actividades)
         : JSON.stringify({ mensaje: 'No se encontraron actividades para esa búsqueda en esa fecha.' });
@@ -193,7 +193,7 @@ async function ejecutarHerramienta(
 
     if (toolCall.function.name === 'buscar_tutoriales') {
       const busqueda = (args.busqueda as string | undefined) ?? '';
-      const tutoriales = await searchTutorialsByText(busqueda);
+      const tutoriales = await tutorialsService.searchTutoriales(busqueda);
       return tutoriales.length > 0
         ? JSON.stringify(tutoriales)
         : JSON.stringify({ mensaje: 'No se encontraron tutoriales para esa búsqueda.' });

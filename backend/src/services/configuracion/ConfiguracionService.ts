@@ -2,9 +2,10 @@ import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/configuracionRepository';
 import * as auditService from '../audit/AuditService';
+import { StatusCodes } from 'http-status-codes';
 
 function requireOrganizacionId(user: AuthUser): string {
-  if (!user.organizacionId) throw new HttpError(403, 'Este usuario no tiene una organización asociada.');
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   return user.organizacionId;
 }
 

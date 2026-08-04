@@ -1,10 +1,11 @@
 import { HttpError } from '../../middlewares/errorHandler';
 import * as repo from '../../repositories/contactsRepository';
+import { StatusCodes } from 'http-status-codes';
 
 async function requireOwnContacto(residenteId: string, contactoId: string): Promise<void> {
   const owner = await repo.getResidenteIdDeContacto(contactoId);
-  if (owner === null) throw new HttpError(404, 'Contacto no encontrado.');
-  if (owner !== residenteId) throw new HttpError(403, 'No autorizado.');
+  if (owner === null) throw new HttpError(StatusCodes.NOT_FOUND, 'Contacto no encontrado.');
+  if (owner !== residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'No autorizado.');
 }
 
 export async function getContactos(residenteId: string): Promise<repo.ContactoResumen[]> {
@@ -24,7 +25,7 @@ export async function getTiposContacto(): Promise<repo.TipoContacto[]> {
 export async function agregarContacto(residenteId: string, payload: Omit<repo.ContactoUpsert, 'residente_id'>): Promise<repo.ContactoResumen> {
   if (payload.contacto_device_id) {
     const yaExiste = await repo.existeContactoPorDeviceId(residenteId, payload.contacto_device_id);
-    if (yaExiste) throw new HttpError(409, 'Este contacto ya está en tu lista.');
+    if (yaExiste) throw new HttpError(StatusCodes.CONFLICT, 'Este contacto ya está en tu lista.');
   }
   return repo.crearContacto({ ...payload, residente_id: residenteId });
 }

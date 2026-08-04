@@ -4,12 +4,13 @@ import * as repo from '../../repositories/requestsRepository';
 import { transcribirAudio } from '../assistant/AssistantChatService';
 import { logger } from '../../logging/logger';
 import type { PedidoSugerenciaConResidente, TipoPedido } from '../../providers/requests/RequestTypes';
+import { StatusCodes } from 'http-status-codes';
 
 /** Porteo del módulo "Pedidos y Sugerencias" — lado residente (app móvil). */
 
 function requireResidente(user: AuthUser): { residenteId: string; organizacionId: string } {
-  if (!user.residenteId) throw new HttpError(403, 'Este usuario no tiene un residente asociado.');
-  if (!user.organizacionId) throw new HttpError(403, 'Este usuario no tiene una organización asociada.');
+  if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   return { residenteId: user.residenteId, organizacionId: user.organizacionId };
 }
 
@@ -66,7 +67,7 @@ export async function editarPropio(user: AuthUser, id: string, input: EditarInpu
   const { residenteId } = requireResidente(user);
   const actualizado = await repo.actualizarPropio(id, residenteId, input);
   if (!actualizado) {
-    throw new HttpError(404, 'No se encontró la solicitud, no te pertenece, o ya no se puede editar porque el personal ya la está atendiendo.');
+    throw new HttpError(StatusCodes.NOT_FOUND, 'No se encontró la solicitud, no te pertenece, o ya no se puede editar porque el personal ya la está atendiendo.');
   }
   return actualizado;
 }

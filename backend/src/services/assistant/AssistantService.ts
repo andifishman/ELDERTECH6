@@ -2,6 +2,7 @@ import { HttpError } from '../../middlewares/errorHandler';
 import * as repo from '../../repositories/assistantRepository';
 import * as chat from './AssistantChatService';
 import type { MensajeContexto, RespuestaAsistente } from './types';
+import { StatusCodes } from 'http-status-codes';
 
 export async function crearSesion(residenteId: string): Promise<repo.SesionAsistente> {
   return repo.crearSesion(residenteId);
@@ -13,7 +14,7 @@ export async function getSesiones(residenteId: string, limit?: number): Promise<
 
 export async function actualizarTituloSesion(residenteId: string, sesionId: string, titulo: string): Promise<void> {
   if (!(await repo.sesionPerteneceAResidente(sesionId, residenteId))) {
-    throw new HttpError(404, 'Sesión no encontrada.');
+    throw new HttpError(StatusCodes.NOT_FOUND, 'Sesión no encontrada.');
   }
   await repo.actualizarTituloSesion(sesionId, titulo);
 }
@@ -25,7 +26,7 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
 
 export async function getMensajes(residenteId: string, sesionId: string): Promise<repo.MensajeAsistente[]> {
   if (!(await repo.sesionPerteneceAResidente(sesionId, residenteId))) {
-    throw new HttpError(404, 'Sesión no encontrada.');
+    throw new HttpError(StatusCodes.NOT_FOUND, 'Sesión no encontrada.');
   }
   return repo.getMensajesDeSesion(sesionId);
 }
@@ -41,14 +42,14 @@ export async function guardarMensaje(
   contenido: string,
 ): Promise<repo.MensajeAsistente> {
   if (!(await repo.sesionPerteneceAResidente(sesionId, residenteId))) {
-    throw new HttpError(404, 'Sesión no encontrada.');
+    throw new HttpError(StatusCodes.NOT_FOUND, 'Sesión no encontrada.');
   }
   return repo.guardarMensaje(sesionId, residenteId, rol, contenido);
 }
 
 export async function toggleFavorito(residenteId: string, mensajeId: string, esFavorito: boolean): Promise<void> {
   if (!(await repo.mensajePerteneceAResidente(mensajeId, residenteId))) {
-    throw new HttpError(404, 'Mensaje no encontrado.');
+    throw new HttpError(StatusCodes.NOT_FOUND, 'Mensaje no encontrado.');
   }
   await repo.toggleFavoritoMensaje(mensajeId, esFavorito);
 }

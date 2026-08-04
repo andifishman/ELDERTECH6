@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from './supabaseAdmin';
 import type { ActividadCompleta } from '../providers/activities/ActivityTypes';
 import type { AuditLog } from './auditRepository';
 import type { Residente } from './residentsRepository';
+import { logger } from '../logging/logger';
 
 const ACTIVIDAD_SELECT_SIMPLE = '*, tipo_actividad:tipos_actividad(*), ubicacion:ubicaciones(*), responsable:responsables(*)';
 
@@ -36,6 +37,8 @@ export interface DashboardKpis {
 }
 
 export async function obtenerKpis(organizacionId: string): Promise<DashboardKpis> {
+  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerKpis', organizacionId });
+  try {
   const hoy = hoyISO();
   const hoyStart = `${hoy}T00:00:00.000Z`;
   const hoyEnd = `${hoy}T23:59:59.999Z`;
@@ -55,9 +58,16 @@ export async function obtenerKpis(organizacionId: string): Promise<DashboardKpis
     usuariosRegistrados: residentesActivos,
     tutorialMasVisto: null,
   };
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerKpis', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function obtenerActividadesHoy(organizacionId: string): Promise<ActividadCompleta[]> {
+  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerActividadesHoy', organizacionId });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('actividades')
     .select(ACTIVIDAD_SELECT_SIMPLE)
@@ -67,11 +77,18 @@ export async function obtenerActividadesHoy(organizacionId: string): Promise<Act
     .order('hora_inicio', { ascending: true });
   if (error) throw new Error(`Error al cargar actividades: ${error.message}`);
   return (data ?? []) as unknown as ActividadCompleta[];
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerActividadesHoy', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export type ResidenteConConexion = Residente;
 
 export async function obtenerResidentesRecientes(organizacionId: string, limite = 5): Promise<ResidenteConConexion[]> {
+  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerResidentesRecientes', organizacionId, limite });
+  try {
   const { data, error } = await getSupabaseAdmin()
     .from('residentes')
     .select('*')
@@ -82,9 +99,16 @@ export async function obtenerResidentesRecientes(organizacionId: string, limite 
     .limit(limite);
   if (error) throw new Error(`Error al cargar residentes: ${error.message}`);
   return (data ?? []) as ResidenteConConexion[];
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerResidentesRecientes', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function obtenerTutorialesMasVistos(limite = 6): Promise<{ titulo: string; vistas: number }[]> {
+  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerTutorialesMasVistos', limite });
+  try {
   try {
     const { data: progreso } = await getSupabaseAdmin().from('progreso_tutorial').select('tutorial_id');
     if (!progreso || progreso.length === 0) return [];
@@ -107,9 +131,16 @@ export async function obtenerTutorialesMasVistos(limite = 6): Promise<{ titulo: 
   } catch {
     return [];
   }
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerTutorialesMasVistos', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function obtenerActividadReciente(organizacionId: string, limite = 6): Promise<AuditLog[]> {
+  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerActividadReciente', organizacionId, limite });
+  try {
   try {
     const { data } = await getSupabaseAdmin()
       .from('audit_logs')
@@ -121,9 +152,16 @@ export async function obtenerActividadReciente(organizacionId: string, limite = 
   } catch {
     return [];
   }
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerActividadReciente', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 }
 
 export async function obtenerActividadesPorCategoria(organizacionId: string): Promise<{ nombre: string; total: number }[]> {
+  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerActividadesPorCategoria', organizacionId });
+  try {
   try {
     const { data } = await getSupabaseAdmin()
       .from('actividades')
@@ -143,5 +181,10 @@ export async function obtenerActividadesPorCategoria(organizacionId: string): Pr
       .slice(0, 8);
   } catch {
     return [];
+  }
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerActividadesPorCategoria', error: err instanceof Error ? err.message : String(err) });
+    throw err;
   }
 }

@@ -3,6 +3,7 @@ import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/administradoresRepository';
 import * as auditService from '../audit/AuditService';
 import { SUPER_ADMIN_IDS } from '../../config/superAdmins';
+import { StatusCodes } from 'http-status-codes';
 
 /**
  * Porteo de `backoffice/src/features/administradores/useAdministradores.ts`.
@@ -20,7 +21,7 @@ import { SUPER_ADMIN_IDS } from '../../config/superAdmins';
  */
 function requireSuperAdmin(user: AuthUser): void {
   if (!user.isSuperAdmin) {
-    throw new HttpError(403, 'Solo una cuenta super admin puede gestionar administradores.');
+    throw new HttpError(StatusCodes.FORBIDDEN, 'Solo una cuenta super admin puede gestionar administradores.');
   }
 }
 
@@ -32,7 +33,7 @@ export async function listar(user: AuthUser): Promise<repo.PerfilAdmin[]> {
 export async function cambiarRol(user: AuthUser, id: string, rol: repo.RolUsuarioDB): Promise<void> {
   requireSuperAdmin(user);
   if (SUPER_ADMIN_IDS.includes(id)) {
-    throw new HttpError(403, 'No se puede modificar el rol de una cuenta super admin.');
+    throw new HttpError(StatusCodes.FORBIDDEN, 'No se puede modificar el rol de una cuenta super admin.');
   }
 
   await repo.actualizarRol(id, rol);

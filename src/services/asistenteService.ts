@@ -46,11 +46,7 @@ export async function getMensajesDeSesion(sesionId: string): Promise<MensajeAsis
 }
 
 export async function getMensajesFavoritos(_residenteId: string): Promise<MensajeAsistente[]> {
-  try {
-    return await apiClient.get<MensajeAsistente[]>('/api/assistant/messages/favorites');
-  } catch {
-    return [];
-  }
+  return apiClient.get<MensajeAsistente[]>('/api/assistant/messages/favorites');
 }
 
 export async function guardarMensaje(

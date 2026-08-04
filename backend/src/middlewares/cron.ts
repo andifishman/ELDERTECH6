@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { env } from '../config/env';
+import { StatusCodes } from 'http-status-codes';
 
 /**
  * Protege los endpoints que solo debería llamar Vercel Cron. Vercel inyecta
@@ -10,12 +11,12 @@ import { env } from '../config/env';
  */
 export function requireCronSecret(req: Request, res: Response, next: NextFunction): void {
   if (!env.cronSecret) {
-    res.status(500).json({ error: 'CRON_SECRET no configurado en el servidor.' });
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'CRON_SECRET no configurado en el servidor.' });
     return;
   }
   const header = req.headers.authorization;
   if (header !== `Bearer ${env.cronSecret}`) {
-    res.status(401).json({ error: 'No autorizado.' });
+    res.status(StatusCodes.UNAUTHORIZED).json({ error: 'No autorizado.' });
     return;
   }
   next();

@@ -2,6 +2,7 @@ import { logger } from '../../logging/logger';
 import { HttpError } from '../../middlewares/errorHandler';
 import * as repo from '../../repositories/auditRepository';
 import type { AuthUser } from '../../middlewares/auth';
+import { StatusCodes } from 'http-status-codes';
 
 /**
  * Porteo de `backoffice/src/services/auditService.ts`. Cross-cutting: cada
@@ -37,6 +38,6 @@ export async function registrarAuditoria(
 }
 
 export async function listar(user: AuthUser, limit?: number): Promise<repo.AuditLog[]> {
-  if (!user.organizacionId) throw new HttpError(403, 'Este usuario no tiene una organización asociada.');
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   return repo.listarAuditLogs(user.organizacionId, limit);
 }

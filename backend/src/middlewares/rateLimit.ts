@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { getCacheStore } from '../cache';
+import { StatusCodes } from 'http-status-codes';
 
 export interface RateLimitOptions {
   /** Requests permitidos por ventana. */
@@ -21,7 +22,7 @@ export function rateLimit(options: RateLimitOptions) {
 
     const count = await cache.increment(key, options.windowSeconds);
     if (count > options.limit) {
-      res.status(429).json({ error: 'Demasiadas solicitudes. Probá de nuevo en un momento.' });
+      res.status(StatusCodes.TOO_MANY_REQUESTS).json({ error: 'Demasiadas solicitudes. Probá de nuevo en un momento.' });
       return;
     }
     next();

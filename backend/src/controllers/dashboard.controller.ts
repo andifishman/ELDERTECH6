@@ -1,12 +1,7 @@
 import type { Request, Response } from 'express';
-import { HttpError } from '../middlewares/errorHandler';
 import * as dashboardService from '../services/dashboard/DashboardService';
 import { limiteQuerySchema } from '../validators/dashboard.validators';
-
-function requireUser(req: Request) {
-  if (!req.user) throw new HttpError(401, 'No autenticado.');
-  return req.user;
-}
+import { requireUser } from '../utils/validators';
 
 export async function getKpis(req: Request, res: Response): Promise<void> {
   res.json(await dashboardService.obtenerKpis(requireUser(req)));

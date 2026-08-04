@@ -1,7 +1,9 @@
 import { HttpError } from '../../middlewares/errorHandler';
 import * as repo from '../../repositories/activitiesRepository';
-import { getResidenteContext } from '../../repositories/residentsRepository';
+import * as residentsService from '../residents/ResidentsService';
 import type { ActividadCompleta, ActividadConPrioridad } from '../../providers/activities/ActivityTypes';
+import type { ActividadParaIA, ActividadPendienteRecordatorio } from '../../repositories/activitiesRepository';
+import { StatusCodes } from 'http-status-codes';
 
 /**
  * Devuelve las actividades del día visibles para este residente, según su
@@ -16,8 +18,8 @@ import type { ActividadCompleta, ActividadConPrioridad } from '../../providers/a
  *    residente coincide (o fue incluido por excepción); 3 = general.
  */
 export async function getActividadesPersonalizadas(residenteId: string, fecha: Date): Promise<ActividadConPrioridad[]> {
-  const { organizacionId, seccion: miSeccion } = await getResidenteContext(residenteId);
-  if (!organizacionId) throw new HttpError(404, 'No se pudo resolver la organización del residente.');
+  const { organizacionId, seccion: miSeccion } = await residentsService.getResidenteContext(residenteId);
+  if (!organizacionId) throw new HttpError(StatusCodes.NOT_FOUND, 'No se pudo resolver la organización del residente.');
 
   const actividades = await repo.fetchActividadesPorFecha(organizacionId, fecha);
 
@@ -43,6 +45,20 @@ export async function getActividadesPersonalizadas(residenteId: string, fecha: D
 
 export async function getActividadById(id: string): Promise<ActividadCompleta> {
   const actividad = await repo.getActividadById(id);
-  if (!actividad) throw new HttpError(404, 'Actividad no encontrada.');
+  if (!actividad) throw new HttpError(StatusCodes.NOT_FOUND, 'Actividad no encontrada.');
   return actividad;
+}
+
+/** Búsqueda por texto para la herramienta `buscar_actividades` del asistente de IA. */
+export async function searchActividades(organizacionId: string, busqueda: string, fecha: Date): Promise<ActividadParaIA[]> {
+  return repo.searchActivitiesByText(organizacionId, busqueda, fecha);
+}
+
+/** Actividades con recordatorio pendiente de disparar — usado por el procesador de notificaciones. */
+export async function listarCandidatasRecordatorio(): Promise<ActividadPendienteRecordatorio[]> {
+  return repo.listarCandidatasRecordatorio();
+}
+
+export async function marcarRecordatorioEnviado(actividadId: string, notificationId: string): Promise<void> {
+  await repo.marcarRecordatorioEnviado(actividadId, notificationId);
 }

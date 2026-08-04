@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
-import { HttpError } from '../middlewares/errorHandler';
-import { getOrganizacionIdDeResidente } from '../repositories/residentsRepository';
+import * as residentsService from '../services/residents/ResidentsService';
 import * as citiesService from '../services/weather/CitiesService';
 import * as weatherService from '../services/weather/WeatherService';
 import {
@@ -9,17 +8,13 @@ import {
   searchCitiesQuerySchema,
   syncCitiesSchema,
 } from '../validators/weather.validators';
-
-function requireResidenteId(req: Request): string {
-  const residenteId = req.user?.residenteId;
-  if (!residenteId) throw new HttpError(403, 'Este usuario no tiene un residente asociado.');
-  return residenteId;
-}
+import { requireResidenteId } from '../utils/validators';
+import { StatusCodes } from 'http-status-codes';
 
 /** Clima de la ciudad configurada para la organización del residente logueado. */
 export async function getWeatherOrg(req: Request, res: Response): Promise<void> {
   const residenteId = requireResidenteId(req);
-  const organizacionId = await getOrganizacionIdDeResidente(residenteId);
+  const organizacionId = await residentsService.getOrganizacionIdDeResidente(residenteId);
   res.json(await weatherService.getWeatherForOrg(organizacionId));
 }
 
@@ -49,11 +44,11 @@ export async function getCities(req: Request, res: Response): Promise<void> {
 export async function syncCities(req: Request, res: Response): Promise<void> {
   const { ciudades } = syncCitiesSchema.parse(req.body);
   await citiesService.syncCiudades(requireResidenteId(req), ciudades);
-  res.status(204).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function removeCity(req: Request, res: Response): Promise<void> {
   const body = removeCitySchema.parse(req.body);
   await citiesService.removeCiudad(requireResidenteId(req), body);
-  res.status(204).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }

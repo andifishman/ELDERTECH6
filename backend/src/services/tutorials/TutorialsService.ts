@@ -1,6 +1,8 @@
 import { HttpError } from '../../middlewares/errorHandler';
 import * as repo from '../../repositories/tutorialsRepository';
 import type { CategoriaTutorial, PasoTutorial, Tutorial, TutorialConProgreso } from '../../providers/tutorials/TutorialTypes';
+import type { TutorialParaIA } from '../../repositories/tutorialsRepository';
+import { StatusCodes } from 'http-status-codes';
 
 export async function getCategorias(): Promise<CategoriaTutorial[]> {
   return repo.getCategorias();
@@ -12,7 +14,7 @@ export async function getTutoriales(residenteId: string | null, categoriaId?: st
 
 export async function getTutorialById(id: string, residenteId: string | null): Promise<TutorialConProgreso> {
   const tutorial = await repo.getTutorialById(id, residenteId);
-  if (!tutorial) throw new HttpError(404, 'Tutorial no encontrado.');
+  if (!tutorial) throw new HttpError(StatusCodes.NOT_FOUND, 'Tutorial no encontrado.');
   return tutorial;
 }
 
@@ -39,4 +41,9 @@ export async function getHistorial(residenteId: string, limit?: number): Promise
 
 export async function getFavoritos(residenteId: string): Promise<TutorialConProgreso[]> {
   return repo.getFavoritos(residenteId);
+}
+
+/** Búsqueda por texto para la herramienta `buscar_tutoriales` del asistente de IA. */
+export async function searchTutoriales(busqueda: string): Promise<TutorialParaIA[]> {
+  return repo.searchTutorialsByText(busqueda);
 }

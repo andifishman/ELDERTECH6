@@ -5,11 +5,12 @@ import type { ActividadAdminInput, ActividadCompleta, ActividadInputRow, Residen
 import * as auditService from '../audit/AuditService';
 import * as notificationsService from '../notifications/NotificationsAdminService';
 import { logger } from '../../logging/logger';
+import { StatusCodes } from 'http-status-codes';
 
 /** Porteo de `backoffice/src/services/actividadesService.ts` — operaciones admin-only (backoffice). */
 
 function requireOrganizacionId(user: AuthUser): string {
-  if (!user.organizacionId) throw new HttpError(403, 'Este usuario no tiene una organización asociada.');
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   return user.organizacionId;
 }
 
@@ -110,7 +111,7 @@ export async function listar(user: AuthUser, fecha?: string): Promise<ActividadC
 
 export async function obtenerPorId(id: string): Promise<ActividadCompleta> {
   const actividad = await repo.obtenerActividadAdmin(id);
-  if (!actividad) throw new HttpError(404, 'Actividad no encontrada.');
+  if (!actividad) throw new HttpError(StatusCodes.NOT_FOUND, 'Actividad no encontrada.');
   return actividad;
 }
 

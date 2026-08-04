@@ -4,11 +4,12 @@ import * as repo from '../../repositories/requestsRepository';
 import { transcribirAudio } from '../assistant/AssistantChatService';
 import * as auditService from '../audit/AuditService';
 import type { EstadoPedido, PedidoSugerenciaConResidente } from '../../providers/requests/RequestTypes';
+import { StatusCodes } from 'http-status-codes';
 
 /** Porteo del módulo "Pedidos y Sugerencias" — lado admin (backoffice). */
 
 function requireOrganizacionId(user: AuthUser): string {
-  if (!user.organizacionId) throw new HttpError(403, 'Este usuario no tiene una organización asociada.');
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   return user.organizacionId;
 }
 
@@ -69,7 +70,7 @@ export async function listar(user: AuthUser, input: ListarInput): Promise<Pedido
 
 export async function obtenerDetalle(id: string): Promise<PedidoSugerenciaConResidente> {
   const pedido = await repo.obtenerPorId(id);
-  if (!pedido) throw new HttpError(404, 'Solicitud no encontrada.');
+  if (!pedido) throw new HttpError(StatusCodes.NOT_FOUND, 'Solicitud no encontrada.');
   return pedido;
 }
 
@@ -96,11 +97,11 @@ export async function eliminar(user: AuthUser, id: string): Promise<void> {
 /** Vuelve a intentar transcribir el audio ya guardado — descarga el archivo desde su URL pública. */
 export async function reintentarTranscripcion(id: string): Promise<PedidoSugerenciaConResidente> {
   const pedido = await repo.obtenerPorId(id);
-  if (!pedido) throw new HttpError(404, 'Solicitud no encontrada.');
-  if (!pedido.audio_url) throw new HttpError(400, 'Esta solicitud no tiene audio.');
+  if (!pedido) throw new HttpError(StatusCodes.NOT_FOUND, 'Solicitud no encontrada.');
+  if (!pedido.audio_url) throw new HttpError(StatusCodes.BAD_REQUEST, 'Esta solicitud no tiene audio.');
 
   const res = await fetch(pedido.audio_url);
-  if (!res.ok) throw new HttpError(502, 'No se pudo descargar el audio guardado.');
+  if (!res.ok) throw new HttpError(StatusCodes.BAD_GATEWAY, 'No se pudo descargar el audio guardado.');
   const buffer = Buffer.from(await res.arrayBuffer());
   const contentType = res.headers.get('content-type') ?? 'audio/m4a';
 
@@ -109,7 +110,7 @@ export async function reintentarTranscripcion(id: string): Promise<PedidoSugeren
     await repo.actualizarTranscripcion(id, texto, 'completada');
   } catch {
     await repo.actualizarTranscripcion(id, null, 'fallida');
-    throw new HttpError(502, 'No se pudo transcribir el audio. Intentá de nuevo más tarde.');
+    throw new HttpError(StatusCodes.BAD_GATEWAY, 'No se pudo transcribir el audio. Intentá de nuevo más tarde.');
   }
 
   return obtenerDetalle(id);
