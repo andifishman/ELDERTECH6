@@ -69,6 +69,72 @@ export interface Residente {
 
 export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean };
 
+export interface ResidenteBusquedaResumen {
+  id: string;
+  nombre: string;
+  apellido: string;
+  foto_url: string | null;
+}
+
+/**
+ * Busca residentes activos de la organización por nombre/apellido — solo devuelve
+ * los que tienen cuenta (`perfiles_usuario`), porque un residente sin cuenta nunca
+ * va a poder loguearse a leer un mensaje. Usado por Hablemos para "buscar usuarios".
+ */
+export async function buscarPorNombreConCuenta(
+  organizacionId: string,
+  query: string,
+  excluirResidenteId: string,
+): Promise<ResidenteBusquedaResumen[]> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'buscarPorNombreConCuenta', organizacionId, query, excluirResidenteId });
+  try {
+  // Nota: "foto_url" todavía no existe en la tabla `residentes` de esta base
+  // (pendiente de una migración previa sin aplicar, ajena a Hablemos) — se
+  // completa en null acá para no romper la búsqueda mientras tanto.
+  const [residentesR, perfilesR] = await Promise.allSettled([
+    getSupabaseAdmin()
+      .from('residentes')
+      .select('id, nombre, apellido')
+      .eq('organizacion_id', organizacionId)
+      .eq('activo', true)
+      .neq('id', excluirResidenteId)
+      .or(`nombre.ilike.%${query}%,apellido.ilike.%${query}%`)
+      .order('apellido', { ascending: true })
+      .limit(20),
+    getSupabaseAdmin().from('perfiles_usuario').select('residente_id').eq('organizacion_id', organizacionId).not('residente_id', 'is', null),
+  ]);
+
+  if (residentesR.status === 'rejected') throw new Error(`Error al buscar residentes: ${String(residentesR.reason)}`);
+  if (residentesR.value.error) throw new Error(`Error al buscar residentes: ${residentesR.value.error.message}`);
+
+  const conCuentaIds = new Set(
+    perfilesR.status === 'fulfilled' ? ((perfilesR.value.data ?? []) as { residente_id: string }[]).map((p) => p.residente_id) : [],
+  );
+
+  return ((residentesR.value.data ?? []) as Array<Omit<ResidenteBusquedaResumen, 'foto_url'>>)
+    .filter((r) => conCuentaIds.has(r.id))
+    .map((r) => ({ ...r, foto_url: null }));
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'buscarPorNombreConCuenta', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}
+
+/** Nombre completo de un residente — usado por Hablemos para el título de las notificaciones push. */
+export async function obtenerNombreCompleto(id: string): Promise<{ nombre: string; apellido: string } | null> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'obtenerNombreCompleto', id });
+  try {
+  const { data, error } = await getSupabaseAdmin().from('residentes').select('nombre, apellido').eq('id', id).maybeSingle();
+  if (error) throw new Error(`Error al cargar el residente: ${error.message}`);
+  return data ?? null;
+
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'obtenerNombreCompleto', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}
+
 export async function listarResidentesAdmin(organizacionId: string): Promise<ResidenteConCuenta[]> {
   logger.info('repo:call', { repository: 'residentsRepository', action: 'listarResidentesAdmin', organizacionId });
   try {

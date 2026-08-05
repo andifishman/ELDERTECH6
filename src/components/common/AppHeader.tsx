@@ -21,6 +21,17 @@ interface AppHeaderProps {
   tituloGrande?: boolean;
 }
 
+//a partir de este largo el título ya no entra en una sola línea del header
+const LARGO_UNA_LINEA = 14;
+
+//devuelve el tamaño de fuente del título según su largo, sin bajar de lo legible
+function calcularTamanioTitulo(titulo: string, grande: boolean): number {
+  const base = grande ? 36 : 28;
+  if (titulo.length <= LARGO_UNA_LINEA) return base;
+  if (titulo.length <= 20) return grande ? 30 : 24;
+  return grande ? 26 : 22;
+}
+
 export function AppHeader({
   titulo,
   subtitulo,
@@ -32,6 +43,11 @@ export function AppHeader({
   tituloGrande = false,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
+
+  //los títulos largos ("Pedidos y Sugerencias") no entran en una línea:
+  //bajamos un poco el tamaño y dejamos que use hasta dos líneas, así se lee entero
+  const tamanioTitulo = calcularTamanioTitulo(titulo, tituloGrande);
+  const lineasTitulo = titulo.length > LARGO_UNA_LINEA ? 2 : 1;
 
   //si hay handler propio lo usa, sino navega hacia atrás o a home
   function handleVolver() {
@@ -70,7 +86,16 @@ export function AppHeader({
 
         {/* Título central */}
         <View style={styles.titleContainer}>
-          <Text style={[styles.titulo, tituloGrande && styles.tituloGrande]} numberOfLines={1}>
+          <Text
+            style={[
+              styles.titulo,
+              tituloGrande && styles.tituloGrande,
+              { fontSize: tamanioTitulo, lineHeight: Math.round(tamanioTitulo * 1.35) },
+            ]}
+            numberOfLines={lineasTitulo}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
             {titulo}
           </Text>
           {subtitulo ? (
@@ -109,11 +134,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 52,
     paddingTop: Spacing.sm,
-    gap: Spacing.xl,
+    gap: Spacing.md,
   },
-  // Contenedor lateral más ancho para acomodar botones más grandes
+  // Contenedor lateral justo para los botones, así el título gana ancho
   sideContainer: {
-    width: 60,
+    width: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },

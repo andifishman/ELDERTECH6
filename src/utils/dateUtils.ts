@@ -98,6 +98,23 @@ export function calcularEdad(fechaNacimiento: string): number {
   return edad;
 }
 
+/** Formatea un timestamp ISO como hora corta 'HH:MM' — usado en los mensajes de Hablemos */
+export function formatHoraDeISO(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** 'Hoy', 'Ayer' o 'D/M' — usado en la lista de conversaciones de Hablemos */
+export function formatFechaListaConversaciones(iso: string): string {
+  const fecha = new Date(iso);
+  const hoy = new Date();
+  if (esMismodia(fecha, hoy)) return formatHoraDeISO(iso);
+  const ayer = new Date(hoy);
+  ayer.setDate(hoy.getDate() - 1);
+  if (esMismodia(fecha, ayer)) return 'Ayer';
+  return `${fecha.getDate()}/${fecha.getMonth() + 1}`;
+}
+
 function capitalizar(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

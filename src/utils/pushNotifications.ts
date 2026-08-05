@@ -5,15 +5,22 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { esConversacionHablemosActiva } from './hablemosActiveChat';
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data as { pantallaDestino?: string; conversationId?: string } | undefined;
+    // Si es un mensaje de Hablemos y esa conversación ya está abierta en pantalla,
+    // no mostrar el push — el chat ya se actualiza solo por Realtime.
+    const suprimir = data?.pantallaDestino === 'hablemos' && esConversacionHablemosActiva(data.conversationId);
+    return {
+      shouldShowAlert: !suprimir,
+      shouldPlaySound: !suprimir,
+      shouldSetBadge: false,
+      shouldShowBanner: !suprimir,
+      shouldShowList: !suprimir,
+    };
+  },
 });
 
 /** Mapeo de `pantalla_destino` (guardado en la notificación) a una ruta real de expo-router. */
@@ -25,6 +32,7 @@ export const PANTALLA_A_RUTA: Record<string, string> = {
   clima: '/mas/clima',
   radio: '/mas/radio',
   pedidos: '/mas/pedidos',
+  hablemos: '/mas/hablemos',
 };
 
 export async function pedirPermisoYObtenerToken(): Promise<string | null> {

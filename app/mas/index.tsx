@@ -53,10 +53,18 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
   {
     id: 'pedidos',
     emoji: '📋',
-    titulo: 'Pedidos y Sugerencias',
+    titulo: 'Sugerencias',
     descripcion: 'Enviá un mensaje al personal',
     ruta: '/mas/pedidos',
-    textoHablar: 'Pedidos y Sugerencias. Enviá un pedido, comentario o sugerencia al personal.',
+    textoHablar: 'Sugerencias. Enviá un pedido, comentario o sugerencia al personal.',
+  },
+  {
+    id: 'hablemos',
+    emoji: '💬',
+    titulo: 'Hablemos',
+    descripcion: 'Mandá mensajes a otros residentes',
+    ruta: '/mas/hablemos',
+    textoHablar: 'Hablemos. Mandá mensajes de texto o de voz a otros residentes.',
   },
 ];
 
@@ -70,7 +78,7 @@ export default function MasScreen() {
         titulo="Más"
         mostrarVolver
         tituloGrande
-        textoHablar="Más opciones: Clima, Radio, Juegos, y Pedidos y Sugerencias."
+        textoHablar="Más opciones: Clima, Radio, Juegos, Sugerencias, y Hablemos."
       />
 
       <ScrollView

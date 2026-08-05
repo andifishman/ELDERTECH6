@@ -206,10 +206,10 @@ export default function PedidosScreen() {
   return (
     <View style={styles.root}>
       <AppHeader
-        titulo="Pedidos y Sugerencias"
+        titulo="Sugerencias"
         mostrarVolver
         backgroundColor={Colors.brand.blueDark}
-        textoHablar="Pedidos y Sugerencias. Enviá un pedido, comentario o sugerencia al personal."
+        textoHablar="Sugerencias. Enviá un pedido, comentario o sugerencia al personal."
       />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -362,17 +362,7 @@ export default function PedidosScreen() {
               <View key={p.id} style={[styles.historialCard, p.id === editandoId && styles.historialCardEditando]}>
                 <View style={styles.historialTop}>
                   <Text style={styles.historialEmoji}>{info?.emoji ?? '📋'}</Text>
-                  <Text style={styles.historialTitulo} numberOfLines={1}>{p.titulo}</Text>
-                  {puedeEditar && (
-                    <TouchableOpacity
-                      style={styles.editarBtn}
-                      onPress={() => iniciarEdicion(p)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Editar ${p.titulo}`}
-                    >
-                      <Ionicons name="pencil" size={20} color={Colors.brand.blueDark} />
-                    </TouchableOpacity>
-                  )}
+                  <Text style={styles.historialTitulo} numberOfLines={2}>{p.titulo}</Text>
                 </View>
                 <View style={styles.historialBottom}>
                   <View style={[styles.estadoBadge, { backgroundColor: estado.bg }]}>
@@ -380,6 +370,17 @@ export default function PedidosScreen() {
                   </View>
                   <Text style={styles.historialFecha}>{formatearFecha(p.created_at)}</Text>
                   {p.audio_url ? <Ionicons name="mic" size={16} color={Colors.text.hint} /> : null}
+                  {puedeEditar && (
+                    <TouchableOpacity
+                      style={styles.editarBtn}
+                      onPress={() => iniciarEdicion(p)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Editar ${p.titulo}`}
+                    >
+                      <Ionicons name="pencil" size={18} color={Colors.text.onDark} />
+                      <Text style={styles.editarTexto}>Editar</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             );
@@ -557,10 +558,20 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   historialCardEditando: { borderWidth: 2, borderColor: Colors.brand.blueDark },
-  historialTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  historialTop: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   historialEmoji: { fontSize: 20 },
   historialTitulo: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.text.primary },
-  editarBtn: { width: Spacing.touch.min, height: Spacing.touch.min, alignItems: 'center', justifyContent: 'center' },
+  editarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.brand.blueDark,
+    borderRadius: Spacing.radius.md,
+    paddingHorizontal: Spacing.md,
+    minHeight: Spacing.touch.min,
+  },
+  editarTexto: { fontSize: Typography.size.sm, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   historialBottom: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   estadoBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Spacing.radius.full },
   estadoTexto: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold },

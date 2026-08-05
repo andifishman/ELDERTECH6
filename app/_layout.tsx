@@ -35,8 +35,15 @@ function useNotificationTapHandler() {
 
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as { notificationId?: string; pantallaDestino?: string } | undefined;
+      const data = response.notification.request.content.data as
+        | { notificationId?: string; pantallaDestino?: string; conversationId?: string }
+        | undefined;
       if (data?.notificationId) void marcarNotificacionAbierta(data.notificationId).catch(() => {});
+
+      if (data?.pantallaDestino === 'hablemos' && data.conversationId) {
+        router.push(`/mas/hablemos/${data.conversationId}` as never);
+        return;
+      }
       const ruta = data?.pantallaDestino ? PANTALLA_A_RUTA[data.pantallaDestino] : undefined;
       if (ruta) router.push(ruta as never);
     });
@@ -105,6 +112,9 @@ export default function RootLayout() {
                       <Stack.Screen name="horarios/[id]" />
                       <Stack.Screen name="mas/index" />
                       <Stack.Screen name="mas/clima" />
+                      <Stack.Screen name="mas/hablemos/index" />
+                      <Stack.Screen name="mas/hablemos/buscar" />
+                      <Stack.Screen name="mas/hablemos/[conversacionId]" />
                       <Stack.Screen name="asistente/index" />
                       <Stack.Screen name="asistente/chat" />
                       <Stack.Screen name="asistente/historial" />

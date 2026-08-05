@@ -13,6 +13,7 @@ import { configuracionRouter } from './routes/configuracion.routes';
 import { contactsRouter } from './routes/contacts.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
 import { gamesRouter } from './routes/games.routes';
+import { hablemosRouter } from './routes/hablemos.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { notificationsAdminRouter } from './routes/notificationsAdmin.routes';
 import { notificationsCronRouter } from './routes/notificationsCron.routes';
@@ -54,6 +55,7 @@ export function createApp(): Express {
   app.use('/api/admin/configuracion', configuracionRouter);
   app.use('/api/admin/dashboard', dashboardRouter);
   app.use('/api/admin/profile', profileRouter);
+  app.use('/api/hablemos', hablemosRouter);
   app.use('/api/requests', requestsRouter);
   app.use('/api/admin/requests', requestsAdminRouter);
   app.use('/api/notifications', notificationsRouter);

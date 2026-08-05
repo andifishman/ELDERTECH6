@@ -59,6 +59,15 @@ export const Colors = {
     onDarkSecondary: 'rgba(255,255,255,0.75)',
   },
 
+  // Módulo Hablemos — mensajería entre residentes
+  hablemos: {
+    accent: '#00897B',        // Teal — header y acentos, no colisiona con ningún brand color existente
+    accentDark: '#00695C',
+    burbujaPropia: '#DCF8C6', // Verde clarito estilo WhatsApp — referencia visual reconocible
+    burbujaAjena: '#FFFFFF',
+    noLeidosBadge: '#D32F2F',
+  },
+
   // Botón "Escuchar" (TTS)
   speak: {
     idle: '#1565C0',          // Azul — inactivo
