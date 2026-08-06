@@ -527,7 +527,7 @@ export default function ChatAsistenteScreen() {
       {/* Lista de mensajes */}
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 72 : 0}
       >
         <View style={styles.flex}>
