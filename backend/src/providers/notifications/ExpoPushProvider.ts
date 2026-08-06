@@ -13,6 +13,9 @@ export interface ExpoPushMessage {
   priority?: 'default' | 'normal' | 'high';
   badge?: number;
   channelId?: string;
+  /** Categoría de notificación registrada en el cliente (`Notifications.setNotificationCategoryAsync`) —
+   * habilita botones de acción, ej. "✓ Realizado" en los recordatorios de Agenda. */
+  categoryId?: string;
 }
 
 export interface ExpoPushTicket {

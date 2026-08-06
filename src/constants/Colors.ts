@@ -68,6 +68,18 @@ export const Colors = {
     noLeidosBadge: '#D32F2F',
   },
 
+  // Módulo Agenda — recordatorios personales (mismo índigo que la tarjeta de la Home)
+  agenda: {
+    accent: '#5C6BC0',
+    accentDark: '#3F51B5',
+    prioridad: {
+      baja: '#66BB6A',
+      media: '#42A5F5',
+      alta: '#FFA726',
+      urgente: '#E53935',
+    },
+  },
+
   // Botón "Escuchar" (TTS)
   speak: {
     idle: '#1565C0',          // Azul — inactivo

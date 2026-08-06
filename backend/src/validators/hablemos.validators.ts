@@ -13,8 +13,9 @@ export const listarMensajesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
+// Vacío = "mostrar todos" (ver buscarPorNombreConCuenta) — no exigir min(1).
 export const buscarResidentesQuerySchema = z.object({
-  q: z.string().trim().min(1),
+  q: z.string().trim().default(''),
 });
 
 export const enviarMensajeAudioBodySchema = z.object({

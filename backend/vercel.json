@@ -8,6 +8,7 @@
     { "source": "/(.*)", "destination": "/api" }
   ],
   "crons": [
-    { "path": "/api/internal/notifications/process", "schedule": "0 12 * * *" }
+    { "path": "/api/internal/notifications/process", "schedule": "0 12 * * *" },
+    { "path": "/api/internal/agenda/process", "schedule": "0 13 * * *" }
   ]
 }

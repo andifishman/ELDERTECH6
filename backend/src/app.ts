@@ -5,6 +5,8 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 import { activitiesRouter } from './routes/activities.routes';
 import { activitiesAdminRouter } from './routes/activitiesAdmin.routes';
 import { administradoresRouter } from './routes/administradores.routes';
+import { agendaRouter } from './routes/agenda.routes';
+import { agendaCronRouter } from './routes/agendaCron.routes';
 import { assistantRouter } from './routes/assistant.routes';
 import { assistantAdminRouter } from './routes/assistantAdmin.routes';
 import { auditRouter } from './routes/audit.routes';
@@ -38,6 +40,8 @@ export function createApp(): Express {
     res.json({ ok: true, service: 'eldertech-api', time: new Date().toISOString() });
   });
 
+  app.use('/api/agenda', agendaRouter);
+  app.use('/api/internal/agenda', agendaCronRouter);
   app.use('/api/assistant', assistantRouter);
   app.use('/api/weather', weatherRouter);
   app.use('/api/radio', radioRouter);

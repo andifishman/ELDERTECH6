@@ -16,9 +16,10 @@ import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
-import { PANTALLA_A_RUTA } from '@/utils/pushNotifications';
+import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
 import { detenerHabla } from '@/utils/tts';
+import { cambiarEstadoRecordatorio } from '@/services/agendaService';
 
 /** Corta cualquier lectura en voz alta (botón "Escuchar") al cambiar de pantalla —
  * si no, el audio de una sección sigue sonando aunque el usuario ya se haya ido. */
@@ -34,14 +35,27 @@ function useNotificationTapHandler() {
   const router = useRouter();
 
   useEffect(() => {
+    void registrarCategoriasNotificacion();
+
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as
-        | { notificationId?: string; pantallaDestino?: string; conversationId?: string }
+        | { notificationId?: string; pantallaDestino?: string; conversationId?: string; recordatorioId?: string }
         | undefined;
       if (data?.notificationId) void marcarNotificacionAbierta(data.notificationId).catch(() => {});
 
+      // Botón "✓ Realizado" tocado directo desde la notificación de Agenda —
+      // no navega, solo marca el recordatorio (best-effort, no bloquea nada si falla).
+      if (response.actionIdentifier === AGENDA_ACCION_MARCAR_REALIZADO && data?.recordatorioId) {
+        void cambiarEstadoRecordatorio(data.recordatorioId, 'realizado').catch(() => {});
+        return;
+      }
+
       if (data?.pantallaDestino === 'hablemos' && data.conversationId) {
         router.push(`/mas/hablemos/${data.conversationId}` as never);
+        return;
+      }
+      if (data?.pantallaDestino === 'agenda' && data.recordatorioId) {
+        router.push(`/agenda/${data.recordatorioId}` as never);
         return;
       }
       const ruta = data?.pantallaDestino ? PANTALLA_A_RUTA[data.pantallaDestino] : undefined;
@@ -110,6 +124,9 @@ export default function RootLayout() {
                       <Stack.Screen name="index" />
                       <Stack.Screen name="horarios/index" />
                       <Stack.Screen name="horarios/[id]" />
+                      <Stack.Screen name="agenda/index" />
+                      <Stack.Screen name="agenda/nuevo" />
+                      <Stack.Screen name="agenda/[id]" />
                       <Stack.Screen name="mas/index" />
                       <Stack.Screen name="mas/clima" />
                       <Stack.Screen name="mas/hablemos/index" />

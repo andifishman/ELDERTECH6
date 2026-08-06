@@ -33,7 +33,28 @@ export const PANTALLA_A_RUTA: Record<string, string> = {
   radio: '/mas/radio',
   pedidos: '/mas/pedidos',
   hablemos: '/mas/hablemos',
+  agenda: '/agenda',
 };
+
+// Identificador de la acción "✓ Realizado" en las notificaciones de Agenda —
+// tiene que matchear el `actionIdentifier` que llega al listener y el
+// `categoryId` que manda el backend (ver AgendaReminderProcessorService).
+export const AGENDA_ACCION_MARCAR_REALIZADO = 'marcar-realizado';
+
+/** Registra la categoría de notificación con el botón de acción "✓ Realizado" — hace falta antes de que llegue la primera notificación con ese categoryId. */
+export async function registrarCategoriasNotificacion(): Promise<void> {
+  try {
+    await Notifications.setNotificationCategoryAsync('agenda-recordatorio', [
+      {
+        identifier: AGENDA_ACCION_MARCAR_REALIZADO,
+        buttonTitle: '✓ Realizado',
+        options: { opensAppToForeground: false },
+      },
+    ]);
+  } catch (err) {
+    console.warn('[push] no se pudo registrar la categoría de Agenda', err);
+  }
+}
 
 export async function pedirPermisoYObtenerToken(): Promise<string | null> {
   if (!Device.isDevice) return null; // los emuladores no reciben push reales
