@@ -22,6 +22,7 @@ import { useCategoriasTutorial, useTutoriales } from '@/hooks/useTutoriales';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
+import { coincideBusqueda } from '@/utils/textSearch';
 import type { TutorialConProgreso, CategoriaTutorial } from '@/types/database.types';
 
 interface SeccionTutoriales {
@@ -66,13 +67,12 @@ export default function TutorialesScreen() {
     if (soloFavoritos) {
       lista = lista.filter((t) => t.progreso?.favorito);
     }
-    const q = busqueda.toLowerCase().trim();
-    if (q) {
+    if (busqueda.trim()) {
       lista = lista.filter(
         (t) =>
-          t.titulo.toLowerCase().includes(q) ||
-          t.descripcion?.toLowerCase().includes(q) ||
-          t.categoria?.nombre.toLowerCase().includes(q),
+          coincideBusqueda(t.titulo, busqueda) ||
+          (t.descripcion && coincideBusqueda(t.descripcion, busqueda)) ||
+          (t.categoria?.nombre && coincideBusqueda(t.categoria.nombre, busqueda)),
       );
     }
     return lista;

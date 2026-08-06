@@ -40,6 +40,7 @@ import {
   useToggleResidente,
 } from './useResidentes';
 import { SECCIONES } from '@/types/database.types';
+import { coincideBusqueda } from '@/lib/textSearch';
 import type { Residente, SeccionResidente } from '@/types/database.types';
 import type { ResidenteConCuenta } from '@/services/residentesService';
 
@@ -83,9 +84,8 @@ export function UsuariosPage() {
   };
 
   const filtrados = useMemo(() => {
-    const q = busqueda.toLowerCase();
     let lista = (data ?? []).filter((r) => {
-      if (!`${r.nombre} ${r.apellido}`.toLowerCase().includes(q)) return false;
+      if (!coincideBusqueda(`${r.nombre} ${r.apellido}`, busqueda)) return false;
       if (filtroEstado === 'activo' && !r.activo) return false;
       if (filtroEstado === 'inactivo' && r.activo) return false;
       if (!(r as ResidenteConCuenta).tiene_cuenta) return false;

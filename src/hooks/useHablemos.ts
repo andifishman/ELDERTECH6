@@ -32,7 +32,8 @@ export function useBuscarResidentesHablemos(query: string) {
   return useQuery({
     queryKey: KEYS.busqueda(query),
     queryFn: () => buscarResidentes(query),
-    enabled: query.trim().length > 0,
+    // Sin `enabled` — con texto vacío el backend devuelve todos los residentes,
+    // así la pantalla de "nueva conversación" arranca mostrando la lista completa.
     staleTime: 1000 * 10,
   });
 }

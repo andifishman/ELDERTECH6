@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { iniciales } from '@/lib/utils';
+import { coincideBusqueda } from '@/lib/textSearch';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useAdministradores, useCambiarRol, SUPER_ADMIN_IDS, type PerfilAdmin } from './useAdministradores';
 
@@ -36,8 +37,7 @@ export function AdministradoresPage() {
   const [confirmar, setConfirmar] = useState<{ perfil: PerfilAdmin; nuevoRol: 'admin' | 'residente' } | null>(null);
 
   const filtrados = useMemo(() => {
-    const q = busqueda.toLowerCase();
-    return (data ?? []).filter((u) => u.username.toLowerCase().includes(q));
+    return (data ?? []).filter((u) => coincideBusqueda(u.username, busqueda));
   }, [data, busqueda]);
 
   const handleAccion = (perfil: PerfilAdmin) => {

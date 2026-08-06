@@ -30,7 +30,7 @@ import {
   useMensajesHablemos,
 } from '@/hooks/useHablemos';
 import { useMensajesRealtime } from '@/hooks/useHablemosRealtime';
-import { formatHoraDeISO } from '@/utils/dateUtils';
+import { formatHoraDeISO, formatFechaSeparadorChat, esMismodia } from '@/utils/dateUtils';
 import { setConversacionHablemosActiva } from '@/utils/hablemosActiveChat';
 import type { EstadoMensajeHablemos, MensajeHablemos } from '@/services/hablemosService';
 
@@ -50,7 +50,7 @@ export default function HablemosChatScreen() {
   const { conversacionId } = useLocalSearchParams<{ conversacionId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
+  const { profile, isLoading: authLoading } = useAuth();
   const propioResidenteId = profile?.residente?.id ?? null;
 
   const { data: conversaciones } = useConversacionesHablemos();
@@ -173,7 +173,7 @@ export default function HablemosChatScreen() {
     try {
       await enviarAudio.mutateAsync({ audioUri: uri, duracionSegundos: duracion });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo enviar la nota de voz.';
+      const msg = err instanceof Error ? err.message : 'No se pudo enviar el mensaje de voz.';
       Alert.alert('Error', msg);
     }
   }, [audioUri, duracionSegundos, enviarAudio]);
@@ -239,7 +239,7 @@ export default function HablemosChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 72 : 0}
       >
         <View style={styles.flex}>
-          {isLoading ? (
+          {isLoading || authLoading ? (
             <View style={styles.centrado}>
               <ActivityIndicator size="large" color={Colors.hablemos.accent} />
             </View>
@@ -248,6 +248,10 @@ export default function HablemosChatScreen() {
               data={mensajes}
               keyExtractor={(item) => item.id}
               inverted
+              // Fuerza a recalcular esPropio/nombreRemitente si el perfil termina
+              // de cargar después del primer render — si no, mensajes propios
+              // podían quedar pegados del lado equivocado hasta el próximo cambio.
+              extraData={propioResidenteId}
               contentContainerStyle={styles.lista}
               showsVerticalScrollIndicator={false}
               onEndReached={() => {
@@ -261,21 +265,38 @@ export default function HablemosChatScreen() {
                   <Text style={styles.vacioTexto}>Todavía no hay mensajes. ¡Mandá el primero!</Text>
                 </View>
               }
-              renderItem={({ item }) => (
-                <Burbuja
-                  mensaje={item}
-                  esPropio={item.remitente_id === propioResidenteId}
-                  reproduciendo={reproduciendoId === item.id}
-                  onTogglePlay={() => toggleReproducirMensaje(item)}
-                />
-              )}
+              renderItem={({ item, index }) => {
+                const esPropio = item.remitente_id === propioResidenteId;
+                // Lista invertida y ordenada de más nuevo a más viejo: el mensaje
+                // que se ve arriba en pantalla es el de índice siguiente (más viejo).
+                const anterior = mensajes[index + 1];
+                const esInicioDeDia = !anterior || !esMismodia(new Date(anterior.created_at), new Date(item.created_at));
+                // Tras un separador de día siempre se vuelve a mostrar quién escribe, como en WhatsApp.
+                const esInicioDeTanda = esInicioDeDia || anterior.remitente_id !== item.remitente_id;
+                return (
+                  <>
+                    {esInicioDeDia && (
+                      <View style={styles.separadorFechaWrapper}>
+                        <Text style={styles.separadorFechaTexto}>{formatFechaSeparadorChat(item.created_at)}</Text>
+                      </View>
+                    )}
+                    <Burbuja
+                      mensaje={item}
+                      esPropio={esPropio}
+                      nombreRemitente={esInicioDeTanda ? (esPropio ? 'Vos' : nombreOtro) : null}
+                      reproduciendo={reproduciendoId === item.id}
+                      onTogglePlay={() => toggleReproducirMensaje(item)}
+                    />
+                  </>
+                );
+              }}
             />
           )}
 
           {grabando && (
             <View style={styles.grabandoBanner}>
               <View style={styles.puntoRojo} />
-              <Text style={styles.grabandoTexto}>Grabando nota de voz...</Text>
+              <Text style={styles.grabandoTexto}>Grabando mensaje de voz...</Text>
               <TouchableOpacity
                 style={styles.grabandoCancelarBtn}
                 onPress={cancelarGrabacion}
@@ -297,11 +318,11 @@ export default function HablemosChatScreen() {
 
           {audioUri && !grabando ? (
             <View style={[styles.inputWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
-              <TouchableOpacity style={styles.audioPlayBtn} onPress={reproducirAudioPropio} accessibilityRole="button" accessibilityLabel="Escuchar la nota de voz grabada">
+              <TouchableOpacity style={styles.audioPlayBtn} onPress={reproducirAudioPropio} accessibilityRole="button" accessibilityLabel="Escuchar el mensaje de voz grabado">
                 <Ionicons name="play" size={22} color={Colors.text.onDark} />
               </TouchableOpacity>
               <Text style={styles.audioDuracionTexto}>{formatearDuracion(duracionSegundos)}</Text>
-              <TouchableOpacity style={styles.audioAccionBtn} onPress={descartarAudio} accessibilityRole="button" accessibilityLabel="Descartar nota de voz">
+              <TouchableOpacity style={styles.audioAccionBtn} onPress={descartarAudio} accessibilityRole="button" accessibilityLabel="Descartar mensaje de voz">
                 <Ionicons name="trash" size={22} color={Colors.brand.red} />
               </TouchableOpacity>
               <TouchableOpacity
@@ -309,7 +330,7 @@ export default function HablemosChatScreen() {
                 onPress={enviarAudioActual}
                 disabled={enviarAudio.isPending}
                 accessibilityRole="button"
-                accessibilityLabel="Enviar nota de voz"
+                accessibilityLabel="Enviar mensaje de voz"
               >
                 {enviarAudio.isPending ? <ActivityIndicator size="small" color={Colors.text.onDark} /> : <Ionicons name="send" size={22} color={Colors.text.onDark} />}
               </TouchableOpacity>
@@ -338,7 +359,7 @@ export default function HablemosChatScreen() {
                   {enviarTexto.isPending ? <ActivityIndicator size="small" color={Colors.text.onDark} /> : <Ionicons name="send" size={22} color={Colors.text.onDark} />}
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.micBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar nota de voz">
+                <TouchableOpacity style={styles.micBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar mensaje de voz">
                   <Ionicons name="mic" size={24} color={Colors.text.onDark} />
                 </TouchableOpacity>
               )}
@@ -353,34 +374,53 @@ export default function HablemosChatScreen() {
 interface BurbujaProps {
   mensaje: MensajeHablemos;
   esPropio: boolean;
+  /** Nombre a mostrar arriba de la burbuja — solo en el primer mensaje de cada tanda seguida de la misma persona. */
+  nombreRemitente: string | null;
   reproduciendo: boolean;
   onTogglePlay: () => void;
 }
 
-function Burbuja({ mensaje, esPropio, reproduciendo, onTogglePlay }: BurbujaProps) {
+function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePlay }: BurbujaProps) {
   return (
     <View style={[styles.burbujaWrapper, esPropio ? styles.burbujaWrapperDerecha : styles.burbujaWrapperIzquierda]}>
+      <View style={esPropio ? styles.burbujaColumnaDerecha : styles.burbujaColumnaIzquierda}>
+      {nombreRemitente && (
+        <Text style={[styles.nombreRemitente, esPropio ? styles.nombreRemitentePropio : styles.nombreRemitenteAjeno]}>
+          {nombreRemitente}
+        </Text>
+      )}
       <View style={[styles.burbuja, esPropio ? styles.burbujaPropia : styles.burbujaAjena]}>
         {mensaje.tipo === 'texto' ? (
           <Text style={styles.burbujaTexto}>{mensaje.contenido}</Text>
         ) : (
-          <TouchableOpacity
-            style={styles.audioMensajeRow}
-            onPress={onTogglePlay}
-            accessibilityRole="button"
-            accessibilityLabel={reproduciendo ? 'Pausar nota de voz' : 'Escuchar nota de voz'}
-          >
-            <View style={styles.audioMensajePlayBtn}>
-              <Ionicons name={reproduciendo ? 'pause' : 'play'} size={18} color={Colors.hablemos.accentDark} />
-            </View>
-            <Text style={styles.burbujaTexto}>🎤 {formatearDuracion(mensaje.audio_duracion_segundos ?? 0)}</Text>
-          </TouchableOpacity>
+          <View style={styles.audioMensajeContainer}>
+            <Text style={styles.audioMensajeLabel}>
+              🎤 Mensaje de voz · {formatearDuracion(mensaje.audio_duracion_segundos ?? 0)}
+            </Text>
+            <TouchableOpacity
+              style={[styles.audioMensajeBtn, reproduciendo && styles.audioMensajeBtnActivo]}
+              onPress={onTogglePlay}
+              accessibilityRole="button"
+              accessibilityLabel={reproduciendo ? 'Pausar mensaje de voz' : 'Escuchar mensaje de voz'}
+              activeOpacity={0.75}
+            >
+              <Ionicons
+                name={reproduciendo ? 'pause' : 'volume-medium'}
+                size={20}
+                color={reproduciendo ? Colors.speak.active : Colors.brand.greenDark}
+              />
+              <Text style={[styles.audioMensajeBtnTexto, reproduciendo && styles.audioMensajeBtnTextoActivo]}>
+                {reproduciendo ? 'Pausar' : 'Escuchar'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View style={styles.burbujaMeta}>
           <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
           {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
         </View>
+      </View>
       </View>
     </View>
   );
@@ -422,11 +462,34 @@ const styles = StyleSheet.create({
   lista: { paddingHorizontal: Spacing.screen.horizontal, paddingTop: Spacing.lg, paddingBottom: Spacing.md, gap: Spacing.sm },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
+  separadorFechaWrapper: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    borderRadius: Spacing.radius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 5,
+    marginVertical: Spacing.xs,
+  },
+  separadorFechaTexto: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.secondary,
+  },
+
   burbujaWrapper: { flexDirection: 'row' },
   burbujaWrapperDerecha: { justifyContent: 'flex-end' },
   burbujaWrapperIzquierda: { justifyContent: 'flex-start' },
+  burbujaColumnaDerecha: { maxWidth: '82%', alignItems: 'flex-end' },
+  burbujaColumnaIzquierda: { maxWidth: '82%', alignItems: 'flex-start' },
+  nombreRemitente: {
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.bold,
+    marginBottom: 2,
+    marginHorizontal: Spacing.xs,
+  },
+  nombreRemitentePropio: { color: Colors.hablemos.accentDark },
+  nombreRemitenteAjeno: { color: Colors.hablemos.accent },
   burbuja: {
-    maxWidth: '82%',
     borderRadius: Spacing.radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -439,20 +502,26 @@ const styles = StyleSheet.create({
   },
   burbujaPropia: { backgroundColor: Colors.hablemos.burbujaPropia, borderBottomRightRadius: Spacing.radius.sm },
   burbujaAjena: { backgroundColor: Colors.hablemos.burbujaAjena, borderBottomLeftRadius: Spacing.radius.sm },
-  burbujaTexto: { fontSize: Typography.size.md, color: Colors.text.primary, lineHeight: 24 },
+  // ~35% más grande que el body normal (18 → 24) para mejor lectura
+  burbujaTexto: { fontSize: 24, color: Colors.text.primary, lineHeight: 32 },
   burbujaMeta: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.xs, marginTop: 2 },
   burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint },
   burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic' },
 
-  audioMensajeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  audioMensajePlayBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.06)',
+  audioMensajeContainer: { gap: Spacing.sm, minWidth: 220 },
+  audioMensajeLabel: { fontSize: Typography.size.sm, color: Colors.text.secondary },
+  audioMensajeBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: Spacing.radius.lg,
+    backgroundColor: '#E8F5E9',
   },
+  audioMensajeBtnActivo: { backgroundColor: Colors.speak.activeBg },
+  audioMensajeBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.greenDark },
+  audioMensajeBtnTextoActivo: { color: Colors.speak.active },
 
   vacioContainer: { alignItems: 'center', gap: Spacing.md, paddingTop: Spacing.section, paddingHorizontal: Spacing.xxxl, transform: [{ scaleY: -1 }] },
   vacioEmoji: { fontSize: 56 },
@@ -507,7 +576,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     color: Colors.text.primary,
-    fontSize: Typography.size.md,
+    fontSize: 24,
     borderWidth: 1,
     borderColor: Colors.ui.border,
   },

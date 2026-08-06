@@ -19,6 +19,7 @@ const { width } = Dimensions.get('window');
 const menuItems = [
   {
     id: 'horarios',
+    route: '/horarios',
     icon: '📅',
     label: 'Horarios',
     subtitle: 'Actividades de la semana',
@@ -29,6 +30,7 @@ const menuItems = [
   },
   {
     id: 'llamar',
+    route: '/llamar',
     icon: '📞',
     label: 'Llamar',
     subtitle: 'Contactar a personas',
@@ -39,6 +41,7 @@ const menuItems = [
   },
   {
     id: 'articulos',
+    route: '/articulos',
     icon: '📚',
     label: 'Tutoriales',
     subtitle: 'Aprendé con videos',
@@ -49,6 +52,7 @@ const menuItems = [
   },
   {
     id: 'asistente',
+    route: '/asistente',
     icon: '🤖',
     label: 'Asistente',
     subtitle: 'Asistente personal para ayudas',
@@ -59,6 +63,7 @@ const menuItems = [
   },
   {
     id: 'mas',
+    route: '/mas',
     icon: '➕',
     label: 'Más',
     subtitle: 'Ver más opciones de la aplicación',
@@ -66,6 +71,28 @@ const menuItems = [
     iconBg: '#FFCC80',
     size: 'medium',
     audio: 'Más opciones. Acá encontrás juegos, radio, noticias, clima, linterna y más.',
+  },
+  {
+    id: 'hablemos',
+    route: '/mas/hablemos',
+    icon: '💬',
+    label: 'Hablemos',
+    subtitle: 'Mandale mensajes a otros residentes',
+    color: '#00897B',
+    iconBg: '#4DB6AC',
+    size: 'medium',
+    audio: 'Hablemos. Mandá mensajes de texto o de voz a otros residentes.',
+  },
+  {
+    id: 'agenda',
+    route: '/agenda',
+    icon: '🗒️',
+    label: 'Agenda',
+    subtitle: 'Tu agenda personal',
+    color: '#5C6BC0',
+    iconBg: '#9FA8DA',
+    size: 'medium',
+    audio: 'Agenda. Muy pronto vas a poder ver tu agenda personal acá.',
   },
 ];
 
@@ -88,6 +115,14 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const fecha = getFechaHoy();
   usePrefetchHome();
+
+  // Tarjetas medianas en filas de a 2 — genérico así agregar/sacar una no
+  // rompe el layout (la última fila puede quedar con una sola, ocupa el ancho entero).
+  const mediumItems = menuItems.slice(1);
+  const mediumRows: (typeof menuItems)[] = [];
+  for (let i = 0; i < mediumItems.length; i += 2) {
+    mediumRows.push(mediumItems.slice(i, i + 2));
+  }
 
   const speak = (text: string) => {
     Speech.stop();
@@ -120,7 +155,7 @@ export default function HomeScreen() {
         {/* Large Horarios Card */}
         <TouchableOpacity
           style={[styles.largeCard, { backgroundColor: menuItems[0].color }]}
-          onPress={() => router.push('/horarios')}
+          onPress={() => router.push(menuItems[0].route as any)}
           activeOpacity={0.8}
         >
           <View style={styles.largeCardInner}>
@@ -138,57 +173,37 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
 
-        {/* Medium Cards — fila 1 */}
-        <View style={styles.mediumRow}>
-          {menuItems.slice(1, 3).map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.mediumCard, { backgroundColor: item.color }]}
-              onPress={() => router.push(`/${item.id}` as any)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.mediumCardInner}>
-                <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-                  <Text style={styles.mediumCardIcon}>{item.icon}</Text>
-                </View>
-                <Text style={styles.mediumCardLabel}>{item.label}</Text>
-              </View>
+        {/* Medium Cards */}
+        {mediumRows.map((fila, i) => (
+          <View key={i} style={styles.mediumRow}>
+            {fila.map((item) => (
               <TouchableOpacity
-                style={styles.audioBtn}
-                onPress={() => speak(item.audio)}
-                activeOpacity={0.7}
+                key={item.id}
+                style={[styles.mediumCard, { backgroundColor: item.color }]}
+                onPress={() => router.push(item.route as any)}
+                activeOpacity={0.8}
               >
-                <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Medium Cards — fila 2 */}
-        <View style={styles.mediumRow}>
-          {menuItems.slice(3, 5).map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.mediumCard, { backgroundColor: item.color }]}
-              onPress={() => router.push(`/${item.id}` as any)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.mediumCardInner}>
-                <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-                  <Text style={styles.mediumCardIcon}>{item.icon}</Text>
+                <View style={styles.mediumCardInner}>
+                  <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+                    <Text style={styles.mediumCardIcon}>{item.icon}</Text>
+                  </View>
+                  <Text style={styles.mediumCardLabel}>{item.label}</Text>
                 </View>
-                <Text style={styles.mediumCardLabel}>{item.label}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.audioBtn}
-                onPress={() => speak(item.audio)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
+                <TouchableOpacity
+                  style={styles.audioBtn}
+                  onPress={() => speak(item.audio)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ))}
+            {/* Fila incompleta (ej. mientras solo hay 1 tarjeta nueva) — placeholder
+                invisible para que la tarjeta real quede del mismo tamaño, pegada
+                a la izquierda, dejando el lugar reservado para la próxima sección. */}
+            {fila.length === 1 && <View style={styles.mediumCardPlaceholder} />}
+          </View>
+        ))}
       </ScrollView>
 
     </View>
@@ -290,6 +305,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     flexDirection: 'column',
     justifyContent: 'space-between',
+  },
+  mediumCardPlaceholder: {
+    flex: 1,
   },
   mediumCardInner: {
     flex: 1,

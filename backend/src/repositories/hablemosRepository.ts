@@ -229,7 +229,7 @@ export const crearMensajeAudio = withRepoLogging(REPO, 'crearMensajeAudio', asyn
     })
     .select('*')
     .single();
-  if (error) throw new Error(`Error al enviar la nota de voz: ${error.message}`);
+  if (error) throw new Error(`Error al enviar el mensaje de voz: ${error.message}`);
   return data as MensajeHablemos;
 });
 
@@ -282,7 +282,7 @@ export const subirAudio = withRepoLogging(REPO, 'subirAudio', async (
   const path = `${conversacionId}/${residenteId}-${Date.now()}.${ext}`;
 
   const { error } = await getSupabaseAdmin().storage.from('hablemos-audio').upload(path, buffer, { contentType, upsert: false });
-  if (error) throw new Error(`Error al subir la nota de voz: ${error.message}`);
+  if (error) throw new Error(`Error al subir el mensaje de voz: ${error.message}`);
 
   const { data } = getSupabaseAdmin().storage.from('hablemos-audio').getPublicUrl(path);
   return data.publicUrl;

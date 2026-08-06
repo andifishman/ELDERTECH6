@@ -66,7 +66,7 @@ export default function HablemosBuscarScreen() {
         />
       </View>
 
-      {(isLoading || isFetching) && busquedaDebounced.length > 0 ? (
+      {isLoading || isFetching ? (
         <ActivityIndicator color={Colors.hablemos.accent} style={{ marginTop: Spacing.xxl }} />
       ) : (
         <FlatList
@@ -75,12 +75,14 @@ export default function HablemosBuscarScreen() {
           contentContainerStyle={styles.lista}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            busquedaDebounced.length === 0 ? null : (
-              <View style={styles.vacioContainer}>
-                <Text style={styles.vacioEmoji}>🔎</Text>
-                <Text style={styles.vacioTexto}>No se encontró ningún residente con ese nombre.</Text>
-              </View>
-            )
+            <View style={styles.vacioContainer}>
+              <Text style={styles.vacioEmoji}>🔎</Text>
+              <Text style={styles.vacioTexto}>
+                {busquedaDebounced.length === 0
+                  ? 'Todavía no hay otros residentes disponibles.'
+                  : 'No se encontró ningún residente con ese nombre.'}
+              </Text>
+            </View>
           }
           renderItem={({ item }) => (
             <TouchableOpacity

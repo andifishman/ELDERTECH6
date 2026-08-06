@@ -4,12 +4,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
   ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
@@ -212,7 +212,14 @@ export default function PedidosScreen() {
         textoHablar="Sugerencias. Enviá un pedido, comentario o sugerencia al personal."
       />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid
+        extraScrollHeight={Spacing.xl}
+        keyboardShouldPersistTaps="handled"
+      >
         {editandoId ? (
           <View style={styles.editandoAviso}>
             <Ionicons name="pencil" size={20} color={Colors.brand.blueDark} />
@@ -386,7 +393,7 @@ export default function PedidosScreen() {
             );
           })
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

@@ -23,6 +23,7 @@ import { queryKeys } from '@/lib/queryClient';
 import { crearUbicacion, crearResponsable, crearTipoActividad } from '@/services/catalogosService';
 import type { CrearTipoActividadInput } from '@/services/catalogosService';
 import type { ResidenteOverrideInput } from '@/services/actividadesService';
+import { coincideBusqueda } from '@/lib/textSearch';
 import {
   useActividad,
   useActualizarActividad,
@@ -548,7 +549,7 @@ export function ActividadFormPage() {
             ) : (
               (() => {
                 const lista = (residentes ?? []).filter((r) =>
-                  `${r.nombre} ${r.apellido}`.toLowerCase().includes(filtroResidente.toLowerCase()),
+                  coincideBusqueda(`${r.nombre} ${r.apellido}`, filtroResidente),
                 );
                 const conEstado = lista.map((r) => {
                   const coincideSeccion = secciones.length === 0 || (!!r.seccion && secciones.includes(r.seccion));

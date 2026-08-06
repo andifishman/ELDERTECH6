@@ -21,6 +21,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { normalizarTelefono } from '@/services/contactosService';
+import { coincideBusqueda } from '@/utils/textSearch';
 
 // Contacto simplificado del dispositivo para mostrar en lista
 interface ContactoDispositivo {
@@ -127,14 +128,13 @@ export function SeleccionarContactoModal({
     }
   }, [visible, cargado, cargarContactos]);
 
-  // Filtrado por búsqueda
+  // Filtrado por búsqueda — ignora mayúsculas/minúsculas y tildes
   const contactosFiltrados = useMemo(() => {
     if (!busqueda.trim()) return contactos;
-    const q = busqueda.toLowerCase().trim();
     return contactos.filter(
       (c) =>
-        c.nombre.toLowerCase().includes(q) ||
-        c.telefonoOriginal.includes(q),
+        coincideBusqueda(c.nombre, busqueda) ||
+        c.telefonoOriginal.includes(busqueda.trim()),
     );
   }, [contactos, busqueda]);
 

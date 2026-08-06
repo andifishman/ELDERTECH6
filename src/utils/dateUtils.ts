@@ -104,6 +104,17 @@ export function formatHoraDeISO(iso: string): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+/** 'Hoy', 'Ayer' o fecha completa ('5 de agosto de 2026') — separador de día en el chat de Hablemos, estilo WhatsApp. */
+export function formatFechaSeparadorChat(iso: string): string {
+  const fecha = new Date(iso);
+  const hoy = new Date();
+  if (esMismodia(fecha, hoy)) return 'Hoy';
+  const ayer = new Date(hoy);
+  ayer.setDate(hoy.getDate() - 1);
+  if (esMismodia(fecha, ayer)) return 'Ayer';
+  return formatFechaCorta(fecha);
+}
+
 /** 'Hoy', 'Ayer' o 'D/M' — usado en la lista de conversaciones de Hablemos */
 export function formatFechaListaConversaciones(iso: string): string {
   const fecha = new Date(iso);

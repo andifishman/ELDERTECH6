@@ -23,6 +23,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { usePermisos } from '@/hooks/usePermisos';
 import { useRealtime } from '@/hooks/useRealtime';
 import { queryKeys } from '@/lib/queryClient';
+import { coincideBusqueda } from '@/lib/textSearch';
 import { useArticulos, useArticulosEliminados, useEliminarArticulo, useEliminarDefinitivamente, useRestaurarArticulo } from './useArticulos';
 import type { TutorialConCategoria } from '@/types/database.types';
 
@@ -62,7 +63,7 @@ export function TutorialesPage() {
   const filtrados = useMemo(() => {
     return (data ?? []).filter((a) => {
       const okEstado = estado === 'todos' || (estado === 'publicado' ? a.activo : !a.activo);
-      const okBusqueda = a.titulo.toLowerCase().includes(busqueda.toLowerCase());
+      const okBusqueda = coincideBusqueda(a.titulo, busqueda);
       return okEstado && okBusqueda;
     });
   }, [data, estado, busqueda]);

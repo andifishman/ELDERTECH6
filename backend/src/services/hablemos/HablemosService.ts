@@ -79,7 +79,7 @@ async function notificarNuevoMensaje(conversacionId: string, remitenteId: string
     const tokens = await deviceTokensService.findTokensActivosPorResidentes([otroResidenteId]);
     if (tokens.length === 0) return;
 
-    const titulo = remitente ? `${remitente.nombre} ${remitente.apellido}` : 'Hablemos';
+    const titulo = remitente ? `Mensaje de ${remitente.nombre} ${remitente.apellido}` : 'Nuevo mensaje';
 
     await sendPushMessages(
       tokens.map((t) => ({
@@ -125,7 +125,7 @@ export async function enviarMensajeAudio(user: AuthUser, input: EnviarMensajeAud
     audioUrl,
     audioDuracionSegundos: input.audio.duracionSegundos,
   });
-  void notificarNuevoMensaje(input.conversacionId, residenteId, '🎤 Te envió una nota de voz');
+  void notificarNuevoMensaje(input.conversacionId, residenteId, '🎤 Te envió un mensaje de voz');
   return mensaje;
 }
 

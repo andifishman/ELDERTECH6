@@ -20,6 +20,7 @@ import { LoadingState } from '@/components/common/states';
 import { useCatalogos } from '@/features/horarios/useActividades';
 import { listarResidentes } from '@/services/residentesService';
 import { useQuery } from '@tanstack/react-query';
+import { coincideBusqueda } from '@/lib/textSearch';
 import {
   useActualizarNotificacion,
   useCrearNotificacion,
@@ -107,10 +108,9 @@ export function NotificacionFormPage() {
   }, [residentes]);
 
   const residentesFiltrados = useMemo(() => {
-    const q = busquedaUsuarios.trim().toLowerCase();
     const lista = residentes ?? [];
-    if (!q) return lista;
-    return lista.filter((r) => `${r.nombre} ${r.apellido}`.toLowerCase().includes(q));
+    if (!busquedaUsuarios.trim()) return lista;
+    return lista.filter((r) => coincideBusqueda(`${r.nombre} ${r.apellido}`, busquedaUsuarios));
   }, [residentes, busquedaUsuarios]);
 
   const destinoFiltro: DestinoFiltro | null = useMemo(() => {

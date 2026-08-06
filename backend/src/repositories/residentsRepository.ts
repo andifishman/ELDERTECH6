@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { env } from '../config/env';
 import { logger } from '../logging/logger';
+import { coincideBusqueda } from '../utils/textSearch';
 
 /** Resuelve la organización de un residente — la necesitan Actividades y Clima para filtrar por org. */
 export async function getOrganizacionIdDeResidente(residenteId: string): Promise<string | null> {
@@ -91,6 +92,11 @@ export async function buscarPorNombreConCuenta(
   // Nota: "foto_url" todavía no existe en la tabla `residentes` de esta base
   // (pendiente de una migración previa sin aplicar, ajena a Hablemos) — se
   // completa en null acá para no romper la búsqueda mientras tanto.
+  //
+  // El filtro por nombre se hace en JS (no con ILIKE en la query) para poder
+  // ignorar tildes — Postgres ILIKE no lo hace sin la extensión `unaccent`,
+  // que no está garantizada en este proyecto. Con esto además, una búsqueda
+  // vacía devuelve la lista completa (para mostrar "todos" antes de escribir).
   const [residentesR, perfilesR] = await Promise.allSettled([
     getSupabaseAdmin()
       .from('residentes')
@@ -98,9 +104,8 @@ export async function buscarPorNombreConCuenta(
       .eq('organizacion_id', organizacionId)
       .eq('activo', true)
       .neq('id', excluirResidenteId)
-      .or(`nombre.ilike.%${query}%,apellido.ilike.%${query}%`)
       .order('apellido', { ascending: true })
-      .limit(20),
+      .limit(300),
     getSupabaseAdmin().from('perfiles_usuario').select('residente_id').eq('organizacion_id', organizacionId).not('residente_id', 'is', null),
   ]);
 
@@ -113,6 +118,8 @@ export async function buscarPorNombreConCuenta(
 
   return ((residentesR.value.data ?? []) as Array<Omit<ResidenteBusquedaResumen, 'foto_url'>>)
     .filter((r) => conCuentaIds.has(r.id))
+    .filter((r) => coincideBusqueda(`${r.nombre} ${r.apellido}`, query))
+    .slice(0, 50)
     .map((r) => ({ ...r, foto_url: null }));
 
   } catch (err) {

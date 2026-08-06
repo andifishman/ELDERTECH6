@@ -19,6 +19,7 @@ import { Spacing } from '@/constants/Spacing';
 import { useConversacionesHablemos } from '@/hooks/useHablemos';
 import { useConversacionesRealtime } from '@/hooks/useHablemosRealtime';
 import { formatFechaListaConversaciones } from '@/utils/dateUtils';
+import { coincideBusqueda } from '@/utils/textSearch';
 import type { ConversacionHablemos } from '@/services/hablemosService';
 
 function nombreCompleto(conversacion: ConversacionHablemos): string {
@@ -39,9 +40,8 @@ export default function HablemosListaScreen() {
 
   const conversacionesFiltradas = useMemo(() => {
     if (!conversaciones) return [];
-    const texto = busqueda.trim().toLowerCase();
-    if (!texto) return conversaciones;
-    return conversaciones.filter((c) => nombreCompleto(c).toLowerCase().includes(texto));
+    if (!busqueda.trim()) return conversaciones;
+    return conversaciones.filter((c) => coincideBusqueda(nombreCompleto(c), busqueda));
   }, [conversaciones, busqueda]);
 
   return (

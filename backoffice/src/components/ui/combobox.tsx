@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Plus, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { coincideBusqueda, normalizarTexto } from '@/lib/textSearch';
 
 export interface ComboboxOption {
   id: string;
@@ -34,12 +35,10 @@ export function Combobox({
 
   const selected = options.find((o) => o.id === value);
 
-  const filtrados = options.filter((o) =>
-    o.label.toLowerCase().includes(busqueda.toLowerCase()),
-  );
+  const filtrados = options.filter((o) => coincideBusqueda(o.label, busqueda));
 
   const exactMatch = options.some(
-    (o) => o.label.toLowerCase() === busqueda.toLowerCase(),
+    (o) => normalizarTexto(o.label) === normalizarTexto(busqueda),
   );
 
   // Cerrar al hacer click afuera

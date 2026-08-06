@@ -4,6 +4,7 @@ import { Search, Calendar, GraduationCap, Users, X } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
+import { coincideBusqueda } from '@/lib/textSearch';
 import type { ActividadCompleta, Residente, TutorialConCategoria } from '@/types/database.types';
 
 interface SearchModalProps {
@@ -31,26 +32,25 @@ export function SearchModal({ abierto, onCerrar }: SearchModalProps) {
 
   useEffect(() => {
     if (!query.trim()) { setResultados([]); return; }
-    const q = query.toLowerCase();
     const items: Resultado[] = [];
 
     const residentes = qc.getQueryData<Residente[]>(queryKeys.residentes) ?? [];
     residentes.forEach((r) => {
-      if (`${r.nombre} ${r.apellido}`.toLowerCase().includes(q)) {
+      if (coincideBusqueda(`${r.nombre} ${r.apellido}`, query)) {
         items.push({ id: r.id, tipo: 'residente', titulo: `${r.nombre} ${r.apellido}`, subtitulo: `Hab. ${r.habitacion ?? '—'}`, ruta: '/usuarios' });
       }
     });
 
     const tutoriales = qc.getQueryData<TutorialConCategoria[]>(queryKeys.tutoriales) ?? [];
     tutoriales.forEach((t) => {
-      if (t.titulo.toLowerCase().includes(q)) {
+      if (coincideBusqueda(t.titulo, query)) {
         items.push({ id: t.id, tipo: 'tutorial', titulo: t.titulo, subtitulo: t.categoria?.nombre, ruta: `/tutoriales/${t.id}/editar` });
       }
     });
 
     const actividades = qc.getQueryData<ActividadCompleta[]>(queryKeys.actividades()) ?? [];
     actividades.forEach((a) => {
-      if (a.nombre.toLowerCase().includes(q)) {
+      if (coincideBusqueda(a.nombre, query)) {
         items.push({ id: a.id, tipo: 'actividad', titulo: a.nombre, subtitulo: a.fecha, ruta: '/horarios' });
       }
     });
