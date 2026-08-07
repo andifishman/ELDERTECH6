@@ -30,6 +30,14 @@ export function formatearFechaLegible(fechaISO: string): string {
   return `${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()}`;
 }
 
+// "Miércoles 8 de septiembre" — día de semana completo, sin abreviar, para
+// que se lea sin esfuerzo (usado en la lista de Próximos recordatorios).
+export function formatearFechaCompleta(fechaISO: string): string {
+  const d = new Date(`${fechaISO}T00:00:00`);
+  const diaSemana = DIAS_COMPLETO_LUNES_PRIMERO[d.getDay() === 0 ? 6 : d.getDay() - 1];
+  return `${diaSemana} ${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()}`;
+}
+
 export function nombreMes(mes: number): string {
   return MESES[mes];
 }
