@@ -15,7 +15,7 @@ import { formatearFechaLegible } from '@/utils/agendaDateUtils';
 const ESTADO_LABEL: Record<EstadoRecordatorio, string> = {
   pendiente: 'Pendiente',
   realizado: 'Realizado',
-  vencido: 'Vencido',
+  vencido: 'Finalizado',
   cancelado: 'Cancelado',
 };
 const ESTADO_COLOR: Record<EstadoRecordatorio, { bg: string; color: string }> = {

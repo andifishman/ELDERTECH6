@@ -1,5 +1,5 @@
 // Agenda — pantalla principal: calendario (mes/semana), Hoy y Próximos
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/common/AppHeader';
@@ -23,12 +23,13 @@ import {
   useCambiarEstadoRecordatorio,
 } from '@/hooks/useAgenda';
 import type { EstadoRecordatorio, Recordatorio } from '@/services/agendaService';
-import { esMismodia, getLabelDia } from '@/utils/dateUtils';
+import { esMismodia } from '@/utils/dateUtils';
 import {
   addDias,
   DIAS_COMPLETO_LUNES_PRIMERO,
   DIAS_LETRA_LUNES_PRIMERO as DIAS_LETRA,
   diasDeLaSemana,
+  formatearFechaCompleta,
   formatearFechaLegible,
   generarGrillaMes,
   lunesDeLaSemana,
@@ -41,7 +42,7 @@ type Vista = 'mes' | 'semana' | 'hoy' | 'proximos';
 const ESTADO_LABEL: Record<EstadoRecordatorio, string> = {
   pendiente: 'Pendiente',
   realizado: 'Realizado',
-  vencido: 'Vencido',
+  vencido: 'Finalizado',
   cancelado: 'Cancelado',
 };
 const ESTADO_COLOR: Record<EstadoRecordatorio, { bg: string; color: string }> = {
@@ -50,6 +51,20 @@ const ESTADO_COLOR: Record<EstadoRecordatorio, { bg: string; color: string }> = 
   vencido: { bg: '#FFEBEE', color: '#C62828' },
   cancelado: { bg: '#F5F5F5', color: '#757575' },
 };
+
+// "Hoy" / "Mañana" o el día completo ("Viernes 28 de agosto") — se usa en la
+// sección Próximos, donde nunca abreviamos el día ni el mes para que se lea
+// de un vistazo.
+function labelProximo(fechaISO: string, hoy: Date): string {
+  const fecha = new Date(`${fechaISO}T00:00:00`);
+  if (esMismodia(fecha, hoy)) return 'Hoy';
+  if (esMismodia(fecha, addDias(hoy, 1))) return 'Mañana';
+  return formatearFechaCompleta(fechaISO);
+}
+
+// Cuántos recordatorios se muestran por día antes de tener que tocar "Ver todos" —
+// evita listas larguísimas que obliguen a scrollear de más para ver el calendario.
+const LIMITE_RECORDATORIOS_POR_DIA = 3;
 
 function agruparPorFecha(eventos: Recordatorio[]): Map<string, Recordatorio[]> {
   const mapa = new Map<string, Recordatorio[]>();
@@ -63,10 +78,36 @@ function agruparPorFecha(eventos: Recordatorio[]): Map<string, Recordatorio[]> {
 
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
+  const { creado, fecha: fechaCreado } = useLocalSearchParams<{ creado?: string; fecha?: string }>();
   const hoy = useMemo(() => new Date(), []);
   const [vista, setVista] = useState<Vista>('mes');
   const [mesRef, setMesRef] = useState(hoy);
   const [diaSeleccionado, setDiaSeleccionado] = useState<string>(toISODate(hoy));
+  const [mostrarExito, setMostrarExito] = useState(false);
+  const [verTodosDiaMes, setVerTodosDiaMes] = useState(false);
+  const [verTodosHoy, setVerTodosHoy] = useState(false);
+  const [diasExpandidosSemana, setDiasExpandidosSemana] = useState<Set<string>>(new Set());
+
+  // Al elegir otro día en el calendario, el límite de "Ver todos" vuelve a
+  // aplicarse — si no, quedaría expandido el día anterior por error.
+  useEffect(() => {
+    setVerTodosDiaMes(false);
+  }, [diaSeleccionado]);
+
+  // Al volver de "Nuevo recordatorio" con éxito: parar en el día del
+  // recordatorio recién creado y mostrar un aviso de confirmación breve.
+  useEffect(() => {
+    if (creado !== '1') return;
+    if (fechaCreado) {
+      setDiaSeleccionado(fechaCreado);
+      setMesRef(new Date(`${fechaCreado}T00:00:00`));
+    }
+    setVista('mes');
+    setMostrarExito(true);
+    const timer = setTimeout(() => setMostrarExito(false), 2500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creado]);
 
   const fechaRefISO = toISODate(mesRef);
   const { data: eventosMes = [], isLoading: cargandoMes } = useAgendaMes(fechaRefISO);
@@ -96,6 +137,13 @@ export default function AgendaScreen() {
         backgroundColor={Colors.agenda.accent}
         textoHablar="Agenda. Tus recordatorios personales. Tocá el botón verde para agregar uno nuevo."
       />
+
+      {mostrarExito && (
+        <View style={styles.bannerExito} accessibilityLiveRegion="polite">
+          <Ionicons name="checkmark-circle" size={24} color={Colors.text.onDark} />
+          <Text style={styles.bannerExitoTexto}>Recordatorio agregado</Text>
+        </View>
+      )}
 
       {/* Selector de vista */}
       <View style={styles.tabsRow}>
@@ -132,7 +180,7 @@ export default function AgendaScreen() {
 
                 <View style={styles.diasSemanaRow}>
                   {DIAS_LETRA.map((d, i) => (
-                    <Text key={i} style={styles.diaSemanaLetra}>{d}</Text>
+                    <Text key={i} style={styles.diaSemanaLetra} maxFontSizeMultiplier={1.3}>{d}</Text>
                   ))}
                 </View>
 
@@ -147,27 +195,32 @@ export default function AgendaScreen() {
                       return (
                         <TouchableOpacity
                           key={fecha}
-                          style={[
-                            styles.celdaDia,
-                            seleccionado && styles.celdaDiaSeleccionada,
-                            esHoy && !seleccionado && styles.celdaDiaHoy,
-                          ]}
+                          style={styles.celdaDia}
                           onPress={() => setDiaSeleccionado(fecha)}
                           accessibilityLabel={`Día ${dia}${eventosDia.length ? `, ${eventosDia.length} recordatorio${eventosDia.length > 1 ? 's' : ''}` : ''}`}
                         >
-                          <Text
+                          <View
                             style={[
-                              styles.celdaDiaTexto,
-                              !enMes && styles.celdaDiaTextoAfuera,
-                              seleccionado && styles.celdaDiaTextoSeleccionado,
-                              esHoy && !seleccionado && { color: Colors.agenda.accentDark, fontWeight: Typography.weight.bold },
+                              styles.celdaDiaInterior,
+                              seleccionado && styles.celdaDiaSeleccionada,
+                              esHoy && !seleccionado && styles.celdaDiaHoy,
                             ]}
                           >
-                            {dia}
-                          </Text>
-                          {eventosDia.length > 0 && (
-                            <View style={[styles.puntoEvento, { backgroundColor: seleccionado ? Colors.text.onDark : Colors.agenda.accent }]} />
-                          )}
+                            <Text
+                              style={[
+                                styles.celdaDiaTexto,
+                                !enMes && styles.celdaDiaTextoAfuera,
+                                seleccionado && styles.celdaDiaTextoSeleccionado,
+                                esHoy && !seleccionado && { color: Colors.agenda.accentDark, fontWeight: Typography.weight.bold },
+                              ]}
+                              maxFontSizeMultiplier={1.3}
+                            >
+                              {dia}
+                            </Text>
+                            {eventosDia.length > 0 && (
+                              <View style={[styles.puntoEvento, { backgroundColor: seleccionado ? Colors.text.onDark : Colors.agenda.accent }]} />
+                            )}
+                          </View>
                         </TouchableOpacity>
                       );
                     })}
@@ -175,14 +228,19 @@ export default function AgendaScreen() {
                 )}
 
                 <Text style={styles.seccionTitulo}>
-                  {esMismodia(new Date(`${diaSeleccionado}T00:00:00`), hoy) ? 'Hoy' : formatearFechaLegible(diaSeleccionado)}
+                  {esMismodia(new Date(`${diaSeleccionado}T00:00:00`), hoy)
+                    ? 'Recordatorios de hoy:'
+                    : `Recordatorios del ${formatearFechaLegible(diaSeleccionado)}:`}
                 </Text>
                 {eventosDelDiaSeleccionado.length === 0 ? (
                   <EstadoVacio emoji="📅" texto="No hay recordatorios este día." />
                 ) : (
-                  eventosDelDiaSeleccionado.map((r) => (
-                    <TarjetaRecordatorio key={r.id} recordatorio={r} onMarcarRealizado={() => marcarRealizado(r.id)} />
-                  ))
+                  <ListaRecordatorios
+                    eventos={eventosDelDiaSeleccionado}
+                    expandido={verTodosDiaMes}
+                    onVerTodos={() => setVerTodosDiaMes(true)}
+                    onMarcarRealizado={marcarRealizado}
+                  />
                 )}
               </>
             )}
@@ -216,9 +274,13 @@ export default function AgendaScreen() {
                         {eventosDia.length === 0 ? (
                           <Text style={styles.sinEventosTexto}>Sin recordatorios</Text>
                         ) : (
-                          eventosDia.map((r) => (
-                            <TarjetaRecordatorio key={r.id} recordatorio={r} onMarcarRealizado={() => marcarRealizado(r.id)} compacta />
-                          ))
+                          <ListaRecordatorios
+                            eventos={eventosDia}
+                            expandido={diasExpandidosSemana.has(fecha)}
+                            onVerTodos={() => setDiasExpandidosSemana((prev) => new Set(prev).add(fecha))}
+                            onMarcarRealizado={marcarRealizado}
+                            compacta
+                          />
                         )}
                       </View>
                     );
@@ -235,7 +297,12 @@ export default function AgendaScreen() {
                 ) : eventosHoy.length === 0 ? (
                   <EstadoVacio emoji="👍" texto="No tenés recordatorios para hoy." />
                 ) : (
-                  eventosHoy.map((r) => <TarjetaRecordatorio key={r.id} recordatorio={r} onMarcarRealizado={() => marcarRealizado(r.id)} />)
+                  <ListaRecordatorios
+                    eventos={eventosHoy}
+                    expandido={verTodosHoy}
+                    onVerTodos={() => setVerTodosHoy(true)}
+                    onMarcarRealizado={marcarRealizado}
+                  />
                 )}
               </>
             )}
@@ -250,7 +317,7 @@ export default function AgendaScreen() {
                 ) : (
                   proximos.map((r) => (
                     <View key={r.id}>
-                      <Text style={styles.proximoFechaLabel}>{getLabelDia(new Date(`${r.fecha}T00:00:00`), hoy)}</Text>
+                      <Text style={styles.proximoFechaLabel}>{labelProximo(r.fecha, hoy)}</Text>
                       <TarjetaRecordatorio recordatorio={r} onMarcarRealizado={() => marcarRealizado(r.id)} />
                     </View>
                   ))
@@ -270,6 +337,45 @@ export default function AgendaScreen() {
         <Text style={styles.nuevoBtnTexto}>Nuevo recordatorio</Text>
       </TouchableOpacity>
     </View>
+  );
+}
+
+// ─── Lista de recordatorios de un día, con límite + "Ver todos" ────────────────
+
+function ListaRecordatorios({
+  eventos,
+  expandido,
+  onVerTodos,
+  onMarcarRealizado,
+  compacta,
+}: {
+  eventos: Recordatorio[];
+  expandido: boolean;
+  onVerTodos: () => void;
+  onMarcarRealizado: (id: string) => void;
+  compacta?: boolean;
+}) {
+  // El backend ya devuelve los recordatorios de un día ordenados por hora
+  // ascendente, así que los primeros N son directamente "los que pasan antes".
+  const visibles = expandido ? eventos : eventos.slice(0, LIMITE_RECORDATORIOS_POR_DIA);
+  const ocultos = eventos.length - visibles.length;
+
+  return (
+    <>
+      {visibles.map((r) => (
+        <TarjetaRecordatorio key={r.id} recordatorio={r} onMarcarRealizado={() => onMarcarRealizado(r.id)} compacta={compacta} />
+      ))}
+      {ocultos > 0 && (
+        <TouchableOpacity
+          style={styles.verTodosBtn}
+          onPress={onVerTodos}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver todos los recordatorios, ${eventos.length} en total`}
+        >
+          <Text style={styles.verTodosBtnTexto}>Ver todos los recordatorios</Text>
+        </TouchableOpacity>
+      )}
+    </>
   );
 }
 
@@ -343,6 +449,17 @@ function Cargando({ texto = 'Cargando...' }: { texto?: string }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.ui.background },
 
+  bannerExito: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.brand.greenDark,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  bannerExitoTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
+
   tabsRow: {
     flexDirection: 'row',
     backgroundColor: Colors.ui.surface,
@@ -372,17 +489,31 @@ const styles = StyleSheet.create({
   diaSemanaLetra: { flex: 1, textAlign: 'center', fontSize: Typography.size.sm, fontWeight: Typography.weight.bold, color: Colors.text.hint },
 
   grillaMes: { flexDirection: 'row', flexWrap: 'wrap' },
+  // Celda = solo área táctil (ocupa toda la columna, mantiene el toque ≥48pt).
+  // El círculo/relleno visual va en celdaDiaInterior, más chico, para que
+  // nunca toque al círculo del día de al lado.
   celdaDia: {
     width: '14.28%',
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.radius.md,
     marginBottom: 2,
+  },
+  celdaDiaInterior: {
+    width: '80%',
+    height: '80%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Spacing.radius.md,
     gap: 3,
+    // Reserva el mismo borde en todas las celdas (transparente por defecto)
+    // para que marcar "hoy" no agrande el círculo — si solo celdaDiaHoy
+    // tuviera borderWidth, ese círculo mediría más que el resto.
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   celdaDiaSeleccionada: { backgroundColor: Colors.agenda.accent },
-  celdaDiaHoy: { borderWidth: 2, borderColor: Colors.agenda.accent },
+  celdaDiaHoy: { borderColor: Colors.agenda.accent },
   celdaDiaTexto: { fontSize: Typography.size.md, color: Colors.text.primary },
   celdaDiaTextoAfuera: { color: Colors.text.hint },
   celdaDiaTextoSeleccionado: { color: Colors.text.onDark, fontWeight: Typography.weight.bold },
@@ -396,17 +527,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
 
-  diaSemanaSeccion: { marginBottom: Spacing.md },
-  diaSemanaHeader: { marginBottom: Spacing.xs },
-  diaSemanaHeaderTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.primary },
-  sinEventosTexto: { fontSize: Typography.size.sm, color: Colors.text.hint, fontStyle: 'italic', marginBottom: Spacing.xs },
+  diaSemanaSeccion: { marginBottom: Spacing.md, gap: Spacing.sm },
+  diaSemanaHeader: {},
+  diaSemanaHeaderTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.primary },
+  sinEventosTexto: { fontSize: Typography.size.md, color: Colors.text.hint, fontStyle: 'italic' },
 
   proximoFechaLabel: {
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
     color: Colors.agenda.accentDark,
-    marginTop: Spacing.sm,
-    marginBottom: 2,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
   },
 
   tarjeta: {
@@ -436,10 +567,21 @@ const styles = StyleSheet.create({
   },
   tarjetaInfo: { flex: 1, paddingVertical: Spacing.sm, gap: 4 },
   tarjetaTitulo: { fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.text.primary },
-  tarjetaSubtexto: { fontSize: Typography.size.sm, color: Colors.text.hint },
+  tarjetaSubtexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.hint },
   estadoBadge: { alignSelf: 'flex-start', paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Spacing.radius.full },
   estadoBadgeTexto: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold },
   marcarBtn: { paddingHorizontal: Spacing.md },
+
+  verTodosBtn: {
+    minHeight: Spacing.touch.comfortable,
+    borderRadius: Spacing.radius.lg,
+    borderWidth: 2,
+    borderColor: Colors.agenda.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  verTodosBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.agenda.accentDark },
 
   vacioContainer: { alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.xxl },
   vacioEmoji: { fontSize: 48 },

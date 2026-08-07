@@ -70,8 +70,8 @@ export default function NuevoRecordatorioScreen() {
         await editarMutation.mutateAsync({ id: editId, input });
         router.replace(`/agenda/${editId}` as never);
       } else {
-        const creado = await crearMutation.mutateAsync(input);
-        router.replace(`/agenda/${creado.id}` as never);
+        await crearMutation.mutateAsync(input);
+        router.replace({ pathname: '/agenda', params: { fecha: input.fecha, creado: '1' } } as never);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'No se pudo guardar el recordatorio.';
@@ -131,7 +131,7 @@ export default function NuevoRecordatorioScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.calendarioDiasSemana}>
-              {DIAS_LETRA_LUNES_PRIMERO.map((d, i) => <Text key={i} style={styles.calendarioDiaLetra}>{d}</Text>)}
+              {DIAS_LETRA_LUNES_PRIMERO.map((d, i) => <Text key={i} style={styles.calendarioDiaLetra} maxFontSizeMultiplier={1.3}>{d}</Text>)}
             </View>
             <View style={styles.calendarioGrilla}>
               {generarGrillaMes(mesCalendario).map((celda) => (
@@ -140,11 +140,14 @@ export default function NuevoRecordatorioScreen() {
                   style={[styles.calendarioCelda, celda.fecha === fecha && styles.calendarioCeldaSeleccionada]}
                   onPress={() => { setFecha(celda.fecha); setCalendarioAbierto(false); }}
                 >
-                  <Text style={[
-                    styles.calendarioCeldaTexto,
-                    !celda.enMes && styles.calendarioCeldaTextoAfuera,
-                    celda.fecha === fecha && styles.calendarioCeldaTextoSeleccionado,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.calendarioCeldaTexto,
+                      !celda.enMes && styles.calendarioCeldaTextoAfuera,
+                      celda.fecha === fecha && styles.calendarioCeldaTextoSeleccionado,
+                    ]}
+                    maxFontSizeMultiplier={1.3}
+                  >
                     {celda.dia}
                   </Text>
                 </TouchableOpacity>
