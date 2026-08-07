@@ -247,27 +247,23 @@ export const marcarRecibidos = withRepoLogging(REPO, 'marcarRecibidos', async (
   if (error) throw new Error(`Error al marcar los mensajes como recibidos: ${error.message}`);
 });
 
-/** Marca como "leído" los mensajes ajenos pendientes y resetea el contador de no-leídos de `residenteId`. */
+/**
+ * Marca como "leído" los mensajes ajenos pendientes y descuenta el contador de
+ * no-leídos de `residenteId` — vía la función `hablemos_marcar_leidos`
+ * (transacción atómica en la base) en vez de un SET a 0 desde acá: si un
+ * mensaje nuevo llegaba justo entre marcar-como-leído y resetear el
+ * contador, el SET absoluto lo pisaba y el badge quedaba en 0 con un
+ * mensaje genuinamente sin leer.
+ */
 export const marcarLeidos = withRepoLogging(REPO, 'marcarLeidos', async (
   conversacionId: string,
   residenteId: string,
 ): Promise<void> => {
-  const db = getSupabaseAdmin();
-
-  const { error: errorMensajes } = await db
-    .from('mensajes_hablemos')
-    .update({ estado: 'leido', leido_en: new Date().toISOString() })
-    .eq('conversacion_id', conversacionId)
-    .neq('remitente_id', residenteId)
-    .neq('estado', 'leido');
-  if (errorMensajes) throw new Error(`Error al marcar los mensajes como leídos: ${errorMensajes.message}`);
-
-  const { error: errorContador } = await db
-    .from('conversacion_participantes')
-    .update({ no_leidos_count: 0 })
-    .eq('conversacion_id', conversacionId)
-    .eq('residente_id', residenteId);
-  if (errorContador) throw new Error(`Error al actualizar el contador de no leídos: ${errorContador.message}`);
+  const { error } = await getSupabaseAdmin().rpc('hablemos_marcar_leidos', {
+    p_conversacion_id: conversacionId,
+    p_residente_id: residenteId,
+  });
+  if (error) throw new Error(`Error al marcar los mensajes como leídos: ${error.message}`);
 });
 
 /** Sube al bucket `hablemos-audio`. */

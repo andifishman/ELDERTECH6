@@ -28,6 +28,7 @@ import {
   useMarcarLeidosHablemos,
   useMarcarRecibidosHablemos,
   useMensajesHablemos,
+  usePollingMensajesHablemos,
 } from '@/hooks/useHablemos';
 import { useMensajesRealtime } from '@/hooks/useHablemosRealtime';
 import { formatHoraDeISO, formatFechaSeparadorChat, esMismodia } from '@/utils/dateUtils';
@@ -69,19 +70,27 @@ export default function HablemosChatScreen() {
 
   const [input, setInput] = useState('');
   const [grabando, setGrabando] = useState(false);
-  const [audioUri, setAudioUri] = useState<string | null>(null);
-  const [duracionSegundos, setDuracionSegundos] = useState(0);
   const [reproduciendoId, setReproduciendoId] = useState<string | null>(null);
+  const [pantallaActiva, setPantallaActiva] = useState(true);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const inicioGrabacionRef = useRef<number>(0);
 
+  // Respaldo de Realtime: mientras la pantalla está abierta se sondea la página
+  // más nueva cada pocos segundos, así el mensaje llega junto con la push y no
+  // minutos después si el websocket se cayó.
+  usePollingMensajesHablemos(conversacionId, pantallaActiva);
+
   // Marca "esta conversación está abierta" — el handler de push la consulta para no mostrar la alerta.
   useFocusEffect(
     useCallback(() => {
       setConversacionHablemosActiva(conversacionId);
-      return () => setConversacionHablemosActiva(null);
+      setPantallaActiva(true);
+      return () => {
+        setConversacionHablemosActiva(null);
+        setPantallaActiva(false);
+      };
     }, [conversacionId]),
   );
 
@@ -131,63 +140,47 @@ export default function HablemosChatScreen() {
     }
   }, []);
 
-  const detenerGrabacion = useCallback(async () => {
-    if (!recordingRef.current) return;
+  // "Enviar" manda el audio directo, sin pantalla intermedia de revisión: para
+  // el residente son dos decisiones claras — borrar o mandar.
+  const detenerYEnviarGrabacion = useCallback(async () => {
+    const recording = recordingRef.current;
+    if (!recording) return;
+    let uri: string | null = null;
+    let duracion = 0;
     try {
-      await recordingRef.current.stopAndUnloadAsync();
+      await recording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-      setGrabando(false);
-      if (uri) {
-        setAudioUri(uri);
-        setDuracionSegundos(Math.round((Date.now() - inicioGrabacionRef.current) / 1000));
-      }
+      uri = recording.getURI();
+      duracion = Math.max(1, Math.round((Date.now() - inicioGrabacionRef.current) / 1000));
     } catch (err) {
       console.warn('[Hablemos] Error al detener grabación:', err);
+    } finally {
+      recordingRef.current = null;
       setGrabando(false);
     }
-  }, []);
 
-  const cancelarGrabacion = useCallback(async () => {
-    if (!recordingRef.current) return;
-    try {
-      await recordingRef.current.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-    } catch {}
-    recordingRef.current = null;
-    setGrabando(false);
-  }, []);
-
-  const descartarAudio = useCallback(() => {
-    setAudioUri(null);
-    setDuracionSegundos(0);
-  }, []);
-
-  const enviarAudioActual = useCallback(async () => {
-    if (!audioUri) return;
-    const uri = audioUri;
-    const duracion = duracionSegundos;
-    setAudioUri(null);
-    setDuracionSegundos(0);
+    if (!uri) {
+      Alert.alert('Error', 'No se pudo guardar el mensaje de voz. Intentá de nuevo.');
+      return;
+    }
     try {
       await enviarAudio.mutateAsync({ audioUri: uri, duracionSegundos: duracion });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'No se pudo enviar el mensaje de voz.';
       Alert.alert('Error', msg);
     }
-  }, [audioUri, duracionSegundos, enviarAudio]);
+  }, [enviarAudio]);
 
-  const reproducirAudioPropio = useCallback(async () => {
-    if (!audioUri) return;
+  const borrarGrabacion = useCallback(async () => {
+    const recording = recordingRef.current;
+    recordingRef.current = null;
+    setGrabando(false);
+    if (!recording) return;
     try {
-      if (soundRef.current) await soundRef.current.unloadAsync();
-      const { sound } = await Audio.Sound.createAsync({ uri: audioUri }, { shouldPlay: true });
-      soundRef.current = sound;
-    } catch (err) {
-      console.warn('[Hablemos] Error al reproducir:', err);
-    }
-  }, [audioUri]);
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+    } catch {}
+  }, []);
 
   const toggleReproducirMensaje = useCallback(
     async (mensaje: MensajeHablemos) => {
@@ -243,6 +236,15 @@ export default function HablemosChatScreen() {
             <View style={styles.centrado}>
               <ActivityIndicator size="large" color={Colors.hablemos.accent} />
             </View>
+          ) : mensajes.length === 0 ? (
+            // Se renderiza AFUERA del FlatList (no como ListEmptyComponent): en Android,
+            // `inverted` le aplica al empty component `transform: [{ scale: -1 }]` —un
+            // giro de 180°, no solo un espejo vertical— y quedaba mal compensado, así
+            // que un chat nuevo (sin mensajes) aparecía patas para arriba, header incluido.
+            <View style={styles.vacioContainer}>
+              <Text style={styles.vacioEmoji}>👋</Text>
+              <Text style={styles.vacioTexto}>Todavía no hay mensajes. ¡Mandá el primero!</Text>
+            </View>
           ) : (
             <FlatList
               data={mensajes}
@@ -259,12 +261,6 @@ export default function HablemosChatScreen() {
               }}
               onEndReachedThreshold={0.4}
               ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={Colors.hablemos.accent} style={{ marginVertical: Spacing.md }} /> : null}
-              ListEmptyComponent={
-                <View style={styles.vacioContainer}>
-                  <Text style={styles.vacioEmoji}>👋</Text>
-                  <Text style={styles.vacioTexto}>Todavía no hay mensajes. ¡Mandá el primero!</Text>
-                </View>
-              }
               renderItem={({ item, index }) => {
                 const esPropio = item.remitente_id === propioResidenteId;
                 // Lista invertida y ordenada de más nuevo a más viejo: el mensaje
@@ -273,8 +269,12 @@ export default function HablemosChatScreen() {
                 const esInicioDeDia = !anterior || !esMismodia(new Date(anterior.created_at), new Date(item.created_at));
                 // Tras un separador de día siempre se vuelve a mostrar quién escribe, como en WhatsApp.
                 const esInicioDeTanda = esInicioDeDia || anterior.remitente_id !== item.remitente_id;
+                // Un único View envolvente, NO un Fragment: en una lista `inverted`
+                // la celda que arma FlatList usa `flexDirection: 'column-reverse'`,
+                // así que dos hijos sueltos salían al revés y el separador "Hoy"
+                // aparecía DEBAJO del primer mensaje del día.
                 return (
-                  <>
+                  <View>
                     {esInicioDeDia && (
                       <View style={styles.separadorFechaWrapper}>
                         <Text style={styles.separadorFechaTexto}>{formatFechaSeparadorChat(item.created_at)}</Text>
@@ -287,53 +287,49 @@ export default function HablemosChatScreen() {
                       reproduciendo={reproduciendoId === item.id}
                       onTogglePlay={() => toggleReproducirMensaje(item)}
                     />
-                  </>
+                  </View>
                 );
               }}
             />
           )}
 
-          {grabando && (
-            <View style={styles.grabandoBanner}>
-              <View style={styles.puntoRojo} />
-              <Text style={styles.grabandoTexto}>Grabando mensaje de voz...</Text>
-              <TouchableOpacity
-                style={styles.grabandoCancelarBtn}
-                onPress={cancelarGrabacion}
-                accessibilityRole="button"
-                accessibilityLabel="Cancelar grabación"
-              >
-                <Ionicons name="close" size={20} color={Colors.brand.red} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.grabandoDetenerBtn}
-                onPress={detenerGrabacion}
-                accessibilityRole="button"
-                accessibilityLabel="Detener grabación"
-              >
-                <Ionicons name="stop" size={20} color={Colors.text.onDark} />
-              </TouchableOpacity>
+          {enviarAudio.isPending && !grabando && (
+            <View style={styles.enviandoBanner}>
+              <ActivityIndicator size="small" color={Colors.hablemos.accent} />
+              <Text style={styles.enviandoTexto}>Enviando tu mensaje de voz...</Text>
             </View>
           )}
 
-          {audioUri && !grabando ? (
-            <View style={[styles.inputWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
-              <TouchableOpacity style={styles.audioPlayBtn} onPress={reproducirAudioPropio} accessibilityRole="button" accessibilityLabel="Escuchar el mensaje de voz grabado">
-                <Ionicons name="play" size={22} color={Colors.text.onDark} />
-              </TouchableOpacity>
-              <Text style={styles.audioDuracionTexto}>{formatearDuracion(duracionSegundos)}</Text>
-              <TouchableOpacity style={styles.audioAccionBtn} onPress={descartarAudio} accessibilityRole="button" accessibilityLabel="Descartar mensaje de voz">
-                <Ionicons name="trash" size={22} color={Colors.brand.red} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.sendBtn}
-                onPress={enviarAudioActual}
-                disabled={enviarAudio.isPending}
-                accessibilityRole="button"
-                accessibilityLabel="Enviar mensaje de voz"
-              >
-                {enviarAudio.isPending ? <ActivityIndicator size="small" color={Colors.text.onDark} /> : <Ionicons name="send" size={22} color={Colors.text.onDark} />}
-              </TouchableOpacity>
+          {grabando ? (
+            <View style={[styles.grabandoWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
+              <View style={styles.grabandoTituloFila}>
+                <View style={styles.puntoRojo} />
+                <Text style={styles.grabandoTexto}>Grabando mensaje de voz...</Text>
+              </View>
+              {/* Dos botones grandes, con texto y bien separados: el residente no
+                  tiene que adivinar qué hace cada ícono ni acertarle a 40px. */}
+              <View style={styles.grabandoAccionesFila}>
+                <TouchableOpacity
+                  style={[styles.grabandoAccionBtn, styles.grabandoBorrarBtn]}
+                  onPress={borrarGrabacion}
+                  accessibilityRole="button"
+                  accessibilityLabel="Borrar el mensaje de voz sin enviarlo"
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="trash" size={28} color={Colors.brand.red} />
+                  <Text style={[styles.grabandoAccionTexto, styles.grabandoBorrarTexto]}>Borrar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.grabandoAccionBtn, styles.grabandoEnviarBtn]}
+                  onPress={detenerYEnviarGrabacion}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enviar el mensaje de voz"
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="send" size={28} color={Colors.text.onDark} />
+                  <Text style={[styles.grabandoAccionTexto, styles.grabandoEnviarTexto]}>Enviar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
             <View style={[styles.inputWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
@@ -345,7 +341,6 @@ export default function HablemosChatScreen() {
                 placeholderTextColor={Colors.text.hint}
                 multiline
                 maxLength={2000}
-                editable={!grabando}
                 accessibilityLabel="Campo de texto para escribir tu mensaje"
               />
               {input.trim().length > 0 ? (
@@ -359,7 +354,13 @@ export default function HablemosChatScreen() {
                   {enviarTexto.isPending ? <ActivityIndicator size="small" color={Colors.text.onDark} /> : <Ionicons name="send" size={22} color={Colors.text.onDark} />}
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.micBtn} onPress={iniciarGrabacion} accessibilityRole="button" accessibilityLabel="Grabar mensaje de voz">
+                <TouchableOpacity
+                  style={styles.micBtn}
+                  onPress={iniciarGrabacion}
+                  disabled={enviarAudio.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Grabar mensaje de voz"
+                >
                   <Ionicons name="mic" size={24} color={Colors.text.onDark} />
                 </TouchableOpacity>
               )}
@@ -416,6 +417,11 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
           </View>
         )}
 
+        {/* `minWidth` en burbujaHora en vez de `numberOfLines`: con numberOfLines={1}
+            dentro de una fila `justifyContent: flex-end` sin ancho fijo, Android a veces
+            mide el texto con el ancho equivocado en el primer pass y lo recorta ("11:5"
+            en vez de "11:55") — pasaba en burbujas angostas Y anchas por igual. Un ancho
+            mínimo que alcanza para "23:59" evita ese cálculo ambiguo directamente. */}
         <View style={styles.burbujaMeta}>
           <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
           {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
@@ -502,11 +508,16 @@ const styles = StyleSheet.create({
   },
   burbujaPropia: { backgroundColor: Colors.hablemos.burbujaPropia, borderBottomRightRadius: Spacing.radius.sm },
   burbujaAjena: { backgroundColor: Colors.hablemos.burbujaAjena, borderBottomLeftRadius: Spacing.radius.sm },
-  // ~35% más grande que el body normal (18 → 24) para mejor lectura
-  burbujaTexto: { fontSize: 24, color: Colors.text.primary, lineHeight: 32 },
-  burbujaMeta: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.xs, marginTop: 2 },
-  burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint },
-  burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic' },
+  // ~35% más grande que el body normal (18 → 24) para mejor lectura.
+  // `flexShrink: 0` + `paddingRight`: mismo bug que la hora — en Android, un
+  // texto corto dentro de una burbuja que se ajusta a su contenido a veces se
+  // mide 1 carácter más angosto de lo que realmente ocupa al dibujarse
+  // ("hola" se veía "hol"). Un margen de sobra evita que el último carácter
+  // quede justo afuera del límite calculado.
+  burbujaTexto: { fontSize: 24, color: Colors.text.primary, lineHeight: 32, flexShrink: 0, paddingRight: 3 },
+  burbujaMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: Spacing.xs, marginTop: 2 },
+  burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint, flexShrink: 0, minWidth: 50, textAlign: 'right' },
+  burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic', flexShrink: 0, paddingRight: 2 },
 
   audioMensajeContainer: { gap: Spacing.sm, minWidth: 220 },
   audioMensajeLabel: { fontSize: Typography.size.sm, color: Colors.text.secondary },
@@ -523,39 +534,47 @@ const styles = StyleSheet.create({
   audioMensajeBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.greenDark },
   audioMensajeBtnTextoActivo: { color: Colors.speak.active },
 
-  vacioContainer: { alignItems: 'center', gap: Spacing.md, paddingTop: Spacing.section, paddingHorizontal: Spacing.xxxl, transform: [{ scaleY: -1 }] },
+  vacioContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, paddingHorizontal: Spacing.xxxl },
   vacioEmoji: { fontSize: 56 },
   vacioTexto: { fontSize: Typography.size.md, color: Colors.text.hint, textAlign: 'center' },
 
-  grabandoBanner: {
+  enviandoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#E8F5E9',
     paddingHorizontal: Spacing.screen.horizontal,
     paddingVertical: Spacing.sm,
+  },
+  enviandoTexto: { fontSize: Typography.size.md, color: Colors.hablemos.accentDark, fontWeight: Typography.weight.medium },
+
+  grabandoWrapper: {
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: Spacing.screen.horizontal,
+    paddingTop: Spacing.md,
+    gap: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: '#FFCDD2',
   },
-  puntoRojo: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.brand.red },
-  grabandoTexto: { flex: 1, fontSize: Typography.size.sm, color: '#C62828', fontWeight: Typography.weight.medium },
-  grabandoCancelarBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Colors.brand.red,
+  grabandoTituloFila: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  puntoRojo: { width: 14, height: 14, borderRadius: 7, backgroundColor: Colors.brand.red },
+  grabandoTexto: { flex: 1, fontSize: Typography.size.md, color: '#C62828', fontWeight: Typography.weight.bold },
+  grabandoAccionesFila: { flexDirection: 'row', gap: Spacing.xl },
+  grabandoAccionBtn: {
+    flex: 1,
+    minHeight: Spacing.touch.large,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.sm,
+    borderRadius: Spacing.radius.lg,
+    paddingHorizontal: Spacing.md,
   },
-  grabandoDetenerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.brand.red,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  grabandoBorrarBtn: { backgroundColor: Colors.ui.surface, borderWidth: 2, borderColor: Colors.brand.red },
+  grabandoEnviarBtn: { backgroundColor: Colors.hablemos.accent },
+  grabandoAccionTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold },
+  grabandoBorrarTexto: { color: Colors.brand.red },
+  grabandoEnviarTexto: { color: Colors.text.onDark },
 
   inputWrapper: {
     flexDirection: 'row',
@@ -598,14 +617,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  audioPlayBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.hablemos.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  audioDuracionTexto: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.medium, color: Colors.text.primary },
-  audioAccionBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });
