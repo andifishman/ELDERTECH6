@@ -1,7 +1,7 @@
 export type EstadoRecordatorio = 'pendiente' | 'realizado' | 'vencido' | 'cancelado';
 
-/** Minutos de anticipación de la notificación — siempre 30, fijo y obligatorio. */
-export const RECORDATORIO_OFFSET_MINUTOS = 30;
+/** Minutos de anticipación de la notificación — siempre 60 (1 hora), fijo y obligatorio. */
+export const RECORDATORIO_OFFSET_MINUTOS = 60;
 
 export interface Recordatorio {
   id: string;

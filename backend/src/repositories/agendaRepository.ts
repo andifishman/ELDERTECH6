@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { withRepoLogging } from '../logging/repoLogger';
+import { hoyArgentinaISO, horaActualArgentina } from '../utils/argentinaTime';
 import type {
   EstadoRecordatorio,
   ListarRecordatoriosOpciones,
@@ -130,7 +131,7 @@ export const eliminar = withRepoLogging(REPO, 'eliminar', async (
 
 // ─── Usadas por el cron (`AgendaReminderProcessorService`) — sin scope de residente. ──
 
-/** Pendientes sin notificar cuya ventana de aviso (evento - 30min) ya llegó. */
+/** Pendientes sin notificar cuya ventana de aviso (evento - 1 hora) ya llegó. */
 export const listarCandidatosNotificacion = withRepoLogging(REPO, 'listarCandidatosNotificacion', async (): Promise<Recordatorio[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from(TABLA)
@@ -143,8 +144,8 @@ export const listarCandidatosNotificacion = withRepoLogging(REPO, 'listarCandida
 
 /** Pendientes cuya fecha+hora ya pasó — el cron los pasa a 'vencido'. */
 export const listarPendientesParaVencer = withRepoLogging(REPO, 'listarPendientesParaVencer', async (): Promise<Recordatorio[]> => {
-  const hoy = new Date().toISOString().slice(0, 10);
-  const horaActual = new Date().toTimeString().slice(0, 8);
+  const hoy = hoyArgentinaISO();
+  const horaActual = horaActualArgentina();
 
   const { data, error } = await getSupabaseAdmin()
     .from(TABLA)

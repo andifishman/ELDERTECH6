@@ -261,7 +261,7 @@ export default function AgendaScreen() {
 
       <TouchableOpacity
         style={[styles.nuevoBtn, { bottom: insets.bottom + Spacing.lg }]}
-        onPress={() => router.push('/agenda/nuevo')}
+        onPress={() => router.push({ pathname: '/agenda/nuevo', params: { fecha: diaSeleccionado } })}
         accessibilityRole="button"
         accessibilityLabel="Nuevo recordatorio"
         activeOpacity={0.85}

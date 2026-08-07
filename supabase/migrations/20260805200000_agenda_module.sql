@@ -1,7 +1,7 @@
 -- Módulo "Agenda" — recordatorios personales del residente.
 --
 -- Deliberadamente mínima: título + fecha + hora, con notificación push
--- obligatoria 30 minutos antes (no configurable, no se puede desactivar).
+-- obligatoria 1 hora antes (no configurable, no se puede desactivar).
 -- "hora" es obligatoria porque sin ella no hay forma de calcular el aviso.
 
 create table public.agenda_recordatorios (
@@ -18,7 +18,7 @@ create table public.agenda_recordatorios (
   completado_en timestamptz,
 
   -- El cron (AgendaReminderProcessorService) marca estos dos al enviar el
-  -- push, siempre 30 minutos antes de fecha+hora (offset fijo, ver
+  -- push, siempre 1 hora antes de fecha+hora (offset fijo, ver
   -- RECORDATORIO_OFFSET_MINUTOS en AgendaTypes.ts) — nunca configurable.
   notificacion_enviada boolean not null default false,
   notificacion_enviada_en timestamptz,

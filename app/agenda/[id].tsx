@@ -104,7 +104,7 @@ export default function DetalleRecordatorioScreen() {
 
           <View style={styles.metaRow}>
             <Ionicons name="notifications-outline" size={18} color={Colors.text.hint} />
-            <Text style={styles.metaTexto}>Aviso 30 minutos antes</Text>
+            <Text style={styles.metaTexto}>Aviso 1 hora antes</Text>
           </View>
         </View>
 

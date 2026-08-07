@@ -2,6 +2,7 @@ import { StatusCodes } from 'http-status-codes';
 import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import { requireResidenteContext } from '../../utils/validators';
+import { hoyArgentinaISO } from '../../utils/argentinaTime';
 import * as repo from '../../repositories/agendaRepository';
 import type {
   EstadoRecordatorio,
@@ -65,19 +66,15 @@ export async function listar(user: AuthUser, opciones: ListarRecordatoriosOpcion
   return repo.listar(residenteId, opciones);
 }
 
-function hoyISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export async function listarHoy(user: AuthUser): Promise<Recordatorio[]> {
   const { residenteId } = requireResidenteContext(user);
-  const hoy = hoyISO();
+  const hoy = hoyArgentinaISO();
   return repo.listarPorRangoFecha(residenteId, hoy, hoy);
 }
 
 export async function listarSemana(user: AuthUser, fechaRef?: string): Promise<Recordatorio[]> {
   const { residenteId } = requireResidenteContext(user);
-  const ref = fechaRef ? new Date(`${fechaRef}T00:00:00`) : new Date();
+  const ref = new Date(`${fechaRef ?? hoyArgentinaISO()}T00:00:00`);
   const diaSemana = ref.getDay(); // 0=domingo
   const lunes = new Date(ref);
   lunes.setDate(ref.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
@@ -88,7 +85,7 @@ export async function listarSemana(user: AuthUser, fechaRef?: string): Promise<R
 
 export async function listarMes(user: AuthUser, fechaRef?: string): Promise<Recordatorio[]> {
   const { residenteId } = requireResidenteContext(user);
-  const ref = fechaRef ? new Date(`${fechaRef}T00:00:00`) : new Date();
+  const ref = new Date(`${fechaRef ?? hoyArgentinaISO()}T00:00:00`);
   const primerDia = new Date(ref.getFullYear(), ref.getMonth(), 1);
   const ultimoDia = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
   return repo.listarPorRangoFecha(residenteId, primerDia.toISOString().slice(0, 10), ultimoDia.toISOString().slice(0, 10));
@@ -96,7 +93,7 @@ export async function listarMes(user: AuthUser, fechaRef?: string): Promise<Reco
 
 export async function listarProximos(user: AuthUser, limit = 10): Promise<Recordatorio[]> {
   const { residenteId } = requireResidenteContext(user);
-  return repo.listarProximos(residenteId, hoyISO(), limit);
+  return repo.listarProximos(residenteId, hoyArgentinaISO(), limit);
 }
 
 export async function cambiarEstado(user: AuthUser, id: string, estado: EstadoRecordatorio): Promise<Recordatorio> {

@@ -1,5 +1,5 @@
 // Agenda — crear o editar un recordatorio (?editId=<id> activa el modo edición)
-// Deliberadamente mínimo: título + fecha + hora. La notificación 30 minutos
+// Deliberadamente mínimo: título + fecha + hora. La notificación 1 hora
 // antes es automática y obligatoria, no hay nada que configurar acá.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
@@ -22,16 +22,18 @@ const HORAS_RAPIDAS = [
 
 export default function NuevoRecordatorioScreen() {
   const insets = useSafeAreaInsets();
-  const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const { editId, fecha: fechaInicial } = useLocalSearchParams<{ editId?: string; fecha?: string }>();
   const modoEdicion = !!editId;
 
   const { data: existente, isLoading: cargandoExistente } = useAgendaDetalle(editId ?? null);
   const crearMutation = useCrearRecordatorio();
   const editarMutation = useEditarRecordatorio();
 
+  // Si se abrió desde el calendario principal con un día ya elegido, arranca ahí
+  // en vez de "hoy" — pero solo al crear; al editar manda la fecha del recordatorio.
   const [titulo, setTitulo] = useState('');
-  const [fecha, setFecha] = useState(() => toISODate(new Date()));
-  const [mesCalendario, setMesCalendario] = useState(() => new Date());
+  const [fecha, setFecha] = useState(() => fechaInicial || toISODate(new Date()));
+  const [mesCalendario, setMesCalendario] = useState(() => new Date(`${fechaInicial || toISODate(new Date())}T00:00:00`));
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const [horaHH, setHoraHH] = useState('09');
   const [horaMM, setHoraMM] = useState('00');
@@ -180,10 +182,10 @@ export default function NuevoRecordatorioScreen() {
           ))}
         </ScrollView>
 
-        {/* Aviso de notificación — siempre 30 min antes, no configurable */}
+        {/* Aviso de notificación — siempre 1 hora antes, no configurable */}
         <View style={styles.avisoBox}>
           <Ionicons name="notifications" size={20} color={Colors.agenda.accentDark} />
-          <Text style={styles.avisoTexto}>Vas a recibir un aviso 30 minutos antes.</Text>
+          <Text style={styles.avisoTexto}>Vas a recibir un aviso 1 hora antes.</Text>
         </View>
 
         {/* Guardar */}

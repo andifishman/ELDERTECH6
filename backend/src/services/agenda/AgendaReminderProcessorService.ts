@@ -3,6 +3,7 @@ import * as repo from '../../repositories/agendaRepository';
 import * as deviceTokensService from '../notifications/DeviceTokensService';
 import { sendPushMessages } from '../../providers/notifications/ExpoPushProvider';
 import { RECORDATORIO_OFFSET_MINUTOS } from '../../providers/agenda/AgendaTypes';
+import { momentoDesdeFechaHoraArgentina } from '../../utils/argentinaTime';
 
 /**
  * Cron de Agenda — corre cada 5 minutos (ver .github/workflows/notifications-cron.yml,
@@ -12,14 +13,14 @@ import { RECORDATORIO_OFFSET_MINUTOS } from '../../providers/agenda/AgendaTypes'
  * diario en vercel.json como red de seguridad si el workflow externo fallara.
  */
 
-/** Envía el push de los recordatorios cuya ventana de aviso (evento - 30 min) ya llegó. */
+/** Envía el push de los recordatorios cuya ventana de aviso (evento - 1 hora) ya llegó. */
 export async function procesarNotificaciones(): Promise<{ enviados: number }> {
   const candidatos = await repo.listarCandidatosNotificacion();
   const ahora = Date.now();
   let enviados = 0;
 
   for (const r of candidatos) {
-    const momentoEvento = new Date(`${r.fecha}T${r.hora}`).getTime();
+    const momentoEvento = momentoDesdeFechaHoraArgentina(r.fecha, r.hora);
     const momentoAviso = momentoEvento - RECORDATORIO_OFFSET_MINUTOS * 60_000;
     if (ahora < momentoAviso || ahora > momentoEvento) continue;
 
@@ -31,7 +32,7 @@ export async function procesarNotificaciones(): Promise<{ enviados: number }> {
           tokens.map((t) => ({
             to: t.expo_push_token,
             title: `Recordatorio: ${r.titulo}`,
-            body: `Hoy a las ${hora}.`,
+            body: `Falta una hora — hoy a las ${hora}.`,
             sound: 'default',
             categoryId: 'agenda-recordatorio',
             data: { pantallaDestino: 'agenda', recordatorioId: r.id },

@@ -13,9 +13,22 @@ import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { ActivityIndicator, View, Text, TextInput } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
+
+// Tope global de escalado de fuente por accesibilidad del sistema operativo.
+// Sin esto, si el residente sube el tamaño de letra del teléfono (muy común
+// en este público), el texto crece más de lo que entra en elementos de
+// tamaño fijo — celdas del calendario, chips, badges de hora — y termina
+// superpuesto o cortado (ver celdas del calendario de Agenda y horarios de
+// Hablemos). Ya se usaba este mismo tope puntual en el juego "Une los
+// Puntos"; acá se aplica una sola vez para toda la app. 1.5× sobre los
+// tamaños ya generosos de Typography.ts sigue siendo bien legible.
+// @ts-expect-error — defaultProps existe en runtime aunque los tipos de RN no lo declaren para componentes de función
+Text.defaultProps = { ...(Text.defaultProps ?? {}), maxFontSizeMultiplier: 1.5 };
+// @ts-expect-error — ídem
+TextInput.defaultProps = { ...(TextInput.defaultProps ?? {}), maxFontSizeMultiplier: 1.5 };
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
