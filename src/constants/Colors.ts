@@ -72,12 +72,6 @@ export const Colors = {
   agenda: {
     accent: '#5C6BC0',
     accentDark: '#3F51B5',
-    prioridad: {
-      baja: '#66BB6A',
-      media: '#42A5F5',
-      alta: '#FFA726',
-      urgente: '#E53935',
-    },
   },
 
   // Botón "Escuchar" (TTS)

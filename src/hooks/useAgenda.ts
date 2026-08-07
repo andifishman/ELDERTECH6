@@ -8,11 +8,9 @@ import {
   crearRecordatorio,
   editarRecordatorio,
   eliminarRecordatorio,
-  importarDeHorario,
   listarRecordatorios,
   obtenerRecordatorio,
   proximosRecordatorios,
-  subirAudioRecordatorio,
   type EstadoRecordatorio,
   type ListarRecordatoriosOpciones,
   type RecordatorioInput,
@@ -114,17 +112,3 @@ export function useCambiarEstadoRecordatorio() {
   });
 }
 
-export function useSubirAudioAgenda() {
-  return useMutation({
-    mutationFn: ({ audioUri, duracionSegundos }: { audioUri: string; duracionSegundos: number }) =>
-      subirAudioRecordatorio(audioUri, duracionSegundos),
-  });
-}
-
-export function useImportarDeHorario() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (actividadId: string) => importarDeHorario(actividadId),
-    onSuccess: () => invalidarTodo(qc),
-  });
-}

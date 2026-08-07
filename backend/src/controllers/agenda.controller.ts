@@ -1,17 +1,14 @@
 import type { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { HttpError } from '../middlewares/errorHandler';
 import * as agendaService from '../services/agenda/AgendaService';
 import { requireUser, requireUuidParam } from '../utils/validators';
 import {
   cambiarEstadoSchema,
   crearRecordatorioSchema,
   editarRecordatorioSchema,
-  importarHorarioSchema,
   listarRecordatoriosQuerySchema,
   proximosQuerySchema,
   rangoFechaQuerySchema,
-  subirAudioBodySchema,
 } from '../validators/agenda.validators';
 
 export async function getListar(req: Request, res: Response): Promise<void> {
@@ -65,24 +62,4 @@ export async function getMes(req: Request, res: Response): Promise<void> {
 export async function getProximos(req: Request, res: Response): Promise<void> {
   const { limit } = proximosQuerySchema.parse(req.query);
   res.json(await agendaService.listarProximos(requireUser(req), limit));
-}
-
-export async function postAudio(req: Request, res: Response): Promise<void> {
-  const { duracionSegundos } = subirAudioBodySchema.parse(req.body);
-  const file = req.file;
-  if (!file) throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta el archivo de audio.');
-
-  const resultado = await agendaService.subirYTranscribirAudio(requireUser(req), {
-    buffer: file.buffer,
-    mimeType: file.mimetype,
-    originalName: file.originalname,
-    duracionSegundos: duracionSegundos ?? null,
-  });
-  res.status(StatusCodes.CREATED).json(resultado);
-}
-
-export async function postImportarHorario(req: Request, res: Response): Promise<void> {
-  const { actividadId } = importarHorarioSchema.parse(req.body);
-  const recordatorio = await agendaService.importarDeHorario(requireUser(req), actividadId);
-  res.status(StatusCodes.CREATED).json(recordatorio);
 }

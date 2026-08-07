@@ -11,7 +11,6 @@ npm-debug.*
 web-build/
 .env
 .env.local
-.env.production
 
 # macOS
 .DS_Store
@@ -42,3 +41,11 @@ expo-env.d.ts
 # @end expo-cli
 .vercel
 .env*
+
+# .env.production SÍ se versiona (a propósito, ver CLAUDE.md "APK/OTA sin
+# datos"): @expo/env carga este archivo automáticamente en cualquier
+# build/update en modo producción (NODE_ENV=production — cubre los perfiles
+# "preview" y "production" de eas.json), con prioridad sobre .env local, sin
+# depender de --environment ni de acordarse de nada. No tiene secretos, son
+# variables EXPO_PUBLIC_* que igual terminan visibles en el bundle del cliente.
+!.env.production

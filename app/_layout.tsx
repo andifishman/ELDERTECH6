@@ -13,8 +13,9 @@ import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
@@ -95,6 +96,23 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Pantalla de error a pantalla completa cuando EXPO_PUBLIC_API_URL apunta a
+ * "localhost" (o está vacía) en un build real. Reemplaza el silencio de
+ * "sin datos aún" por un mensaje imposible de ignorar — ver apiUrlGuard.ts. */
+function ConfigErrorScreen() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B3261E', padding: 24, gap: 16 }}>
+      <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center' }}>
+        La app no está configurada correctamente
+      </Text>
+      <Text style={{ fontSize: 17, color: '#FFFFFF', textAlign: 'center', lineHeight: 24 }}>
+        No se encontró la dirección del servidor (EXPO_PUBLIC_API_URL="{API_URL || '(vacía)'}"). Avisá al
+        equipo técnico: hay que configurar la variable de entorno del backend en EAS antes de publicar este build.
+      </Text>
+    </View>
+  );
+}
+
 function useHideNavigationBar() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -109,6 +127,16 @@ export default function RootLayout() {
   useHideNavigationBar();
   useNotificationTapHandler();
   useStopSpeechOnNavigate();
+
+  if (apiUrlMisconfigurada) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <ConfigErrorScreen />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <QueryProvider>

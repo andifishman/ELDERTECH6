@@ -1,7 +1,6 @@
-// Agenda — detalle de un recordatorio: ver, escuchar audio, cambiar estado, editar o eliminar
-import React, { useCallback, useRef, useState } from 'react';
+// Agenda — detalle de un recordatorio: ver, cambiar estado, editar o eliminar
+import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { Audio } from 'expo-av';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,28 +24,6 @@ const ESTADO_COLOR: Record<EstadoRecordatorio, { bg: string; color: string }> = 
   vencido: { bg: '#FFEBEE', color: '#C62828' },
   cancelado: { bg: '#F5F5F5', color: '#757575' },
 };
-const RECURRENCIA_LABEL: Record<string, string> = {
-  ninguna: 'No se repite',
-  diaria: 'Se repite todos los días',
-  laborables: 'Se repite de lunes a viernes',
-  semanal: 'Se repite todas las semanas',
-  mensual: 'Se repite todos los meses',
-  anual: 'Se repite todos los años',
-  personalizada: 'Se repite en días personalizados',
-};
-const NOTIFICACION_LABEL: Record<number, string> = {
-  0: 'En el momento',
-  10: '10 minutos antes',
-  30: '30 minutos antes',
-  60: '1 hora antes',
-  1440: '1 día antes',
-};
-
-function formatearDuracion(segundos: number): string {
-  const m = Math.floor(segundos / 60);
-  const s = Math.floor(segundos % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 export default function DetalleRecordatorioScreen() {
   const insets = useSafeAreaInsets();
@@ -54,29 +31,6 @@ export default function DetalleRecordatorioScreen() {
   const { data: recordatorio, isLoading } = useAgendaDetalle(id ?? null);
   const cambiarEstado = useCambiarEstadoRecordatorio();
   const eliminar = useEliminarRecordatorio();
-
-  const [reproduciendo, setReproduciendo] = useState(false);
-  const soundRef = useRef<Audio.Sound | null>(null);
-
-  const reproducirAudio = useCallback(async () => {
-    if (!recordatorio?.audio_url) return;
-    try {
-      if (reproduciendo) {
-        await soundRef.current?.stopAsync().catch(() => {});
-        setReproduciendo(false);
-        return;
-      }
-      if (soundRef.current) await soundRef.current.unloadAsync();
-      const { sound } = await Audio.Sound.createAsync({ uri: recordatorio.audio_url }, { shouldPlay: true });
-      soundRef.current = sound;
-      setReproduciendo(true);
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) setReproduciendo(false);
-      });
-    } catch (err) {
-      console.warn('[Agenda] Error al reproducir:', err);
-    }
-  }, [recordatorio, reproduciendo]);
 
   const cambiar = useCallback(
     (estado: 'pendiente' | 'realizado' | 'cancelado') => {
@@ -122,7 +76,6 @@ export default function DetalleRecordatorioScreen() {
     );
   }
 
-  const color = recordatorio.color || Colors.agenda.prioridad[recordatorio.prioridad];
   const estadoInfo = ESTADO_COLOR[recordatorio.estado];
 
   return (
@@ -131,66 +84,27 @@ export default function DetalleRecordatorioScreen() {
         titulo={recordatorio.titulo}
         mostrarVolver
         backgroundColor={Colors.agenda.accent}
-        textoHablar={`${recordatorio.titulo}. ${recordatorio.descripcion ?? ''}. Estado: ${ESTADO_LABEL[recordatorio.estado]}.`}
+        textoHablar={`${recordatorio.titulo}. ${formatearFechaLegible(recordatorio.fecha)} a las ${recordatorio.hora.slice(0, 5)}. Estado: ${ESTADO_LABEL[recordatorio.estado]}.`}
       />
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Spacing.xxxl }]} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <View style={styles.cardTop}>
-            <View style={[styles.iconoWrap, { backgroundColor: `${color}22` }]}>
-              <Text style={styles.icono}>{recordatorio.icono || '📌'}</Text>
+            <View style={styles.iconoWrap}>
+              <Ionicons name="alarm-outline" size={28} color={Colors.agenda.accentDark} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.fechaTexto}>{formatearFechaLegible(recordatorio.fecha)}</Text>
-              <Text style={styles.horaTexto}>{recordatorio.hora ? recordatorio.hora.slice(0, 5) : 'Todo el día'}</Text>
+              <Text style={styles.horaTexto}>{recordatorio.hora.slice(0, 5)}</Text>
             </View>
             <View style={[styles.estadoBadge, { backgroundColor: estadoInfo.bg }]}>
               <Text style={[styles.estadoBadgeTexto, { color: estadoInfo.color }]}>{ESTADO_LABEL[recordatorio.estado]}</Text>
             </View>
           </View>
 
-          <View style={[styles.prioridadBarra, { backgroundColor: color }]} />
-
-          {recordatorio.descripcion && <Text style={styles.descripcionTexto}>{recordatorio.descripcion}</Text>}
-
-          {recordatorio.audio_url && (
-            <View style={styles.audioBox}>
-              <TouchableOpacity
-                style={[styles.escucharBtn, reproduciendo && styles.escucharBtnActivo]}
-                onPress={reproducirAudio}
-                accessibilityRole="button"
-                accessibilityLabel={reproduciendo ? 'Pausar mensaje de voz' : 'Escuchar mensaje de voz'}
-              >
-                <Ionicons
-                  name={reproduciendo ? 'pause' : 'volume-medium'}
-                  size={20}
-                  color={reproduciendo ? Colors.speak.active : Colors.brand.greenDark}
-                />
-                <Text style={[styles.escucharBtnTexto, reproduciendo && { color: Colors.speak.active }]}>
-                  {reproduciendo ? 'Pausar' : 'Escuchar'} mensaje de voz
-                  {recordatorio.audio_duracion_segundos ? ` · ${formatearDuracion(recordatorio.audio_duracion_segundos)}` : ''}
-                </Text>
-              </TouchableOpacity>
-              {recordatorio.audio_transcripcion && (
-                <View style={styles.transcripcionBox}>
-                  <Text style={styles.transcripcionLabel}>Transcripción automática:</Text>
-                  <Text style={styles.transcripcionTexto}>{recordatorio.audio_transcripcion}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          <View style={styles.metaRow}>
-            <Ionicons name="repeat" size={18} color={Colors.text.hint} />
-            <Text style={styles.metaTexto}>{RECURRENCIA_LABEL[recordatorio.recurrencia_tipo]}</Text>
-          </View>
           <View style={styles.metaRow}>
             <Ionicons name="notifications-outline" size={18} color={Colors.text.hint} />
-            <Text style={styles.metaTexto}>
-              {recordatorio.recordatorio_offset_minutos === null || recordatorio.recordatorio_offset_minutos === undefined
-                ? 'Sin notificación'
-                : NOTIFICACION_LABEL[recordatorio.recordatorio_offset_minutos]}
-            </Text>
+            <Text style={styles.metaTexto}>Aviso 30 minutos antes</Text>
           </View>
         </View>
 
@@ -247,30 +161,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  iconoWrap: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  icono: { fontSize: 28 },
+  iconoWrap: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: `${Colors.agenda.accent}22` },
   fechaTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.primary },
   horaTexto: { fontSize: Typography.size.sm, color: Colors.text.hint },
   estadoBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Spacing.radius.full },
   estadoBadgeTexto: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold },
-  prioridadBarra: { height: 4, borderRadius: 2 },
-  descripcionTexto: { fontSize: Typography.size.md, color: Colors.text.primary, lineHeight: 24 },
-
-  audioBox: { gap: Spacing.sm },
-  escucharBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    borderRadius: Spacing.radius.lg,
-    backgroundColor: '#E8F5E9',
-  },
-  escucharBtnActivo: { backgroundColor: Colors.speak.activeBg },
-  escucharBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.greenDark },
-  transcripcionBox: { backgroundColor: Colors.ui.background, borderRadius: Spacing.radius.md, padding: Spacing.md },
-  transcripcionLabel: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: Colors.text.hint, marginBottom: 4 },
-  transcripcionTexto: { fontSize: Typography.size.sm, color: Colors.text.primary, lineHeight: 20 },
 
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   metaTexto: { fontSize: Typography.size.sm, color: Colors.text.hint },

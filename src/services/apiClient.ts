@@ -3,8 +3,7 @@
 // de Supabase (la única razón por la que el cliente sigue usando supabase-js
 // es para el login/sesión — ver src/services/supabase.ts).
 import { supabase } from './supabase';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
+import { API_URL } from '@/utils/apiUrlGuard';
 
 export class ApiError extends Error {
   constructor(

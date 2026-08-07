@@ -38,8 +38,6 @@ import {
 
 type Vista = 'mes' | 'semana' | 'hoy' | 'proximos';
 
-const PRIORIDAD_COLOR: Record<Recordatorio['prioridad'], string> = Colors.agenda.prioridad;
-const PRIORIDAD_ORDEN: Record<Recordatorio['prioridad'], number> = { urgente: 4, alta: 3, media: 2, baja: 1 };
 const ESTADO_LABEL: Record<EstadoRecordatorio, string> = {
   pendiente: 'Pendiente',
   realizado: 'Realizado',
@@ -52,10 +50,6 @@ const ESTADO_COLOR: Record<EstadoRecordatorio, { bg: string; color: string }> = 
   vencido: { bg: '#FFEBEE', color: '#C62828' },
   cancelado: { bg: '#F5F5F5', color: '#757575' },
 };
-function colorDominante(eventos: Recordatorio[]): string {
-  const top = eventos.reduce((a, b) => (PRIORIDAD_ORDEN[b.prioridad] > PRIORIDAD_ORDEN[a.prioridad] ? b : a));
-  return top.color || PRIORIDAD_COLOR[top.prioridad];
-}
 
 function agruparPorFecha(eventos: Recordatorio[]): Map<string, Recordatorio[]> {
   const mapa = new Map<string, Recordatorio[]>();
@@ -172,7 +166,7 @@ export default function AgendaScreen() {
                             {dia}
                           </Text>
                           {eventosDia.length > 0 && (
-                            <View style={[styles.puntoEvento, { backgroundColor: seleccionado ? Colors.text.onDark : colorDominante(eventosDia) }]} />
+                            <View style={[styles.puntoEvento, { backgroundColor: seleccionado ? Colors.text.onDark : Colors.agenda.accent }]} />
                           )}
                         </TouchableOpacity>
                       );
@@ -290,7 +284,6 @@ function TarjetaRecordatorio({
   onMarcarRealizado: () => void;
   compacta?: boolean;
 }) {
-  const color = recordatorio.color || PRIORIDAD_COLOR[recordatorio.prioridad];
   const estadoInfo = ESTADO_COLOR[recordatorio.estado];
 
   return (
@@ -299,19 +292,15 @@ function TarjetaRecordatorio({
       onPress={() => router.push(`/agenda/${recordatorio.id}` as never)}
       activeOpacity={0.8}
       accessibilityRole="button"
-      accessibilityLabel={`${recordatorio.titulo}${recordatorio.hora ? `, ${recordatorio.hora.slice(0, 5)}` : ''}`}
+      accessibilityLabel={`${recordatorio.titulo}, ${recordatorio.hora.slice(0, 5)}`}
     >
-      <View style={[styles.tarjetaBarra, { backgroundColor: color }]} />
+      <View style={[styles.tarjetaBarra, { backgroundColor: Colors.agenda.accent }]} />
       <View style={styles.tarjetaIconoWrap}>
-        <Text style={styles.tarjetaIcono}>{recordatorio.icono || '📌'}</Text>
+        <Ionicons name="alarm-outline" size={22} color={Colors.agenda.accentDark} />
       </View>
       <View style={styles.tarjetaInfo}>
         <Text style={styles.tarjetaTitulo} numberOfLines={1}>{recordatorio.titulo}</Text>
-        <Text style={styles.tarjetaSubtexto}>
-          {recordatorio.hora ? recordatorio.hora.slice(0, 5) : 'Todo el día'}
-          {recordatorio.recurrencia_tipo !== 'ninguna' ? ' · 🔁' : ''}
-          {recordatorio.tipo_contenido !== 'texto' ? ' · 🎤' : ''}
-        </Text>
+        <Text style={styles.tarjetaSubtexto}>{recordatorio.hora.slice(0, 5)}</Text>
         <View style={[styles.estadoBadge, { backgroundColor: estadoInfo.bg }]}>
           <Text style={[styles.estadoBadgeTexto, { color: estadoInfo.color }]}>{ESTADO_LABEL[recordatorio.estado]}</Text>
         </View>
@@ -445,7 +434,6 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
     marginRight: Spacing.sm,
   },
-  tarjetaIcono: { fontSize: 24 },
   tarjetaInfo: { flex: 1, paddingVertical: Spacing.sm, gap: 4 },
   tarjetaTitulo: { fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.text.primary },
   tarjetaSubtexto: { fontSize: Typography.size.sm, color: Colors.text.hint },

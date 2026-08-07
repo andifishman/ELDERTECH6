@@ -60,6 +60,24 @@ Las `es_destacada = true` van primero.
 ### contactos
 Ordenados por `orden ASC`. Cada contacto tiene `telefono` y `whatsapp_disponible`.
 
+## Módulo Agenda
+
+### agenda_recordatorios
+Recordatorios personales del residente. Deliberadamente mínima — **solo**
+título + fecha + hora, sin descripción/prioridad/color/ícono/audio/repetición
+(`supabase/migrations/20260805200000_agenda_module.sql`).
+
+- `hora`: TIME **NOT NULL** — a diferencia de Horarios, acá no existe
+  "todo el día": la notificación obligatoria a los 30 min necesita una hora.
+- `estado`: `'pendiente' | 'realizado' | 'vencido' | 'cancelado'`
+- `notificacion_enviada` / `notificacion_enviada_en`: el cron
+  (`AgendaReminderProcessorService`) los marca al enviar el push 30 minutos
+  antes de `fecha`+`hora` — ver `.github/workflows/notifications-cron.yml`
+  (corre cada 5 min, igual que las notificaciones de Actividades; el cron
+  nativo de Vercel free tier en `vercel.json` es solo un respaldo diario).
+- La notificación **no es configurable**: siempre 30 min antes, sin opción
+  de desactivarla (`RECORDATORIO_OFFSET_MINUTOS` en `AgendaTypes.ts`).
+
 ## Seed inicial
 Organización: **Ledor Vador** (Buenos Aires, AR)
 Tipos de actividad globales (organizacion_id = NULL): Desayuno, Almuerzo, Merienda, Cena, Gimnasia, Lectura, Tecnología, Música, Juegos, Manualidades, Cine, Taller.
