@@ -104,7 +104,12 @@ export default function HablemosBuscarScreen() {
               {iniciarConversacion.isPending ? (
                 <ActivityIndicator color={Colors.hablemos.accent} />
               ) : (
-                <Ionicons name="chatbubble-ellipses" size={26} color={Colors.hablemos.accent} />
+                // Botón con texto en vez del ícono chico de globo de chat — más
+                // claro para el residente que ahí se toca para escribirle.
+                <View style={styles.escribirPill}>
+                  <Ionicons name="create-outline" size={20} color={Colors.text.onDark} />
+                  <Text style={styles.escribirPillTexto}>Escribir</Text>
+                </View>
               )}
             </TouchableOpacity>
           )}
@@ -163,6 +168,19 @@ const styles = StyleSheet.create({
   },
   avatarInicial: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   nombreTexto: { flex: 1, fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.text.primary },
+  // Reemplaza el ícono chico de "globo de chat": un botón con texto se
+  // entiende sin ambigüedad como "tocá acá para escribirle a esta persona".
+  escribirPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    minHeight: Spacing.touch.min,
+    backgroundColor: Colors.hablemos.accent,
+    borderRadius: Spacing.radius.full,
+    paddingHorizontal: Spacing.md,
+    flexShrink: 0,
+  },
+  escribirPillTexto: { fontSize: Typography.size.sm, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   vacioContainer: { alignItems: 'center', gap: Spacing.md, paddingTop: Spacing.section, paddingHorizontal: Spacing.xxxl },
   vacioEmoji: { fontSize: 56 },
   vacioTexto: { fontSize: Typography.size.md, color: Colors.text.hint, textAlign: 'center' },

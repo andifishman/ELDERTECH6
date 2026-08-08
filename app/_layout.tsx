@@ -173,6 +173,7 @@ export default function RootLayout() {
                       <Stack.Screen name="mas/hablemos/index" />
                       <Stack.Screen name="mas/hablemos/buscar" />
                       <Stack.Screen name="mas/hablemos/[conversacionId]" />
+                      <Stack.Screen name="mas/hablemos/escribir" />
                       <Stack.Screen name="asistente/index" />
                       <Stack.Screen name="asistente/chat" />
                       <Stack.Screen name="asistente/historial" />

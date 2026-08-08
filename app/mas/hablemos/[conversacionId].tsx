@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   FlatList,
   Image,
@@ -24,7 +23,6 @@ import { Spacing } from '@/constants/Spacing';
 import {
   useConversacionesHablemos,
   useEnviarMensajeAudioHablemos,
-  useEnviarMensajeTextoHablemos,
   useMarcarLeidosHablemos,
   useMarcarRecibidosHablemos,
   useMensajesHablemos,
@@ -57,18 +55,17 @@ export default function HablemosChatScreen() {
   const { data: conversaciones } = useConversacionesHablemos();
   const conversacion = useMemo(() => conversaciones?.find((c) => c.id === conversacionId), [conversaciones, conversacionId]);
   const otro = conversacion?.otroParticipante;
+  const nombreOtro = otro ? `${otro.nombre} ${otro.apellido}` : 'Residente';
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useMensajesHablemos(conversacionId);
   const mensajes = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   useMensajesRealtime(conversacionId, propioResidenteId);
 
-  const enviarTexto = useEnviarMensajeTextoHablemos(conversacionId);
   const enviarAudio = useEnviarMensajeAudioHablemos(conversacionId);
   const marcarRecibidos = useMarcarRecibidosHablemos(conversacionId);
   const marcarLeidos = useMarcarLeidosHablemos(conversacionId);
 
-  const [input, setInput] = useState('');
   const [grabando, setGrabando] = useState(false);
   const [reproduciendoId, setReproduciendoId] = useState<string | null>(null);
   const [pantallaActiva, setPantallaActiva] = useState(true);
@@ -109,18 +106,12 @@ export default function HablemosChatScreen() {
     };
   }, []);
 
-  const enviarTextoActual = useCallback(async () => {
-    const texto = input.trim();
-    if (!texto) return;
-    setInput('');
-    try {
-      await enviarTexto.mutateAsync(texto);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo enviar el mensaje.';
-      Alert.alert('Error', msg);
-      setInput(texto);
-    }
-  }, [input, enviarTexto]);
+  // Abre la pantalla de escritura a pantalla completa en vez de un campo de
+  // texto chico acá abajo — más fácil de encontrar y de tocar para el residente.
+  const abrirEscribirMensaje = useCallback(() => {
+    router.push({ pathname: '/mas/hablemos/escribir', params: { conversacionId, nombreOtro } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversacionId, nombreOtro]);
 
   const iniciarGrabacion = useCallback(async () => {
     try {
@@ -204,8 +195,6 @@ export default function HablemosChatScreen() {
     },
     [reproduciendoId],
   );
-
-  const nombreOtro = otro ? `${otro.nombre} ${otro.apellido}` : 'Residente';
 
   return (
     <View style={styles.root}>
@@ -333,37 +322,28 @@ export default function HablemosChatScreen() {
             </View>
           ) : (
             <View style={[styles.inputWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
-              <TextInput
-                style={styles.input}
-                value={input}
-                onChangeText={setInput}
-                placeholder="Escribí un mensaje..."
-                placeholderTextColor={Colors.text.hint}
-                multiline
-                maxLength={2000}
-                accessibilityLabel="Campo de texto para escribir tu mensaje"
-              />
-              {input.trim().length > 0 ? (
-                <TouchableOpacity
-                  style={styles.sendBtn}
-                  onPress={enviarTextoActual}
-                  disabled={enviarTexto.isPending}
-                  accessibilityRole="button"
-                  accessibilityLabel="Enviar mensaje"
-                >
-                  {enviarTexto.isPending ? <ActivityIndicator size="small" color={Colors.text.onDark} /> : <Ionicons name="send" size={22} color={Colors.text.onDark} />}
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.micBtn}
-                  onPress={iniciarGrabacion}
-                  disabled={enviarAudio.isPending}
-                  accessibilityRole="button"
-                  accessibilityLabel="Grabar mensaje de voz"
-                >
-                  <Ionicons name="mic" size={24} color={Colors.text.onDark} />
-                </TouchableOpacity>
-              )}
+              {/* Botón grande y con texto en vez de un campo de texto chico siempre
+                  abierto: más fácil de ver y de entender qué hay que tocar para
+                  mandar un mensaje. Abre una pantalla completa para escribir. */}
+              <TouchableOpacity
+                style={styles.escribirBtn}
+                onPress={abrirEscribirMensaje}
+                accessibilityRole="button"
+                accessibilityLabel="Escribir mensaje"
+                activeOpacity={0.8}
+              >
+                <Ionicons name="create-outline" size={28} color={Colors.text.onDark} />
+                <Text style={styles.escribirBtnTexto}>Escribir mensaje</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.micBtn}
+                onPress={iniciarGrabacion}
+                disabled={enviarAudio.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="Grabar mensaje de voz"
+              >
+                <Ionicons name="mic" size={28} color={Colors.text.onDark} />
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -578,40 +558,32 @@ const styles = StyleSheet.create({
 
   inputWrapper: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.sm,
+    alignItems: 'center',
+    gap: Spacing.md,
     backgroundColor: Colors.ui.surface,
     paddingHorizontal: Spacing.screen.horizontal,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.ui.border,
   },
-  input: {
+  // Botón principal para escribir — grande, con ícono y texto, así no hace
+  // falta reconocer un campo de texto chico ni un ícono de enviar minúsculo.
+  escribirBtn: {
     flex: 1,
-    minHeight: Spacing.touch.comfortable,
-    maxHeight: 120,
-    backgroundColor: Colors.ui.background,
-    borderRadius: Spacing.radius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    color: Colors.text.primary,
-    fontSize: 24,
-    borderWidth: 1,
-    borderColor: Colors.ui.border,
-  },
-  sendBtn: {
-    width: Spacing.touch.comfortable,
-    height: Spacing.touch.comfortable,
-    borderRadius: Spacing.touch.comfortable / 2,
-    backgroundColor: Colors.hablemos.accent,
+    minHeight: Spacing.touch.large,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
+    gap: Spacing.sm,
+    borderRadius: Spacing.radius.xl,
+    backgroundColor: Colors.hablemos.accent,
+    paddingHorizontal: Spacing.lg,
   },
+  escribirBtnTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   micBtn: {
-    width: Spacing.touch.comfortable,
-    height: Spacing.touch.comfortable,
-    borderRadius: Spacing.touch.comfortable / 2,
+    width: Spacing.touch.large,
+    height: Spacing.touch.large,
+    borderRadius: Spacing.touch.large / 2,
     backgroundColor: Colors.hablemos.accentDark,
     alignItems: 'center',
     justifyContent: 'center',
