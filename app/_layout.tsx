@@ -43,6 +43,27 @@ import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 // pantalla mostraba "Hol". `textBreakStrategy="simple"` usa un algoritmo de
 // corte distinto, sin ese bug (es la solución más reportada para este caso
 // exacto en la comunidad de React Native). Solo afecta Android; iOS lo ignora.
+// TODO (sin confirmar todavía, probar esto ANTES que cualquier otra cosa):
+// después de aplicar textBreakStrategy='simple' de esta forma, el residente
+// probador siguió viendo el mensaje cortado ("Hola" en la base → "Hol" en
+// pantalla) sin ningún cambio. Sospecha fuerte sin verificar aún: este
+// proyecto usa React 19 (ver package.json) y `Text` en
+// node_modules/react-native/Libraries/Text/Text.js es un componente de
+// función (`const TextImpl: component(...) = (...) => {...}`), no una
+// clase — React 19 sacó el soporte de `defaultProps` para componentes de
+// función (antes solo tiraba warning en React 18, ahora no hace nada). Si
+// es así, ESTE BLOQUE ENTERO (Text.defaultProps / TextInput.defaultProps)
+// nunca tuvo efecto real en ningún lado, y por eso ningún fix que dependiera
+// solo de esto (el tope de escalado de fuente Y textBreakStrategy) cambió
+// nada — ni acá ni en las pantallas que ya seteaban estas props directo en
+// cada <Text> (esas sí deberían haber funcionado, hay que revisar cuáles).
+// Próximo paso: confirmarlo (buscar "React 19 removed defaultProps function
+// components") y, si es así, sacar esto de acá y en cambio: (a) patchear
+// react-native con patch-package para que TextImpl tenga estos valores como
+// default real en la desestructuración de props (no vía .defaultProps), con
+// postinstall:patch-package en package.json para que EAS Build/Update lo
+// levante también, o (b) crear un <AppText> wrapper y reemplazar los <Text>
+// más críticos (burbujaTexto del chat es el que hay que probar primero).
 // @ts-expect-error — defaultProps existe en runtime aunque los tipos de RN no lo declaren para componentes de función
 Text.defaultProps = { ...(Text.defaultProps ?? {}), maxFontSizeMultiplier: 1.3, textBreakStrategy: 'simple' };
 // @ts-expect-error — ídem
