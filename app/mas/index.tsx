@@ -58,6 +58,14 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     ruta: '/mas/pedidos',
     textoHablar: 'Sugerencias. Enviá un pedido, comentario o sugerencia al personal.',
   },
+  {
+    id: 'accesibilidad',
+    emoji: '🔤',
+    titulo: 'Accesibilidad',
+    descripcion: 'Tamaño de texto y actualizaciones',
+    ruta: '/mas/accesibilidad',
+    textoHablar: 'Accesibilidad. Tamaño de texto y buscar actualizaciones.',
+  },
 ];
 
 // Opciones próximamente — aparecen abajo de la línea, bloqueadas y tachadas
@@ -70,7 +78,7 @@ export default function MasScreen() {
         titulo="Más"
         mostrarVolver
         tituloGrande
-        textoHablar="Más opciones: Clima, Radio, Juegos, y Sugerencias."
+        textoHablar="Más opciones: Clima, Radio, Juegos, Sugerencias, y Accesibilidad."
       />
 
       <ScrollView

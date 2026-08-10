@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerAvatarInicial: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
-  headerTitulo: { flex: 1, fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
+  headerTitulo: { flex: 1, fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.text.onDark, paddingRight: 10 },
 
   lista: { paddingHorizontal: Spacing.screen.horizontal, paddingTop: Spacing.lg, paddingBottom: Spacing.md, gap: Spacing.sm },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -503,11 +503,22 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
 
-  burbujaWrapper: { flexDirection: 'row' },
+  // overflow: 'visible' en las 4 — la causa real del recorte no era el tamaño
+  // de letra (eso ya se atacó con maxFontSizeMultiplier y no cambió nada): es
+  // "Texto en negrita" de Android (Ajustes > Accesibilidad > Texto y
+  // pantalla), que engrosa TODO el texto del sistema al dibujarlo — lo pida
+  // o no la app — después de que React Native ya midió el layout con el
+  // ancho normal (no negrita). El texto termina un poco más ancho de lo que
+  // el contenedor reservó, y de forma nativa Android recorta a los hijos que
+  // se pasan del borde del padre. `overflow: 'visible'` en toda la cadena
+  // (wrapper → columna → burbuja) deja que ese pequeño excedente se vea en
+  // vez de cortarse, sin depender de adivinar cuánto más ancho dibuja cada
+  // celular.
+  burbujaWrapper: { flexDirection: 'row', overflow: 'visible' },
   burbujaWrapperDerecha: { justifyContent: 'flex-end' },
   burbujaWrapperIzquierda: { justifyContent: 'flex-start' },
-  burbujaColumnaDerecha: { maxWidth: '82%', alignItems: 'flex-end' },
-  burbujaColumnaIzquierda: { maxWidth: '82%', alignItems: 'flex-start' },
+  burbujaColumnaDerecha: { maxWidth: '82%', alignItems: 'flex-end', overflow: 'visible' },
+  burbujaColumnaIzquierda: { maxWidth: '82%', alignItems: 'flex-start', overflow: 'visible' },
   nombreRemitente: {
     fontSize: Typography.size.xs,
     fontWeight: Typography.weight.bold,
@@ -527,6 +538,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     gap: 4,
+    overflow: 'visible',
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -536,7 +548,9 @@ const styles = StyleSheet.create({
   burbujaPropia: { backgroundColor: Colors.hablemos.burbujaPropia, borderBottomRightRadius: Spacing.radius.sm },
   burbujaAjena: { backgroundColor: Colors.hablemos.burbujaAjena, borderBottomLeftRadius: Spacing.radius.sm },
   // 28px — más grande todavía que el cuerpo normal (18) para mejor lectura.
-  burbujaTexto: { fontSize: 28, color: Colors.text.primary, lineHeight: 36 },
+  // paddingRight de colchón: con "Texto en negrita" activado, el ancho real
+  // dibujado supera al medido — este margen absorbe esa diferencia.
+  burbujaTexto: { fontSize: 28, color: Colors.text.primary, lineHeight: 36, paddingRight: 6 },
   burbujaMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: Spacing.xs, marginTop: 2 },
   burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint },
   burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic' },

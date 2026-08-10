@@ -22,13 +22,31 @@ import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 // en este público), el texto crece más de lo que entra en elementos de
 // tamaño fijo — celdas del calendario, chips, badges de hora — y termina
 // superpuesto o cortado (ver celdas del calendario de Agenda y horarios de
-// Hablemos). Ya se usaba este mismo tope puntual en el juego "Une los
-// Puntos"; acá se aplica una sola vez para toda la app. 1.5× sobre los
-// tamaños ya generosos de Typography.ts sigue siendo bien legible.
+// Hablemos). Bajado de 1.5× a 1.3×: con "Texto grande" del sistema puesto
+// alto, Android sigue dibujando el texto más ancho de lo que React Native
+// midió al calcular el layout (mismatch de medición, no de escala en sí), y
+// a 1.5× ese desfasaje alcanzaba a comerse el último carácter/palabra en
+// varios lugares (vista previa de Hablemos, categorías de Conexiones) pese a
+// que cada uno mide bien. 1.3× sobre los tamaños ya generosos de
+// Typography.ts sigue siendo bien legible y dejó menos margen para ese
+// desfasaje. Los puntos más angostos (círculo del día en el calendario,
+// horas de tarjetas) van más allá y directamente no escalan.
+// Causa real confirmada (no el escalado de arriba, que quedó como red de
+// seguridad extra): bug conocido y documentado de React Native en Android —
+// https://github.com/facebook/react-native/issues/21729 y
+// https://github.com/react-native-community/discussions-and-proposals/issues/477
+// — el algoritmo de salto de línea por defecto ("highQuality", basado en
+// ICU) calcula mal dónde cortar el texto cuando el peso de fuente está
+// ajustado (por "Texto en negrita" del sistema en Ajustes > Accesibilidad,
+// o por fontWeight: 'bold' normal) y se come el último carácter o la última
+// palabra — confirmado con datos reales: la base decía "Hola" completo, la
+// pantalla mostraba "Hol". `textBreakStrategy="simple"` usa un algoritmo de
+// corte distinto, sin ese bug (es la solución más reportada para este caso
+// exacto en la comunidad de React Native). Solo afecta Android; iOS lo ignora.
 // @ts-expect-error — defaultProps existe en runtime aunque los tipos de RN no lo declaren para componentes de función
-Text.defaultProps = { ...(Text.defaultProps ?? {}), maxFontSizeMultiplier: 1.5 };
+Text.defaultProps = { ...(Text.defaultProps ?? {}), maxFontSizeMultiplier: 1.3, textBreakStrategy: 'simple' };
 // @ts-expect-error — ídem
-TextInput.defaultProps = { ...(TextInput.defaultProps ?? {}), maxFontSizeMultiplier: 1.5 };
+TextInput.defaultProps = { ...(TextInput.defaultProps ?? {}), maxFontSizeMultiplier: 1.3 };
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';

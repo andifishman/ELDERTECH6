@@ -98,15 +98,19 @@ export default function HablemosListaScreen() {
               )}
 
               <View style={styles.infoContainer}>
-                <Text style={styles.nombreTexto} numberOfLines={1}>{nombreCompleto(item)}</Text>
-                <Text style={[styles.previewTexto, item.noLeidosCount > 0 && styles.previewTextoNoLeido]} numberOfLines={1}>
+                <Text style={styles.nombreTexto} numberOfLines={1} maxFontSizeMultiplier={1.3}>{nombreCompleto(item)}</Text>
+                <Text
+                  style={[styles.previewTexto, item.noLeidosCount > 0 && styles.previewTextoNoLeido]}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.3}
+                >
                   {previewMensaje(item)}
                 </Text>
               </View>
 
               <View style={styles.metaContainer}>
                 {item.ultimo_mensaje_at && (
-                  <Text style={styles.horaTexto}>{formatFechaListaConversaciones(item.ultimo_mensaje_at)}</Text>
+                  <Text style={styles.horaTexto} maxFontSizeMultiplier={1.3}>{formatFechaListaConversaciones(item.ultimo_mensaje_at)}</Text>
                 )}
                 {item.noLeidosCount > 0 && (
                   <View style={styles.badge}>
@@ -168,6 +172,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     marginBottom: Spacing.sm,
     minHeight: Spacing.touch.comfortable + Spacing.md,
+    overflow: 'visible',
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -184,9 +189,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInicial: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
-  infoContainer: { flex: 1, gap: 2 },
-  nombreTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.primary },
-  previewTexto: { fontSize: Typography.size.sm, color: Colors.text.hint },
+  infoContainer: { flex: 1, gap: 2, overflow: 'visible' },
+  // paddingRight: colchón contra el recorte del último carácter con "Texto en
+  // negrita" del sistema activado (Ajustes > Accesibilidad) — Android dibuja
+  // el texto más ancho de lo que React Native midió al calcular dónde cortar
+  // con numberOfLines={1}, así que el corte real queda un poco antes de
+  // donde debería. Este margen le da aire a ese cálculo.
+  nombreTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.primary, paddingRight: 10 },
+  previewTexto: { fontSize: Typography.size.sm, color: Colors.text.hint, paddingRight: 10 },
   previewTextoNoLeido: { color: Colors.text.primary, fontWeight: Typography.weight.semibold },
   metaContainer: { alignItems: 'flex-end', gap: Spacing.xs },
   horaTexto: { fontSize: Typography.size.xs, color: Colors.text.hint },

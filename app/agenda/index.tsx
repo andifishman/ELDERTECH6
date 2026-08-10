@@ -235,7 +235,12 @@ export default function AgendaScreen() {
                                 seleccionado && styles.celdaDiaTextoSeleccionado,
                                 esHoy && !seleccionado && { color: Colors.agenda.accentDark, fontWeight: Typography.weight.bold },
                               ]}
-                              maxFontSizeMultiplier={1.3}
+                              // El círculo del día es chico y de tamaño fijo: con "Texto grande" del
+                              // sistema alto, ni siquiera el tope de 1.3× alcanzaba — Android seguía
+                              // dibujando el número más ancho de lo medido y se comía el segundo
+                              // dígito. Es solo un número de 1-2 cifras, no pierde legibilidad sin
+                              // escalar (el resto de la pantalla igual respeta la accesibilidad).
+                              allowFontScaling={false}
                             >
                               {dia}
                             </Text>
@@ -439,8 +444,8 @@ function TarjetaRecordatorio({
           <Ionicons name="alarm-outline" size={22} color={Colors.agenda.accentDark} />
         </View>
         <View style={styles.tarjetaInfo}>
-          <Text style={styles.tarjetaTitulo} numberOfLines={1}>{recordatorio.titulo}</Text>
-          <Text style={styles.tarjetaSubtexto}>{recordatorio.hora.slice(0, 5)}</Text>
+          <Text style={styles.tarjetaTitulo} numberOfLines={1} maxFontSizeMultiplier={1.3}>{recordatorio.titulo}</Text>
+          <Text style={styles.tarjetaSubtexto} allowFontScaling={false}>{recordatorio.hora.slice(0, 5)}</Text>
           <View style={[styles.estadoBadge, { backgroundColor: estadoInfo.bg }]}>
             <Text style={[styles.estadoBadgeTexto, { color: estadoInfo.color }]}>{ESTADO_LABEL[recordatorio.estado]}</Text>
           </View>
@@ -550,6 +555,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
+    overflow: 'visible',
   },
   celdaDiaInterior: {
     width: '80%',
@@ -563,6 +569,12 @@ const styles = StyleSheet.create({
     // tuviera borderWidth, ese círculo mediría más que el resto.
     borderWidth: 2,
     borderColor: 'transparent',
+    // "Texto en negrita" de Android (Ajustes > Accesibilidad) dibuja el
+    // número más ancho de lo que React Native midió — allowFontScaling en el
+    // Text ya frena el tamaño, pero no ese engrosado (es otro eje del
+    // sistema, aparte del tamaño de letra). overflow: 'visible' deja ver el
+    // sobrante en vez de recortar el segundo dígito.
+    overflow: 'visible',
   },
   celdaDiaSeleccionada: { backgroundColor: Colors.agenda.accent },
   celdaDiaHoy: { borderColor: Colors.agenda.accent },
@@ -615,9 +627,12 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
     marginRight: Spacing.sm,
   },
-  tarjetaInfo: { flex: 1, paddingVertical: Spacing.sm, gap: 4 },
-  tarjetaTitulo: { fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.text.primary },
-  tarjetaSubtexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.hint },
+  tarjetaInfo: { flex: 1, paddingVertical: Spacing.sm, gap: 4, overflow: 'visible' },
+  // paddingRight: con "Texto en negrita" del sistema activado, Android dibuja
+  // el título más ancho de lo que React Native midió para el corte de
+  // numberOfLines={1} — este colchón le da aire a ese cálculo.
+  tarjetaTitulo: { fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.text.primary, paddingRight: 10 },
+  tarjetaSubtexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.hint, paddingRight: 4 },
   estadoBadge: { alignSelf: 'flex-start', paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Spacing.radius.full },
   estadoBadgeTexto: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold },
 

@@ -153,7 +153,10 @@ export default function NuevoRecordatorioScreen() {
                       !celda.enMes && styles.calendarioCeldaTextoAfuera,
                       celda.fecha === fecha && styles.calendarioCeldaTextoSeleccionado,
                     ]}
-                    maxFontSizeMultiplier={1.3}
+                    // Mismo círculo chico de tamaño fijo que en la vista principal de
+                    // Agenda: ni el tope de 1.3× alcanzaba con "Texto grande" del sistema
+                    // alto. Ver comentario equivalente en agenda/index.tsx.
+                    allowFontScaling={false}
                   >
                     {celda.dia}
                   </Text>
@@ -272,7 +275,10 @@ const styles = StyleSheet.create({
   calendarioDiasSemana: { flexDirection: 'row' },
   calendarioDiaLetra: { flex: 1, textAlign: 'center', fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: Colors.text.hint },
   calendarioGrilla: { flexDirection: 'row', flexWrap: 'wrap' },
-  calendarioCelda: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: Spacing.radius.md },
+  // overflow: 'visible' — ver comentario equivalente en agenda/index.tsx: con
+  // "Texto en negrita" del sistema activado, Android dibuja el número más
+  // ancho de lo medido y por defecto lo recortaría contra el borde de la celda.
+  calendarioCelda: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: Spacing.radius.md, overflow: 'visible' },
   calendarioCeldaSeleccionada: { backgroundColor: Colors.agenda.accent },
   calendarioCeldaTexto: { fontSize: Typography.size.sm, color: Colors.text.primary },
   calendarioCeldaTextoAfuera: { color: Colors.text.hint },

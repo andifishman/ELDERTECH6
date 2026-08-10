@@ -196,8 +196,8 @@ export default function ConexionesScreen() {
         {/* Grupos resueltos */}
         {solved.map((gi) => (
           <View key={gi} style={[styles.solvedGroup, { backgroundColor: groups[gi]?.color }]}>
-            <Text style={styles.solvedCategory}>{groups[gi]?.category}</Text>
-            <Text style={styles.solvedWords}>{groups[gi]?.items.join(' · ')}</Text>
+            <Text style={styles.solvedCategory} maxFontSizeMultiplier={1.3}>{groups[gi]?.category}</Text>
+            <Text style={styles.solvedWords} maxFontSizeMultiplier={1.3}>{groups[gi]?.items.join(' · ')}</Text>
           </View>
         ))}
 
@@ -355,12 +355,18 @@ const styles = StyleSheet.create({
   },
   helpBtnText: { color: Colors.primary, fontSize: FontSizes.md, fontWeight: 'bold' },
 
+  // overflow: 'visible' — con "Texto en negrita" de Android activado (Ajustes >
+  // Accesibilidad), el sistema dibuja el texto más ancho de lo que React
+  // Native midió al calcular este contenedor (pasa con cualquier texto, esté
+  // o no en negrita en el código), y Android recorta por defecto lo que se
+  // pasa del borde del padre. Esto deja ver ese excedente en vez de cortarlo.
   solvedGroup: {
     width: '100%', borderRadius: Radius.md,
     padding: Spacing.md, alignItems: 'center',
+    overflow: 'visible',
   },
   solvedCategory: { fontSize: FontSizes.xl, fontWeight: 'bold', color: '#fff' },
-  solvedWords: { fontSize: FontSizes.md, marginTop: 4, color: '#fff' },
+  solvedWords: { fontSize: FontSizes.md, marginTop: 4, color: '#fff', paddingHorizontal: 4 },
 
   grid: {
     flexDirection: 'row', flexWrap: 'wrap',
