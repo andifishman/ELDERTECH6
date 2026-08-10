@@ -2,7 +2,7 @@
 // Deliberadamente mínimo: título + fecha + hora. La notificación 1 hora
 // antes es automática y obligatoria, no hay nada que configurar acá.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,8 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useAgendaDetalle, useCrearRecordatorio, useEditarRecordatorio } from '@/hooks/useAgenda';
 import { DIAS_LETRA_LUNES_PRIMERO, formatearFechaLegible, generarGrillaMes, nombreMes, toISODate } from '@/utils/agendaDateUtils';
+
+const TITULO_MAX_LENGTH = 50;
 
 const HORAS_RAPIDAS = [
   { label: 'Mañana', hh: '09', mm: '00' },
@@ -92,7 +94,11 @@ export default function NuevoRecordatorioScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+    >
       <AppHeader
         titulo={modoEdicion ? 'Editar recordatorio' : 'Nuevo recordatorio'}
         mostrarVolver
@@ -106,11 +112,12 @@ export default function NuevoRecordatorioScreen() {
         <TextInput
           style={styles.tituloInput}
           value={titulo}
-          onChangeText={setTitulo}
+          onChangeText={(t) => setTitulo(t.slice(0, TITULO_MAX_LENGTH))}
           placeholder="¿Qué necesitás recordar?"
           placeholderTextColor={Colors.text.hint}
-          maxLength={120}
+          maxLength={TITULO_MAX_LENGTH}
         />
+        <Text style={styles.contadorTexto}>{titulo.length}/{TITULO_MAX_LENGTH}</Text>
 
         {/* Fecha */}
         <Text style={styles.campoLabel}>Fecha</Text>
@@ -203,7 +210,7 @@ export default function NuevoRecordatorioScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -231,6 +238,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     color: Colors.text.primary,
     minHeight: Spacing.touch.comfortable,
+  },
+  contadorTexto: {
+    alignSelf: 'flex-end',
+    fontSize: Typography.size.sm,
+    color: Colors.text.hint,
+    marginTop: 4,
   },
 
   fechaBtn: {

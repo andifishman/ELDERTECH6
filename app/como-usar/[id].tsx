@@ -1,10 +1,11 @@
 // "¿Cómo usar?" — pantalla de detalle de una sección: explicación completa,
 // paso a paso, con letra grande. Se llega acá al tocar un botón de la grilla
-// de /como-usar. Si la sección tiene subsecciones (solo "Más"), se muestran
-// todas seguidas, cada una con su propio título y sus propios pasos.
+// de /como-usar. Si la sección tiene subsecciones (ej: "Más" o "Juegos"), en
+// vez de mostrar el contenido de todas se muestra una grilla de cuadrados
+// para elegir cuál ver — igual que la grilla principal de /como-usar.
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/common/AppHeader';
 import { Colors } from '@/constants/Colors';
@@ -12,16 +13,15 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { buscarSeccion, textoCompletoSeccion, type SeccionGuia } from '@/constants/comoUsarContenido';
 
-/** Bloque de contenido de una sección: intro, pasos numerados y tip — se reutiliza
- * tanto para la sección principal como para cada subsección de "Más". */
-function BloqueContenido({ seccion, chico = false }: { seccion: SeccionGuia; chico?: boolean }) {
+/** Bloque de contenido de una sección: intro, pasos numerados y tip */
+function BloqueContenido({ seccion }: { seccion: SeccionGuia }) {
   return (
     <View>
       <View style={styles.bloqueTituloFila}>
-        <View style={[styles.emojiCirculo, chico && styles.emojiCirculoChico, { backgroundColor: seccion.color }]}>
-          <Text style={chico ? styles.emojiChico : styles.emoji}>{seccion.emoji}</Text>
+        <View style={[styles.emojiCirculo, { backgroundColor: seccion.color }]}>
+          <Text style={styles.emoji}>{seccion.emoji}</Text>
         </View>
-        <Text style={chico ? styles.bloqueTituloChico : styles.bloqueTitulo}>{seccion.titulo}</Text>
+        <Text style={styles.bloqueTitulo}>{seccion.titulo}</Text>
       </View>
 
       <Text style={styles.intro}>{seccion.intro}</Text>
@@ -47,6 +47,7 @@ function BloqueContenido({ seccion, chico = false }: { seccion: SeccionGuia; chi
 
 export default function ComoUsarDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const seccion = buscarSeccion(id);
 
@@ -77,11 +78,28 @@ export default function ComoUsarDetalleScreen() {
         <BloqueContenido seccion={seccion} />
 
         {seccion.subsecciones && (
-          <View style={styles.subLista}>
+          <View style={styles.grid}>
             {seccion.subsecciones.map((sub) => (
-              <View key={sub.id} style={[styles.subBloque, { borderLeftColor: sub.color }]}>
-                <BloqueContenido seccion={sub} chico />
-              </View>
+              <TouchableOpacity
+                key={sub.id}
+                style={[styles.item, { backgroundColor: sub.color }]}
+                onPress={() => router.push({ pathname: '/como-usar/[id]', params: { id: sub.id } } as any)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={`${sub.titulo}. Tocá para ver cómo se usa`}
+              >
+                <Text style={styles.itemEmoji}>{sub.emoji}</Text>
+                {/* Alto fijo + centrado propio: en Android, Text con adjustsFontSizeToFit
+                    a veces reserva el alto de las 2 líneas permitidas aunque el texto entre
+                    en una sola, y lo dibuja pegado arriba de esa caja — visualmente el texto
+                    queda "bajo" respecto del emoji. Centrarlo en un wrapper de alto fijo evita
+                    depender de cómo cada plataforma alinee el texto dentro de su propia caja. */}
+                <View style={styles.itemTextoWrap}>
+                  <Text style={styles.itemTexto} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+                    {sub.tituloBoton ?? sub.titulo}
+                  </Text>
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -108,18 +126,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  emojiCirculoChico: { width: 44, height: 44, borderRadius: 22 },
   emoji: { fontSize: 26 },
-  emojiChico: { fontSize: 22 },
   bloqueTitulo: {
     flex: 1,
     fontSize: Typography.size.xl,
-    fontWeight: Typography.weight.bold,
-    color: Colors.text.primary,
-  },
-  bloqueTituloChico: {
-    flex: 1,
-    fontSize: Typography.size.lg,
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
   },
@@ -177,17 +187,41 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.medium,
   },
 
-  subLista: { gap: Spacing.lg, marginTop: Spacing.sm },
-  subBloque: {
-    backgroundColor: Colors.ui.surface,
+  // Grilla de cuadrados para las subsecciones (ej: Clima/Radio/Juegos/Sugerencias
+  // dentro de "Más", o cada juego dentro de "Juegos") — usa flexWrap en vez del
+  // reparto fijo en 4 filas de la grilla principal, porque acá la cantidad de
+  // ítems varía según la sección (4, 7, etc).
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+  },
+  item: {
+    width: '47%',
+    aspectRatio: 1, // antes 1.3 — ~30% más alto a pedido del usuario
     borderRadius: Spacing.radius.lg,
-    borderLeftWidth: 6,
-    padding: Spacing.lg,
-    elevation: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
     shadowRadius: 3,
+  },
+  itemEmoji: { fontSize: 32 },
+  itemTextoWrap: {
+    minHeight: 44, // 2 líneas de itemTexto (lineHeight 22) — reserva alto fijo, ver comentario arriba
+    justifyContent: 'center',
+  },
+  itemTexto: {
+    fontSize: Typography.size.md,
+    lineHeight: 22,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+    textAlign: 'center',
   },
 
   noEncontrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xxxl },

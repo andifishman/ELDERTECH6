@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,13 +21,12 @@ import {
   useAgendaMes,
   useAgendaProximos,
   useAgendaSemana,
-  useCambiarEstadoRecordatorio,
+  useEliminarRecordatorio,
 } from '@/hooks/useAgenda';
 import type { EstadoRecordatorio, Recordatorio } from '@/services/agendaService';
 import { esMismodia } from '@/utils/dateUtils';
 import {
   addDias,
-  DIAS_COMPLETO_LUNES_PRIMERO,
   DIAS_LETRA_LUNES_PRIMERO as DIAS_LETRA,
   diasDeLaSemana,
   formatearFechaCompleta,
@@ -114,7 +114,7 @@ export default function AgendaScreen() {
   const { data: eventosSemana = [], isLoading: cargandoSemana } = useAgendaSemana(fechaRefISO);
   const { data: eventosHoy = [], isLoading: cargandoHoy } = useAgendaHoy();
   const { data: proximos = [], isLoading: cargandoProximos } = useAgendaProximos(30);
-  const cambiarEstado = useCambiarEstadoRecordatorio();
+  const eliminarRecordatorio = useEliminarRecordatorio();
 
   const eventosPorDia = useMemo(() => agruparPorFecha(eventosMes), [eventosMes]);
   const eventosSemanaPorDia = useMemo(() => agruparPorFecha(eventosSemana), [eventosSemana]);
@@ -125,8 +125,30 @@ export default function AgendaScreen() {
     setMesRef((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   }
 
-  function marcarRealizado(id: string) {
-    cambiarEstado.mutate({ id, estado: 'realizado' });
+  function irAEditar(id: string) {
+    router.push(`/agenda/nuevo?editId=${id}` as never);
+  }
+
+  function pedirEliminar(r: Recordatorio) {
+    Alert.alert(
+      'Eliminar recordatorio',
+      `¿Seguro que querés eliminar "${r.titulo}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await eliminarRecordatorio.mutateAsync(r.id);
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'No se pudo eliminar el recordatorio.';
+              Alert.alert('Error', msg);
+            }
+          },
+        },
+      ],
+    );
   }
 
   return (
@@ -239,7 +261,8 @@ export default function AgendaScreen() {
                     eventos={eventosDelDiaSeleccionado}
                     expandido={verTodosDiaMes}
                     onVerTodos={() => setVerTodosDiaMes(true)}
-                    onMarcarRealizado={marcarRealizado}
+                    onEditar={irAEditar}
+                    onEliminar={pedirEliminar}
                   />
                 )}
               </>
@@ -268,7 +291,7 @@ export default function AgendaScreen() {
                       <View key={fecha} style={styles.diaSemanaSeccion}>
                         <View style={styles.diaSemanaHeader}>
                           <Text style={[styles.diaSemanaHeaderTexto, esHoy && { color: Colors.agenda.accentDark }]}>
-                            {DIAS_COMPLETO_LUNES_PRIMERO[d.getDay() === 0 ? 6 : d.getDay() - 1]} {d.getDate()} {esHoy ? '· Hoy' : ''}
+                            {formatearFechaCompleta(fecha)} {esHoy ? '· Hoy' : ''}
                           </Text>
                         </View>
                         {eventosDia.length === 0 ? (
@@ -278,7 +301,8 @@ export default function AgendaScreen() {
                             eventos={eventosDia}
                             expandido={diasExpandidosSemana.has(fecha)}
                             onVerTodos={() => setDiasExpandidosSemana((prev) => new Set(prev).add(fecha))}
-                            onMarcarRealizado={marcarRealizado}
+                            onEditar={irAEditar}
+                            onEliminar={pedirEliminar}
                             compacta
                           />
                         )}
@@ -301,7 +325,8 @@ export default function AgendaScreen() {
                     eventos={eventosHoy}
                     expandido={verTodosHoy}
                     onVerTodos={() => setVerTodosHoy(true)}
-                    onMarcarRealizado={marcarRealizado}
+                    onEditar={irAEditar}
+                    onEliminar={pedirEliminar}
                   />
                 )}
               </>
@@ -318,7 +343,11 @@ export default function AgendaScreen() {
                   proximos.map((r) => (
                     <View key={r.id}>
                       <Text style={styles.proximoFechaLabel}>{labelProximo(r.fecha, hoy)}</Text>
-                      <TarjetaRecordatorio recordatorio={r} onMarcarRealizado={() => marcarRealizado(r.id)} />
+                      <TarjetaRecordatorio
+                        recordatorio={r}
+                        onEditar={() => irAEditar(r.id)}
+                        onEliminar={() => pedirEliminar(r)}
+                      />
                     </View>
                   ))
                 )}
@@ -346,13 +375,15 @@ function ListaRecordatorios({
   eventos,
   expandido,
   onVerTodos,
-  onMarcarRealizado,
+  onEditar,
+  onEliminar,
   compacta,
 }: {
   eventos: Recordatorio[];
   expandido: boolean;
   onVerTodos: () => void;
-  onMarcarRealizado: (id: string) => void;
+  onEditar: (id: string) => void;
+  onEliminar: (r: Recordatorio) => void;
   compacta?: boolean;
 }) {
   // El backend ya devuelve los recordatorios de un día ordenados por hora
@@ -363,7 +394,13 @@ function ListaRecordatorios({
   return (
     <>
       {visibles.map((r) => (
-        <TarjetaRecordatorio key={r.id} recordatorio={r} onMarcarRealizado={() => onMarcarRealizado(r.id)} compacta={compacta} />
+        <TarjetaRecordatorio
+          key={r.id}
+          recordatorio={r}
+          onEditar={() => onEditar(r.id)}
+          onEliminar={() => onEliminar(r)}
+          compacta={compacta}
+        />
       ))}
       {ocultos > 0 && (
         <TouchableOpacity
@@ -383,46 +420,61 @@ function ListaRecordatorios({
 
 function TarjetaRecordatorio({
   recordatorio,
-  onMarcarRealizado,
+  onEditar,
+  onEliminar,
   compacta,
 }: {
   recordatorio: Recordatorio;
-  onMarcarRealizado: () => void;
+  onEditar: () => void;
+  onEliminar: () => void;
   compacta?: boolean;
 }) {
   const estadoInfo = ESTADO_COLOR[recordatorio.estado];
 
   return (
-    <TouchableOpacity
-      style={[styles.tarjeta, compacta && styles.tarjetaCompacta]}
-      onPress={() => router.push(`/agenda/${recordatorio.id}` as never)}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-      accessibilityLabel={`${recordatorio.titulo}, ${recordatorio.hora.slice(0, 5)}`}
-    >
-      <View style={[styles.tarjetaBarra, { backgroundColor: Colors.agenda.accent }]} />
-      <View style={styles.tarjetaIconoWrap}>
-        <Ionicons name="alarm-outline" size={22} color={Colors.agenda.accentDark} />
-      </View>
-      <View style={styles.tarjetaInfo}>
-        <Text style={styles.tarjetaTitulo} numberOfLines={1}>{recordatorio.titulo}</Text>
-        <Text style={styles.tarjetaSubtexto}>{recordatorio.hora.slice(0, 5)}</Text>
-        <View style={[styles.estadoBadge, { backgroundColor: estadoInfo.bg }]}>
-          <Text style={[styles.estadoBadgeTexto, { color: estadoInfo.color }]}>{ESTADO_LABEL[recordatorio.estado]}</Text>
+    <View style={styles.tarjeta}>
+      <View style={[styles.tarjetaTopRow, compacta && styles.tarjetaTopRowCompacta]}>
+        <View style={[styles.tarjetaBarra, { backgroundColor: Colors.agenda.accent }]} />
+        <View style={styles.tarjetaIconoWrap}>
+          <Ionicons name="alarm-outline" size={22} color={Colors.agenda.accentDark} />
+        </View>
+        <View style={styles.tarjetaInfo}>
+          <Text style={styles.tarjetaTitulo} numberOfLines={1}>{recordatorio.titulo}</Text>
+          <Text style={styles.tarjetaSubtexto}>{recordatorio.hora.slice(0, 5)}</Text>
+          <View style={[styles.estadoBadge, { backgroundColor: estadoInfo.bg }]}>
+            <Text style={[styles.estadoBadgeTexto, { color: estadoInfo.color }]}>{ESTADO_LABEL[recordatorio.estado]}</Text>
+          </View>
         </View>
       </View>
-      {recordatorio.estado === 'pendiente' && (
+
+      {/* 2 botones: eliminar y editar — reemplazan el toque sobre toda la
+          tarjeta, que antes llevaba a una pantalla aparte. Sin botón de
+          "Finalizar": los recordatorios pasan a "vencido" solos cuando llega
+          su fecha y hora (cron de backend), sin necesidad de acción manual. */}
+      <View style={styles.tarjetaAccionesRow}>
         <TouchableOpacity
-          style={styles.marcarBtn}
-          onPress={onMarcarRealizado}
+          style={styles.accionBtn}
+          onPress={onEliminar}
           accessibilityRole="button"
-          accessibilityLabel="Marcar como realizado"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={`Eliminar recordatorio: ${recordatorio.titulo}`}
         >
-          <Ionicons name="checkmark-circle-outline" size={30} color={Colors.brand.greenDark} />
+          <Ionicons name="trash" size={24} color={Colors.brand.red} />
+          <Text style={[styles.accionBtnTexto, { color: Colors.brand.red }]}>Eliminar</Text>
         </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+
+        <View style={styles.accionDivisor} />
+
+        <TouchableOpacity
+          style={styles.accionBtn}
+          onPress={onEditar}
+          accessibilityRole="button"
+          accessibilityLabel={`Editar recordatorio: ${recordatorio.titulo}`}
+        >
+          <Ionicons name="pencil" size={24} color={Colors.agenda.accentDark} />
+          <Text style={[styles.accionBtnTexto, { color: Colors.agenda.accentDark }]}>Editar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -541,19 +593,17 @@ const styles = StyleSheet.create({
   },
 
   tarjeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: Colors.ui.surface,
     borderRadius: Spacing.radius.lg,
     overflow: 'hidden',
-    minHeight: Spacing.touch.large,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
   },
-  tarjetaCompacta: { minHeight: Spacing.touch.comfortable },
+  tarjetaTopRow: { flexDirection: 'row', alignItems: 'center', minHeight: Spacing.touch.large },
+  tarjetaTopRowCompacta: { minHeight: Spacing.touch.comfortable },
   tarjetaBarra: { width: 6, alignSelf: 'stretch' },
   tarjetaIconoWrap: {
     width: 48,
@@ -570,7 +620,25 @@ const styles = StyleSheet.create({
   tarjetaSubtexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.hint },
   estadoBadge: { alignSelf: 'flex-start', paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Spacing.radius.full },
   estadoBadgeTexto: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold },
-  marcarBtn: { paddingHorizontal: Spacing.md },
+
+  // Fila de 2 botones (eliminar / editar) — grandes y con etiqueta de texto
+  // además del ícono, para que sea fácil de entender para personas muy
+  // mayores sin tener que adivinar qué hace cada ícono.
+  tarjetaAccionesRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: Colors.ui.border,
+  },
+  accionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: Spacing.md,
+    minHeight: Spacing.touch.comfortable,
+  },
+  accionBtnTexto: { fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
+  accionDivisor: { width: 1, backgroundColor: Colors.ui.border, marginVertical: Spacing.sm },
 
   verTodosBtn: {
     minHeight: Spacing.touch.comfortable,
