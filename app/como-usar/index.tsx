@@ -96,10 +96,14 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   itemEmoji: { fontSize: 32 },
+  // translateY sube solo el texto un poco, sin mover el emoji (que queda
+  // centrado por el `gap` del contenedor) — así el texto queda a la misma
+  // distancia del emoji arriba que del borde inferior del cuadrado.
   itemTexto: {
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
     color: Colors.text.onDark,
     textAlign: 'center',
+    transform: [{ translateY: -6 }],
   },
 });
