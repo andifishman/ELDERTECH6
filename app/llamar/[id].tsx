@@ -274,16 +274,6 @@ export default function ContactoDetalleScreen() {
             Este contacto no tiene WhatsApp configurado.
           </Text>
         )}
-
-        {/* Info sobre retorno a la app */}
-        <View style={styles.infoRetorno}>
-          <Ionicons name="information-circle-outline" size={20} color={Colors.text.secondary} />
-          <Text style={styles.infoRetornoTexto}>
-            {Platform.OS === 'android'
-              ? 'Al terminar la llamada, la app se abrirá automáticamente.'
-              : 'Al terminar la llamada, volvé a ElderTech tocando el ícono de la app.'}
-          </Text>
-        </View>
       </ScrollView>
 
       {/* Modal para elegir foto del contacto */}
@@ -545,21 +535,5 @@ const styles = StyleSheet.create({
     color: Colors.text.hint,
     textAlign: 'center',
     marginBottom: Spacing.xl,
-  },
-  // Info sobre retorno
-  infoRetorno: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.04)',
-    borderRadius: Spacing.radius.md,
-    padding: Spacing.md,
-    marginTop: Spacing.md,
-  },
-  infoRetornoTexto: {
-    flex: 1,
-    fontSize: Typography.size.sm,
-    color: Colors.text.secondary,
-    lineHeight: 20,
   },
 });
