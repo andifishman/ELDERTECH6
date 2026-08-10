@@ -181,17 +181,109 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
         emoji: '🎲',
         titulo: 'Juegos',
         color: '#6A1B9A',
-        intro: 'Siete juegos simples para entretenerte y ejercitar la memoria.',
+        intro: 'Siete juegos simples para entretenerte y ejercitar la memoria. Tocá el juego que querés aprender a jugar.',
         pasos: [
-          'Ahorcado: adiviná la palabra tocando letra por letra.',
-          'Memotest: tocá las cartas de a dos para encontrar los pares iguales.',
-          'Simon: mirá la secuencia de colores que se enciende y repetila tocando en el mismo orden.',
-          'Conexiones: agrupá las palabras que van juntas según su categoría.',
-          'Laberinto: encontrá el camino desde la entrada hasta la salida.',
-          'Sopa de Letras: encontrá las palabras escondidas entre las letras.',
-          'Une los Puntos: conectá los puntos del mismo color, en orden.',
+          'Desde "Más", tocá "Ver más" en la tarjeta de Juegos.',
+          'Vas a ver los siete juegos disponibles: tocá cualquiera para empezar a jugar.',
         ],
-        tip: 'Podés salir de cualquier juego en el momento que quieras, tocando la flecha "←" de arriba.',
+        tip: 'Adentro de cada juego hay un botón "❓ ¿Cómo se juega?" para volver a leer las reglas cuando quieras.',
+        subsecciones: [
+          {
+            id: 'ahorcado',
+            emoji: '🪢',
+            titulo: 'Ahorcado',
+            color: '#1B5E3B',
+            intro: 'Adiviná una palabra secreta letra por letra antes de quedarte sin intentos.',
+            pasos: [
+              'Hay una palabra secreta escondida, mostrada como guiones.',
+              'Tocá las letras del teclado de abajo para ir adivinándola de a una.',
+              'Si la letra está en la palabra, aparece en su lugar. Si no, se dibuja una parte del ahorcado.',
+              'Tenés 6 errores antes de perder.',
+            ],
+            tip: 'Tocá "🔄 Nuevo juego" para jugar con otra palabra.',
+          },
+          {
+            id: 'memotest',
+            emoji: '🃏',
+            titulo: 'Memotest',
+            color: '#1565C0',
+            intro: 'Encontrá los pares de cartas iguales dando vuelta de a dos.',
+            pasos: [
+              'Hay cartas boca abajo con emojis escondidos.',
+              'Tocá dos cartas para darlas vuelta.',
+              'Si son iguales, quedan descubiertas. Si no, se vuelven a tapar.',
+              'Encontrá todos los pares con la menor cantidad de jugadas posible.',
+            ],
+            tip: 'Podés elegir la dificultad con las flechas de arriba: de "Muy fácil" a "Muy difícil".',
+          },
+          {
+            id: 'simon',
+            emoji: '🎮',
+            titulo: 'Simon',
+            color: '#6A1B9A',
+            intro: 'Repetí la secuencia de colores que se enciende: cada ronda es un poco más larga.',
+            pasos: [
+              'Tocá "🎮 Empezar" para que la aplicación te muestre una secuencia de colores que se iluminan uno por uno.',
+              'Cuando termine, te toca a vos: repetí la secuencia tocando los botones en el mismo orden.',
+              'Si acertás toda la secuencia, empieza una ronda nueva con un color más.',
+              'Si te equivocás, se termina el juego y te muestra hasta qué ronda llegaste.',
+            ],
+          },
+          {
+            id: 'conexiones',
+            emoji: '🔗',
+            titulo: 'Conexiones',
+            color: '#E65100',
+            intro: 'Agrupá 15 palabras en 5 grupos secretos de 3 palabras cada uno, según su categoría.',
+            pasos: [
+              'Tocá 3 palabras que creas que van juntas (por ejemplo, todas frutas).',
+              'Tocá "Confirmar selección" para comprobar si acertaste.',
+              'Si acertás, el grupo se revela con su categoría. Si te equivocás, perdés un intento.',
+              'Tenés 3 intentos antes de perder.',
+            ],
+            tip: 'Si te trabaste, tocá "💡 Pista" para que te digan una de las categorías.',
+          },
+          {
+            id: 'laberinto',
+            emoji: '🌀',
+            titulo: 'Laberinto',
+            color: '#00796B',
+            intro: 'Encontrá el camino desde la entrada hasta la salida del laberinto.',
+            pasos: [
+              'Empezás en la esquina superior izquierda (⭐) y tenés que llegar a la puerta (🚪) en la esquina inferior derecha.',
+              'Arrastrá el dedo sobre el laberinto y el personaje te sigue, o usá las flechas de abajo para moverte de a un paso.',
+              'Podés cambiar la dificultad (Fácil, Normal, Difícil) tocando los botones de arriba cuando quieras.',
+            ],
+          },
+          {
+            id: 'sopa',
+            emoji: '🔤',
+            titulo: 'Sopa de Letras',
+            color: '#F57F17',
+            intro: 'Encontrá las palabras escondidas entre las letras de la grilla.',
+            pasos: [
+              'Hay palabras escondidas en la grilla de letras, sobre un tema (por ejemplo, Animales o Colores).',
+              'Arrastrá el dedo sobre las letras, o tocá cada letra por separado, en el orden que quieras.',
+              'Cuando seleccionás todas las letras correctas de una palabra, se marca sola automáticamente.',
+              'Las palabras que tenés que encontrar aparecen en una lista debajo de la grilla.',
+            ],
+            tip: 'Si no encontrás una palabra, tocá "💡 Pedir pista".',
+          },
+          {
+            id: 'puntos',
+            emoji: '🔵',
+            titulo: 'Une los Puntos',
+            color: '#AD1457',
+            intro: 'Conectá los puntos del mismo color sin que los caminos se crucen.',
+            pasos: [
+              'Tocá un punto de color y arrastrá el dedo hasta el otro punto del mismo color, para dibujar el camino entre ellos.',
+              'Los caminos de distinto color no se pueden cruzar.',
+              'Para ganar tenés que cubrir todos los casilleros de la grilla, no alcanza con solo unir los puntos.',
+              'Si te equivocás, tocá el punto de nuevo para redibujar ese camino desde ahí.',
+            ],
+            tip: 'Podés cambiar la dificultad (Fácil, Medio, Difícil) tocando los botones de arriba.',
+          },
+        ],
       },
       {
         id: 'sugerencias',
@@ -213,22 +305,22 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
 /** Las 8 secciones de la grilla, en orden — "La pantalla principal" primero, después el resto */
 export const TODAS_LAS_SECCIONES: SeccionGuia[] = [INTRO_GENERAL, ...SECCIONES_GUIA];
 
-/** Busca una sección o subsección por id — usado por la pantalla de detalle */
-export function buscarSeccion(id: string | undefined): SeccionGuia | undefined {
+/** Busca una sección, subsección o sub-subsección por id (ej: Más → Juegos → Ahorcado) — usado por la pantalla de detalle */
+export function buscarSeccion(id: string | undefined, lista: SeccionGuia[] = TODAS_LAS_SECCIONES): SeccionGuia | undefined {
   if (!id) return undefined;
-  for (const seccion of TODAS_LAS_SECCIONES) {
+  for (const seccion of lista) {
     if (seccion.id === id) return seccion;
-    const sub = seccion.subsecciones?.find((s) => s.id === id);
-    if (sub) return sub;
+    if (seccion.subsecciones) {
+      const encontrada = buscarSeccion(id, seccion.subsecciones);
+      if (encontrada) return encontrada;
+    }
   }
   return undefined;
 }
 
-/** Arma el texto completo de una sección (y sus subsecciones, si tiene) para el botón "Escuchar" del header */
+/** Arma el texto de una sección para el botón "Escuchar" del header — solo su propio contenido:
+ * si tiene subsecciones, cada una tiene su propia pantalla con su propio botón "Escuchar". */
 export function textoCompletoSeccion(seccion: SeccionGuia): string {
   const pasos = seccion.pasos.map((p, i) => `Paso ${i + 1}: ${p}`).join(' ');
-  const propio = [seccion.intro, pasos, seccion.tip ?? ''].filter(Boolean).join(' ');
-  if (!seccion.subsecciones) return propio;
-  const subs = seccion.subsecciones.map((s) => `${s.titulo}. ${textoCompletoSeccion(s)}`).join(' ');
-  return [propio, subs].filter(Boolean).join(' ');
+  return [seccion.intro, pasos, seccion.tip ?? ''].filter(Boolean).join(' ');
 }
