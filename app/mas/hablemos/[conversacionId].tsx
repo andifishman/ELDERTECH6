@@ -393,10 +393,7 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
         {mensaje.tipo === 'texto' ? (
           <>
             <Text style={styles.burbujaTexto}>{mensaje.contenido}</Text>
-            <View style={styles.burbujaMeta}>
-              <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
-              {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
-            </View>
+            <HoraEstado mensaje={mensaje} esPropio={esPropio} />
           </>
         ) : (
           <View style={styles.audioMensajeContainer}>
@@ -419,14 +416,39 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
                 {reproduciendo ? 'Pausar' : 'Escuchar'}
               </Text>
             </TouchableOpacity>
-            <View style={styles.burbujaMeta}>
-              <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
-              {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
-            </View>
+            <HoraEstado mensaje={mensaje} esPropio={esPropio} />
           </View>
         )}
       </View>
       </View>
+    </View>
+  );
+}
+
+/**
+ * Hora (y estado, si es propio) de un mensaje — separado en su propio componente
+ * porque el recorte del último carácter ("09:15" se veía "09:1") sobrevivió a
+ * cuatro arreglos distintos de layout (numberOfLines, minWidth, padding, hasta
+ * superponerlo con position:absolute). Ninguno tocaba la causa real: en
+ * dispositivos con el tamaño de letra del sistema ("Texto grande",
+ * accesibilidad) puesto alto, Android dibuja este texto más ancho de lo que
+ * React Native midió al calcular el layout. Acá se ataca eso puntualmente:
+ * `maxFontSizeMultiplier` evita que esta hora en particular escale tanto como
+ * el resto de la accesibilidad de la app (no hace falta que un reloj crezca
+ * igual que el cuerpo del mensaje), y un espacio de sobra al final absorbe
+ * cualquier diferencia de medición que quede igual.
+ */
+function HoraEstado({ mensaje, esPropio }: { mensaje: MensajeHablemos; esPropio: boolean }) {
+  return (
+    <View style={styles.burbujaMeta}>
+      <Text style={styles.burbujaHora} maxFontSizeMultiplier={1.3}>
+        {formatHoraDeISO(mensaje.created_at) + '  '}
+      </Text>
+      {esPropio && (
+        <Text style={styles.burbujaEstado} maxFontSizeMultiplier={1.3}>
+          {ESTADO_TEXTO[mensaje.estado] + '  '}
+        </Text>
+      )}
     </View>
   );
 }
