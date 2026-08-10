@@ -391,22 +391,9 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
       )}
       <View style={[styles.burbuja, esPropio ? styles.burbujaPropia : styles.burbujaAjena]}>
         {mensaje.tipo === 'texto' ? (
-          // La hora/estado NO va al lado del texto como hermano de flex: en Android,
-          // dos Text cortos compitiendo por el ancho de una burbuja que se ajusta a su
-          // contenido terminaban midiéndose mal y el mensaje se recortaba un carácter
-          // ("hola" se veía "hol") — pasó tres veces con distintos parches de padding/
-          // minWidth porque el problema de fondo era ESE cálculo compartido, no el
-          // tamaño de cada Text por separado. Acá la hora/estado real va superpuesta
-          // (position: absolute) en la esquina, y el mensaje reserva su lugar con un
-          // espaciador invisible en la misma línea de texto — como hace WhatsApp.
           <>
-            <Text style={styles.burbujaTexto}>
-              {mensaje.contenido}
-              <Text style={styles.metaFantasma}>
-                {'  ' + formatHoraDeISO(mensaje.created_at) + (esPropio ? '  ' + ESTADO_TEXTO[mensaje.estado] : '')}
-              </Text>
-            </Text>
-            <View style={styles.burbujaMetaAbsoluta}>
+            <Text style={styles.burbujaTexto}>{mensaje.contenido}</Text>
+            <View style={styles.burbujaMeta}>
               <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
               {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
             </View>
@@ -508,7 +495,12 @@ const styles = StyleSheet.create({
   nombreRemitentePropio: { color: Colors.hablemos.accentDark },
   nombreRemitenteAjeno: { color: Colors.hablemos.accent },
   burbuja: {
-    position: 'relative',
+    // Los mensajes de audio (minWidth: 220) nunca tuvieron el bug de recorte de
+    // la hora — las burbujas de texto de una sola palabra sí, porque se ajustan
+    // muy angostas a su contenido y ahí Android mide mal el texto de al lado.
+    // Un mínimo razonable le da a la hora/estado el mismo margen que ya
+    // funcionaba para audio, sin necesidad de trucos de texto invisible.
+    minWidth: 90,
     borderRadius: Spacing.radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -521,17 +513,8 @@ const styles = StyleSheet.create({
   },
   burbujaPropia: { backgroundColor: Colors.hablemos.burbujaPropia, borderBottomRightRadius: Spacing.radius.sm },
   burbujaAjena: { backgroundColor: Colors.hablemos.burbujaAjena, borderBottomLeftRadius: Spacing.radius.sm },
-  // ~35% más grande que el body normal (18 → 24) para mejor lectura.
-  burbujaTexto: { fontSize: 24, color: Colors.text.primary, lineHeight: 32 },
-  // Invisible — solo reserva lugar al final del texto para que el renglón no
-  // termine justo debajo de donde va a quedar superpuesta la hora/estado real.
-  metaFantasma: { fontSize: Typography.size.xs, opacity: 0 },
-  // Hora/estado real de los mensajes de texto: superpuesta en la esquina de la
-  // burbuja en vez de ser hermana de flex del texto (ver comentario más arriba
-  // en el uso de este componente).
-  burbujaMetaAbsoluta: { position: 'absolute', right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
-  // Usado solo para mensajes de audio, donde nunca hubo problema de recorte —
-  // ahí la hora/estado sigue en flujo normal, debajo del botón de escuchar.
+  // 28px — más grande todavía que el cuerpo normal (18) para mejor lectura.
+  burbujaTexto: { fontSize: 28, color: Colors.text.primary, lineHeight: 36 },
   burbujaMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: Spacing.xs, marginTop: 2 },
   burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint },
   burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic' },
