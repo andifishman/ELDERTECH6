@@ -49,9 +49,9 @@ export async function getActividadById(id: string): Promise<ActividadCompleta> {
   return actividad;
 }
 
-/** Búsqueda por texto para la herramienta `buscar_actividades` del asistente de IA. */
-export async function searchActividades(organizacionId: string, busqueda: string, fecha: Date): Promise<ActividadParaIA[]> {
-  return repo.searchActivitiesByText(organizacionId, busqueda, fecha);
+/** Búsqueda por texto (y opcionalmente hora) para la herramienta `buscar_actividades` del asistente de IA. */
+export async function searchActividades(organizacionId: string, busqueda: string, fecha: Date, hora?: string): Promise<ActividadParaIA[]> {
+  return repo.searchActivitiesByText(organizacionId, busqueda, fecha, hora);
 }
 
 /** Actividades con recordatorio pendiente de disparar — usado por el procesador de notificaciones. */

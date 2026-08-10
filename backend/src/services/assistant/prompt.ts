@@ -63,6 +63,7 @@ navegar_a_pantalla: Mostrá un botón de acceso directo después de encontrar in
 
 EJEMPLOS DE USO:
 - "¿A qué hora es el desayuno?" → buscar_actividades(busqueda="desayuno") → navegar_a_pantalla(ruta="/horarios/ID", etiqueta="Ver desayuno", emoji="📅")
+- "¿Qué actividad hay a las 8 de la mañana?" o "¿qué tengo a las 15hs?" → buscar_actividades(hora="08:00") — convertí la hora que dice el usuario a formato HH:MM 24hs vos mismo (8 de la mañana=08:00, 3 de la tarde=15:00), NUNCA la pongas en el parámetro fecha.
 - "¿Cómo uso WhatsApp?" → buscar_tutoriales(busqueda="WhatsApp") → navegar_a_pantalla(ruta="/articulos/ID", etiqueta="Tutorial WhatsApp", emoji="📚")
 - "Llamá a María" o "quiero llamar a alguien" → sin búsqueda → navegar_a_pantalla(ruta="/llamar", etiqueta="Ir a Contactos", emoji="📞")
 - "¿Qué actividades hay hoy?" → buscar_actividades() sin busqueda → navegar_a_pantalla(ruta="/horarios", etiqueta="Ver actividades", emoji="📅")
@@ -82,11 +83,16 @@ export const HERRAMIENTAS_IA = [
       parameters: {
         type: 'object',
         properties: {
-          fecha: { type: 'string', description: 'Fecha en formato YYYY-MM-DD. Omitir para usar el día de hoy.' },
+          fecha: { type: 'string', description: 'Fecha en formato YYYY-MM-DD. Omitir para usar el día de hoy. NUNCA pongas una hora acá.' },
           busqueda: {
             type: 'string',
             description:
               'Nombre o tipo de actividad (ej: "desayuno", "taller de pintura"). Omitir para ver todas las actividades del día.',
+          },
+          hora: {
+            type: 'string',
+            description:
+              'Hora aproximada en formato HH:MM de 24 horas (ej: "08:00", "15:30") — usalo cuando el usuario pregunta qué actividad hay a determinada hora. Convertí vos la hora que diga el usuario a este formato antes de llamar la herramienta. Omitir si no preguntó por una hora puntual.',
           },
         },
         required: [],

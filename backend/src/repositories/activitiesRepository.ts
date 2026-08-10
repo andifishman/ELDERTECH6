@@ -71,12 +71,52 @@ interface ActividadRow {
  * vive en `src/services/actividadesService.ts` (buscarActividadesPorTexto),
  * ahora resuelta server-side contra la service-role key.
  */
+/** Minutos desde medianoche de un string 'HH:MM' o 'HH:MM:SS' — null si no matchea ese formato. */
+function minutosDesdeMedianoche(hora: string | null | undefined): number | null {
+  if (!hora) return null;
+  const match = /^(\d{1,2}):(\d{2})/.exec(hora.trim());
+  if (!match) return null;
+  const horas = Number(match[1]);
+  const minutos = Number(match[2]);
+  if (Number.isNaN(horas) || Number.isNaN(minutos)) return null;
+  return horas * 60 + minutos;
+}
+
+/**
+ * Filtra por hora aproximada: primero busca actividades cuyo rango
+ * [hora_inicio, hora_fin] contenga esa hora (o, sin hora_fin, que empiecen
+ * dentro de una ventana de 30 min); si ninguna matchea así, en vez de
+ * devolver vacío se queda con la más cercana en el tiempo — para que el
+ * asistente pueda decir "la más cercana a esa hora es X" en vez de
+ * "no se encontró nada" ante una hora que no coincide justo con ninguna.
+ */
+function filtrarPorHora(filas: ActividadRow[], horaConsulta: string): ActividadRow[] {
+  const minConsulta = minutosDesdeMedianoche(horaConsulta);
+  if (minConsulta === null) return filas;
+
+  const conMinutos = filas
+    .map((a) => ({ fila: a, inicio: minutosDesdeMedianoche(a.hora_inicio), fin: minutosDesdeMedianoche(a.hora_fin) }))
+    .filter((x): x is { fila: ActividadRow; inicio: number; fin: number | null } => x.inicio !== null);
+
+  const dentroDeRango = conMinutos.filter(({ inicio, fin }) =>
+    fin !== null ? minConsulta >= inicio && minConsulta <= fin : Math.abs(minConsulta - inicio) <= 30,
+  );
+  if (dentroDeRango.length > 0) return dentroDeRango.map((x) => x.fila);
+  if (conMinutos.length === 0) return [];
+
+  const masCercana = conMinutos.reduce((mejor, actual) =>
+    Math.abs(actual.inicio - minConsulta) < Math.abs(mejor.inicio - minConsulta) ? actual : mejor,
+  );
+  return [masCercana.fila];
+}
+
 export async function searchActivitiesByText(
   organizacionId: string,
   busqueda: string,
   fecha: Date,
+  hora?: string,
 ): Promise<ActividadParaIA[]> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'searchActivitiesByText', organizacionId, busqueda, fecha });
+  logger.info('repo:call', { repository: 'activitiesRepository', action: 'searchActivitiesByText', organizacionId, busqueda, fecha, hora });
   try {
   const { data, error } = await getSupabaseAdmin()
     .from('actividades')
@@ -90,7 +130,8 @@ export async function searchActivitiesByText(
 
   const filas = (data ?? []) as unknown as ActividadRow[];
   const query = busqueda.trim().toLowerCase();
-  const filtradas = query ? filas.filter((a) => a.nombre.toLowerCase().includes(query)) : filas;
+  const porTexto = query ? filas.filter((a) => a.nombre.toLowerCase().includes(query)) : filas;
+  const filtradas = hora ? filtrarPorHora(porTexto, hora) : porTexto;
 
   return filtradas.map((a) => ({
     id: a.id,

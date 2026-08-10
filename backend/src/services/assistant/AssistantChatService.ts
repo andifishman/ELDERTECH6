@@ -184,11 +184,18 @@ async function ejecutarHerramienta(
       if (!organizacionId) return JSON.stringify({ error: 'No se pudo resolver la organización del residente.' });
       const fechaStr = args.fecha as string | undefined;
       const busqueda = (args.busqueda as string | undefined) ?? '';
-      const fecha = fechaStr ? new Date(fechaStr) : new Date();
-      const actividades = await activitiesService.searchActividades(organizacionId, busqueda, fecha);
+      const horaStr = args.hora as string | undefined;
+      // Antes, una `fecha` mal formada (p. ej. si el modelo, sin parámetro de
+      // hora disponible, intentaba meter una hora como "08:00" acá) producía
+      // un Invalid Date silencioso que terminaba en un `.eq('fecha', 'NaN-NaN-
+      // NaN')` contra Postgres — un error real, no una respuesta rara. Ahora
+      // se ignora una fecha inválida y se usa hoy, en vez de propagar el error.
+      const fechaParseada = fechaStr ? new Date(fechaStr) : new Date();
+      const fecha = Number.isNaN(fechaParseada.getTime()) ? new Date() : fechaParseada;
+      const actividades = await activitiesService.searchActividades(organizacionId, busqueda, fecha, horaStr);
       return actividades.length > 0
         ? JSON.stringify(actividades)
-        : JSON.stringify({ mensaje: 'No se encontraron actividades para esa búsqueda en esa fecha.' });
+        : JSON.stringify({ mensaje: 'No se encontraron actividades para esa búsqueda en esa fecha/hora.' });
     }
 
     if (toolCall.function.name === 'buscar_tutoriales') {
