@@ -92,7 +92,9 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     try {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
-        staysActiveInBackground: true,
+        // false a propósito: la radio tiene que dejar de sonar al salir de la
+        // app (cerrarla o mandarla a background), no seguir de fondo.
+        staysActiveInBackground: false,
         playsInSilentModeIOS: true,
       });
 

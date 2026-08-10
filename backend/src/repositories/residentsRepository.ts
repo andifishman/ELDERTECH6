@@ -54,6 +54,7 @@ export interface Residente {
   organizacion_id: string;
   nombre: string;
   apellido: string;
+  nombre_completo: string | null;
   fecha_nacimiento: string | null;
   nivel_dificultad: string;
   seccion: string | null;
@@ -74,6 +75,7 @@ export interface ResidenteBusquedaResumen {
   id: string;
   nombre: string;
   apellido: string;
+  nombre_completo: string | null;
   foto_url: string | null;
 }
 
@@ -100,7 +102,7 @@ export async function buscarPorNombreConCuenta(
   const [residentesR, perfilesR] = await Promise.allSettled([
     getSupabaseAdmin()
       .from('residentes')
-      .select('id, nombre, apellido')
+      .select('id, nombre, apellido, nombre_completo')
       .eq('organizacion_id', organizacionId)
       .eq('activo', true)
       .neq('id', excluirResidenteId)
@@ -118,7 +120,9 @@ export async function buscarPorNombreConCuenta(
 
   return ((residentesR.value.data ?? []) as Array<Omit<ResidenteBusquedaResumen, 'foto_url'>>)
     .filter((r) => conCuentaIds.has(r.id))
-    .filter((r) => coincideBusqueda(`${r.nombre} ${r.apellido}`, query))
+    // Matchea contra nombre+apellido Y contra nombre_completo (si está cargado),
+    // así buscar por cualquiera de los dos encuentra al residente.
+    .filter((r) => coincideBusqueda(`${r.nombre} ${r.apellido} ${r.nombre_completo ?? ''}`, query))
     .slice(0, 50)
     .map((r) => ({ ...r, foto_url: null }));
 
@@ -129,10 +133,10 @@ export async function buscarPorNombreConCuenta(
 }
 
 /** Nombre completo de un residente — usado por Hablemos para el título de las notificaciones push. */
-export async function obtenerNombreCompleto(id: string): Promise<{ nombre: string; apellido: string } | null> {
+export async function obtenerNombreCompleto(id: string): Promise<{ nombre: string; apellido: string; nombre_completo: string | null } | null> {
   logger.info('repo:call', { repository: 'residentsRepository', action: 'obtenerNombreCompleto', id });
   try {
-  const { data, error } = await getSupabaseAdmin().from('residentes').select('nombre, apellido').eq('id', id).maybeSingle();
+  const { data, error } = await getSupabaseAdmin().from('residentes').select('nombre, apellido, nombre_completo').eq('id', id).maybeSingle();
   if (error) throw new Error(`Error al cargar el residente: ${error.message}`);
   return data ?? null;
 
@@ -170,6 +174,7 @@ export interface ResidenteAdminInput {
   apellido: string;
   seccion?: string | null;
   notas?: string | null;
+  nombre_completo?: string | null;
 }
 
 export async function actualizarResidenteAdmin(id: string, input: ResidenteAdminInput): Promise<void> {

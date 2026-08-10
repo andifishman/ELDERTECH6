@@ -67,6 +67,8 @@ Deno.serve(async (req: Request) => {
     const dni = String(body.dni ?? '').trim();
     const seccion = body.seccion ? String(body.seccion) : null;
     const usernameRaw = String(body.username ?? '').trim();
+    const nombreCompletoRaw = body.nombre_completo ? String(body.nombre_completo).trim() : '';
+    const nombreCompleto = nombreCompletoRaw.length > 0 ? nombreCompletoRaw : null;
 
     if (!nombre || !apellido) return json({ error: 'Nombre y apellido son obligatorios' }, 400);
     if (!dni || dni.length < 4) return json({ error: 'El DNI es obligatorio (mínimo 4 caracteres)' }, 400);
@@ -108,6 +110,7 @@ Deno.serve(async (req: Request) => {
         organizacion_id: org.id,
         nombre,
         apellido,
+        nombre_completo: nombreCompleto,
         dni,
         seccion,
         activo: true,

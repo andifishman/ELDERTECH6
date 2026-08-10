@@ -24,7 +24,12 @@ function getChatManager(): ProviderManager<ChatCompletionInput, ChatCompletionOu
   const providers: IProvider<ChatCompletionInput, ChatCompletionOutput>[] = [
     new GroqModelProvider('llama-3.3-70b-versatile', env.groqApiKey, 1),
     new GroqModelProvider('llama-3.1-8b-instant', env.groqApiKey, 2),
-    new GroqModelProvider('llama3-70b-8192', env.groqApiKey, 3),
+    // llama3-70b-8192 fue decomisionado por Groq (agosto 2025) — cualquier
+    // pedido que llegara hasta el tier 3 fallaba con "model_decommissioned",
+    // sin importar de qué se tratara la pregunta. gpt-oss-120b es de OpenAI
+    // (no Meta/Llama), así que además da diversidad real de modelo, no solo
+    // de tier, ante un problema puntual con la familia Llama.
+    new GroqModelProvider('openai/gpt-oss-120b', env.groqApiKey, 3),
   ];
 
   // Vendor DISTINTO a Groq — si Groq como servicio se cae entero (no solo la

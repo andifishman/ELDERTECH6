@@ -5,6 +5,7 @@ export interface ResidenteResumenHablemos {
   id: string;
   nombre: string;
   apellido: string;
+  nombre_completo: string | null;
   foto_url: string | null;
 }
 

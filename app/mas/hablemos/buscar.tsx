@@ -18,7 +18,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useBuscarResidentesHablemos, useIniciarConversacionHablemos } from '@/hooks/useHablemos';
-import type { ResidenteBusqueda } from '@/services/hablemosService';
+import { nombreParaMostrar, type ResidenteBusqueda } from '@/services/hablemosService';
 
 const DEBOUNCE_MS = 350;
 
@@ -91,16 +91,16 @@ export default function HablemosBuscarScreen() {
               disabled={iniciarConversacion.isPending}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel={`Empezar a hablar con ${item.nombre} ${item.apellido}`}
+              accessibilityLabel={`Empezar a hablar con ${nombreParaMostrar(item)}`}
             >
               {item.foto_url ? (
                 <Image source={{ uri: item.foto_url }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarInicial}>{item.nombre.charAt(0).toUpperCase()}</Text>
+                  <Text style={styles.avatarInicial}>{nombreParaMostrar(item).charAt(0).toUpperCase()}</Text>
                 </View>
               )}
-              <Text style={styles.nombreTexto}>{item.nombre} {item.apellido}</Text>
+              <Text style={styles.nombreTexto}>{nombreParaMostrar(item)}</Text>
               {iniciarConversacion.isPending ? (
                 <ActivityIndicator color={Colors.hablemos.accent} />
               ) : (

@@ -20,12 +20,12 @@ import { useConversacionesHablemos } from '@/hooks/useHablemos';
 import { useConversacionesRealtime } from '@/hooks/useHablemosRealtime';
 import { formatFechaListaConversaciones } from '@/utils/dateUtils';
 import { coincideBusqueda } from '@/utils/textSearch';
-import type { ConversacionHablemos } from '@/services/hablemosService';
+import { nombreParaMostrar, type ConversacionHablemos } from '@/services/hablemosService';
 
 function nombreCompleto(conversacion: ConversacionHablemos): string {
   const otro = conversacion.otroParticipante;
   if (!otro) return 'Residente';
-  return `${otro.nombre} ${otro.apellido}`;
+  return nombreParaMostrar(otro);
 }
 
 function previewMensaje(conversacion: ConversacionHablemos): string {

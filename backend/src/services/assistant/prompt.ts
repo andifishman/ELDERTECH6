@@ -80,19 +80,29 @@ export const HERRAMIENTAS_IA = [
         'Busca actividades reales en el horario de la residencia ElderTech. ' +
         'Llamá esta herramienta cuando el usuario pregunta por cualquier actividad o ' +
         'horario de la residencia: desayuno, almuerzo, merienda, cena, talleres, ejercicio, etc.',
+      // `type: ['string', 'null']` en vez de solo 'string' en los tres campos:
+      // Groq valida los argumentos generados contra este schema, y el modelo
+      // manda bastante seguido un `null` explícito en un parámetro opcional
+      // que decidió no usar (en vez de omitirlo). Con `type: 'string'` a
+      // secas, esa llamada entera se rechazaba con un 400 de "tool call
+      // validation failed" — la conversación se caía sin importar la
+      // pregunta. Permitir null también es válido y resuelve esto.
       parameters: {
         type: 'object',
         properties: {
-          fecha: { type: 'string', description: 'Fecha en formato YYYY-MM-DD. Omitir para usar el día de hoy. NUNCA pongas una hora acá.' },
+          fecha: {
+            type: ['string', 'null'],
+            description: 'Fecha en formato YYYY-MM-DD. Omitir o null para usar el día de hoy. NUNCA pongas una hora acá.',
+          },
           busqueda: {
-            type: 'string',
+            type: ['string', 'null'],
             description:
-              'Nombre o tipo de actividad (ej: "desayuno", "taller de pintura"). Omitir para ver todas las actividades del día.',
+              'Nombre o tipo de actividad (ej: "desayuno", "taller de pintura"). Omitir o null para ver todas las actividades del día.',
           },
           hora: {
-            type: 'string',
+            type: ['string', 'null'],
             description:
-              'Hora aproximada en formato HH:MM de 24 horas (ej: "08:00", "15:30") — usalo cuando el usuario pregunta qué actividad hay a determinada hora. Convertí vos la hora que diga el usuario a este formato antes de llamar la herramienta. Omitir si no preguntó por una hora puntual.',
+              'Hora aproximada en formato HH:MM de 24 horas (ej: "08:00", "15:30") — usalo cuando el usuario pregunta qué actividad hay a determinada hora. Convertí vos la hora que diga el usuario a este formato antes de llamar la herramienta. Omitir o null si no preguntó por una hora puntual.',
           },
         },
         required: [],

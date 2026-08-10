@@ -62,6 +62,7 @@ export interface Residente {
   organizacion_id: string;
   nombre: string;
   apellido: string;
+  nombre_completo: string | null;
   fecha_nacimiento: string | null;
   nivel_dificultad: NivelDificultad;
   seccion: SeccionResidente | null;

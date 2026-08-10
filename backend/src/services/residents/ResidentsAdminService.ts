@@ -22,6 +22,7 @@ export interface CrearUsuarioInput {
   apellido: string;
   seccion?: string | null;
   notas?: string | null;
+  nombre_completo?: string | null;
   username: string;
   dni: string;
 }

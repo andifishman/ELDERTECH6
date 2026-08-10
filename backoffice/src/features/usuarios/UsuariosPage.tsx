@@ -47,13 +47,14 @@ import type { ResidenteConCuenta } from '@/services/residentesService';
 interface Campos {
   nombre: string;
   apellido: string;
+  nombreCompleto: string;
   username: string;
   dni: string;
   seccion: SeccionResidente | '';
 }
 
 const CAMPOS_VACIOS: Campos = {
-  nombre: '', apellido: '', username: '', dni: '', seccion: '',
+  nombre: '', apellido: '', nombreCompleto: '', username: '', dni: '', seccion: '',
 };
 
 export function UsuariosPage() {
@@ -120,6 +121,7 @@ export function UsuariosPage() {
     reset({
       nombre: r.nombre,
       apellido: r.apellido,
+      nombreCompleto: r.nombre_completo ?? '',
       username: '',
       dni: '',
       seccion: r.seccion ?? '',
@@ -133,6 +135,7 @@ export function UsuariosPage() {
         {
           nombre: c.nombre,
           apellido: c.apellido,
+          nombre_completo: c.nombreCompleto.trim() || null,
           username: c.username,
           dni: c.dni,
           seccion: c.seccion || null,
@@ -148,6 +151,7 @@ export function UsuariosPage() {
         input: {
           nombre: c.nombre,
           apellido: c.apellido,
+          nombre_completo: c.nombreCompleto.trim() || null,
           seccion: c.seccion || null,
         },
       },
@@ -301,6 +305,11 @@ export function UsuariosPage() {
                 <Label htmlFor="apellido">Apellido</Label>
                 <Input id="apellido" {...register('apellido', { required: 'Requerido' })} />
                 {errors.apellido && <p className="text-xs text-destructive">{errors.apellido.message}</p>}
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="nombreCompleto">Nombre completo (opcional)</Label>
+                <Input id="nombreCompleto" placeholder="Se usa como nombre en Hablemos, en vez de nombre + apellido" {...register('nombreCompleto')} />
               </div>
 
               {!editando && (

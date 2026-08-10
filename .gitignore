@@ -41,6 +41,7 @@ expo-env.d.ts
 # @end expo-cli
 .vercel
 .env*
+supabase/.temp/
 
 # .env.production SÍ se versiona (a propósito, ver CLAUDE.md "APK/OTA sin
 # datos"): @expo/env carga este archivo automáticamente en cualquier

@@ -11,7 +11,7 @@ export async function getResidenteContext(residenteId: string): Promise<repo.Res
 }
 
 /** Nombre completo de un residente — usado por Hablemos en el título de las notificaciones push. */
-export async function obtenerNombreCompleto(residenteId: string): Promise<{ nombre: string; apellido: string } | null> {
+export async function obtenerNombreCompleto(residenteId: string): Promise<{ nombre: string; apellido: string; nombre_completo: string | null } | null> {
   return repo.obtenerNombreCompleto(residenteId);
 }
 

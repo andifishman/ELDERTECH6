@@ -102,7 +102,7 @@ export const listarConversaciones = withRepoLogging(REPO, 'listarConversaciones'
 
   const { data: otros, error: errorOtros } = await db
     .from('conversacion_participantes')
-    .select('conversacion_id, residente:residentes(id, nombre, apellido)')
+    .select('conversacion_id, residente:residentes(id, nombre, apellido, nombre_completo)')
     .in('conversacion_id', conversacionIds)
     .neq('residente_id', residenteId);
   if (errorOtros) throw new Error(`Error al cargar los participantes: ${errorOtros.message}`);
@@ -142,7 +142,7 @@ export const obtenerConversacionConDetalle = withRepoLogging(REPO, 'obtenerConve
     db.from('conversacion_participantes').select('no_leidos_count').eq('conversacion_id', conversacionId).eq('residente_id', residenteId).maybeSingle(),
     db
       .from('conversacion_participantes')
-      .select('residente:residentes(id, nombre, apellido)')
+      .select('residente:residentes(id, nombre, apellido, nombre_completo)')
       .eq('conversacion_id', conversacionId)
       .neq('residente_id', residenteId)
       .maybeSingle(),

@@ -9,7 +9,13 @@ export interface ResidenteBusqueda {
   id: string;
   nombre: string;
   apellido: string;
+  nombre_completo: string | null;
   foto_url: string | null;
+}
+
+/** Nombre para mostrar: el "nombre completo" cargado en el backoffice si existe, si no nombre + apellido. */
+export function nombreParaMostrar(residente: Pick<ResidenteBusqueda, 'nombre' | 'apellido' | 'nombre_completo'>): string {
+  return residente.nombre_completo || `${residente.nombre} ${residente.apellido}`;
 }
 
 export interface ConversacionHablemos {

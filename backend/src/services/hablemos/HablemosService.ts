@@ -79,7 +79,8 @@ async function notificarNuevoMensaje(conversacionId: string, remitenteId: string
     const tokens = await deviceTokensService.findTokensActivosPorResidentes([otroResidenteId]);
     if (tokens.length === 0) return;
 
-    const titulo = remitente ? `Mensaje de ${remitente.nombre} ${remitente.apellido}` : 'Nuevo mensaje';
+    const nombreRemitente = remitente ? (remitente.nombre_completo || `${remitente.nombre} ${remitente.apellido}`) : null;
+    const titulo = nombreRemitente ? `Mensaje de ${nombreRemitente}` : 'Nuevo mensaje';
 
     await sendPushMessages(
       tokens.map((t) => ({

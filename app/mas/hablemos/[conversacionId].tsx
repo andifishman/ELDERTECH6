@@ -33,7 +33,7 @@ import {
 import { useMensajesRealtime } from '@/hooks/useHablemosRealtime';
 import { formatHoraDeISO, formatFechaSeparadorChat, esMismodia } from '@/utils/dateUtils';
 import { setConversacionHablemosActiva } from '@/utils/hablemosActiveChat';
-import type { EstadoMensajeHablemos, MensajeHablemos } from '@/services/hablemosService';
+import { nombreParaMostrar, type EstadoMensajeHablemos, type MensajeHablemos } from '@/services/hablemosService';
 
 function formatearDuracion(segundos: number): string {
   const m = Math.floor(segundos / 60);
@@ -57,7 +57,7 @@ export default function HablemosChatScreen() {
   const { data: conversaciones } = useConversacionesHablemos();
   const conversacion = useMemo(() => conversaciones?.find((c) => c.id === conversacionId), [conversaciones, conversacionId]);
   const otro = conversacion?.otroParticipante;
-  const nombreOtro = otro ? `${otro.nombre} ${otro.apellido}` : 'Residente';
+  const nombreOtro = otro ? nombreParaMostrar(otro) : 'Residente';
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useMensajesHablemos(conversacionId);
   const mensajes = useMemo(() => data?.pages.flat() ?? [], [data]);

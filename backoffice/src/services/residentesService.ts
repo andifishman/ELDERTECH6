@@ -15,6 +15,9 @@ export interface ResidenteInput {
   apellido: string;
   seccion?: SeccionResidente | null;
   notas?: string | null;
+  // Nombre para mostrar en Hablemos (búsqueda, chat, notificaciones) en vez de
+  // "nombre apellido" — opcional.
+  nombre_completo?: string | null;
 }
 
 export interface CrearUsuarioInput extends ResidenteInput {
