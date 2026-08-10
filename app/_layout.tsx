@@ -163,6 +163,8 @@ export default function RootLayout() {
                     <Stack screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="(auth)" />
                       <Stack.Screen name="index" />
+                      <Stack.Screen name="como-usar/index" />
+                      <Stack.Screen name="como-usar/[id]" />
                       <Stack.Screen name="horarios/index" />
                       <Stack.Screen name="horarios/[id]" />
                       <Stack.Screen name="agenda/index" />

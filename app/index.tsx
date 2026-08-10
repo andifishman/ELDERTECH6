@@ -134,7 +134,20 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <View style={styles.headerRow}>
-          <Text style={styles.logoText}>ElderTech</Text>
+          {/* Botón bien visible — abre la guía "¿Cómo usar?" con explicaciones
+              simples de cada sección de la aplicación. */}
+          <TouchableOpacity
+            style={styles.comoUsarBtn}
+            onPress={() => router.push('/como-usar' as any)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="¿Cómo usar la aplicación? Abre una guía con explicaciones simples"
+          >
+            <Text style={styles.comoUsarBtnTexto}>¿Cómo usar?</Text>
+          </TouchableOpacity>
+          <Text style={styles.logoText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+            ElderTech
+          </Text>
         </View>
       </View>
 
@@ -222,14 +235,34 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     minHeight: 52,
+    gap: 10,
+  },
+  // Botón "¿Cómo usar?" — mismo estilo cuadrado que los botones "Escuchar"
+  // de las tarjetas (fondo blanco casi sólido, esquinas poco redondeadas),
+  // así se reconoce como el mismo tipo de botón en toda la Home.
+  comoUsarBtn: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  comoUsarBtnTexto: {
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    fontSize: 20,
   },
   logoText: {
+    flexShrink: 1,
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 46,
-    textAlign: 'center',
+    fontSize: 42,
+    textAlign: 'right',
   },
 
   // Welcome
