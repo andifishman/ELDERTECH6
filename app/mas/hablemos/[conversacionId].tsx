@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   FlatList,
   Image,
@@ -23,6 +24,7 @@ import { Spacing } from '@/constants/Spacing';
 import {
   useConversacionesHablemos,
   useEnviarMensajeAudioHablemos,
+  useEnviarMensajeTextoHablemos,
   useMarcarLeidosHablemos,
   useMarcarRecibidosHablemos,
   useMensajesHablemos,
@@ -62,10 +64,12 @@ export default function HablemosChatScreen() {
 
   useMensajesRealtime(conversacionId, propioResidenteId);
 
+  const enviarTexto = useEnviarMensajeTextoHablemos(conversacionId);
   const enviarAudio = useEnviarMensajeAudioHablemos(conversacionId);
   const marcarRecibidos = useMarcarRecibidosHablemos(conversacionId);
   const marcarLeidos = useMarcarLeidosHablemos(conversacionId);
 
+  const [input, setInput] = useState('');
   const [grabando, setGrabando] = useState(false);
   const [reproduciendoId, setReproduciendoId] = useState<string | null>(null);
   const [pantallaActiva, setPantallaActiva] = useState(true);
@@ -106,12 +110,18 @@ export default function HablemosChatScreen() {
     };
   }, []);
 
-  // Abre la pantalla de escritura a pantalla completa en vez de un campo de
-  // texto chico acá abajo — más fácil de encontrar y de tocar para el residente.
-  const abrirEscribirMensaje = useCallback(() => {
-    router.push({ pathname: '/mas/hablemos/escribir', params: { conversacionId, nombreOtro } });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversacionId, nombreOtro]);
+  const enviarTextoActual = useCallback(async () => {
+    const texto = input.trim();
+    if (!texto) return;
+    setInput('');
+    try {
+      await enviarTexto.mutateAsync(texto);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo enviar el mensaje.';
+      Alert.alert('Error', msg);
+      setInput(texto);
+    }
+  }, [input, enviarTexto]);
 
   const iniciarGrabacion = useCallback(async () => {
     try {
@@ -322,28 +332,37 @@ export default function HablemosChatScreen() {
             </View>
           ) : (
             <View style={[styles.inputWrapper, { paddingBottom: insets.bottom + Spacing.sm }]}>
-              {/* Botón grande y con texto en vez de un campo de texto chico siempre
-                  abierto: más fácil de ver y de entender qué hay que tocar para
-                  mandar un mensaje. Abre una pantalla completa para escribir. */}
-              <TouchableOpacity
-                style={styles.escribirBtn}
-                onPress={abrirEscribirMensaje}
-                accessibilityRole="button"
-                accessibilityLabel="Escribir mensaje"
-                activeOpacity={0.8}
-              >
-                <Ionicons name="create-outline" size={28} color={Colors.text.onDark} />
-                <Text style={styles.escribirBtnTexto}>Escribir mensaje</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.micBtn}
-                onPress={iniciarGrabacion}
-                disabled={enviarAudio.isPending}
-                accessibilityRole="button"
-                accessibilityLabel="Grabar mensaje de voz"
-              >
-                <Ionicons name="mic" size={28} color={Colors.text.onDark} />
-              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                value={input}
+                onChangeText={setInput}
+                placeholder="Escribí un mensaje..."
+                placeholderTextColor={Colors.text.hint}
+                multiline
+                maxLength={2000}
+                accessibilityLabel="Campo de texto para escribir tu mensaje"
+              />
+              {input.trim().length > 0 ? (
+                <TouchableOpacity
+                  style={styles.sendBtn}
+                  onPress={enviarTextoActual}
+                  disabled={enviarTexto.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enviar mensaje"
+                >
+                  {enviarTexto.isPending ? <ActivityIndicator size="small" color={Colors.text.onDark} /> : <Ionicons name="send" size={22} color={Colors.text.onDark} />}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.micBtn}
+                  onPress={iniciarGrabacion}
+                  disabled={enviarAudio.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Grabar mensaje de voz"
+                >
+                  <Ionicons name="mic" size={24} color={Colors.text.onDark} />
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -372,7 +391,26 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
       )}
       <View style={[styles.burbuja, esPropio ? styles.burbujaPropia : styles.burbujaAjena]}>
         {mensaje.tipo === 'texto' ? (
-          <Text style={styles.burbujaTexto}>{mensaje.contenido}</Text>
+          // La hora/estado NO va al lado del texto como hermano de flex: en Android,
+          // dos Text cortos compitiendo por el ancho de una burbuja que se ajusta a su
+          // contenido terminaban midiéndose mal y el mensaje se recortaba un carácter
+          // ("hola" se veía "hol") — pasó tres veces con distintos parches de padding/
+          // minWidth porque el problema de fondo era ESE cálculo compartido, no el
+          // tamaño de cada Text por separado. Acá la hora/estado real va superpuesta
+          // (position: absolute) en la esquina, y el mensaje reserva su lugar con un
+          // espaciador invisible en la misma línea de texto — como hace WhatsApp.
+          <>
+            <Text style={styles.burbujaTexto}>
+              {mensaje.contenido}
+              <Text style={styles.metaFantasma}>
+                {'  ' + formatHoraDeISO(mensaje.created_at) + (esPropio ? '  ' + ESTADO_TEXTO[mensaje.estado] : '')}
+              </Text>
+            </Text>
+            <View style={styles.burbujaMetaAbsoluta}>
+              <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
+              {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
+            </View>
+          </>
         ) : (
           <View style={styles.audioMensajeContainer}>
             <Text style={styles.audioMensajeLabel}>
@@ -394,18 +432,12 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
                 {reproduciendo ? 'Pausar' : 'Escuchar'}
               </Text>
             </TouchableOpacity>
+            <View style={styles.burbujaMeta}>
+              <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
+              {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
+            </View>
           </View>
         )}
-
-        {/* `minWidth` en burbujaHora en vez de `numberOfLines`: con numberOfLines={1}
-            dentro de una fila `justifyContent: flex-end` sin ancho fijo, Android a veces
-            mide el texto con el ancho equivocado en el primer pass y lo recorta ("11:5"
-            en vez de "11:55") — pasaba en burbujas angostas Y anchas por igual. Un ancho
-            mínimo que alcanza para "23:59" evita ese cálculo ambiguo directamente. */}
-        <View style={styles.burbujaMeta}>
-          <Text style={styles.burbujaHora}>{formatHoraDeISO(mensaje.created_at)}</Text>
-          {esPropio && <Text style={styles.burbujaEstado}>{ESTADO_TEXTO[mensaje.estado]}</Text>}
-        </View>
       </View>
       </View>
     </View>
@@ -476,6 +508,7 @@ const styles = StyleSheet.create({
   nombreRemitentePropio: { color: Colors.hablemos.accentDark },
   nombreRemitenteAjeno: { color: Colors.hablemos.accent },
   burbuja: {
+    position: 'relative',
     borderRadius: Spacing.radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
@@ -489,15 +522,19 @@ const styles = StyleSheet.create({
   burbujaPropia: { backgroundColor: Colors.hablemos.burbujaPropia, borderBottomRightRadius: Spacing.radius.sm },
   burbujaAjena: { backgroundColor: Colors.hablemos.burbujaAjena, borderBottomLeftRadius: Spacing.radius.sm },
   // ~35% más grande que el body normal (18 → 24) para mejor lectura.
-  // `flexShrink: 0` + `paddingRight`: mismo bug que la hora — en Android, un
-  // texto corto dentro de una burbuja que se ajusta a su contenido a veces se
-  // mide 1 carácter más angosto de lo que realmente ocupa al dibujarse
-  // ("hola" se veía "hol"). Un margen de sobra evita que el último carácter
-  // quede justo afuera del límite calculado.
-  burbujaTexto: { fontSize: 24, color: Colors.text.primary, lineHeight: 32, flexShrink: 0, paddingRight: 3 },
+  burbujaTexto: { fontSize: 24, color: Colors.text.primary, lineHeight: 32 },
+  // Invisible — solo reserva lugar al final del texto para que el renglón no
+  // termine justo debajo de donde va a quedar superpuesta la hora/estado real.
+  metaFantasma: { fontSize: Typography.size.xs, opacity: 0 },
+  // Hora/estado real de los mensajes de texto: superpuesta en la esquina de la
+  // burbuja en vez de ser hermana de flex del texto (ver comentario más arriba
+  // en el uso de este componente).
+  burbujaMetaAbsoluta: { position: 'absolute', right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  // Usado solo para mensajes de audio, donde nunca hubo problema de recorte —
+  // ahí la hora/estado sigue en flujo normal, debajo del botón de escuchar.
   burbujaMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: Spacing.xs, marginTop: 2 },
-  burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint, flexShrink: 0, minWidth: 50, textAlign: 'right' },
-  burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic', flexShrink: 0, paddingRight: 2 },
+  burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint },
+  burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic' },
 
   audioMensajeContainer: { gap: Spacing.sm, minWidth: 220 },
   audioMensajeLabel: { fontSize: Typography.size.sm, color: Colors.text.secondary },
@@ -558,32 +595,40 @@ const styles = StyleSheet.create({
 
   inputWrapper: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
+    alignItems: 'flex-end',
+    gap: Spacing.sm,
     backgroundColor: Colors.ui.surface,
     paddingHorizontal: Spacing.screen.horizontal,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.ui.border,
   },
-  // Botón principal para escribir — grande, con ícono y texto, así no hace
-  // falta reconocer un campo de texto chico ni un ícono de enviar minúsculo.
-  escribirBtn: {
+  input: {
     flex: 1,
-    minHeight: Spacing.touch.large,
-    flexDirection: 'row',
+    minHeight: Spacing.touch.comfortable,
+    maxHeight: 120,
+    backgroundColor: Colors.ui.background,
+    borderRadius: Spacing.radius.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    color: Colors.text.primary,
+    fontSize: 24,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+  },
+  sendBtn: {
+    width: Spacing.touch.comfortable,
+    height: Spacing.touch.comfortable,
+    borderRadius: Spacing.touch.comfortable / 2,
+    backgroundColor: Colors.hablemos.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    borderRadius: Spacing.radius.xl,
-    backgroundColor: Colors.hablemos.accent,
-    paddingHorizontal: Spacing.lg,
+    flexShrink: 0,
   },
-  escribirBtnTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   micBtn: {
-    width: Spacing.touch.large,
-    height: Spacing.touch.large,
-    borderRadius: Spacing.touch.large / 2,
+    width: Spacing.touch.comfortable,
+    height: Spacing.touch.comfortable,
+    borderRadius: Spacing.touch.comfortable / 2,
     backgroundColor: Colors.hablemos.accentDark,
     alignItems: 'center',
     justifyContent: 'center',
