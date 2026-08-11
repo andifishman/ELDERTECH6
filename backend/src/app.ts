@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import helmet from 'helmet';
+import { env } from './config/env';
 import { corsMiddleware } from './middlewares/cors';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 import { activitiesRouter } from './routes/activities.routes';
@@ -36,8 +37,24 @@ export function createApp(): Express {
   app.use(corsMiddleware);
   app.use(express.json({ limit: '2mb' }));
 
+  // `commit` y `configurado` existen para poder diagnosticar desde afuera dos
+  // preguntas que ya nos costaron varias horas: "¿este deploy tiene el código
+  // nuevo?" y "¿esta instancia tiene cargada la key de X?". Son solo booleanos
+  // y el SHA del commit — NUNCA el valor de una key. `VERCEL_GIT_COMMIT_SHA`
+  // lo inyecta Vercel solo; en local queda 'local'.
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, service: 'eldertech-api', time: new Date().toISOString() });
+    res.json({
+      ok: true,
+      service: 'eldertech-api',
+      time: new Date().toISOString(),
+      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local',
+      configurado: {
+        groq: !!env.groqApiKey,
+        openRouter: !!env.openRouterApiKey,
+        busquedaExterna: !!env.tavilyApiKey,
+        cacheCompartido: !!env.upstashRedisUrl,
+      },
+    });
   });
 
   app.use('/api/agenda', agendaRouter);
