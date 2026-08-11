@@ -42,6 +42,15 @@ export function createApp(): Express {
   // nuevo?" y "¿esta instancia tiene cargada la key de X?". Son solo booleanos
   // y el SHA del commit — NUNCA el valor de una key. `VERCEL_GIT_COMMIT_SHA`
   // lo inyecta Vercel solo; en local queda 'local'.
+  //
+  // Contexto de por qué esto existe (agosto 2026): el proyecto de Vercel de
+  // este backend (`backend-beta-flax-82`) se venía deployando a mano por CLI,
+  // no desde Git — así que main podía estar 9 commits adelante de producción
+  // sin ninguna señal visible. Dos trampas que costaron horas:
+  //  1. "Redeploy" en Vercel reconstruye EL MISMO commit viejo, no trae código
+  //     nuevo. Para código nuevo: push (o `vercel --prod`).
+  //  2. Con Root Directory = `backend`, un commit que no toca archivos de esta
+  //     carpeta puede no disparar build. Un commit vacío NO sirve para forzarlo.
   app.get('/api/health', (_req, res) => {
     res.json({
       ok: true,
