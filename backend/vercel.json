@@ -1,4 +1,6 @@
 {
+  "framework": null,
+  "buildCommand": "",
   "functions": {
     "api/index.ts": {
       "maxDuration": 60
