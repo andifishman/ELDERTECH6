@@ -59,6 +59,7 @@ export function createApp(): Express {
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local',
       configurado: {
         groq: !!env.groqApiKey,
+        gemini: !!env.geminiApiKey,
         openRouter: !!env.openRouterApiKey,
         busquedaExterna: !!env.tavilyApiKey,
         cacheCompartido: !!env.upstashRedisUrl,
