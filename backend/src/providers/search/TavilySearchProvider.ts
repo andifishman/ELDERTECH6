@@ -8,11 +8,22 @@ interface TavilyResult {
   title?: string;
   url?: string;
   content?: string;
+  published_date?: string;
 }
 
 interface TavilyResponse {
   answer?: string | null;
   results?: TavilyResult[];
+}
+
+/**
+ * Tavily manda la fecha en RFC 1123 ("Sat, 08 Aug 2026 12:00:00 GMT") cuando
+ * el topic es 'news'. Se normaliza a YYYY-MM-DD para que el modelo pueda
+ * comparar fechas entre fuentes y quedarse con la más nueva.
+ */
+function normalizarFecha(raw: string): string {
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : parsed.toISOString().slice(0, 10);
 }
 
 /**
@@ -37,9 +48,16 @@ export class TavilySearchProvider implements IProvider<SearchInput, SearchOutput
       body: JSON.stringify({
         api_key: this.apiKey,
         query: input.consulta,
-        search_depth: 'basic',
+        // `advanced` extrae más contexto de cada página: con `basic` el
+        // extracto llegaba tan recortado que el modelo completaba los huecos
+        // inventando (goleadores, cifras). Más contexto real = menos invento.
+        search_depth: 'advanced',
         include_answer: true,
-        max_results: 3,
+        max_results: 5,
+        // topic 'news' es lo único que hace que Tavily ordene por fecha y
+        // devuelva published_date; sin esto, "el último partido" devolvía
+        // tranquilamente uno de hace meses.
+        ...(input.soloReciente ? { topic: 'news', days: 30 } : {}),
       }),
     });
 
@@ -64,6 +82,7 @@ export class TavilySearchProvider implements IProvider<SearchInput, SearchOutput
           titulo: r.title?.trim() || r.url,
           url: r.url,
           extracto: (r.content ?? '').trim().slice(0, EXTRACTO_MAX_CHARS),
+          ...(r.published_date ? { fecha: normalizarFecha(r.published_date) } : {}),
         })),
     };
   }

@@ -37,8 +37,8 @@ export async function getHealthSnapshot() {
  * actualizada, así que servir una respuesta vieja de cache rompería el
  * propósito.
  */
-export async function buscar(consulta: string): Promise<SearchOutput> {
+export async function buscar(consulta: string, soloReciente = false): Promise<SearchOutput> {
   const manager = getSearchManager();
   if (!manager) throw new Error('Búsqueda externa no configurada (falta TAVILY_API_KEY en el servidor).');
-  return manager.execute({ consulta });
+  return manager.execute({ consulta, soloReciente });
 }

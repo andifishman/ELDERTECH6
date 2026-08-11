@@ -24,7 +24,7 @@ export class GroqModelProvider implements IProvider<ChatCompletionInput, ChatCom
     const body: Record<string, unknown> = {
       model: this.model,
       messages: input.messages,
-      temperature: 0.7,
+      temperature: input.temperature ?? 0.7,
       max_tokens: input.maxTokens,
     };
     if (input.tools) {

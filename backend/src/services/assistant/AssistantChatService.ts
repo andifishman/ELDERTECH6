@@ -158,6 +158,10 @@ async function ejecutarLoopAgentico(
         : busquedaForzadaPendiente
           ? { type: 'function', function: { name: 'buscar_informacion_externa' } }
           : 'auto',
+      // Baja a propósito: con 0.7 el modelo inventaba detalles que no estaban
+      // en el resultado de la búsqueda (p. ej. el autor de un gol). Acá se
+      // prioriza que el dato sea fiel por sobre que la redacción sea variada.
+      temperature: 0.3,
     };
     busquedaForzadaPendiente = false;
 
@@ -282,11 +286,16 @@ async function ejecutarHerramienta(
       if (!consulta) return JSON.stringify({ error: 'Falta la consulta a buscar.' });
 
       try {
-        const { respuesta, fuentes } = await searchService.buscar(consulta);
+        const { respuesta, fuentes } = await searchService.buscar(consulta, args.reciente === true);
         if (!respuesta && fuentes.length === 0) {
           return JSON.stringify({ mensaje: 'La búsqueda no encontró información sobre eso.' });
         }
-        return JSON.stringify({ respuesta, fuentes: fuentes.slice(0, 3) });
+        return JSON.stringify({
+          respuesta,
+          fuentes,
+          recordatorio:
+            'Respondé SOLO con datos que aparezcan textualmente acá arriba. Si te preguntaron por lo más reciente, usá la fuente con la fecha más nueva. No agregues goleadores, nombres, cifras ni detalles que no estén en estas fuentes.',
+        });
       } catch {
         return JSON.stringify({
           error: 'No se pudo realizar la búsqueda en este momento. Decile al usuario que no encontraste esa información, sin inventar nada.',

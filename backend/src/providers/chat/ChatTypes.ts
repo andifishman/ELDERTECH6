@@ -3,6 +3,8 @@ export interface ChatCompletionInput {
   maxTokens: number;
   tools?: unknown;
   toolChoice?: unknown;
+  /** Default 0.7. Se baja para respuestas factuales — a 0.7 el modelo "completa" huecos inventando detalles. */
+  temperature?: number;
 }
 
 export interface GroqToolCall {
