@@ -70,9 +70,10 @@ export async function transcribir(audioBuffer: Buffer, filename: string, mimeTyp
  * backend en vez de a Groq con la key expuesta.
  */
 export async function consultarIA(
+  residenteId: string,
   organizacionId: string | null,
   mensajeUsuario: string,
   historial: MensajeContexto[],
 ): Promise<RespuestaAsistente> {
-  return chat.consultarIA(organizacionId, mensajeUsuario, historial);
+  return chat.consultarIA(residenteId, organizacionId, mensajeUsuario, historial);
 }

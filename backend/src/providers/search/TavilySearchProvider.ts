@@ -1,0 +1,70 @@
+import { ProviderFatalError, ProviderRateLimitedError, type IProvider } from '../../core/provider';
+import type { SearchInput, SearchOutput } from './SearchTypes';
+
+const TAVILY_URL = 'https://api.tavily.com/search';
+const EXTRACTO_MAX_CHARS = 300;
+
+interface TavilyResult {
+  title?: string;
+  url?: string;
+  content?: string;
+}
+
+interface TavilyResponse {
+  answer?: string | null;
+  results?: TavilyResult[];
+}
+
+/**
+ * Búsqueda web para la herramienta `buscar_informacion_externa` del asistente.
+ * Tavily está pensado para agentes de IA: devuelve un `answer` ya sintetizado
+ * más las fuentes, en vez de HTML crudo que el modelo tendría que interpretar
+ * — reduce el riesgo de respuestas largas/técnicas para un público que
+ * necesita texto simple y corto.
+ */
+export class TavilySearchProvider implements IProvider<SearchInput, SearchOutput> {
+  readonly name = 'tavily';
+
+  constructor(
+    private readonly apiKey: string,
+    readonly tier: number,
+  ) {}
+
+  async call(input: SearchInput): Promise<SearchOutput> {
+    const res = await fetch(TAVILY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: this.apiKey,
+        query: input.consulta,
+        search_depth: 'basic',
+        include_answer: true,
+        max_results: 3,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      if (res.status === 401 || res.status === 403) {
+        throw new ProviderFatalError(this.name, `Tavily key inválida o expirada: ${errText}`);
+      }
+      if (res.status === 429 || res.status === 432 || res.status === 433) {
+        throw new ProviderRateLimitedError(this.name, `Tavily ${res.status}: ${errText}`);
+      }
+      throw new Error(`Tavily respondió ${res.status}: ${errText}`);
+    }
+
+    const data = (await res.json()) as TavilyResponse;
+
+    return {
+      respuesta: data.answer && data.answer.trim().length > 0 ? data.answer.trim() : null,
+      fuentes: (data.results ?? [])
+        .filter((r): r is TavilyResult & { url: string } => Boolean(r.url))
+        .map((r) => ({
+          titulo: r.title?.trim() || r.url,
+          url: r.url,
+          extracto: (r.content ?? '').trim().slice(0, EXTRACTO_MAX_CHARS),
+        })),
+    };
+  }
+}

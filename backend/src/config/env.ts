@@ -36,6 +36,9 @@ export const env = {
   weatherApiApiKey: optional('WEATHERAPI_API_KEY'),
   tomorrowIoApiKey: optional('TOMORROW_IO_API_KEY'),
 
+  // Búsqueda externa (herramienta buscar_informacion_externa del asistente) — sin esta key la herramienta queda deshabilitada, no rompe el resto del chat.
+  tavilyApiKey: optional('TAVILY_API_KEY'),
+
   // Vercel inyecta automáticamente `Authorization: Bearer <CRON_SECRET>` en las
   // llamadas de sus Cron Jobs SOLO si la env var se llama exactamente así — es
   // el mecanismo estándar de Vercel, no algo que armamos nosotros. Reemplaza a

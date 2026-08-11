@@ -61,6 +61,12 @@ buscar_tutoriales: ÚNICAMENTE para guías del celular o la app: WhatsApp, video
 
 navegar_a_pantalla: Mostrá un botón de acceso directo después de encontrar info, o cuando el usuario quiere ir a una sección. Rutas disponibles: "/horarios" o "/horarios/ID", "/articulos" o "/articulos/ID", "/llamar" (contactos y llamadas), "/mas/radio", "/mas/clima", "/profile" (perfil del residente), "/" (inicio).
 
+buscar_clima: Da el clima REAL y actualizado. Usala cuando pregunten por el clima, la temperatura o el pronóstico de hoy — nunca contestes esto de memoria, la temperatura cambia todos los días y podés estar equivocado. Sin parámetro "ciudad" trae el clima de la residencia; con "ciudad" trae el de otro lugar puntual (ej. "¿cómo está el clima en Mar del Plata?").
+
+buscar_informacion_externa: Busca en internet información actual que vos no podés saber con certeza: noticias, resultados deportivos recientes, precios, información sobre lugares, o cualquier dato que pueda haber cambiado después de tu entrenamiento. NO la uses para preguntas de cultura general estable (historia, definiciones, cómo funciona algo) ni para nada de la app ElderTech — para eso ya tenés las otras herramientas o tu propio conocimiento. Si la herramienta devuelve un error o no encuentra nada, decíselo con naturalidad al usuario ("no encontré esa información ahora mismo") — NUNCA inventes una respuesta con lo que "te parece" que puede ser.
+
+buscar_mi_informacion: Trae el nombre y la sección del residente que está usando el chat en este momento. Usala solo cuando pregunten por sus propios datos ("¿cómo me llamo?", "¿en qué sección estoy?"). Nunca sirve para buscar datos de otra persona.
+
 EJEMPLOS DE USO:
 - "¿A qué hora es el desayuno?" → buscar_actividades(busqueda="desayuno") → navegar_a_pantalla(ruta="/horarios/ID", etiqueta="Ver desayuno", emoji="📅")
 - "¿Qué actividad hay a las 8 de la mañana?" o "¿qué tengo a las 15hs?" → buscar_actividades(hora="08:00") — convertí la hora que dice el usuario a formato HH:MM 24hs vos mismo (8 de la mañana=08:00, 3 de la tarde=15:00), NUNCA la pongas en el parámetro fecha.
@@ -68,7 +74,11 @@ EJEMPLOS DE USO:
 - "Llamá a María" o "quiero llamar a alguien" → sin búsqueda → navegar_a_pantalla(ruta="/llamar", etiqueta="Ir a Contactos", emoji="📞")
 - "¿Qué actividades hay hoy?" → buscar_actividades() sin busqueda → navegar_a_pantalla(ruta="/horarios", etiqueta="Ver actividades", emoji="📅")
 - "Ver mi perfil" o "ir a mi perfil" o "mi información" → navegar_a_pantalla(ruta="/profile", etiqueta="Ver mi perfil", emoji="👤") — SIEMPRE usar ruta="/profile" para el perfil, NUNCA "/"
-- Preguntas generales (historia, cultura, tecnología no relacionada) → responder directo, sin herramientas.`;
+- "¿Qué temperatura hace hoy?" o "¿va a llover?" → buscar_clima() sin ciudad → navegar_a_pantalla(ruta="/mas/clima", etiqueta="Ver clima", emoji="🌤️")
+- "¿Cómo está el tiempo en Bariloche?" → buscar_clima(ciudad="Bariloche")
+- "¿Qué pasó hoy en las noticias?" o "¿ganó Boca?" o "¿cuánto sale el dólar?" → buscar_informacion_externa(consulta="...")
+- "¿Cómo me llamo?" o "¿en qué sección estoy?" → buscar_mi_informacion()
+- Preguntas generales (historia, cultura, tecnología no relacionada, definiciones) → responder directo, sin herramientas.`;
 }
 
 export const HERRAMIENTAS_IA = [
@@ -126,6 +136,55 @@ export const HERRAMIENTAS_IA = [
           },
         },
         required: ['busqueda'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_clima',
+      description:
+        'Trae el clima real y actualizado de hoy. Usala siempre que pregunten por clima, temperatura o pronóstico — nunca lo contestes de memoria.',
+      parameters: {
+        type: 'object',
+        properties: {
+          ciudad: {
+            type: ['string', 'null'],
+            description: 'Nombre de una ciudad puntual a consultar. Omitir o null para usar el clima de la residencia.',
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_informacion_externa',
+      description:
+        'Busca en internet información actual (noticias, resultados, precios, lugares, datos que puedan haber cambiado). ' +
+        'NO usar para cultura general estable ni para nada de la app ElderTech.',
+      parameters: {
+        type: 'object',
+        properties: {
+          consulta: {
+            type: 'string',
+            description: 'Qué buscar, en pocas palabras (ej: "resultado River Boca hoy", "precio dólar blue hoy").',
+          },
+        },
+        required: ['consulta'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_mi_informacion',
+      description: 'Trae el nombre y la sección del residente que está usando el chat ahora mismo. Solo sirve para datos propios, nunca de otra persona.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
       },
     },
   },

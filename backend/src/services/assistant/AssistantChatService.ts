@@ -7,6 +7,9 @@ import { GroqWhisperProvider, type TranscriptionInput, type TranscriptionOutput 
 import { OpenRouterProvider } from '../../providers/chat/OpenRouterProvider';
 import * as activitiesService from '../activities/ActivitiesService';
 import * as tutorialsService from '../tutorials/TutorialsService';
+import * as weatherService from '../weather/WeatherService';
+import * as residentsService from '../residents/ResidentsService';
+import * as searchService from '../search/SearchService';
 import { buildSystemPrompt, HERRAMIENTAS_IA } from './prompt';
 import { esIntentLlamar, extraerNavegacionDelTexto } from './textUtils';
 import type { MensajeContexto, NavegacionAccion, RespuestaAsistente } from './types';
@@ -87,6 +90,7 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
       20,
       false,
       null,
+      null,
     );
     return resultado.texto.length > 0 ? resultado.texto : fallback;
   } catch {
@@ -95,6 +99,7 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
 }
 
 export async function consultarIA(
+  residenteId: string,
   organizacionId: string | null,
   mensajeUsuario: string,
   historial: MensajeContexto[],
@@ -114,7 +119,7 @@ export async function consultarIA(
     { role: 'user', content: mensajeUsuario },
   ];
 
-  return ejecutarLoopAgentico(messages, 400, true, organizacionId);
+  return ejecutarLoopAgentico(messages, 400, true, organizacionId, residenteId);
 }
 
 /**
@@ -128,6 +133,7 @@ async function ejecutarLoopAgentico(
   maxTokens: number,
   conHerramientas: boolean,
   organizacionId: string | null,
+  residenteId: string | null,
 ): Promise<RespuestaAsistente> {
   const manager = getChatManager();
   const msgs = [...messages];
@@ -158,7 +164,7 @@ async function ejecutarLoopAgentico(
       msgs.push({
         role: 'tool',
         tool_call_id: toolCall.id,
-        content: await ejecutarHerramienta(toolCall, organizacionId, herramientasUsadas, (nav) => {
+        content: await ejecutarHerramienta(toolCall, organizacionId, residenteId, herramientasUsadas, (nav) => {
           navegacion = nav;
         }),
       });
@@ -172,6 +178,7 @@ async function ejecutarLoopAgentico(
 async function ejecutarHerramienta(
   toolCall: GroqToolCall,
   organizacionId: string | null,
+  residenteId: string | null,
   herramientasUsadas: Set<string>,
   setNavegacion: (nav: NavegacionAccion) => void,
 ): Promise<string> {
@@ -209,6 +216,65 @@ async function ejecutarHerramienta(
       return tutoriales.length > 0
         ? JSON.stringify(tutoriales)
         : JSON.stringify({ mensaje: 'No se encontraron tutoriales para esa búsqueda.' });
+    }
+
+    if (toolCall.function.name === 'buscar_clima') {
+      const ciudad = (args.ciudad as string | undefined)?.trim();
+
+      const clima = ciudad
+        ? await (async () => {
+            const geo = (await weatherService.searchCities(ciudad))[0];
+            if (!geo) return null;
+            return weatherService.getWeather({
+              ciudad: geo.name,
+              pais: geo.country_code,
+              lat: geo.latitude,
+              lon: geo.longitude,
+              timezone: geo.timezone,
+            });
+          })()
+        : await weatherService.getWeatherForOrg(organizacionId);
+
+      if (!clima) return JSON.stringify({ error: `No se encontró la ciudad "${ciudad}".` });
+
+      return JSON.stringify({
+        ciudad: clima.ciudad,
+        descripcion: clima.descripcion,
+        temperatura: clima.temperatura,
+        sensacionTermica: clima.sensacionTermica,
+        tempMax: clima.tempMax,
+        tempMin: clima.tempMin,
+        humedad: clima.humedad,
+      });
+    }
+
+    if (toolCall.function.name === 'buscar_informacion_externa') {
+      const consulta = (args.consulta as string | undefined)?.trim();
+      if (!consulta) return JSON.stringify({ error: 'Falta la consulta a buscar.' });
+
+      try {
+        const { respuesta, fuentes } = await searchService.buscar(consulta);
+        if (!respuesta && fuentes.length === 0) {
+          return JSON.stringify({ mensaje: 'La búsqueda no encontró información sobre eso.' });
+        }
+        return JSON.stringify({ respuesta, fuentes: fuentes.slice(0, 3) });
+      } catch {
+        return JSON.stringify({
+          error: 'No se pudo realizar la búsqueda en este momento. Decile al usuario que no encontraste esa información, sin inventar nada.',
+        });
+      }
+    }
+
+    if (toolCall.function.name === 'buscar_mi_informacion') {
+      if (!residenteId) return JSON.stringify({ error: 'No se pudo resolver el residente.' });
+      const [nombre, contexto] = await Promise.all([
+        residentsService.obtenerNombreCompleto(residenteId),
+        residentsService.getResidenteContext(residenteId),
+      ]);
+      return JSON.stringify({
+        nombre_completo: nombre?.nombre_completo ?? (nombre ? `${nombre.nombre} ${nombre.apellido}` : null),
+        seccion: contexto.seccion,
+      });
     }
 
     if (toolCall.function.name === 'navegar_a_pantalla') {

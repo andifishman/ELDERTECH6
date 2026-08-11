@@ -61,7 +61,7 @@ export async function postChatCompletion(req: Request, res: Response): Promise<v
   const { mensaje, historial } = chatCompletionSchema.parse(req.body);
   const residenteId = requireResidenteId(req);
   const organizacionId = await residentsService.getOrganizacionIdDeResidente(residenteId);
-  res.json(await assistantService.consultarIA(organizacionId, mensaje, historial));
+  res.json(await assistantService.consultarIA(residenteId, organizacionId, mensaje, historial));
 }
 
 export async function getFaq(_req: Request, res: Response): Promise<void> {
