@@ -1,6 +1,19 @@
 import type { NavegacionAccion } from './types';
 
 /**
+ * Rutas reales de la app (Expo Router, ver `app/`) a las que la herramienta
+ * `navegar_a_pantalla` puede mandar al residente. Cualquier otra cosa que el
+ * modelo invente (ej. una pantalla de "resultados" que no existe) se
+ * descarta acá — el backend decide qué rutas son válidas, no el modelo.
+ */
+const RUTAS_ESTATICAS_VALIDAS = new Set(['/', '/horarios', '/articulos', '/llamar', '/mas/radio', '/mas/clima', '/profile']);
+const RUTA_DINAMICA_REGEX = /^\/(horarios|articulos)\/[a-zA-Z0-9-]{1,64}$/;
+
+export function esRutaValida(ruta: string): boolean {
+  return RUTAS_ESTATICAS_VALIDAS.has(ruta) || RUTA_DINAMICA_REGEX.test(ruta);
+}
+
+/**
  * Algunos modelos escriben <navegar_a_pantalla .../> como texto en lugar de invocar
  * la herramienta correctamente. Este helper extrae la navegación del texto y lo limpia.
  * Porteo textual de src/services/asistenteService.ts (cliente).
@@ -22,7 +35,7 @@ export function extraerNavegacionDelTexto(texto: string): { texto: string; naveg
   const etiqueta = /etiqueta="([^"]*)"/.exec(attrs)?.[1];
   const emoji = /emoji="([^"]*)"/.exec(attrs)?.[1];
 
-  if (!ruta) return { texto: textoLimpio };
+  if (!ruta || !esRutaValida(ruta)) return { texto: textoLimpio };
 
   return {
     texto: textoLimpio,

@@ -11,7 +11,7 @@ import * as weatherService from '../weather/WeatherService';
 import * as residentsService from '../residents/ResidentsService';
 import * as searchService from '../search/SearchService';
 import { buildSystemPrompt, HERRAMIENTAS_IA } from './prompt';
-import { esIntentLlamar, extraerNavegacionDelTexto } from './textUtils';
+import { esIntentLlamar, esRutaValida, extraerNavegacionDelTexto } from './textUtils';
 import type { MensajeContexto, NavegacionAccion, RespuestaAsistente } from './types';
 
 const MAX_CONTEXTO = 10;
@@ -278,8 +278,14 @@ async function ejecutarHerramienta(
     }
 
     if (toolCall.function.name === 'navegar_a_pantalla') {
+      const ruta = (args.ruta as string) ?? '/horarios';
+      if (!esRutaValida(ruta)) {
+        return JSON.stringify({
+          error: `La ruta "${ruta}" no existe en la app. Usá únicamente una de las rutas listadas en la herramienta, o directamente no muestres ningún botón de navegación.`,
+        });
+      }
       setNavegacion({
-        ruta: (args.ruta as string) ?? '/horarios',
+        ruta,
         etiqueta: (args.etiqueta as string) ?? 'Ver más',
         emoji: (args.emoji as string) ?? '📅',
       });
