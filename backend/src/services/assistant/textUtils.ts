@@ -44,6 +44,29 @@ export function extraerNavegacionDelTexto(texto: string): { texto: string; naveg
 }
 
 /**
+ * Detecta que el modelo está por contestar "no sé / no tengo información" —
+ * exactamente lo que NO queremos si todavía no intentó buscar. El prompt ya
+ * le pide buscar antes de rendirse, pero los modelos lo ignoran seguido
+ * (sobre todo si el historial de la conversación ya tiene rechazos previos,
+ * que refuerzan el patrón). Esto permite forzar la búsqueda desde el backend
+ * en vez de depender de que el modelo obedezca.
+ */
+export function pareceQueNoSabe(texto: string): boolean {
+  const lower = texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+
+  return /\bno tengo (informacion|datos|acceso|constancia|conocimiento)\b/.test(lower)
+    || /\bno (dispongo|cuento) con\b/.test(lower)
+    || /\bno puedo (buscar|acceder|saber|responder|ayudarte con eso)\b/.test(lower)
+    || /\bno (se|sabria) (que|cual|como|cuando|si|el resultado|decirte)\b/.test(lower)
+    || /\bno estoy seguro\b/.test(lower)
+    || /\bno tengo forma de saber\b/.test(lower)
+    || /\blo siento,? no\b/.test(lower);
+}
+
+/**
  * Detecta si el mensaje es claramente una solicitud de llamada/contactos, para
  * saltar el loop de tool-calling y evitar que la IA confunda nombres de
  * personas con actividades de la residencia.

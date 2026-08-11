@@ -11,7 +11,7 @@ import * as weatherService from '../weather/WeatherService';
 import * as residentsService from '../residents/ResidentsService';
 import * as searchService from '../search/SearchService';
 import { buildSystemPrompt, HERRAMIENTAS_IA } from './prompt';
-import { esIntentLlamar, esRutaValida, extraerNavegacionDelTexto } from './textUtils';
+import { esIntentLlamar, esRutaValida, extraerNavegacionDelTexto, pareceQueNoSabe } from './textUtils';
 import type { MensajeContexto, NavegacionAccion, RespuestaAsistente } from './types';
 
 const MAX_CONTEXTO = 10;
@@ -140,13 +140,26 @@ async function ejecutarLoopAgentico(
   let navegacion: NavegacionAccion | undefined;
   const herramientasUsadas = new Set<string>();
 
+  // Red de seguridad determinística: si el modelo está por contestar "no sé"
+  // sin haber buscado, se lo obliga a buscar UNA vez antes de dejarlo
+  // responder. El prompt ya se lo pide, pero los modelos lo ignoran seguido
+  // — sobre todo cuando el historial ya trae rechazos previos, que refuerzan
+  // el patrón de rendirse. Esto no depende de que el modelo obedezca.
+  let busquedaForzadaPendiente = false;
+  let yaSeForzoBusqueda = false;
+
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     const input: ChatCompletionInput = {
       messages: msgs,
       maxTokens,
       tools: conHerramientas ? HERRAMIENTAS_IA : undefined,
-      toolChoice: conHerramientas ? 'auto' : undefined,
+      toolChoice: !conHerramientas
+        ? undefined
+        : busquedaForzadaPendiente
+          ? { type: 'function', function: { name: 'buscar_informacion_externa' } }
+          : 'auto',
     };
+    busquedaForzadaPendiente = false;
 
     const { message } = await manager.execute(input);
     const toolCalls = message.tool_calls;
@@ -154,6 +167,22 @@ async function ejecutarLoopAgentico(
     if (!toolCalls || toolCalls.length === 0) {
       const textoRaw = (message.content ?? '').trim();
       if (!textoRaw) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+
+      const yaBusco = [...herramientasUsadas].some((k) => k.startsWith('buscar_informacion_externa:'));
+      if (conHerramientas && !yaSeForzoBusqueda && !yaBusco && pareceQueNoSabe(textoRaw)) {
+        yaSeForzoBusqueda = true;
+        busquedaForzadaPendiente = true;
+        msgs.push(message as unknown as Record<string, unknown>);
+        msgs.push({
+          role: 'system',
+          content:
+            'No le digas al usuario que no tenés esa información: todavía no buscaste. ' +
+            'Usá buscar_informacion_externa ahora con una consulta breve y concreta, y después respondé con lo que encuentres. ' +
+            'Si la búsqueda no trae nada útil, recién ahí decile que no encontraste esa información.',
+        });
+        continue;
+      }
+
       const extraido = extraerNavegacionDelTexto(textoRaw);
       return { texto: extraido.texto, navegacion: navegacion ?? extraido.navegacion };
     }
@@ -282,6 +311,15 @@ async function ejecutarHerramienta(
       if (!esRutaValida(ruta)) {
         return JSON.stringify({
           error: `La ruta "${ruta}" no existe en la app. Usá únicamente una de las rutas listadas en la herramienta, o directamente no muestres ningún botón de navegación.`,
+        });
+      }
+      // Si la consulta se resolvió con información de internet, ningún botón
+      // de la app la muestra — mandar al residente a Horarios con una etiqueta
+      // tipo "Ver resultados de fútbol" es una pantalla que no existe desde su
+      // punto de vista, aunque la ruta técnicamente sea válida.
+      if ([...herramientasUsadas].some((k) => k.startsWith('buscar_informacion_externa:'))) {
+        return JSON.stringify({
+          error: 'Esa información vino de internet y no hay ninguna pantalla de ElderTech que la muestre. No agregues botón de navegación: respondé solo con el texto.',
         });
       }
       setNavegacion({
