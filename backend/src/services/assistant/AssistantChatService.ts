@@ -11,10 +11,13 @@ import * as weatherService from '../weather/WeatherService';
 import * as residentsService from '../residents/ResidentsService';
 import * as searchService from '../search/SearchService';
 import { buildSystemPrompt, HERRAMIENTAS_IA } from './prompt';
-import { esIntentLlamar, esRutaValida, extraerNavegacionDelTexto, pareceQueNoSabe } from './textUtils';
+import { esIntentLlamar, esRutaValida, extraerNavegacionDelTexto, normalizarRuta, pareceQueNoSabe } from './textUtils';
 import type { MensajeContexto, NavegacionAccion, RespuestaAsistente } from './types';
 
-const MAX_CONTEXTO = 10;
+// 6 en vez de 10: el historial también viaja en cada request y consume del
+// mismo límite de tokens/minuto de Groq. 3 intercambios alcanzan para las
+// repreguntas típicas ("¿y mañana?") sin gastar cuota de toda la residencia.
+const MAX_CONTEXTO = 6;
 const MAX_TOOL_ITERATIONS = 5;
 
 let chatManager: ProviderManager<ChatCompletionInput, ChatCompletionOutput> | null = null;
@@ -316,10 +319,13 @@ async function ejecutarHerramienta(
     }
 
     if (toolCall.function.name === 'navegar_a_pantalla') {
-      const ruta = (args.ruta as string) ?? '/horarios';
+      const ruta = normalizarRuta((args.ruta as string) ?? '/horarios');
       if (!esRutaValida(ruta)) {
+        // El texto va dirigido al modelo, pero el modelo lo copiaba tal cual
+        // en la burbuja del chat (llegó a listarle rutas técnicas al
+        // residente), así que dice explícitamente que no se muestre.
         return JSON.stringify({
-          error: `La ruta "${ruta}" no existe en la app. Usá únicamente una de las rutas listadas en la herramienta, o directamente no muestres ningún botón de navegación.`,
+          error: 'No se pudo agregar el botón. NO le menciones esto al usuario ni le muestres rutas: respondé su pregunta normalmente, solo sin botón.',
         });
       }
       // Si la consulta se resolvió con información de internet, ningún botón
@@ -328,7 +334,7 @@ async function ejecutarHerramienta(
       // punto de vista, aunque la ruta técnicamente sea válida.
       if ([...herramientasUsadas].some((k) => k.startsWith('buscar_informacion_externa:'))) {
         return JSON.stringify({
-          error: 'Esa información vino de internet y no hay ninguna pantalla de ElderTech que la muestre. No agregues botón de navegación: respondé solo con el texto.',
+          error: 'Esa información vino de internet y ninguna pantalla de la app la muestra. Respondé solo con el texto, sin botón. NO le menciones esto al usuario.',
         });
       }
       setNavegacion({

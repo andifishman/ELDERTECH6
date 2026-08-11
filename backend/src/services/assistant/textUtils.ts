@@ -11,6 +11,36 @@ const RUTA_DINAMICA_REGEX = /^\/(horarios|articulos)\/[a-zA-Z0-9-]{1,64}$/;
 /** El prompt usa "ID" como marcador de posición; el modelo lo copia tal cual bastante seguido. */
 const PLACEHOLDER_ID_REGEX = /\/(ID|id|<ID>|\{id\}|:id)$/;
 
+/**
+ * El modelo adivina rutas por el nombre visible de la sección ("/tutoriales"
+ * porque el botón dice Tutoriales, aunque internamente sea "/articulos").
+ * Traducir esos sinónimos es mejor que rechazarlos: el residente igual quería
+ * ir ahí, y un rechazo terminaba con el modelo mostrándole el error interno.
+ */
+const ALIAS_RUTAS: Record<string, string> = {
+  '/tutoriales': '/articulos',
+  '/guias': '/articulos',
+  '/clima': '/mas/clima',
+  '/radio': '/mas/radio',
+  '/contactos': '/llamar',
+  '/llamadas': '/llamar',
+  '/perfil': '/profile',
+  '/inicio': '/',
+  '/actividades': '/horarios',
+};
+
+export function normalizarRuta(ruta: string): string {
+  const limpia = ruta.trim().replace(/\/+$/, '') || '/';
+  const alias = ALIAS_RUTAS[limpia.toLowerCase()];
+  if (alias) return alias;
+  // Sinónimos con id: "/tutoriales/abc" → "/articulos/abc".
+  const conId = /^\/(tutoriales|guias)\/(.+)$/i.exec(limpia);
+  if (conId) return `/articulos/${conId[2]}`;
+  const actividadConId = /^\/actividades\/(.+)$/i.exec(limpia);
+  if (actividadConId) return `/horarios/${actividadConId[1]}`;
+  return limpia;
+}
+
 export function esRutaValida(ruta: string): boolean {
   if (PLACEHOLDER_ID_REGEX.test(ruta)) return false;
   return RUTAS_ESTATICAS_VALIDAS.has(ruta) || RUTA_DINAMICA_REGEX.test(ruta);
@@ -44,7 +74,8 @@ export function extraerNavegacionDelTexto(texto: string): { texto: string; naveg
   if (!match && !matchLlamada) return { texto: textoLimpio };
 
   const attrs = match?.[1] ?? match?.[3] ?? matchLlamada?.[1] ?? '';
-  const ruta = /ruta="([^"]*)"/.exec(attrs)?.[1];
+  const rutaCruda = /ruta="([^"]*)"/.exec(attrs)?.[1];
+  const ruta = rutaCruda ? normalizarRuta(rutaCruda) : undefined;
   const etiqueta = /etiqueta="([^"]*)"/.exec(attrs)?.[1];
   const emoji = /emoji="([^"]*)"/.exec(attrs)?.[1];
 
