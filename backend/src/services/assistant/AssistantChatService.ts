@@ -4,6 +4,7 @@ import { ProviderManager, type IProvider } from '../../core/provider';
 import type { ChatCompletionInput, ChatCompletionOutput, GroqToolCall } from '../../providers/chat/ChatTypes';
 import { GroqModelProvider } from '../../providers/chat/GroqModelProvider';
 import { GroqWhisperProvider, type TranscriptionInput, type TranscriptionOutput } from '../../providers/chat/GroqWhisperProvider';
+import { GeminiProvider } from '../../providers/chat/GeminiProvider';
 import { OpenRouterProvider } from '../../providers/chat/OpenRouterProvider';
 import * as activitiesService from '../activities/ActivitiesService';
 import * as tutorialsService from '../tutorials/TutorialsService';
@@ -38,15 +39,15 @@ function getChatManager(): ProviderManager<ChatCompletionInput, ChatCompletionOu
     new GroqModelProvider('openai/gpt-oss-120b', env.groqApiKey, 3),
   ];
 
-  // Vendor DISTINTO a Groq — si Groq como servicio se cae entero (no solo la
-  // cuota de un modelo), los 3 de arriba fallan igual; OpenRouter corre en
-  // infraestructura separada.
-  if (env.openRouterApiKey) providers.push(new OpenRouterProvider(env.openRouterApiKey, env.openRouterModel, 4));
+  // Vendors DISTINTOS a Groq — si Groq se queda sin cuota (su tier gratuito
+  // son 8000 tokens/minuto para toda la residencia) o se cae entero, los 3 de
+  // arriba fallan juntos porque comparten infraestructura y cuota.
+  if (env.geminiApiKey) providers.push(new GeminiProvider(env.geminiApiKey, env.geminiModel, 4));
+  if (env.openRouterApiKey) providers.push(new OpenRouterProvider(env.openRouterApiKey, env.openRouterModel, 5));
 
-  // Slots listos para sumar más vendors cuando se carguen esas keys — cada
-  // uno implementaría IProvider<ChatCompletionInput, ChatCompletionOutput>
-  // normalizando su respuesta al mismo shape { message: { content, tool_calls } }:
-  //   env.geminiApiKey && new GeminiChatProvider(env.geminiApiKey, 5)
+  // Slot listo para sumar otro vendor cuando se cargue esa key — implementaría
+  // IProvider<ChatCompletionInput, ChatCompletionOutput> normalizando su
+  // respuesta al mismo shape { message: { content, tool_calls } }:
   //   env.openAiApiKey && new OpenAiChatProvider(env.openAiApiKey, 6)
 
   // timeoutMs recortado a 12s (antes ~30-42s por modelo en el cliente) para que

@@ -30,6 +30,10 @@ export const env = {
   openRouterApiKey: optional('OPENROUTER_API_KEY'),
   openRouterModel: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free',
   geminiApiKey: optional('GEMINI_API_KEY'),
+  // Alias "latest" a propósito: Google discontinúa modelos con nombre de
+  // versión fija (gemini-2.5-flash ya dejó de estar disponible para cuentas
+  // nuevas) y el alias sigue apuntando al Flash vigente sin tocar código.
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-latest',
   openAiApiKey: optional('OPENAI_API_KEY'),
 
   openWeatherApiKey: optional('OPENWEATHER_API_KEY'),
