@@ -201,9 +201,6 @@ function BloqueVisual({ color, atenuado }: { color: number; atenuado?: boolean }
         end={{ x: 0.85, y: 0.95 }}
         style={styles.bloqueRelleno}
       >
-        <View style={[styles.bloqueHilera, { top: '32%' }]} />
-        <View style={[styles.bloqueHilera, { top: '58%' }]} />
-        <View style={[styles.bloqueHilera, { top: '84%' }]} />
         <View style={styles.bloqueBrilloSuave} />
       </LinearGradient>
     </View>
@@ -228,7 +225,7 @@ function BloqueCelda({ color, resaltada, previsualizada, previsualizadaInvalida 
 
   useEffect(() => {
     if (resaltada) {
-      escala.value = withSequence(withTiming(1.25, { duration: 110 }), withTiming(0, { duration: 170 }));
+      escala.value = withSequence(withTiming(1.25, { duration: 80 }), withTiming(0, { duration: 110 }));
     }
   }, [resaltada, escala]);
 
@@ -252,26 +249,40 @@ function BloqueCelda({ color, resaltada, previsualizada, previsualizadaInvalida 
 interface PiezaArrastrableProps {
   pieza: PiezaBloque;
   tamano: number;
+  tamanoCelda: number;
   oculta: boolean;
+  fantasmaX: ReturnType<typeof useSharedValue<number>>;
+  fantasmaY: ReturnType<typeof useSharedValue<number>>;
+  containerPosX: ReturnType<typeof useSharedValue<number>>;
+  containerPosY: ReturnType<typeof useSharedValue<number>>;
   onComenzar: (pieza: PiezaBloque) => void;
   onMover: (pieza: PiezaBloque, absX: number, absY: number) => void;
   onSoltar: (pieza: PiezaBloque, absX: number, absY: number) => void;
 }
 
-function PiezaArrastrable({ pieza, tamano, oculta, onComenzar, onMover, onSoltar }: PiezaArrastrableProps) {
+function PiezaArrastrable({
+  pieza, tamano, tamanoCelda, oculta, fantasmaX, fantasmaY, containerPosX, containerPosY, onComenzar, onMover, onSoltar,
+}: PiezaArrastrableProps) {
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   const escala = useSharedValue(1);
   const { filas, columnas } = dimensionesForma(pieza.forma);
 
+  // La posición del fantasma se calcula acá adentro, en el hilo de UI —
+  // nada de cruzar al hilo de JS en cada cuadro del arrastre (eso era lo
+  // que lo hacía sentir trabado). Solo se llama a onMover (JS) para
+  // actualizar la previsualización de celdas, y esa función ya viene
+  // limitada a una frecuencia baja (ver throttle en la pantalla principal).
   const gesto = Gesture.Pan()
     .onStart(() => {
-      escala.value = withTiming(1.12, { duration: 120 });
+      escala.value = withTiming(1.12, { duration: 100 });
       runOnJS(onComenzar)(pieza);
     })
     .onUpdate((e) => {
       dragX.value = e.translationX;
       dragY.value = e.translationY;
+      fantasmaX.value = e.absoluteX - containerPosX.value - (columnas * tamanoCelda) / 2;
+      fantasmaY.value = e.absoluteY - containerPosY.value - LEVANTAR_AL_ARRASTRAR - (filas * tamanoCelda) / 2;
       runOnJS(onMover)(pieza, e.absoluteX, e.absoluteY);
     })
     .onEnd((e) => {
@@ -356,6 +367,14 @@ export default function BloquesScreen() {
   const [tamanoCelda, setTamanoCelda] = useState(0);
   const boardRef = useRef<View>(null);
   const boardPos = useRef({ x: 0, y: 0 });
+  // El fantasma se dibuja con `position:absolute` dentro de este contenedor
+  // (no de la pantalla entera) — hay que medir dónde arranca en la pantalla
+  // real para convertir absX/absY (coordenadas de pantalla completa que da
+  // el gesto) a coordenadas locales. Sin esto, la pieza se ve más abajo de
+  // donde realmente termina cayendo (el desfasaje del status bar/header).
+  const containerRef = useRef<View>(null);
+  const containerPosX = useSharedValue(0);
+  const containerPosY = useSharedValue(0);
   const ultimaAnclaRef = useRef<{ r: number; c: number } | null>(null);
 
   const puntajeEscala = useSharedValue(1);
@@ -423,11 +442,19 @@ export default function BloquesScreen() {
     setPiezaFantasma(pieza);
   }, []);
 
+  // La posición visual del fantasma ya se calcula en el hilo de UI (ver
+  // PiezaArrastrable) — acá solo queda actualizar qué celdas se
+  // previsualizan, y con un límite de frecuencia: recalcular el tablero de
+  // previsualización en cada cuadro del arrastre (hasta 60 veces por
+  // segundo) era lo que trababa el juego. Cada ~70ms alcanza para que se
+  // sienta instantáneo sin recalcular de más.
+  const ultimaPreviewMsRef = useRef(0);
+
   const onMoverArrastre = useCallback((pieza: PiezaBloque, absX: number, absY: number) => {
     if (tamanoCelda === 0) return;
-    const { filas, columnas } = dimensionesForma(pieza.forma);
-    fantasmaX.value = absX - (columnas * tamanoCelda) / 2;
-    fantasmaY.value = absY - LEVANTAR_AL_ARRASTRAR - (filas * tamanoCelda) / 2;
+    const ahora = Date.now();
+    if (ahora - ultimaPreviewMsRef.current < 70) return;
+    ultimaPreviewMsRef.current = ahora;
 
     const anclaIdeal = calcularAncla(pieza, absX, absY);
     if (!anclaIdeal) {
@@ -442,15 +469,20 @@ export default function BloquesScreen() {
     ultimaAnclaRef.current = anclaResuelta ?? anclaIdeal;
     setPreviewValida(anclaResuelta != null);
     setPreviewCeldas(celdasDePieza(pieza.forma, (anclaResuelta ?? anclaIdeal).r, (anclaResuelta ?? anclaIdeal).c));
-  }, [tamanoCelda, tablero, calcularAncla, fantasmaX, fantasmaY]);
+  }, [tamanoCelda, tablero, calcularAncla]);
 
-  const onSoltarArrastre = useCallback((pieza: PiezaBloque) => {
+  const onSoltarArrastre = useCallback((pieza: PiezaBloque, absX: number, absY: number) => {
     setPiezaArrastrandoId(null);
     setPiezaFantasma(null);
     setPreviewCeldas(new Set());
-
-    const ancla = ultimaAnclaRef.current;
     ultimaAnclaRef.current = null;
+
+    // Se recalcula fresco con la posición real de soltada (no con la última
+    // previsualización, que puede tener hasta ~70ms de atraso por el límite
+    // de frecuencia de onMoverArrastre) — así el punto donde cae la pieza
+    // siempre corresponde exactamente a dónde se soltó el dedo.
+    const anclaIdeal = calcularAncla(pieza, absX, absY);
+    const ancla = anclaIdeal && buscarAnclaCercana(tablero, pieza.forma, anclaIdeal.r, anclaIdeal.c);
     if (fase !== 'jugando' || resolviendo || !ancla || !puedeColocarse(tablero, pieza.forma, ancla.r, ancla.c)) {
       return;
     }
@@ -506,11 +538,15 @@ export default function BloquesScreen() {
       setResolviendo(false);
 
       if (!hayJugadaPosible(tableroLimpio, nuevaBandeja)) finalizarPartida(puntosFinal);
-    }, 280);
-  }, [fase, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir]);
+    }, 190);
+  }, [fase, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir, calcularAncla]);
 
   return (
-    <View style={styles.container}>
+    <View
+      ref={containerRef}
+      style={styles.container}
+      onLayout={() => containerRef.current?.measureInWindow((x, y) => { containerPosX.value = x; containerPosY.value = y; })}
+    >
       <AppHeader title="Bloques ElderTech" showBack />
 
       <View style={[styles.content, { paddingBottom: insets.bottom + Spacing.lg }]}>
@@ -561,7 +597,12 @@ export default function BloquesScreen() {
                 <PiezaArrastrable
                   pieza={pieza}
                   tamano={20}
+                  tamanoCelda={tamanoCelda}
                   oculta={pieza.id === piezaArrastrandoId}
+                  fantasmaX={fantasmaX}
+                  fantasmaY={fantasmaY}
+                  containerPosX={containerPosX}
+                  containerPosY={containerPosY}
                   onComenzar={onComenzarArrastre}
                   onMover={onMoverArrastre}
                   onSoltar={onSoltarArrastre}
@@ -677,24 +718,27 @@ const styles = StyleSheet.create({
   },
   tableroFondo: { flex: 1, padding: PADDING_TABLERO },
   filaTablero: { flex: 1, flexDirection: 'row' },
-  celda: { flex: 1, padding: 2 },
+  celda: { flex: 1, padding: 1.5 },
   celdaVacia: {
-    flex: 1, borderRadius: 5, backgroundColor: 'rgba(0,0,0,0.28)',
+    flex: 1, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.28)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
   },
   celdaPreviaValida: { backgroundColor: 'rgba(102,187,106,0.45)', borderColor: 'rgba(102,187,106,0.9)' },
   celdaPreviaInvalida: { backgroundColor: 'rgba(239,83,80,0.45)', borderColor: 'rgba(239,83,80,0.9)' },
 
+  // Cuadrados de verdad (radio mínimo, no redondeado) y borde sólido en vez
+  // de punteado — el borde "dashed" con esquinas redondeadas es pesado de
+  // dibujar en Android y era la causa más probable de que el juego se
+  // sintiera trabado al arrastrar.
   bloqueBorde: {
-    flex: 1, borderRadius: 8, padding: 2, overflow: 'hidden',
-    borderWidth: 2.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.4)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.35, shadowRadius: 2, elevation: 3,
+    flex: 1, borderRadius: 3, padding: 1.5, overflow: 'hidden',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 1.5, elevation: 2,
   },
-  bloqueRelleno: { flex: 1, borderRadius: 5, overflow: 'hidden' },
-  bloqueHilera: { position: 'absolute', left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(0,0,0,0.14)' },
+  bloqueRelleno: { flex: 1, borderRadius: 2 },
   bloqueBrilloSuave: {
-    position: 'absolute', top: '8%', left: '14%', width: '46%', height: '28%',
-    borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.22)',
+    position: 'absolute', top: '8%', left: '12%', width: '48%', height: '30%',
+    borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.25)',
   },
 
   bandeja: {
