@@ -210,9 +210,9 @@ async function limpiarEnOleadas(celdas: string[], setRompiendose: (s: Set<string
 // encima) dan casi el mismo volumen visual sin el costo de LinearGradient
 // por celda. `resaltado` pinta la celda de un color parejo (blanco/dorado)
 // para el aviso de "esta línea se va a completar".
-function BloqueVisual({ color, atenuado, resaltado }: { color: number; atenuado?: boolean; resaltado?: boolean }) {
+function BloqueVisual({ color, atenuado, resaltado, sinBorde }: { color: number; atenuado?: boolean; resaltado?: boolean; sinBorde?: boolean }) {
   return (
-    <View style={[styles.bloqueBorde, { backgroundColor: resaltado ? '#FFFFFF' : OSCURO[color] }, atenuado && { opacity: 0.55 }]}>
+    <View style={[styles.bloqueBorde, sinBorde && styles.bloqueSinBorde, { backgroundColor: resaltado ? '#FFFFFF' : OSCURO[color] }, atenuado && { opacity: 0.55 }]}>
       <View style={[styles.bloqueRelleno, { backgroundColor: resaltado ? '#FFF3C4' : CLARO[color] }]}>
         <View style={styles.bloqueBrilloSuave} />
       </View>
@@ -270,6 +270,11 @@ function PiezaArrastrable({
   // actualizar la previsualización de celdas, y esa función ya viene
   // limitada a una frecuencia baja (ver throttle en la pantalla principal).
   const gesto = Gesture.Pan()
+    // Margen extra invisible alrededor de la pieza para agarrarla — no hace
+    // falta tocar el pixel exacto, sobre todo para piezas chicas o con
+    // celdas concentradas en una esquina (más difícil para manos con
+    // movilidad reducida).
+    .hitSlop({ top: 24, bottom: 24, left: 24, right: 24 })
     .onStart(() => {
       escala.value = withTiming(1.12, { duration: 100 });
       runOnJS(onComenzar)(pieza);
@@ -299,8 +304,8 @@ function PiezaArrastrable({
       <Animated.View style={[styles.piezaBandeja, estiloAnimado]} accessibilityRole="button" accessibilityLabel="Arrastrar esta pieza al tablero">
         <View style={{ width: columnas * tamano, height: filas * tamano }}>
           {pieza.forma.map(([dr, dc], i) => (
-            <View key={i} style={{ position: 'absolute', top: dr * tamano, left: dc * tamano, width: tamano, height: tamano, padding: 1.5 }}>
-              <BloqueVisual color={pieza.color} />
+            <View key={i} style={{ position: 'absolute', top: dr * tamano, left: dc * tamano, width: tamano, height: tamano, padding: 1 }}>
+              <BloqueVisual color={pieza.color} sinBorde />
             </View>
           ))}
         </View>
@@ -353,6 +358,15 @@ export default function BloquesScreen() {
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
   const [racha, setRacha] = useState(0);
   const rachaRef = useRef(0);
+  // Espejo síncrono de mejorPuntaje — hace falta para comparar "¿esto es
+  // récord?" sin depender de que React ya haya vuelto a renderizar (el
+  // estado normal puede quedar desactualizado si se lee justo después de
+  // actualizarlo en el mismo tick). esteJuegoRecordRef marca si ESTA
+  // partida llegó a superar el récord en algún momento, para no depender
+  // de comparar puntajeFinal contra mejorPuntaje al final (que para
+  // entonces ya podrían ser iguales, porque se fue actualizando en vivo).
+  const mejorPuntajeRef = useRef<number | null>(null);
+  const esteJuegoRecordRef = useRef(false);
 
   const [piezaArrastrandoId, setPiezaArrastrandoId] = useState<number | null>(null);
   const [piezaFantasma, setPiezaFantasma] = useState<PiezaBloque | null>(null);
@@ -383,7 +397,10 @@ export default function BloquesScreen() {
 
   useEffect(() => {
     obtenerEstadisticasPuntaje('bloques')
-      .then((stats) => setMejorPuntaje(stats.mejorPuntaje))
+      .then((stats) => {
+        setMejorPuntaje(stats.mejorPuntaje);
+        mejorPuntajeRef.current = stats.mejorPuntaje;
+      })
       .catch(() => {});
   }, []);
 
@@ -392,12 +409,25 @@ export default function BloquesScreen() {
     puntajeEscala.value = withSequence(withTiming(1.25, { duration: 110 }), withSpring(1, { damping: 8, stiffness: 180 }));
   }, [puntaje, puntajeEscala]);
 
+  // Actualiza el puntaje y, si hace falta, el mejor puntaje EN EL MISMO
+  // instante (no en un efecto aparte) — así "Mejor" se ve actualizado en
+  // vivo apenas se supera, no recién cuando termina la partida.
+  const actualizarPuntaje = useCallback((nuevoPuntaje: number) => {
+    setPuntaje(nuevoPuntaje);
+    if (mejorPuntajeRef.current == null || nuevoPuntaje > mejorPuntajeRef.current) {
+      mejorPuntajeRef.current = nuevoPuntaje;
+      setMejorPuntaje(nuevoPuntaje);
+      esteJuegoRecordRef.current = true;
+    }
+  }, []);
+
   const empezar = useCallback(() => {
     const vacio = tableroVacio();
     setTablero(vacio);
     setBandeja(generarBandeja(vacio));
     setPuntaje(0);
     setEsRecordNuevo(false);
+    esteJuegoRecordRef.current = false;
     setRacha(0);
     rachaRef.current = 0;
     setFase('jugando');
@@ -405,14 +435,18 @@ export default function BloquesScreen() {
 
   const finalizarPartida = useCallback((puntajeFinal: number) => {
     setFase('fin');
-    const esRecord = mejorPuntaje == null || puntajeFinal > mejorPuntaje;
+    // Si en algún momento de esta partida se superó el récord, esteJuegoRecordRef
+    // ya quedó en true (lo pone actualizarPuntaje) — no hay que volver a comparar
+    // acá contra mejorPuntaje, que para este punto ya podría ser igual a
+    // puntajeFinal (por la actualización en vivo) y dar un falso "no es récord".
+    const esRecord = esteJuegoRecordRef.current;
     setEsRecordNuevo(esRecord);
     if (esRecord) {
       setMejorPuntaje(puntajeFinal);
       reproducir('puntaje_alto');
     }
     void registrarPartida('bloques', null, puntajeFinal);
-  }, [mejorPuntaje, reproducir]);
+  }, [reproducir]);
 
   const onLayoutTablero = useCallback((e: LayoutChangeEvent) => {
     const ancho = e.nativeEvent.layout.width;
@@ -506,7 +540,7 @@ export default function BloquesScreen() {
     const bandejaRestante = bandeja.filter((p) => p.id !== pieza.id);
     setTablero(tableroConPieza);
     setBandeja(bandejaRestante);
-    setPuntaje(puntajeConColocacion);
+    actualizarPuntaje(puntajeConColocacion);
 
     const { filas, columnas } = encontrarLineasCompletas(tableroConPieza);
     const lineasLimpiadas = filas.length + columnas.length;
@@ -553,12 +587,12 @@ export default function BloquesScreen() {
       setTablero(tableroLimpio);
       setCeldasRompiendose(new Set());
       setBandeja(nuevaBandeja);
-      setPuntaje(puntosFinal);
+      actualizarPuntaje(puntosFinal);
       setResolviendo(false);
 
       if (!hayJugadaPosible(tableroLimpio, nuevaBandeja)) finalizarPartida(puntosFinal);
     })();
-  }, [fase, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir, calcularAncla]);
+  }, [fase, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir, calcularAncla, actualizarPuntaje]);
 
   return (
     <View
@@ -624,7 +658,7 @@ export default function BloquesScreen() {
               <View key={pieza.id} style={styles.piezaBandejaSlot}>
                 <PiezaArrastrable
                   pieza={pieza}
-                  tamano={20}
+                  tamano={26}
                   tamanoCelda={tamanoCelda}
                   oculta={pieza.id === piezaArrastrandoId}
                   fantasmaX={fantasmaX}
@@ -762,8 +796,10 @@ const styles = StyleSheet.create({
   bloqueBorde: {
     flex: 1, borderRadius: 3, padding: 1.5, overflow: 'hidden',
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 1.5, elevation: 2,
   },
+  // Piezas de la bandeja: sin borde (pedido explícito) — solo el color de
+  // relleno, más fácil de leer de un vistazo y más liviano todavía.
+  bloqueSinBorde: { borderWidth: 0, padding: 0 },
   bloqueRelleno: { flex: 1, borderRadius: 2 },
   bloqueBrilloSuave: {
     position: 'absolute', top: '8%', left: '12%', width: '48%', height: '30%',
@@ -772,11 +808,14 @@ const styles = StyleSheet.create({
 
   bandeja: {
     flexDirection: 'row', gap: Spacing.md, justifyContent: 'center',
-    backgroundColor: '#181B3A', borderRadius: Radius.lg, padding: Spacing.md, width: '100%', minHeight: 96,
+    backgroundColor: '#181B3A', borderRadius: Radius.lg, padding: Spacing.md, width: '100%', minHeight: 116,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3,
   },
-  piezaBandejaSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  piezaBandeja: { alignItems: 'center', justifyContent: 'center' },
+  // minWidth/minHeight generosos — junto con el hitSlop del gesto, hace que
+  // agarrar una pieza chica (o con celdas concentradas en una esquina) no
+  // dependa de tocar el pixel exacto.
+  piezaBandejaSlot: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 100 },
+  piezaBandeja: { alignItems: 'center', justifyContent: 'center', minWidth: 64, minHeight: 64 },
 
   startBtnWrap: { width: '100%', borderRadius: Radius.sm, overflow: 'hidden' },
   startBtn: {
