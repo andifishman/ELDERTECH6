@@ -1,0 +1,52 @@
+diff --git a/node_modules/react-native/Libraries/Components/TextInput/TextInput.js b/node_modules/react-native/Libraries/Components/TextInput/TextInput.js
+index 1e95eb6..aebbd91 100644
+--- a/node_modules/react-native/Libraries/Components/TextInput/TextInput.js
++++ b/node_modules/react-native/Libraries/Components/TextInput/TextInput.js
+@@ -896,11 +896,16 @@ const TextInput: component(
+   inputMode,
+   showSoftInputOnFocus,
+   keyboardType,
++  maxFontSizeMultiplier,
+   ...restProps
+ }: {
+   ref?: React.RefSetter<TextInputInstance>,
+   ...React.ElementConfig<typeof InternalTextInput>,
+ }) {
++  // eldertech (patch-package): ver el mismo parche en Text.js — defaults
++  // reales, TextInput.defaultProps no funciona en React 19.
++  restProps.maxFontSizeMultiplier = maxFontSizeMultiplier ?? 1.3;
++
+   return (
+     <InternalTextInput
+       allowFontScaling={allowFontScaling}
+diff --git a/node_modules/react-native/Libraries/Text/Text.js b/node_modules/react-native/Libraries/Text/Text.js
+index b08b8f3..145b384 100644
+--- a/node_modules/react-native/Libraries/Text/Text.js
++++ b/node_modules/react-native/Libraries/Text/Text.js
+@@ -71,11 +71,26 @@ const TextImpl: component(
+   selectionColor,
+   suppressHighlighting,
+   style,
++  maxFontSizeMultiplier,
++  textBreakStrategy,
+   ...restProps
+ }: {
+   ref?: React.RefSetter<TextForwardRef>,
+   ...TextProps,
+ }) => {
++  // eldertech (patch-package): defaults reales para toda la app — no vía
++  // Text.defaultProps, que React 19 ignora por completo para componentes de
++  // función (confirmado: TextImpl acá arriba es `component(...)`, no clase).
++  // maxFontSizeMultiplier evita que "Texto grande" del sistema rompa layouts
++  // de tamaño fijo. textBreakStrategy="simple" evita un bug conocido de
++  // Android (algoritmo "highQuality"/ICU) que corta el último carácter o
++  // palabra cuando el peso de fuente está ajustado (bold del sistema o
++  // fontWeight:'bold') — https://github.com/facebook/react-native/issues/21729.
++  // Ver patches/react-native+*.patch — hay que regenerar el patch si se
++  // toca este archivo, y confirmar que sigue existiendo tras actualizar RN.
++  restProps.maxFontSizeMultiplier = maxFontSizeMultiplier ?? 1.3;
++  restProps.textBreakStrategy = textBreakStrategy ?? 'simple';
++
+   const _accessibilityLabel = ariaLabel ?? accessibilityLabel;
+ 
+   let _accessibilityState: ?TextProps['accessibilityState'] =

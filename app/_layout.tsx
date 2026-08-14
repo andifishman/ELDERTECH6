@@ -13,61 +13,26 @@ import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
-import { ActivityIndicator, View, Text, TextInput } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 
-// Tope global de escalado de fuente por accesibilidad del sistema operativo.
-// Sin esto, si el residente sube el tamaño de letra del teléfono (muy común
-// en este público), el texto crece más de lo que entra en elementos de
-// tamaño fijo — celdas del calendario, chips, badges de hora — y termina
-// superpuesto o cortado (ver celdas del calendario de Agenda y horarios de
-// Hablemos). Bajado de 1.5× a 1.3×: con "Texto grande" del sistema puesto
-// alto, Android sigue dibujando el texto más ancho de lo que React Native
-// midió al calcular el layout (mismatch de medición, no de escala en sí), y
-// a 1.5× ese desfasaje alcanzaba a comerse el último carácter/palabra en
-// varios lugares (vista previa de Hablemos, categorías de Conexiones) pese a
-// que cada uno mide bien. 1.3× sobre los tamaños ya generosos de
-// Typography.ts sigue siendo bien legible y dejó menos margen para ese
-// desfasaje. Los puntos más angostos (círculo del día en el calendario,
-// horas de tarjetas) van más allá y directamente no escalan.
-// Causa real confirmada (no el escalado de arriba, que quedó como red de
-// seguridad extra): bug conocido y documentado de React Native en Android —
-// https://github.com/facebook/react-native/issues/21729 y
-// https://github.com/react-native-community/discussions-and-proposals/issues/477
-// — el algoritmo de salto de línea por defecto ("highQuality", basado en
-// ICU) calcula mal dónde cortar el texto cuando el peso de fuente está
-// ajustado (por "Texto en negrita" del sistema en Ajustes > Accesibilidad,
-// o por fontWeight: 'bold' normal) y se come el último carácter o la última
-// palabra — confirmado con datos reales: la base decía "Hola" completo, la
-// pantalla mostraba "Hol". `textBreakStrategy="simple"` usa un algoritmo de
-// corte distinto, sin ese bug (es la solución más reportada para este caso
-// exacto en la comunidad de React Native). Solo afecta Android; iOS lo ignora.
-// TODO (sin confirmar todavía, probar esto ANTES que cualquier otra cosa):
-// después de aplicar textBreakStrategy='simple' de esta forma, el residente
-// probador siguió viendo el mensaje cortado ("Hola" en la base → "Hol" en
-// pantalla) sin ningún cambio. Sospecha fuerte sin verificar aún: este
-// proyecto usa React 19 (ver package.json) y `Text` en
-// node_modules/react-native/Libraries/Text/Text.js es un componente de
-// función (`const TextImpl: component(...) = (...) => {...}`), no una
-// clase — React 19 sacó el soporte de `defaultProps` para componentes de
-// función (antes solo tiraba warning en React 18, ahora no hace nada). Si
-// es así, ESTE BLOQUE ENTERO (Text.defaultProps / TextInput.defaultProps)
-// nunca tuvo efecto real en ningún lado, y por eso ningún fix que dependiera
-// solo de esto (el tope de escalado de fuente Y textBreakStrategy) cambió
-// nada — ni acá ni en las pantallas que ya seteaban estas props directo en
-// cada <Text> (esas sí deberían haber funcionado, hay que revisar cuáles).
-// Próximo paso: confirmarlo (buscar "React 19 removed defaultProps function
-// components") y, si es así, sacar esto de acá y en cambio: (a) patchear
-// react-native con patch-package para que TextImpl tenga estos valores como
-// default real en la desestructuración de props (no vía .defaultProps), con
-// postinstall:patch-package en package.json para que EAS Build/Update lo
-// levante también, o (b) crear un <AppText> wrapper y reemplazar los <Text>
-// más críticos (burbujaTexto del chat es el que hay que probar primero).
-// @ts-expect-error — defaultProps existe en runtime aunque los tipos de RN no lo declaren para componentes de función
-Text.defaultProps = { ...(Text.defaultProps ?? {}), maxFontSizeMultiplier: 1.3, textBreakStrategy: 'simple' };
-// @ts-expect-error — ídem
-TextInput.defaultProps = { ...(TextInput.defaultProps ?? {}), maxFontSizeMultiplier: 1.3 };
+// CONFIRMADO: `Text.defaultProps`/`TextInput.defaultProps` (lo que había acá
+// antes) nunca tuvo efecto — React 19 ignora `defaultProps` en componentes
+// de función, y `Text`/`TextInput` de React Native son componentes de
+// función (`component(...)`). Por eso el corte del último carácter/palabra
+// en Android (bug conocido del algoritmo de salto de línea "highQuality" con
+// texto en negrita — https://github.com/facebook/react-native/issues/21729)
+// y el desborde de "Texto grande" del sistema en elementos de tamaño fijo
+// seguían pasando pase lo que pase acá.
+// Arreglo real: patches/react-native+0.81.5.patch (via patch-package,
+// corre en el `postinstall` del root package.json — EAS Build/Update lo
+// levanta solo). Ese patch mete `maxFontSizeMultiplier` y
+// `textBreakStrategy="simple"` como default de verdad, en la desestructuración
+// de props de Text.js/TextInput.js, para toda la app sin tocar cada pantalla.
+// Si se actualiza la versión de react-native, hay que regenerar el patch
+// (`npx patch-package react-native`) — probablemente cambien los números de
+// línea o la estructura interna del archivo.
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
