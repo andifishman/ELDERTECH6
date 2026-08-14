@@ -118,6 +118,17 @@ function hayJugadaPosible(tablero: Celda[][], piezas: PiezaBloque[]): boolean {
   return piezas.some((p) => hayColocacionPosibleParaPieza(tablero, p.forma));
 }
 
+/** Si el ancla exacta no entra, prueba las 8 celdas vecinas — así no hace falta soltar pixel-perfecto. */
+function buscarAnclaCercana(tablero: Celda[][], forma: Forma, anclaR: number, anclaC: number): { r: number; c: number } | null {
+  if (puedeColocarse(tablero, forma, anclaR, anclaC)) return { r: anclaR, c: anclaC };
+  const vecinos: [number, number][] = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+  for (const [dr, dc] of vecinos) {
+    const r = anclaR + dr, c = anclaC + dc;
+    if (puedeColocarse(tablero, forma, r, c)) return { r, c };
+  }
+  return null;
+}
+
 function generarBandeja(tablero: Celda[][]): PiezaBloque[] {
   let bandeja: PiezaBloque[];
   let intentos = 0;
@@ -150,6 +161,19 @@ function celdasDeLineas(filas: number[], columnas: number[]): Set<string> {
   return set;
 }
 
+// ─── Puntuación estilo Block Blast (investigado en guías del juego real) ──────
+// 1 punto por celda colocada + 10 puntos por celda limpiada (única, sin
+// contar dos veces la intersección fila×columna) + bono si se limpian varias
+// líneas de un solo movimiento + un multiplicador de racha que sube mientras
+// se siga limpiando en movimientos consecutivos y se resetea a la primera
+// colocación que no limpia nada.
+function bonoMultilinea(lineas: number, tableroQuedaVacio: boolean): number {
+  if (tableroQuedaVacio) return 360;
+  const tabla: Record<number, number> = { 2: 30, 3: 80, 4: 140, 5: 200, 6: 300, 7: 300, 8: 300 };
+  return tabla[Math.min(lineas, 8)] ?? 0;
+}
+const RACHA_MULTIPLICADOR_MAX = 8;
+
 function dimensionesForma(forma: Forma): { filas: number; columnas: number } {
   let maxR = 0, maxC = 0;
   for (const [dr, dc] of forma) { maxR = Math.max(maxR, dr); maxC = Math.max(maxC, dc); }
@@ -162,17 +186,27 @@ function celdasDePieza(forma: Forma, anclaR: number, anclaC: number): Set<string
 
 // ─── Visual de un bloque "gema": gradiente + faceta de brillo + sombra ────────
 
+// Look "tejido de lana": borde punteado (simula costura), relleno mate en
+// vez de brillo tipo vidrio, e hileras horizontales sutiles sugiriendo
+// puntos de tejido — sin un asset de imagen real (no hay generador de
+// imágenes configurado en este entorno), es lo más cerca que se puede
+// llegar solo con estilos, y es liviano (4 Views extra por bloque, nada
+// pesado para celulares de gama media/baja).
 function BloqueVisual({ color, atenuado }: { color: number; atenuado?: boolean }) {
   return (
-    <LinearGradient
-      colors={[CLARO[color], OSCURO[color]]}
-      start={{ x: 0.15, y: 0.1 }}
-      end={{ x: 0.9, y: 1 }}
-      style={[styles.bloqueLleno, atenuado && { opacity: 0.55 }]}
-    >
-      <View style={styles.bloqueFaceta} />
-      <View style={styles.bloqueSombraInferior} />
-    </LinearGradient>
+    <View style={[styles.bloqueBorde, atenuado && { opacity: 0.55 }]}>
+      <LinearGradient
+        colors={[CLARO[color], OSCURO[color]]}
+        start={{ x: 0.2, y: 0.1 }}
+        end={{ x: 0.85, y: 0.95 }}
+        style={styles.bloqueRelleno}
+      >
+        <View style={[styles.bloqueHilera, { top: '32%' }]} />
+        <View style={[styles.bloqueHilera, { top: '58%' }]} />
+        <View style={[styles.bloqueHilera, { top: '84%' }]} />
+        <View style={styles.bloqueBrilloSuave} />
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -309,6 +343,8 @@ export default function BloquesScreen() {
   const [puntaje, setPuntaje] = useState(0);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
+  const [racha, setRacha] = useState(0);
+  const rachaRef = useRef(0);
 
   const [piezaArrastrandoId, setPiezaArrastrandoId] = useState<number | null>(null);
   const [piezaFantasma, setPiezaFantasma] = useState<PiezaBloque | null>(null);
@@ -342,6 +378,8 @@ export default function BloquesScreen() {
     setBandeja(generarBandeja(vacio));
     setPuntaje(0);
     setEsRecordNuevo(false);
+    setRacha(0);
+    rachaRef.current = 0;
     setFase('jugando');
   }, []);
 
@@ -362,15 +400,21 @@ export default function BloquesScreen() {
     boardRef.current?.measureInWindow((x, y) => { boardPos.current = { x, y }; });
   }, []);
 
+  // Misma cuenta que usa el fantasma para dibujarse (ver onMoverArrastre) —
+  // antes usaban fórmulas distintas ("centrado" acá vs. "esquina" en el
+  // fantasma) y para piezas de ancho/alto par el ancla quedaba corrida una
+  // celda entera respecto a donde se veía la pieza. Con Math.round en vez de
+  // Math.floor además queda más tolerante: no hace falta soltar pixel-perfect,
+  // alcanza con estar más cerca de una celda que de la de al lado.
   const calcularAncla = useCallback((pieza: PiezaBloque, absX: number, absY: number): { r: number; c: number } | null => {
     if (tamanoCelda === 0) return null;
     const { filas, columnas } = dimensionesForma(pieza.forma);
-    const xTablero = absX - boardPos.current.x - PADDING_TABLERO;
-    const yTablero = absY - boardPos.current.y - PADDING_TABLERO - LEVANTAR_AL_ARRASTRAR;
-    const colCentro = Math.floor(xTablero / tamanoCelda);
-    const filaCentro = Math.floor(yTablero / tamanoCelda);
-    const anclaR = filaCentro - Math.floor((filas - 1) / 2);
-    const anclaC = colCentro - Math.floor((columnas - 1) / 2);
+    const esquinaXPantalla = absX - (columnas * tamanoCelda) / 2;
+    const esquinaYPantalla = absY - LEVANTAR_AL_ARRASTRAR - (filas * tamanoCelda) / 2;
+    const xTablero = esquinaXPantalla - boardPos.current.x - PADDING_TABLERO;
+    const yTablero = esquinaYPantalla - boardPos.current.y - PADDING_TABLERO;
+    const anclaC = Math.round(xTablero / tamanoCelda);
+    const anclaR = Math.round(yTablero / tamanoCelda);
     return { r: anclaR, c: anclaC };
   }, [tamanoCelda]);
 
@@ -385,15 +429,19 @@ export default function BloquesScreen() {
     fantasmaX.value = absX - (columnas * tamanoCelda) / 2;
     fantasmaY.value = absY - LEVANTAR_AL_ARRASTRAR - (filas * tamanoCelda) / 2;
 
-    const ancla = calcularAncla(pieza, absX, absY);
-    ultimaAnclaRef.current = ancla;
-    if (!ancla) {
+    const anclaIdeal = calcularAncla(pieza, absX, absY);
+    if (!anclaIdeal) {
+      ultimaAnclaRef.current = null;
       setPreviewCeldas(new Set());
       return;
     }
-    const valida = puedeColocarse(tablero, pieza.forma, ancla.r, ancla.c);
-    setPreviewValida(valida);
-    setPreviewCeldas(celdasDePieza(pieza.forma, ancla.r, ancla.c));
+    // Si el punto exacto no entra, se muestra (y después se suelta) en la celda
+    // vecina más cercana que sí entra — la previsualización tiene que
+    // coincidir con lo que realmente va a pasar al soltar.
+    const anclaResuelta = buscarAnclaCercana(tablero, pieza.forma, anclaIdeal.r, anclaIdeal.c);
+    ultimaAnclaRef.current = anclaResuelta ?? anclaIdeal;
+    setPreviewValida(anclaResuelta != null);
+    setPreviewCeldas(celdasDePieza(pieza.forma, (anclaResuelta ?? anclaIdeal).r, (anclaResuelta ?? anclaIdeal).c));
   }, [tamanoCelda, tablero, calcularAncla, fantasmaX, fantasmaY]);
 
   const onSoltarArrastre = useCallback((pieza: PiezaBloque) => {
@@ -409,29 +457,46 @@ export default function BloquesScreen() {
 
     const tableroConPieza = colocarPieza(tablero, pieza.forma, ancla.r, ancla.c, pieza.color);
     reproducir('colocar');
-    const puntosBase = puntaje + pieza.forma.length * 10;
+    // 1 punto por celda colocada (igual que el juego real) — se suma siempre, limpie línea o no.
+    const puntajeConColocacion = puntaje + pieza.forma.length;
 
     const bandejaRestante = bandeja.filter((p) => p.id !== pieza.id);
     setTablero(tableroConPieza);
     setBandeja(bandejaRestante);
-    setPuntaje(puntosBase);
+    setPuntaje(puntajeConColocacion);
 
     const { filas, columnas } = encontrarLineasCompletas(tableroConPieza);
     const lineasLimpiadas = filas.length + columnas.length;
 
     if (lineasLimpiadas === 0) {
+      // Colocar sin limpiar corta la racha — el multiplicador vuelve a cero.
+      rachaRef.current = 0;
+      setRacha(0);
       const nuevaBandeja = bandejaRestante.length > 0 ? bandejaRestante : generarBandeja(tableroConPieza);
       if (bandejaRestante.length === 0) setBandeja(nuevaBandeja);
-      if (!hayJugadaPosible(tableroConPieza, nuevaBandeja)) finalizarPartida(puntosBase);
+      if (!hayJugadaPosible(tableroConPieza, nuevaBandeja)) finalizarPartida(puntajeConColocacion);
       return;
     }
 
     setResolviendo(true);
     reproducir('linea_completa');
-    setCeldasLimpiandose(celdasDeLineas(filas, columnas));
+    const celdasUnicas = celdasDeLineas(filas, columnas);
+    setCeldasLimpiandose(celdasUnicas);
+
+    const nuevaRacha = rachaRef.current + 1;
+    const multiplicador = Math.min(nuevaRacha, RACHA_MULTIPLICADOR_MAX);
+    rachaRef.current = nuevaRacha;
+    setRacha(nuevaRacha);
+
     setTimeout(() => {
       const tableroLimpio = limpiarLineas(tableroConPieza, filas, columnas);
-      const puntosFinal = puntosBase + lineasLimpiadas * 80 + (lineasLimpiadas > 1 ? lineasLimpiadas * 40 : 0);
+      const tableroQuedaVacio = tableroLimpio.every((fila) => fila.every((v) => v === null));
+      // 10 puntos por celda limpiada (única — la intersección fila×columna no se cuenta dos veces)
+      // + bono si se limpian varias líneas de un solo movimiento, todo multiplicado por la racha.
+      const puntosPorCeldas = celdasUnicas.size * 10;
+      const bono = bonoMultilinea(lineasLimpiadas, tableroQuedaVacio);
+      const puntosLimpieza = (puntosPorCeldas + bono) * multiplicador;
+      const puntosFinal = puntajeConColocacion + puntosLimpieza;
       const nuevaBandeja = bandejaRestante.length > 0 ? bandejaRestante : generarBandeja(tableroLimpio);
 
       setTablero(tableroLimpio);
@@ -459,6 +524,15 @@ export default function BloquesScreen() {
             <Text style={[styles.scoreLabel, { color: '#FFD54F' }]}>Mejor</Text>
             <Text style={[styles.scoreValue, { color: '#FFD54F' }]}>{mejorPuntaje ?? '—'}</Text>
           </View>
+          {racha > 1 && (
+            <>
+              <View style={styles.scoreDivider} />
+              <View style={styles.scoreItem}>
+                <Text style={[styles.scoreLabel, { color: '#FF8A65' }]}>Racha</Text>
+                <Text style={[styles.scoreValue, { color: '#FF8A65' }]}>×{Math.min(racha, RACHA_MULTIPLICADOR_MAX)}</Text>
+              </View>
+            </>
+          )}
         </View>
 
         <View ref={boardRef} style={styles.tableroWrap} onLayout={onLayoutTablero}>
@@ -611,17 +685,16 @@ const styles = StyleSheet.create({
   celdaPreviaValida: { backgroundColor: 'rgba(102,187,106,0.45)', borderColor: 'rgba(102,187,106,0.9)' },
   celdaPreviaInvalida: { backgroundColor: 'rgba(239,83,80,0.45)', borderColor: 'rgba(239,83,80,0.9)' },
 
-  bloqueLleno: {
-    flex: 1, borderRadius: 6, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    borderWidth: 1.5, borderColor: 'rgba(15,8,35,0.55)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.4, shadowRadius: 2, elevation: 3,
+  bloqueBorde: {
+    flex: 1, borderRadius: 8, padding: 2, overflow: 'hidden',
+    borderWidth: 2.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.35, shadowRadius: 2, elevation: 3,
   },
-  bloqueFaceta: {
-    position: 'absolute', width: '60%', height: '60%', top: '4%', left: '20%',
-    borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.32)', transform: [{ rotate: '45deg' }],
-  },
-  bloqueSombraInferior: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: '32%', backgroundColor: 'rgba(0,0,0,0.2)',
+  bloqueRelleno: { flex: 1, borderRadius: 5, overflow: 'hidden' },
+  bloqueHilera: { position: 'absolute', left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(0,0,0,0.14)' },
+  bloqueBrilloSuave: {
+    position: 'absolute', top: '8%', left: '14%', width: '46%', height: '28%',
+    borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.22)',
   },
 
   bandeja: {
