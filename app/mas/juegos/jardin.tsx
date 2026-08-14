@@ -2,8 +2,24 @@
 // relación con Candy Crush más allá de la mecánica general de "combinar 3").
 // Interacción: tocar una pieza y después tocar una pieza adyacente para
 // intercambiarlas — nada de arrastrar, más simple para motricidad reducida.
+//
+// Capa visual: gemas con gradiente + brillo + sombra (expo-linear-gradient,
+// ya era dependencia del proyecto) y animaciones reales en el hilo de UI vía
+// react-native-reanimated (idem — no hace falta ningún build nativo nuevo
+// para ninguna de las dos). Las piezas se posicionan de forma absoluta
+// dentro del tablero e interpolan su propia posición con un spring cuando
+// cambian de fila/columna — así la "caída" por gravedad es un movimiento
+// real, no un simple re-render en la celda de al lado.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,25 +31,23 @@ import { useGameSounds } from '@/hooks/useGameSounds';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { registrarPartida, obtenerEstadisticasPuntaje } from '@/services/juegosService';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 const FILAS = 6;
 const COLUMNAS = 6;
 const MOVIMIENTOS_INICIALES = 20;
+const ESPERA_RESALTADO_MS = 320;
+const ESPERA_GRAVEDAD_MS = 260;
 
 type Fase = 'inicio' | 'jugando' | 'fin';
 interface Pieza { id: number; tipo: number }
 interface Coord { r: number; c: number }
 
-const TIPOS_PIEZA: { icono: keyof typeof Ionicons.glyphMap; color: string; nombre: string }[] = [
-  { icono: 'flower', color: '#D81B60', nombre: 'flor' },
-  { icono: 'leaf', color: '#2E7D32', nombre: 'hoja' },
-  { icono: 'sunny', color: '#EF6C00', nombre: 'sol' },
-  { icono: 'water', color: '#1565C0', nombre: 'gota' },
-  { icono: 'heart', color: '#C62828', nombre: 'corazón' },
-  { icono: 'star', color: '#6A1B9A', nombre: 'estrella' },
+const TIPOS_PIEZA: { icono: keyof typeof Ionicons.glyphMap; claro: string; oscuro: string; nombre: string }[] = [
+  { icono: 'flower', claro: '#FF6FA5', oscuro: '#C2185B', nombre: 'flor' },
+  { icono: 'leaf', claro: '#81C784', oscuro: '#1B5E20', nombre: 'hoja' },
+  { icono: 'sunny', claro: '#FFB74D', oscuro: '#E65100', nombre: 'sol' },
+  { icono: 'water', claro: '#64B5F6', oscuro: '#0D47A1', nombre: 'gota' },
+  { icono: 'heart', claro: '#EF5350', oscuro: '#B71C1C', nombre: 'corazón' },
+  { icono: 'star', claro: '#BA68C8', oscuro: '#4A148C', nombre: 'estrella' },
 ];
 
 let siguienteId = 1;
@@ -159,6 +173,90 @@ function generarTableroValido(): Pieza[][] {
   return tablero;
 }
 
+// ─── Gema animada: gradiente + brillo + sombra, posición absoluta con spring ──
+
+interface GemaProps {
+  tipo: (typeof TIPOS_PIEZA)[number];
+  fila: number;
+  columna: number;
+  tamano: number;
+  seleccionada: boolean;
+  resaltada: boolean;
+  invalida: boolean;
+  nombreAccesible: string;
+}
+
+function Gema({ tipo, fila, columna, tamano, seleccionada, resaltada, invalida, nombreAccesible }: GemaProps) {
+  const top = useSharedValue(fila * tamano - tamano * 0.4);
+  const left = useSharedValue(columna * tamano);
+  const escala = useSharedValue(0);
+  const rotacion = useSharedValue(0);
+  const primerRenderRef = useRef(true);
+
+  useEffect(() => {
+    if (primerRenderRef.current) {
+      primerRenderRef.current = false;
+      top.value = withSpring(fila * tamano, { damping: 12, stiffness: 140 });
+      left.value = columna * tamano;
+      escala.value = withSpring(1, { damping: 11, stiffness: 160 });
+      return;
+    }
+    top.value = withSpring(fila * tamano, { damping: 13, stiffness: 120 });
+    left.value = withSpring(columna * tamano, { damping: 13, stiffness: 120 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fila, columna, tamano]);
+
+  useEffect(() => {
+    if (primerRenderRef.current) return;
+    if (resaltada) {
+      escala.value = withSequence(withTiming(1.35, { duration: 140 }), withTiming(0, { duration: 180 }));
+    } else {
+      escala.value = withSpring(seleccionada ? 1.14 : 1, { damping: 9, stiffness: 170 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seleccionada, resaltada]);
+
+  useEffect(() => {
+    if (invalida) {
+      rotacion.value = withSequence(
+        withTiming(-7, { duration: 55 }),
+        withTiming(7, { duration: 55 }),
+        withTiming(-5, { duration: 55 }),
+        withTiming(0, { duration: 55 }),
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invalida]);
+
+  const estiloAnimado = useAnimatedStyle(() => ({
+    position: 'absolute',
+    top: top.value,
+    left: left.value,
+    width: tamano,
+    height: tamano,
+    transform: [{ scale: escala.value }, { rotate: `${rotacion.value}deg` }],
+  }));
+
+  const relleno = tamano * 0.07;
+
+  return (
+    <Animated.View style={estiloAnimado} accessibilityLabel={nombreAccesible}>
+      <View style={{ flex: 1, padding: relleno }}>
+        <LinearGradient
+          colors={[tipo.claro, tipo.oscuro]}
+          start={{ x: 0.15, y: 0.1 }}
+          end={{ x: 0.9, y: 1 }}
+          style={[styles.gema, seleccionada && styles.gemaSeleccionada]}
+        >
+          <View style={styles.gemaBrilloGrande} />
+          <View style={styles.gemaBrilloChico} />
+          <Ionicons name={tipo.icono} size={tamano * 0.4} color="#FFFFFF" style={styles.gemaIconoSombra} />
+        </LinearGradient>
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function JardinScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -176,17 +274,27 @@ export default function JardinScreen() {
   const [resolviendo, setResolviendo] = useState(false);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
+  const [medida, setMedida] = useState(0);
 
   const puntajeRef = useRef(0);
   const mejorPuntajeRef = useRef<number | null>(null);
   puntajeRef.current = puntaje;
   mejorPuntajeRef.current = mejorPuntaje;
 
+  const puntajeEscala = useSharedValue(1);
+  const estiloPuntaje = useAnimatedStyle(() => ({ transform: [{ scale: puntajeEscala.value }] }));
+
   useEffect(() => {
     obtenerEstadisticasPuntaje('jardin')
       .then((stats) => setMejorPuntaje(stats.mejorPuntaje))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (puntaje === 0) return;
+    puntajeEscala.value = withSequence(withTiming(1.25, { duration: 110 }), withSpring(1, { damping: 8, stiffness: 180 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puntaje]);
 
   const resolverCadena = useCallback(async (tableroInicial: Pieza[][]) => {
     let actual = tableroInicial;
@@ -198,15 +306,14 @@ export default function JardinScreen() {
     while (marcadas.size > 0) {
       setCeldasResaltadas(marcadas);
       reproducir(marcadas.size >= 7 ? 'linea_completa' : 'combinacion');
-      await esperar(220);
+      await esperar(ESPERA_RESALTADO_MS);
 
       ganados += marcadas.size * 10 * multiplicador;
 
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       actual = aplicarGravedadYRellenar(actual, marcadas);
       setTablero(actual);
       setCeldasResaltadas(new Set());
-      await esperar(260);
+      await esperar(ESPERA_GRAVEDAD_MS);
 
       multiplicador += 1;
       marcadas = encontrarCoincidencias(actual);
@@ -218,10 +325,9 @@ export default function JardinScreen() {
 
     if (!hayMovimientoValido(actual)) {
       await esperar(200);
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       actual = generarTableroValido();
       setTablero(actual);
-      await esperar(200);
+      await esperar(ESPERA_GRAVEDAD_MS);
     }
 
     setResolviendo(false);
@@ -270,7 +376,6 @@ export default function JardinScreen() {
       return;
     }
 
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setTablero(probado);
     reproducir('colocar');
     const movimientosNuevos = movimientos - 1;
@@ -291,6 +396,8 @@ export default function JardinScreen() {
     setFase('jugando');
   }, []);
 
+  const tamanoCelda = medida > 0 ? medida / COLUMNAS : 0;
+
   return (
     <View style={styles.container}>
       <AppHeader title="Jardín ElderTech" showBack />
@@ -299,7 +406,7 @@ export default function JardinScreen() {
         <View style={styles.scoreboard}>
           <View style={styles.scoreItem}>
             <Text style={styles.scoreLabel}>Puntos</Text>
-            <Text style={styles.scoreValue}>{puntaje}</Text>
+            <Animated.Text style={[styles.scoreValue, estiloPuntaje]}>{puntaje}</Animated.Text>
           </View>
           <View style={styles.scoreDivider} />
           <View style={styles.scoreItem}>
@@ -308,56 +415,81 @@ export default function JardinScreen() {
           </View>
           <View style={styles.scoreDivider} />
           <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>Mejor</Text>
-            <Text style={[styles.scoreValue, { color: Colors.success }]}>{mejorPuntaje ?? '—'}</Text>
+            <Text style={[styles.scoreLabel, { color: '#FFD54F' }]}>Mejor</Text>
+            <Text style={[styles.scoreValue, { color: '#FFD54F' }]}>{mejorPuntaje ?? '—'}</Text>
           </View>
         </View>
 
-        <View style={styles.tableroWrap}>
-          <View style={styles.tablero}>
-            {tablero.map((fila, r) => (
-              <View key={r} style={styles.filaTablero}>
-                {fila.map((pieza, c) => {
-                  const clave = `${r},${c}`;
-                  const seleccionada = seleccionado?.r === r && seleccionado?.c === c;
-                  const resaltada = celdasResaltadas.has(clave);
-                  const enIntentoInvalido =
-                    intentoInvalido != null &&
-                    ((intentoInvalido.a.r === r && intentoInvalido.a.c === c) ||
-                      (intentoInvalido.b.r === r && intentoInvalido.b.c === c));
-                  const tipo = TIPOS_PIEZA[pieza.tipo];
-                  return (
-                    <TouchableOpacity
-                      key={pieza.id}
-                      style={styles.celda}
-                      onPress={() => onTapCelda(r, c)}
-                      activeOpacity={0.75}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${tipo.nombre}${seleccionada ? ', seleccionada' : ''}`}
-                    >
-                      <View
-                        style={[
-                          styles.pieza,
-                          { backgroundColor: tipo.color },
-                          seleccionada && styles.piezaSeleccionada,
-                          resaltada && styles.piezaResaltada,
-                          enIntentoInvalido && styles.piezaInvalida,
-                        ]}
-                      >
-                        <Ionicons name={tipo.icono} size={22} color="#FFFFFF" />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+        <View style={styles.tableroWrap} onLayout={(e) => setMedida(e.nativeEvent.layout.width)}>
+          <LinearGradient colors={['#4A148C', '#7B1550', '#AD1457']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tableroFondo}>
+            {/* Checker de fondo, para separar visualmente las celdas */}
+            <View style={StyleSheet.absoluteFill}>
+              {Array.from({ length: FILAS }).map((_, r) => (
+                <View key={r} style={{ flexDirection: 'row' }}>
+                  {Array.from({ length: COLUMNAS }).map((_, c) => (
+                    <View
+                      key={c}
+                      style={{
+                        width: tamanoCelda,
+                        height: tamanoCelda,
+                        backgroundColor: (r + c) % 2 === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)',
+                      }}
+                    />
+                  ))}
+                </View>
+              ))}
+            </View>
+
+            {/* Gemas animadas */}
+            {tamanoCelda > 0 && tablero.map((fila, r) => fila.map((pieza, c) => {
+              const clave = `${r},${c}`;
+              const seleccionada = seleccionado?.r === r && seleccionado?.c === c;
+              const resaltada = celdasResaltadas.has(clave);
+              const invalida = intentoInvalido != null &&
+                ((intentoInvalido.a.r === r && intentoInvalido.a.c === c) || (intentoInvalido.b.r === r && intentoInvalido.b.c === c));
+              const tipo = TIPOS_PIEZA[pieza.tipo];
+              return (
+                <Gema
+                  key={pieza.id}
+                  tipo={tipo}
+                  fila={r}
+                  columna={c}
+                  tamano={tamanoCelda}
+                  seleccionada={seleccionada}
+                  resaltada={resaltada}
+                  invalida={invalida}
+                  nombreAccesible={`${tipo.nombre}${seleccionada ? ', seleccionada' : ''}`}
+                />
+              );
+            }))}
+
+            {/* Grilla de toque, transparente, encima de todo */}
+            {tamanoCelda > 0 && (
+              <View style={StyleSheet.absoluteFill}>
+                {Array.from({ length: FILAS }).map((_, r) => (
+                  <View key={r} style={{ flexDirection: 'row' }}>
+                    {Array.from({ length: COLUMNAS }).map((_, c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={{ width: tamanoCelda, height: tamanoCelda }}
+                        onPress={() => onTapCelda(r, c)}
+                        activeOpacity={1}
+                        accessibilityRole="button"
+                      />
+                    ))}
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            )}
+          </LinearGradient>
         </View>
 
         {fase !== 'jugando' && (
-          <TouchableOpacity style={styles.startBtn} onPress={empezar} activeOpacity={0.85}>
-            <Ionicons name="play" size={22} color={Colors.white} />
-            <Text style={styles.startBtnText}>{fase === 'inicio' ? 'Empezar' : 'Jugar de nuevo'}</Text>
+          <TouchableOpacity style={styles.startBtnWrap} onPress={empezar} activeOpacity={0.85}>
+            <LinearGradient colors={['#66BB6A', Colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
+              <Ionicons name="play" size={22} color={Colors.white} />
+              <Text style={styles.startBtnText}>{fase === 'inicio' ? 'Empezar' : 'Jugar de nuevo'}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
 
@@ -380,9 +512,9 @@ export default function JardinScreen() {
       <Modal visible={showTutorial} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <View style={styles.modalIconWrap}>
+            <LinearGradient colors={['#FF6FA5', '#C2185B']} style={styles.modalIconWrap}>
               <Ionicons name="flower" size={40} color={Colors.white} />
-            </View>
+            </LinearGradient>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
               <SpeakButton
@@ -406,9 +538,9 @@ export default function JardinScreen() {
       <Modal visible={fase === 'fin'} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <View style={[styles.modalIconWrap, { backgroundColor: Colors.success }]}>
+            <LinearGradient colors={esRecordNuevo ? ['#FFD54F', '#F57F17'] : ['#66BB6A', Colors.primary]} style={styles.modalIconWrap}>
               <Ionicons name={esRecordNuevo ? 'trophy' : 'checkmark-circle'} size={40} color={Colors.white} />
-            </View>
+            </LinearGradient>
             <Text style={styles.modalTitle}>{esRecordNuevo ? '¡Nuevo récord!' : '¡Fin de la partida!'}</Text>
             <Text style={styles.modalSub}>
               Conseguiste <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> puntos.{'\n'}
@@ -433,54 +565,66 @@ const styles = StyleSheet.create({
 
   scoreboard: {
     flexDirection: 'row',
-    backgroundColor: Colors.white,
+    backgroundColor: '#3D0F4A',
     borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
     width: '100%',
     justifyContent: 'space-between',
   },
   scoreItem: { alignItems: 'center', flex: 1 },
-  scoreLabel: { fontSize: FontSizes.xs, color: Colors.textSecondary },
-  scoreValue: { fontSize: FontSizes.xl, fontWeight: 'bold', color: Colors.textPrimary },
-  scoreDivider: { width: 1, backgroundColor: Colors.border },
+  scoreLabel: { fontSize: FontSizes.xs, color: 'rgba(255,255,255,0.75)' },
+  scoreValue: { fontSize: FontSizes.xl, fontWeight: 'bold', color: '#FFFFFF' },
+  scoreDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
 
-  tableroWrap: { width: '100%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  tablero: { width: '100%', height: '100%' },
-  filaTablero: { flex: 1, flexDirection: 'row' },
-  celda: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 3 },
-  pieza: {
+  tableroWrap: {
     width: '100%',
-    height: '100%',
+    aspectRatio: 1,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  tableroFondo: { flex: 1 },
+
+  gema: {
+    flex: 1,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 4,
+    overflow: 'hidden',
   },
-  piezaSeleccionada: { borderWidth: 3, borderColor: Colors.textPrimary, transform: [{ scale: 1.08 }] },
-  piezaResaltada: { transform: [{ scale: 1.15 }], opacity: 0.55 },
-  piezaInvalida: { opacity: 0.4 },
+  gemaSeleccionada: { borderWidth: 2.5, borderColor: '#FFFFFF' },
+  gemaBrilloGrande: {
+    position: 'absolute', top: '10%', left: '14%', width: '50%', height: '32%',
+    borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.42)', transform: [{ rotate: '-18deg' }],
+  },
+  gemaBrilloChico: {
+    position: 'absolute', bottom: '16%', right: '20%', width: '16%', height: '16%',
+    borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  gemaIconoSombra: { textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
 
+  startBtnWrap: { width: '100%', borderRadius: Radius.sm, overflow: 'hidden' },
   startBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.sm,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xxl,
-    minWidth: 220,
-    justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.xxl,
   },
   startBtnText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
 
@@ -501,7 +645,7 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center' },
   modalBox: { backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.xxl, width: '82%', alignItems: 'center' },
   modalIconWrap: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: '#D81B60',
+    width: 72, height: 72, borderRadius: 36,
     alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md,
   },
   modalTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.sm },

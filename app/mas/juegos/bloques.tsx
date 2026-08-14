@@ -2,8 +2,14 @@
 // relación con Block Blast más allá de la mecánica general de "completar
 // líneas"). Interacción: tocar una pieza de la bandeja y después tocar la
 // celda del tablero donde va — nada de arrastrar.
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, LayoutAnimation } from 'react-native';
+//
+// Capa visual: tablero oscuro con bloques en gradiente + bisel + brillo
+// (expo-linear-gradient) y animaciones reales vía react-native-reanimated —
+// ambas ya eran dependencias del proyecto, no hace falta build nativo nuevo.
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +26,9 @@ type Fase = 'inicio' | 'jugando' | 'fin';
 type Celda = number | null;
 type Forma = readonly (readonly [number, number])[];
 
-const COLORES = ['#D81B60', '#2E7D32', '#EF6C00', '#1565C0', '#C62828', '#6A1B9A'];
+// Misma paleta que Jardín ElderTech, para que las dos secciones de Juegos se sientan del mismo mundo.
+const CLARO = ['#FF6FA5', '#81C784', '#FFB74D', '#64B5F6', '#EF5350', '#BA68C8'];
+const OSCURO = ['#C2185B', '#1B5E20', '#E65100', '#0D47A1', '#B71C1C', '#4A148C'];
 
 const FORMAS: Forma[] = [
   [[0, 0]],
@@ -41,7 +49,7 @@ interface PiezaBloque { id: number; forma: Forma; color: number }
 let siguienteIdPieza = 1;
 function generarPieza(): PiezaBloque {
   const forma = FORMAS[Math.floor(Math.random() * FORMAS.length)];
-  const color = Math.floor(Math.random() * COLORES.length);
+  const color = Math.floor(Math.random() * CLARO.length);
   return { id: siguienteIdPieza++, forma, color };
 }
 
@@ -100,11 +108,52 @@ function limpiarLineas(tablero: Celda[][], filas: number[], columnas: number[]):
   return nuevo;
 }
 
-/** Dimensiones de la miniatura de una pieza, para dibujarla en la bandeja. */
+function celdasDeLineas(filas: number[], columnas: number[]): Set<string> {
+  const set = new Set<string>();
+  for (const r of filas) for (let c = 0; c < TAM; c++) set.add(`${r},${c}`);
+  for (const c of columnas) for (let r = 0; r < TAM; r++) set.add(`${r},${c}`);
+  return set;
+}
+
 function dimensionesForma(forma: Forma): { filas: number; columnas: number } {
   let maxR = 0, maxC = 0;
   for (const [dr, dc] of forma) { maxR = Math.max(maxR, dr); maxC = Math.max(maxC, dc); }
   return { filas: maxR + 1, columnas: maxC + 1 };
+}
+
+// ─── Celda animada del tablero: pop-in al aparecer, pop-out al limpiarse ──────
+
+function BloqueCelda({ color, resaltada }: { color: Celda; resaltada: boolean }) {
+  const escala = useSharedValue(color !== null ? 1 : 0);
+  const colorAnteriorRef = useRef(color);
+
+  useEffect(() => {
+    if (colorAnteriorRef.current === null && color !== null) {
+      escala.value = 0;
+      escala.value = withSpring(1, { damping: 11, stiffness: 220 });
+    }
+    colorAnteriorRef.current = color;
+  }, [color, escala]);
+
+  useEffect(() => {
+    if (resaltada) {
+      escala.value = withSequence(withTiming(1.25, { duration: 110 }), withTiming(0, { duration: 170 }));
+    }
+  }, [resaltada, escala]);
+
+  const estiloAnimado = useAnimatedStyle(() => ({ transform: [{ scale: escala.value }] }));
+
+  if (color === null) {
+    return <View style={styles.celdaVacia} />;
+  }
+
+  return (
+    <Animated.View style={[{ flex: 1 }, estiloAnimado]}>
+      <LinearGradient colors={[CLARO[color], OSCURO[color]]} start={{ x: 0.15, y: 0.1 }} end={{ x: 0.9, y: 1 }} style={styles.bloqueLleno}>
+        <View style={styles.bloqueBrillo} />
+      </LinearGradient>
+    </Animated.View>
+  );
 }
 
 export default function BloquesScreen() {
@@ -119,15 +168,25 @@ export default function BloquesScreen() {
   const [bandeja, setBandeja] = useState<PiezaBloque[]>([]);
   const [piezaSeleccionadaId, setPiezaSeleccionadaId] = useState<number | null>(null);
   const [celdaInvalida, setCeldaInvalida] = useState<{ r: number; c: number } | null>(null);
+  const [celdasLimpiandose, setCeldasLimpiandose] = useState<Set<string>>(new Set());
+  const [resolviendo, setResolviendo] = useState(false);
   const [puntaje, setPuntaje] = useState(0);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
+
+  const puntajeEscala = useSharedValue(1);
+  const estiloPuntaje = useAnimatedStyle(() => ({ transform: [{ scale: puntajeEscala.value }] }));
 
   useEffect(() => {
     obtenerEstadisticasPuntaje('bloques')
       .then((stats) => setMejorPuntaje(stats.mejorPuntaje))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (puntaje === 0) return;
+    puntajeEscala.value = withSequence(withTiming(1.25, { duration: 110 }), withSpring(1, { damping: 8, stiffness: 180 }));
+  }, [puntaje, puntajeEscala]);
 
   const empezar = useCallback(() => {
     const vacio = tableroVacio();
@@ -157,7 +216,7 @@ export default function BloquesScreen() {
   }, []);
 
   const onTapCeldaTablero = useCallback((r: number, c: number) => {
-    if (fase !== 'jugando' || !piezaSeleccionada) return;
+    if (fase !== 'jugando' || !piezaSeleccionada || resolviendo) return;
 
     if (!puedeColocarse(tablero, piezaSeleccionada.forma, r, c)) {
       setCeldaInvalida({ r, c });
@@ -165,31 +224,43 @@ export default function BloquesScreen() {
       return;
     }
 
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    let nuevoTablero = colocarPieza(tablero, piezaSeleccionada.forma, r, c, piezaSeleccionada.color);
+    const tableroConPieza = colocarPieza(tablero, piezaSeleccionada.forma, r, c, piezaSeleccionada.color);
     reproducir('colocar');
-    let puntosPartida = puntaje + piezaSeleccionada.forma.length * 10;
-
-    const { filas, columnas } = encontrarLineasCompletas(nuevoTablero);
-    const lineasLimpiadas = filas.length + columnas.length;
-    if (lineasLimpiadas > 0) {
-      nuevoTablero = limpiarLineas(nuevoTablero, filas, columnas);
-      puntosPartida += lineasLimpiadas * 80 + (lineasLimpiadas > 1 ? lineasLimpiadas * 40 : 0);
-      reproducir('linea_completa');
-    }
+    const puntosBase = puntaje + piezaSeleccionada.forma.length * 10;
 
     const bandejaRestante = bandeja.filter((p) => p.id !== piezaSeleccionada.id);
-    const nuevaBandeja = bandejaRestante.length > 0 ? bandejaRestante : generarBandeja(nuevoTablero);
-
-    setTablero(nuevoTablero);
-    setBandeja(nuevaBandeja);
+    setTablero(tableroConPieza);
+    setBandeja(bandejaRestante);
     setPiezaSeleccionadaId(null);
-    setPuntaje(puntosPartida);
+    setPuntaje(puntosBase);
 
-    if (!hayJugadaPosible(nuevoTablero, nuevaBandeja)) {
-      finalizarPartida(puntosPartida);
+    const { filas, columnas } = encontrarLineasCompletas(tableroConPieza);
+    const lineasLimpiadas = filas.length + columnas.length;
+
+    if (lineasLimpiadas === 0) {
+      const nuevaBandeja = bandejaRestante.length > 0 ? bandejaRestante : generarBandeja(tableroConPieza);
+      if (bandejaRestante.length === 0) setBandeja(nuevaBandeja);
+      if (!hayJugadaPosible(tableroConPieza, nuevaBandeja)) finalizarPartida(puntosBase);
+      return;
     }
-  }, [fase, piezaSeleccionada, tablero, bandeja, puntaje, finalizarPartida, reproducir]);
+
+    setResolviendo(true);
+    reproducir('linea_completa');
+    setCeldasLimpiandose(celdasDeLineas(filas, columnas));
+    setTimeout(() => {
+      const tableroLimpio = limpiarLineas(tableroConPieza, filas, columnas);
+      const puntosFinal = puntosBase + lineasLimpiadas * 80 + (lineasLimpiadas > 1 ? lineasLimpiadas * 40 : 0);
+      const nuevaBandeja = bandejaRestante.length > 0 ? bandejaRestante : generarBandeja(tableroLimpio);
+
+      setTablero(tableroLimpio);
+      setCeldasLimpiandose(new Set());
+      setBandeja(nuevaBandeja);
+      setPuntaje(puntosFinal);
+      setResolviendo(false);
+
+      if (!hayJugadaPosible(tableroLimpio, nuevaBandeja)) finalizarPartida(puntosFinal);
+    }, 280);
+  }, [fase, piezaSeleccionada, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir]);
 
   return (
     <View style={styles.container}>
@@ -199,21 +270,22 @@ export default function BloquesScreen() {
         <View style={styles.scoreboard}>
           <View style={styles.scoreItem}>
             <Text style={styles.scoreLabel}>Puntos</Text>
-            <Text style={styles.scoreValue}>{puntaje}</Text>
+            <Animated.Text style={[styles.scoreValue, estiloPuntaje]}>{puntaje}</Animated.Text>
           </View>
           <View style={styles.scoreDivider} />
           <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>Mejor</Text>
-            <Text style={[styles.scoreValue, { color: Colors.success }]}>{mejorPuntaje ?? '—'}</Text>
+            <Text style={[styles.scoreLabel, { color: '#FFD54F' }]}>Mejor</Text>
+            <Text style={[styles.scoreValue, { color: '#FFD54F' }]}>{mejorPuntaje ?? '—'}</Text>
           </View>
         </View>
 
         <View style={styles.tableroWrap}>
-          <View style={styles.tablero}>
+          <LinearGradient colors={['#0D1024', '#181B3A', '#232752']} style={styles.tableroFondo}>
             {tablero.map((fila, r) => (
               <View key={r} style={styles.filaTablero}>
                 {fila.map((celda, c) => {
                   const invalida = celdaInvalida?.r === r && celdaInvalida?.c === c;
+                  const resaltada = celdasLimpiandose.has(`${r},${c}`);
                   return (
                     <TouchableOpacity
                       key={c}
@@ -223,19 +295,14 @@ export default function BloquesScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={celda !== null ? 'Celda ocupada' : 'Celda vacía'}
                     >
-                      <View
-                        style={[
-                          styles.celdaInterior,
-                          celda !== null && { backgroundColor: COLORES[celda] },
-                          invalida && styles.celdaInvalida,
-                        ]}
-                      />
+                      <BloqueCelda color={celda} resaltada={resaltada} />
+                      {invalida && <View style={styles.celdaInvalidaOverlay} />}
                     </TouchableOpacity>
                   );
                 })}
               </View>
             ))}
-          </View>
+          </LinearGradient>
         </View>
 
         {fase === 'jugando' && (
@@ -252,15 +319,17 @@ export default function BloquesScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={seleccionada ? 'Pieza seleccionada' : 'Elegir esta pieza'}
                 >
-                  <View style={{ width: columnas * 16, height: filas * 16 }}>
+                  <View style={{ width: columnas * 17, height: filas * 17 }}>
                     {pieza.forma.map(([dr, dc], i) => (
-                      <View
+                      <LinearGradient
                         key={i}
-                        style={[
-                          styles.miniCelda,
-                          { backgroundColor: COLORES[pieza.color], top: dr * 16, left: dc * 16 },
-                        ]}
-                      />
+                        colors={[CLARO[pieza.color], OSCURO[pieza.color]]}
+                        start={{ x: 0.15, y: 0.1 }}
+                        end={{ x: 0.9, y: 1 }}
+                        style={[styles.miniCelda, { top: dr * 17, left: dc * 17 }]}
+                      >
+                        <View style={styles.miniCeldaBrillo} />
+                      </LinearGradient>
                     ))}
                   </View>
                 </TouchableOpacity>
@@ -270,9 +339,11 @@ export default function BloquesScreen() {
         )}
 
         {fase !== 'jugando' && (
-          <TouchableOpacity style={styles.startBtn} onPress={empezar} activeOpacity={0.85}>
-            <Ionicons name="play" size={22} color={Colors.white} />
-            <Text style={styles.startBtnText}>{fase === 'inicio' ? 'Empezar' : 'Jugar de nuevo'}</Text>
+          <TouchableOpacity style={styles.startBtnWrap} onPress={empezar} activeOpacity={0.85}>
+            <LinearGradient colors={['#64B5F6', '#1565C0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
+              <Ionicons name="play" size={22} color={Colors.white} />
+              <Text style={styles.startBtnText}>{fase === 'inicio' ? 'Empezar' : 'Jugar de nuevo'}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
 
@@ -295,9 +366,9 @@ export default function BloquesScreen() {
       <Modal visible={showTutorial} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <View style={styles.modalIconWrap}>
+            <LinearGradient colors={['#64B5F6', '#1565C0']} style={styles.modalIconWrap}>
               <Ionicons name="apps" size={36} color={Colors.white} />
-            </View>
+            </LinearGradient>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
               <SpeakButton
@@ -320,9 +391,9 @@ export default function BloquesScreen() {
       <Modal visible={fase === 'fin'} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <View style={[styles.modalIconWrap, { backgroundColor: Colors.success }]}>
+            <LinearGradient colors={esRecordNuevo ? ['#FFD54F', '#F57F17'] : ['#64B5F6', '#1565C0']} style={styles.modalIconWrap}>
               <Ionicons name={esRecordNuevo ? 'trophy' : 'checkmark-circle'} size={40} color={Colors.white} />
-            </View>
+            </LinearGradient>
             <Text style={styles.modalTitle}>{esRecordNuevo ? '¡Nuevo récord!' : '¡Fin de la partida!'}</Text>
             <Text style={styles.modalSub}>
               Conseguiste <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> puntos.{'\n'}
@@ -347,51 +418,68 @@ const styles = StyleSheet.create({
 
   scoreboard: {
     flexDirection: 'row',
-    backgroundColor: Colors.white,
+    backgroundColor: '#181B3A',
     borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
     width: '100%',
     justifyContent: 'space-between',
   },
   scoreItem: { alignItems: 'center', flex: 1 },
-  scoreLabel: { fontSize: FontSizes.xs, color: Colors.textSecondary },
-  scoreValue: { fontSize: FontSizes.xl, fontWeight: 'bold', color: Colors.textPrimary },
-  scoreDivider: { width: 1, backgroundColor: Colors.border },
+  scoreLabel: { fontSize: FontSizes.xs, color: 'rgba(255,255,255,0.75)' },
+  scoreValue: { fontSize: FontSizes.xl, fontWeight: 'bold', color: '#FFFFFF' },
+  scoreDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
 
-  tableroWrap: { width: '100%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  tablero: {
-    width: '100%', height: '100%',
-    backgroundColor: Colors.white, borderRadius: Radius.md, padding: 4,
-    shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
+  tableroWrap: {
+    width: '100%', aspectRatio: 1, borderRadius: Radius.lg, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
+  tableroFondo: { flex: 1, padding: 5 },
   filaTablero: { flex: 1, flexDirection: 'row' },
-  celda: { flex: 1, padding: 1.5 },
-  celdaInterior: { flex: 1, borderRadius: 4, backgroundColor: '#EDEDED' },
-  celdaInvalida: { backgroundColor: '#FFCDD2' },
+  celda: { flex: 1, padding: 2 },
+  celdaVacia: {
+    flex: 1, borderRadius: 5, backgroundColor: 'rgba(0,0,0,0.28)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+  },
+  celdaInvalidaOverlay: {
+    position: 'absolute', top: 2, left: 2, right: 2, bottom: 2,
+    borderRadius: 5, backgroundColor: 'rgba(239,83,80,0.55)',
+  },
+
+  bloqueLleno: {
+    flex: 1, borderRadius: 5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.4, shadowRadius: 2, elevation: 3,
+  },
+  bloqueBrillo: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: '45%',
+    backgroundColor: 'rgba(255,255,255,0.28)', borderTopLeftRadius: 5, borderTopRightRadius: 5,
+  },
 
   bandeja: {
     flexDirection: 'row', gap: Spacing.md, justifyContent: 'center',
-    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.md, width: '100%',
-    shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1,
+    backgroundColor: '#181B3A', borderRadius: Radius.lg, padding: Spacing.md, width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3,
   },
   piezaBandeja: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 76,
+    flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 80,
     borderRadius: Radius.md, borderWidth: 2, borderColor: 'transparent',
   },
-  piezaBandejaSeleccionada: { borderColor: Colors.primary, backgroundColor: '#E8F5E9' },
-  miniCelda: { position: 'absolute', width: 14, height: 14, borderRadius: 3, margin: 1 },
+  piezaBandejaSeleccionada: { borderColor: '#FFD54F', backgroundColor: 'rgba(255,213,79,0.14)' },
+  miniCelda: {
+    position: 'absolute', width: 15, height: 15, borderRadius: 4, margin: 1, overflow: 'hidden',
+  },
+  miniCeldaBrillo: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%', backgroundColor: 'rgba(255,255,255,0.3)' },
 
+  startBtnWrap: { width: '100%', borderRadius: Radius.sm, overflow: 'hidden' },
   startBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.primary, borderRadius: Radius.sm,
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.xxl, minWidth: 220, justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.xxl,
   },
   startBtnText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
 
@@ -406,7 +494,7 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center' },
   modalBox: { backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.xxl, width: '82%', alignItems: 'center' },
   modalIconWrap: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: '#1565C0',
+    width: 72, height: 72, borderRadius: 36,
     alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md,
   },
   modalTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.sm },
