@@ -1,5 +1,7 @@
 package com.eldertech.app
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 
@@ -11,6 +13,26 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 class MainActivity : ReactActivity() {
+  // "Texto en negrita" de Accesibilidad (Android 12+, Configuration.fontWeightAdjustment)
+  // choca con un bug conocido, sin fix oficial, de React Native con New
+  // Architecture/Fabric en Android: el texto se MIDE con el peso normal pero
+  // se DIBUJA con el peso ajustado (más ancho), y lo que no entra en el
+  // ancho medido se corta en vez de desbordar — confirmado con reportes
+  // reales (ej. "Hola" se veía "Hol"). No depende de textBreakStrategy ni de
+  // lineHeight porque no es un problema de salto de línea, es un desfasaje
+  // medición-vs-dibujo. La única forma confiable de evitarlo es que la app
+  // ignore ese ajuste del sistema acá, a nivel nativo — un fix en JS/OTA no
+  // alcanza para esto. Ver https://github.com/facebook/react-native/issues/52895.
+  override fun attachBaseContext(newBase: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      val config = Configuration(newBase.resources.configuration)
+      config.fontWeightAdjustment = 0
+      super.attachBaseContext(newBase.createConfigurationContext(config))
+    } else {
+      super.attachBaseContext(newBase)
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
