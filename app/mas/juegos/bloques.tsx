@@ -1,14 +1,23 @@
 // Bloques ElderTech — puzzle de bloques original (temática propia, sin
 // relación con Block Blast más allá de la mecánica general de "completar
-// líneas"). Interacción: tocar una pieza de la bandeja y después tocar la
-// celda del tablero donde va — nada de arrastrar.
+// líneas"). Interacción: arrastrar una pieza de la bandeja con el dedo y
+// soltarla sobre el tablero — igual que los juegos de bloques comerciales.
 //
-// Capa visual: tablero oscuro con bloques en gradiente + bisel + brillo
-// (expo-linear-gradient) y animaciones reales vía react-native-reanimated —
-// ambas ya eran dependencias del proyecto, no hace falta build nativo nuevo.
+// Capa visual: tablero oscuro con bloques tipo "gema" (gradiente + faceta de
+// brillo + sombra inferior + borde), vía expo-linear-gradient. Arrastre y
+// animaciones con react-native-gesture-handler + react-native-reanimated —
+// las tres ya eran dependencias del proyecto, no hace falta build nativo nuevo.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence } from 'react-native-reanimated';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, LayoutChangeEvent } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+  runOnJS,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -22,13 +31,16 @@ import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { registrarPartida, obtenerEstadisticasPuntaje } from '@/services/juegosService';
 
 const TAM = 8;
+const PADDING_TABLERO = 5;
+const LEVANTAR_AL_ARRASTRAR = 70; // la pieza flota este tanto arriba del dedo, para no taparla con la mano
+
 type Fase = 'inicio' | 'jugando' | 'fin';
 type Celda = number | null;
 type Forma = readonly (readonly [number, number])[];
 
-// Misma paleta que Jardín ElderTech, para que las dos secciones de Juegos se sientan del mismo mundo.
-const CLARO = ['#FF6FA5', '#81C784', '#FFB74D', '#64B5F6', '#EF5350', '#BA68C8'];
-const OSCURO = ['#C2185B', '#1B5E20', '#E65100', '#0D47A1', '#B71C1C', '#4A148C'];
+// Colores vívidos y bien diferenciables — misma familia que Jardín ElderTech para que las dos secciones se sientan del mismo mundo.
+const CLARO = ['#FF5252', '#FFD54F', '#66BB6A', '#42A5F5', '#BA68C8', '#FF6FA5'];
+const OSCURO = ['#B71C1C', '#F57F17', '#1B5E20', '#0D47A1', '#4A148C', '#C2185B'];
 
 const FORMAS: Forma[] = [
   [[0, 0]],
@@ -121,9 +133,31 @@ function dimensionesForma(forma: Forma): { filas: number; columnas: number } {
   return { filas: maxR + 1, columnas: maxC + 1 };
 }
 
+function celdasDePieza(forma: Forma, anclaR: number, anclaC: number): Set<string> {
+  return new Set(forma.map(([dr, dc]) => `${anclaR + dr},${anclaC + dc}`));
+}
+
+// ─── Visual de un bloque "gema": gradiente + faceta de brillo + sombra ────────
+
+function BloqueVisual({ color, atenuado }: { color: number; atenuado?: boolean }) {
+  return (
+    <LinearGradient
+      colors={[CLARO[color], OSCURO[color]]}
+      start={{ x: 0.15, y: 0.1 }}
+      end={{ x: 0.9, y: 1 }}
+      style={[styles.bloqueLleno, atenuado && { opacity: 0.55 }]}
+    >
+      <View style={styles.bloqueFaceta} />
+      <View style={styles.bloqueSombraInferior} />
+    </LinearGradient>
+  );
+}
+
 // ─── Celda animada del tablero: pop-in al aparecer, pop-out al limpiarse ──────
 
-function BloqueCelda({ color, resaltada }: { color: Celda; resaltada: boolean }) {
+function BloqueCelda({ color, resaltada, previsualizada, previsualizadaInvalida }: {
+  color: Celda; resaltada: boolean; previsualizada: boolean; previsualizadaInvalida: boolean;
+}) {
   const escala = useSharedValue(color !== null ? 1 : 0);
   const colorAnteriorRef = useRef(color);
 
@@ -144,14 +178,95 @@ function BloqueCelda({ color, resaltada }: { color: Celda; resaltada: boolean })
   const estiloAnimado = useAnimatedStyle(() => ({ transform: [{ scale: escala.value }] }));
 
   if (color === null) {
-    return <View style={styles.celdaVacia} />;
+    return (
+      <View style={[styles.celdaVacia, previsualizada && (previsualizadaInvalida ? styles.celdaPreviaInvalida : styles.celdaPreviaValida)]} />
+    );
   }
 
   return (
     <Animated.View style={[{ flex: 1 }, estiloAnimado]}>
-      <LinearGradient colors={[CLARO[color], OSCURO[color]]} start={{ x: 0.15, y: 0.1 }} end={{ x: 0.9, y: 1 }} style={styles.bloqueLleno}>
-        <View style={styles.bloqueBrillo} />
-      </LinearGradient>
+      <BloqueVisual color={color} />
+    </Animated.View>
+  );
+}
+
+// ─── Pieza de la bandeja: se arrastra con el dedo ─────────────────────────────
+
+interface PiezaArrastrableProps {
+  pieza: PiezaBloque;
+  tamano: number;
+  oculta: boolean;
+  onComenzar: (pieza: PiezaBloque) => void;
+  onMover: (pieza: PiezaBloque, absX: number, absY: number) => void;
+  onSoltar: (pieza: PiezaBloque, absX: number, absY: number) => void;
+}
+
+function PiezaArrastrable({ pieza, tamano, oculta, onComenzar, onMover, onSoltar }: PiezaArrastrableProps) {
+  const dragX = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const escala = useSharedValue(1);
+  const { filas, columnas } = dimensionesForma(pieza.forma);
+
+  const gesto = Gesture.Pan()
+    .onStart(() => {
+      escala.value = withTiming(1.12, { duration: 120 });
+      runOnJS(onComenzar)(pieza);
+    })
+    .onUpdate((e) => {
+      dragX.value = e.translationX;
+      dragY.value = e.translationY;
+      runOnJS(onMover)(pieza, e.absoluteX, e.absoluteY);
+    })
+    .onEnd((e) => {
+      runOnJS(onSoltar)(pieza, e.absoluteX, e.absoluteY);
+      dragX.value = withSpring(0);
+      dragY.value = withSpring(0);
+      escala.value = withSpring(1);
+    });
+
+  const estiloAnimado = useAnimatedStyle(() => ({
+    transform: [{ translateX: dragX.value }, { translateY: dragY.value }, { scale: escala.value }],
+    opacity: oculta ? 0 : 1,
+    zIndex: oculta ? 0 : 10,
+  }));
+
+  return (
+    <GestureDetector gesture={gesto}>
+      <Animated.View style={[styles.piezaBandeja, estiloAnimado]} accessibilityRole="button" accessibilityLabel="Arrastrar esta pieza al tablero">
+        <View style={{ width: columnas * tamano, height: filas * tamano }}>
+          {pieza.forma.map(([dr, dc], i) => (
+            <View key={i} style={{ position: 'absolute', top: dr * tamano, left: dc * tamano, width: tamano, height: tamano, padding: 1.5 }}>
+              <BloqueVisual color={pieza.color} />
+            </View>
+          ))}
+        </View>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+// ─── Fantasma flotante: la pieza que sigue al dedo mientras se arrastra ───────
+
+function PiezaFantasma({ pieza, tamano, x, y }: {
+  pieza: PiezaBloque | null;
+  tamano: number;
+  x: ReturnType<typeof useSharedValue<number>>;
+  y: ReturnType<typeof useSharedValue<number>>;
+}) {
+  const estiloAnimado = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: x.value,
+    top: y.value,
+  }));
+  if (!pieza || tamano === 0) return null;
+  const { filas, columnas } = dimensionesForma(pieza.forma);
+  return (
+    <Animated.View style={[estiloAnimado, { width: columnas * tamano, height: filas * tamano }]} pointerEvents="none">
+      {pieza.forma.map(([dr, dc], i) => (
+        <View key={i} style={{ position: 'absolute', top: dr * tamano, left: dc * tamano, width: tamano, height: tamano, padding: 1.5 }}>
+          <BloqueVisual color={pieza.color} />
+        </View>
+      ))}
     </Animated.View>
   );
 }
@@ -166,13 +281,23 @@ export default function BloquesScreen() {
   const [fase, setFase] = useState<Fase>('inicio');
   const [tablero, setTablero] = useState<Celda[][]>(() => tableroVacio());
   const [bandeja, setBandeja] = useState<PiezaBloque[]>([]);
-  const [piezaSeleccionadaId, setPiezaSeleccionadaId] = useState<number | null>(null);
-  const [celdaInvalida, setCeldaInvalida] = useState<{ r: number; c: number } | null>(null);
   const [celdasLimpiandose, setCeldasLimpiandose] = useState<Set<string>>(new Set());
   const [resolviendo, setResolviendo] = useState(false);
   const [puntaje, setPuntaje] = useState(0);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
+
+  const [piezaArrastrandoId, setPiezaArrastrandoId] = useState<number | null>(null);
+  const [piezaFantasma, setPiezaFantasma] = useState<PiezaBloque | null>(null);
+  const [previewCeldas, setPreviewCeldas] = useState<Set<string>>(new Set());
+  const [previewValida, setPreviewValida] = useState(false);
+  const fantasmaX = useSharedValue(0);
+  const fantasmaY = useSharedValue(0);
+
+  const [tamanoCelda, setTamanoCelda] = useState(0);
+  const boardRef = useRef<View>(null);
+  const boardPos = useRef({ x: 0, y: 0 });
+  const ultimaAnclaRef = useRef<{ r: number; c: number } | null>(null);
 
   const puntajeEscala = useSharedValue(1);
   const estiloPuntaje = useAnimatedStyle(() => ({ transform: [{ scale: puntajeEscala.value }] }));
@@ -192,7 +317,6 @@ export default function BloquesScreen() {
     const vacio = tableroVacio();
     setTablero(vacio);
     setBandeja(generarBandeja(vacio));
-    setPiezaSeleccionadaId(null);
     setPuntaje(0);
     setEsRecordNuevo(false);
     setFase('jugando');
@@ -209,29 +333,64 @@ export default function BloquesScreen() {
     void registrarPartida('bloques', null, puntajeFinal);
   }, [mejorPuntaje, reproducir]);
 
-  const piezaSeleccionada = bandeja.find((p) => p.id === piezaSeleccionadaId) ?? null;
-
-  const onTapPiezaBandeja = useCallback((id: number) => {
-    setPiezaSeleccionadaId((prev) => (prev === id ? null : id));
+  const onLayoutTablero = useCallback((e: LayoutChangeEvent) => {
+    const ancho = e.nativeEvent.layout.width;
+    setTamanoCelda((ancho - PADDING_TABLERO * 2) / TAM);
+    boardRef.current?.measureInWindow((x, y) => { boardPos.current = { x, y }; });
   }, []);
 
-  const onTapCeldaTablero = useCallback((r: number, c: number) => {
-    if (fase !== 'jugando' || !piezaSeleccionada || resolviendo) return;
+  const calcularAncla = useCallback((pieza: PiezaBloque, absX: number, absY: number): { r: number; c: number } | null => {
+    if (tamanoCelda === 0) return null;
+    const { filas, columnas } = dimensionesForma(pieza.forma);
+    const xTablero = absX - boardPos.current.x - PADDING_TABLERO;
+    const yTablero = absY - boardPos.current.y - PADDING_TABLERO - LEVANTAR_AL_ARRASTRAR;
+    const colCentro = Math.floor(xTablero / tamanoCelda);
+    const filaCentro = Math.floor(yTablero / tamanoCelda);
+    const anclaR = filaCentro - Math.floor((filas - 1) / 2);
+    const anclaC = colCentro - Math.floor((columnas - 1) / 2);
+    return { r: anclaR, c: anclaC };
+  }, [tamanoCelda]);
 
-    if (!puedeColocarse(tablero, piezaSeleccionada.forma, r, c)) {
-      setCeldaInvalida({ r, c });
-      setTimeout(() => setCeldaInvalida(null), 260);
+  const onComenzarArrastre = useCallback((pieza: PiezaBloque) => {
+    setPiezaArrastrandoId(pieza.id);
+    setPiezaFantasma(pieza);
+  }, []);
+
+  const onMoverArrastre = useCallback((pieza: PiezaBloque, absX: number, absY: number) => {
+    if (tamanoCelda === 0) return;
+    const { filas, columnas } = dimensionesForma(pieza.forma);
+    fantasmaX.value = absX - (columnas * tamanoCelda) / 2;
+    fantasmaY.value = absY - LEVANTAR_AL_ARRASTRAR - (filas * tamanoCelda) / 2;
+
+    const ancla = calcularAncla(pieza, absX, absY);
+    ultimaAnclaRef.current = ancla;
+    if (!ancla) {
+      setPreviewCeldas(new Set());
+      return;
+    }
+    const valida = puedeColocarse(tablero, pieza.forma, ancla.r, ancla.c);
+    setPreviewValida(valida);
+    setPreviewCeldas(celdasDePieza(pieza.forma, ancla.r, ancla.c));
+  }, [tamanoCelda, tablero, calcularAncla, fantasmaX, fantasmaY]);
+
+  const onSoltarArrastre = useCallback((pieza: PiezaBloque) => {
+    setPiezaArrastrandoId(null);
+    setPiezaFantasma(null);
+    setPreviewCeldas(new Set());
+
+    const ancla = ultimaAnclaRef.current;
+    ultimaAnclaRef.current = null;
+    if (fase !== 'jugando' || resolviendo || !ancla || !puedeColocarse(tablero, pieza.forma, ancla.r, ancla.c)) {
       return;
     }
 
-    const tableroConPieza = colocarPieza(tablero, piezaSeleccionada.forma, r, c, piezaSeleccionada.color);
+    const tableroConPieza = colocarPieza(tablero, pieza.forma, ancla.r, ancla.c, pieza.color);
     reproducir('colocar');
-    const puntosBase = puntaje + piezaSeleccionada.forma.length * 10;
+    const puntosBase = puntaje + pieza.forma.length * 10;
 
-    const bandejaRestante = bandeja.filter((p) => p.id !== piezaSeleccionada.id);
+    const bandejaRestante = bandeja.filter((p) => p.id !== pieza.id);
     setTablero(tableroConPieza);
     setBandeja(bandejaRestante);
-    setPiezaSeleccionadaId(null);
     setPuntaje(puntosBase);
 
     const { filas, columnas } = encontrarLineasCompletas(tableroConPieza);
@@ -260,7 +419,7 @@ export default function BloquesScreen() {
 
       if (!hayJugadaPosible(tableroLimpio, nuevaBandeja)) finalizarPartida(puntosFinal);
     }, 280);
-  }, [fase, piezaSeleccionada, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir]);
+  }, [fase, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir]);
 
   return (
     <View style={styles.container}>
@@ -279,25 +438,18 @@ export default function BloquesScreen() {
           </View>
         </View>
 
-        <View style={styles.tableroWrap}>
+        <View ref={boardRef} style={styles.tableroWrap} onLayout={onLayoutTablero}>
           <LinearGradient colors={['#0D1024', '#181B3A', '#232752']} style={styles.tableroFondo}>
             {tablero.map((fila, r) => (
               <View key={r} style={styles.filaTablero}>
                 {fila.map((celda, c) => {
-                  const invalida = celdaInvalida?.r === r && celdaInvalida?.c === c;
-                  const resaltada = celdasLimpiandose.has(`${r},${c}`);
+                  const clave = `${r},${c}`;
+                  const resaltada = celdasLimpiandose.has(clave);
+                  const previsualizada = previewCeldas.has(clave);
                   return (
-                    <TouchableOpacity
-                      key={c}
-                      style={styles.celda}
-                      onPress={() => onTapCeldaTablero(r, c)}
-                      activeOpacity={0.7}
-                      accessibilityRole="button"
-                      accessibilityLabel={celda !== null ? 'Celda ocupada' : 'Celda vacía'}
-                    >
-                      <BloqueCelda color={celda} resaltada={resaltada} />
-                      {invalida && <View style={styles.celdaInvalidaOverlay} />}
-                    </TouchableOpacity>
+                    <View key={c} style={styles.celda}>
+                      <BloqueCelda color={celda} resaltada={resaltada} previsualizada={previsualizada} previsualizadaInvalida={!previewValida} />
+                    </View>
                   );
                 })}
               </View>
@@ -307,34 +459,18 @@ export default function BloquesScreen() {
 
         {fase === 'jugando' && (
           <View style={styles.bandeja}>
-            {bandeja.map((pieza) => {
-              const { filas, columnas } = dimensionesForma(pieza.forma);
-              const seleccionada = pieza.id === piezaSeleccionadaId;
-              return (
-                <TouchableOpacity
-                  key={pieza.id}
-                  style={[styles.piezaBandeja, seleccionada && styles.piezaBandejaSeleccionada]}
-                  onPress={() => onTapPiezaBandeja(pieza.id)}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel={seleccionada ? 'Pieza seleccionada' : 'Elegir esta pieza'}
-                >
-                  <View style={{ width: columnas * 17, height: filas * 17 }}>
-                    {pieza.forma.map(([dr, dc], i) => (
-                      <LinearGradient
-                        key={i}
-                        colors={[CLARO[pieza.color], OSCURO[pieza.color]]}
-                        start={{ x: 0.15, y: 0.1 }}
-                        end={{ x: 0.9, y: 1 }}
-                        style={[styles.miniCelda, { top: dr * 17, left: dc * 17 }]}
-                      >
-                        <View style={styles.miniCeldaBrillo} />
-                      </LinearGradient>
-                    ))}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            {bandeja.map((pieza) => (
+              <View key={pieza.id} style={styles.piezaBandejaSlot}>
+                <PiezaArrastrable
+                  pieza={pieza}
+                  tamano={20}
+                  oculta={pieza.id === piezaArrastrandoId}
+                  onComenzar={onComenzarArrastre}
+                  onMover={onMoverArrastre}
+                  onSoltar={onSoltarArrastre}
+                />
+              </View>
+            ))}
           </View>
         )}
 
@@ -363,6 +499,8 @@ export default function BloquesScreen() {
         </View>
       </View>
 
+      <PiezaFantasma pieza={piezaFantasma} tamano={tamanoCelda} x={fantasmaX} y={fantasmaY} />
+
       <Modal visible={showTutorial} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
@@ -372,12 +510,12 @@ export default function BloquesScreen() {
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
               <SpeakButton
-                texto="Tocá una de las tres piezas de abajo para elegirla, y después tocá el lugar del tablero donde la querés poner. Cuando completás una fila o una columna entera, se limpia y sumás puntos. El juego termina cuando ninguna pieza entra en el tablero."
+                texto="Arrastrá con el dedo una de las tres piezas de abajo hasta el lugar del tablero donde la querés poner, y soltala ahí. Cuando completás una fila o una columna entera, se limpia y sumás puntos. El juego termina cuando ninguna pieza entra en el tablero."
                 variante="escuchar"
               />
             </View>
             <Text style={styles.modalSub}>
-              Tocá una de las tres piezas de abajo para elegirla, y después tocá el lugar del tablero donde la querés poner.{'\n\n'}
+              Arrastrá con el dedo una de las tres piezas de abajo hasta el lugar del tablero donde la querés poner, y soltala ahí.{'\n\n'}
               Cuando completás una fila o una columna entera, se limpia y sumás puntos.{'\n\n'}
               El juego termina cuando ninguna pieza entra en el tablero.
             </Text>
@@ -440,41 +578,36 @@ const styles = StyleSheet.create({
     width: '100%', aspectRatio: 1, borderRadius: Radius.lg, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  tableroFondo: { flex: 1, padding: 5 },
+  tableroFondo: { flex: 1, padding: PADDING_TABLERO },
   filaTablero: { flex: 1, flexDirection: 'row' },
   celda: { flex: 1, padding: 2 },
   celdaVacia: {
     flex: 1, borderRadius: 5, backgroundColor: 'rgba(0,0,0,0.28)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
   },
-  celdaInvalidaOverlay: {
-    position: 'absolute', top: 2, left: 2, right: 2, bottom: 2,
-    borderRadius: 5, backgroundColor: 'rgba(239,83,80,0.55)',
-  },
+  celdaPreviaValida: { backgroundColor: 'rgba(102,187,106,0.45)', borderColor: 'rgba(102,187,106,0.9)' },
+  celdaPreviaInvalida: { backgroundColor: 'rgba(239,83,80,0.45)', borderColor: 'rgba(239,83,80,0.9)' },
 
   bloqueLleno: {
-    flex: 1, borderRadius: 5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    flex: 1, borderRadius: 6, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    borderWidth: 1.5, borderColor: 'rgba(15,8,35,0.55)',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.4, shadowRadius: 2, elevation: 3,
   },
-  bloqueBrillo: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: '45%',
-    backgroundColor: 'rgba(255,255,255,0.28)', borderTopLeftRadius: 5, borderTopRightRadius: 5,
+  bloqueFaceta: {
+    position: 'absolute', width: '60%', height: '60%', top: '4%', left: '20%',
+    borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.32)', transform: [{ rotate: '45deg' }],
+  },
+  bloqueSombraInferior: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: '32%', backgroundColor: 'rgba(0,0,0,0.2)',
   },
 
   bandeja: {
     flexDirection: 'row', gap: Spacing.md, justifyContent: 'center',
-    backgroundColor: '#181B3A', borderRadius: Radius.lg, padding: Spacing.md, width: '100%',
+    backgroundColor: '#181B3A', borderRadius: Radius.lg, padding: Spacing.md, width: '100%', minHeight: 96,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3,
   },
-  piezaBandeja: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 80,
-    borderRadius: Radius.md, borderWidth: 2, borderColor: 'transparent',
-  },
-  piezaBandejaSeleccionada: { borderColor: '#FFD54F', backgroundColor: 'rgba(255,213,79,0.14)' },
-  miniCelda: {
-    position: 'absolute', width: 15, height: 15, borderRadius: 4, margin: 1, overflow: 'hidden',
-  },
-  miniCeldaBrillo: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%', backgroundColor: 'rgba(255,255,255,0.3)' },
+  piezaBandejaSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  piezaBandeja: { alignItems: 'center', justifyContent: 'center' },
 
   startBtnWrap: { width: '100%', borderRadius: Radius.sm, overflow: 'hidden' },
   startBtn: {

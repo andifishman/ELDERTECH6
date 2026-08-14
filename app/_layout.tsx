@@ -6,6 +6,7 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as Notifications from 'expo-notifications';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -156,6 +157,7 @@ export default function RootLayout() {
   }
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <QueryProvider>
         <AuthProvider>
@@ -196,5 +198,6 @@ export default function RootLayout() {
         </AuthProvider>
       </QueryProvider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
