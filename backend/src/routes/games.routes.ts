@@ -7,3 +7,4 @@ export const gamesRouter = Router();
 
 gamesRouter.use(requireAuth);
 gamesRouter.post('/log', asyncHandler(controller.postRegistrarPartida));
+gamesRouter.get('/:juego/estadisticas', asyncHandler(controller.getEstadisticasPuntaje));

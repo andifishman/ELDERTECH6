@@ -1,12 +1,34 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 
-const JUEGOS = [
+const JUEGOS: {
+  id: string;
+  emoji?: string;
+  icono?: keyof typeof Ionicons.glyphMap;
+  titulo: string;
+  descripcion: string;
+  color: string;
+}[] = [
+  {
+    id: 'jardin',
+    icono: 'flower',
+    titulo: 'Jardín ElderTech',
+    descripcion: 'Combiná piezas y conseguí puntos',
+    color: '#D81B60',
+  },
+  {
+    id: 'bloques',
+    icono: 'apps',
+    titulo: 'Bloques ElderTech',
+    descripcion: 'Colocá bloques y completá filas',
+    color: '#1565C0',
+  },
   {
     id: 'ahorcado',
     emoji: '🪢',
@@ -65,7 +87,7 @@ export default function JuegosScreen() {
         titulo="Juegos"
         subtitulo="Elegí un juego para jugar"
         mostrarVolver
-        textoHablar="Juegos. Ahorcado, Memotest, Simon, Conexiones, Laberinto, Sopa de Letras y Une los Puntos."
+        textoHablar="Juegos. Jardín ElderTech, Bloques ElderTech, Ahorcado, Memotest, Simon, Conexiones, Laberinto, Sopa de Letras y Une los Puntos."
       />
 
       <ScrollView
@@ -83,7 +105,11 @@ export default function JuegosScreen() {
             accessibilityRole="button"
           >
             <View style={[styles.emojiContainer, { backgroundColor: juego.color }]}>
-              <Text style={styles.emoji}>{juego.emoji}</Text>
+              {juego.icono ? (
+                <Ionicons name={juego.icono} size={32} color="#FFFFFF" />
+              ) : (
+                <Text style={styles.emoji}>{juego.emoji}</Text>
+              )}
             </View>
 
             <View style={styles.info}>

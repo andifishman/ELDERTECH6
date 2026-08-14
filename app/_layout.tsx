@@ -13,6 +13,7 @@ import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
+import { SonidoJuegosProvider } from '@/context/SonidoJuegosContext';
 import { ActivityIndicator, View, Text } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
@@ -160,6 +161,7 @@ export default function RootLayout() {
         <AuthProvider>
           <FavoritosProvider>
             <AsistenteConfigProvider>
+              <SonidoJuegosProvider>
               <RadioProvider>
                 <NavigationGuard>
                   <StatusBar style="light" />
@@ -188,6 +190,7 @@ export default function RootLayout() {
                   </View>
                 </NavigationGuard>
               </RadioProvider>
+              </SonidoJuegosProvider>
             </AsistenteConfigProvider>
           </FavoritosProvider>
         </AuthProvider>
