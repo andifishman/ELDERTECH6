@@ -184,64 +184,60 @@ function celdasDePieza(forma: Forma, anclaR: number, anclaC: number): Set<string
   return new Set(forma.map(([dr, dc]) => `${anclaR + dr},${anclaC + dc}`));
 }
 
-// ─── Visual de un bloque "gema": gradiente + faceta de brillo + sombra ────────
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-// Look "tejido de lana": borde punteado (simula costura), relleno mate en
-// vez de brillo tipo vidrio, e hileras horizontales sutiles sugiriendo
-// puntos de tejido — sin un asset de imagen real (no hay generador de
-// imágenes configurado en este entorno), es lo más cerca que se puede
-// llegar solo con estilos, y es liviano (4 Views extra por bloque, nada
-// pesado para celulares de gama media/baja).
-function BloqueVisual({ color, atenuado }: { color: number; atenuado?: boolean }) {
+/** Rompe las celdas de a poco (como Block Blast) en vez de todas de golpe —
+ * las va agregando a `celdasRompiendose` en tandas cortas; el llamador
+ * limpia el tablero de verdad recién cuando termina. */
+async function limpiarEnOleadas(celdas: string[], setRompiendose: (s: Set<string>) => void): Promise<void> {
+  const OLEADAS = 4;
+  const porOleada = Math.max(1, Math.ceil(celdas.length / OLEADAS));
+  const acumulado = new Set<string>();
+  for (let i = 0; i < celdas.length; i += porOleada) {
+    celdas.slice(i, i + porOleada).forEach((c) => acumulado.add(c));
+    setRompiendose(new Set(acumulado));
+    await esperar(45);
+  }
+}
+
+// ─── Visual de un bloque ───────────────────────────────────────────────────
+
+// Sin gradiente ni sombra por celda — con 64 celdas en el tablero, eso era
+// lo más caro de dibujar en Android y la causa real de la traba (no el
+// arrastre en sí). Dos capas de color plano (oscuro de fondo + claro
+// encima) dan casi el mismo volumen visual sin el costo de LinearGradient
+// por celda. `resaltado` pinta la celda de un color parejo (blanco/dorado)
+// para el aviso de "esta línea se va a completar".
+function BloqueVisual({ color, atenuado, resaltado }: { color: number; atenuado?: boolean; resaltado?: boolean }) {
   return (
-    <View style={[styles.bloqueBorde, atenuado && { opacity: 0.55 }]}>
-      <LinearGradient
-        colors={[CLARO[color], OSCURO[color]]}
-        start={{ x: 0.2, y: 0.1 }}
-        end={{ x: 0.85, y: 0.95 }}
-        style={styles.bloqueRelleno}
-      >
+    <View style={[styles.bloqueBorde, { backgroundColor: resaltado ? '#FFFFFF' : OSCURO[color] }, atenuado && { opacity: 0.55 }]}>
+      <View style={[styles.bloqueRelleno, { backgroundColor: resaltado ? '#FFF3C4' : CLARO[color] }]}>
         <View style={styles.bloqueBrilloSuave} />
-      </LinearGradient>
+      </View>
     </View>
   );
 }
 
-// ─── Celda animada del tablero: pop-in al aparecer, pop-out al limpiarse ──────
+// ─── Celda del tablero — sin animación propia (se sacó "crecer" por rendimiento) ──
 
-function BloqueCelda({ color, resaltada, previsualizada, previsualizadaInvalida }: {
-  color: Celda; resaltada: boolean; previsualizada: boolean; previsualizadaInvalida: boolean;
+function BloqueCelda({ color, resaltada, rompiendo, previsualizada, previsualizadaInvalida, previsualizadaLinea }: {
+  color: Celda; resaltada: boolean; rompiendo: boolean; previsualizada: boolean; previsualizadaInvalida: boolean; previsualizadaLinea: boolean;
 }) {
-  const escala = useSharedValue(color !== null ? 1 : 0);
-  const colorAnteriorRef = useRef(color);
-
-  useEffect(() => {
-    if (colorAnteriorRef.current === null && color !== null) {
-      escala.value = 0;
-      escala.value = withSpring(1, { damping: 11, stiffness: 220 });
-    }
-    colorAnteriorRef.current = color;
-  }, [color, escala]);
-
-  useEffect(() => {
-    if (resaltada) {
-      escala.value = withSequence(withTiming(1.25, { duration: 80 }), withTiming(0, { duration: 110 }));
-    }
-  }, [resaltada, escala]);
-
-  const estiloAnimado = useAnimatedStyle(() => ({ transform: [{ scale: escala.value }] }));
-
   if (color === null) {
     return (
-      <View style={[styles.celdaVacia, previsualizada && (previsualizadaInvalida ? styles.celdaPreviaInvalida : styles.celdaPreviaValida)]} />
+      <View
+        style={[
+          styles.celdaVacia,
+          previsualizada && (previsualizadaInvalida ? styles.celdaPreviaInvalida : previsualizadaLinea ? styles.celdaPreviaLinea : styles.celdaPreviaValida),
+        ]}
+      />
     );
   }
+  if (rompiendo) return null; // ya se está rompiendo de a poco, ver limpiarEnOleadas
 
-  return (
-    <Animated.View style={[{ flex: 1 }, estiloAnimado]}>
-      <BloqueVisual color={color} />
-    </Animated.View>
-  );
+  return <BloqueVisual color={color} resaltado={resaltada} />;
 }
 
 // ─── Pieza de la bandeja: se arrastra con el dedo ─────────────────────────────
@@ -350,6 +346,7 @@ export default function BloquesScreen() {
   const [tablero, setTablero] = useState<Celda[][]>(() => tableroVacio());
   const [bandeja, setBandeja] = useState<PiezaBloque[]>([]);
   const [celdasLimpiandose, setCeldasLimpiandose] = useState<Set<string>>(new Set());
+  const [celdasRompiendose, setCeldasRompiendose] = useState<Set<string>>(new Set());
   const [resolviendo, setResolviendo] = useState(false);
   const [puntaje, setPuntaje] = useState(0);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
@@ -361,6 +358,10 @@ export default function BloquesScreen() {
   const [piezaFantasma, setPiezaFantasma] = useState<PiezaBloque | null>(null);
   const [previewCeldas, setPreviewCeldas] = useState<Set<string>>(new Set());
   const [previewValida, setPreviewValida] = useState(false);
+  // Celdas (de la pieza Y de lo que ya estaba puesto) que forman parte de
+  // una línea que se completaría si soltás acá — se pintan todas del mismo
+  // color, como Block Blast, antes incluso de soltar.
+  const [previewLineaCompleta, setPreviewLineaCompleta] = useState<Set<string>>(new Set());
   const fantasmaX = useSharedValue(0);
   const fantasmaY = useSharedValue(0);
 
@@ -460,6 +461,7 @@ export default function BloquesScreen() {
     if (!anclaIdeal) {
       ultimaAnclaRef.current = null;
       setPreviewCeldas(new Set());
+      setPreviewLineaCompleta(new Set());
       return;
     }
     // Si el punto exacto no entra, se muestra (y después se suelta) en la celda
@@ -469,12 +471,21 @@ export default function BloquesScreen() {
     ultimaAnclaRef.current = anclaResuelta ?? anclaIdeal;
     setPreviewValida(anclaResuelta != null);
     setPreviewCeldas(celdasDePieza(pieza.forma, (anclaResuelta ?? anclaIdeal).r, (anclaResuelta ?? anclaIdeal).c));
+
+    if (anclaResuelta) {
+      const tableroHipotetico = colocarPieza(tablero, pieza.forma, anclaResuelta.r, anclaResuelta.c, pieza.color);
+      const { filas, columnas } = encontrarLineasCompletas(tableroHipotetico);
+      setPreviewLineaCompleta(filas.length + columnas.length > 0 ? celdasDeLineas(filas, columnas) : new Set());
+    } else {
+      setPreviewLineaCompleta(new Set());
+    }
   }, [tamanoCelda, tablero, calcularAncla]);
 
   const onSoltarArrastre = useCallback((pieza: PiezaBloque, absX: number, absY: number) => {
     setPiezaArrastrandoId(null);
     setPiezaFantasma(null);
     setPreviewCeldas(new Set());
+    setPreviewLineaCompleta(new Set());
     ultimaAnclaRef.current = null;
 
     // Se recalcula fresco con la posición real de soltada (no con la última
@@ -520,7 +531,15 @@ export default function BloquesScreen() {
     rachaRef.current = nuevaRacha;
     setRacha(nuevaRacha);
 
-    setTimeout(() => {
+    // Flash parejo (blanco/dorado, como Block Blast) un instante, y recién
+    // ahí se empieza a romper de a poco en vez de desaparecer todo junto.
+    (async () => {
+      await esperar(140);
+      setCeldasLimpiandose(new Set());
+
+      const celdasOrdenadas = [...celdasUnicas].sort();
+      await limpiarEnOleadas(celdasOrdenadas, setCeldasRompiendose);
+
       const tableroLimpio = limpiarLineas(tableroConPieza, filas, columnas);
       const tableroQuedaVacio = tableroLimpio.every((fila) => fila.every((v) => v === null));
       // 10 puntos por celda limpiada (única — la intersección fila×columna no se cuenta dos veces)
@@ -532,13 +551,13 @@ export default function BloquesScreen() {
       const nuevaBandeja = bandejaRestante.length > 0 ? bandejaRestante : generarBandeja(tableroLimpio);
 
       setTablero(tableroLimpio);
-      setCeldasLimpiandose(new Set());
+      setCeldasRompiendose(new Set());
       setBandeja(nuevaBandeja);
       setPuntaje(puntosFinal);
       setResolviendo(false);
 
       if (!hayJugadaPosible(tableroLimpio, nuevaBandeja)) finalizarPartida(puntosFinal);
-    }, 190);
+    })();
   }, [fase, resolviendo, tablero, bandeja, puntaje, finalizarPartida, reproducir, calcularAncla]);
 
   return (
@@ -577,11 +596,20 @@ export default function BloquesScreen() {
               <View key={r} style={styles.filaTablero}>
                 {fila.map((celda, c) => {
                   const clave = `${r},${c}`;
-                  const resaltada = celdasLimpiandose.has(clave);
+                  const enLineaPrevia = previewLineaCompleta.has(clave);
+                  const resaltada = celdasLimpiandose.has(clave) || (enLineaPrevia && celda !== null);
+                  const rompiendo = celdasRompiendose.has(clave);
                   const previsualizada = previewCeldas.has(clave);
                   return (
                     <View key={c} style={styles.celda}>
-                      <BloqueCelda color={celda} resaltada={resaltada} previsualizada={previsualizada} previsualizadaInvalida={!previewValida} />
+                      <BloqueCelda
+                        color={celda}
+                        resaltada={resaltada}
+                        rompiendo={rompiendo}
+                        previsualizada={previsualizada}
+                        previsualizadaInvalida={!previewValida}
+                        previsualizadaLinea={enLineaPrevia}
+                      />
                     </View>
                   );
                 })}
@@ -725,6 +753,7 @@ const styles = StyleSheet.create({
   },
   celdaPreviaValida: { backgroundColor: 'rgba(102,187,106,0.45)', borderColor: 'rgba(102,187,106,0.9)' },
   celdaPreviaInvalida: { backgroundColor: 'rgba(239,83,80,0.45)', borderColor: 'rgba(239,83,80,0.9)' },
+  celdaPreviaLinea: { backgroundColor: 'rgba(255,213,79,0.55)', borderColor: 'rgba(255,213,79,0.95)' },
 
   // Cuadrados de verdad (radio mínimo, no redondeado) y borde sólido en vez
   // de punteado — el borde "dashed" con esquinas redondeadas es pesado de
