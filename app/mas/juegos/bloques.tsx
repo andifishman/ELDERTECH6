@@ -38,22 +38,45 @@ type Fase = 'inicio' | 'jugando' | 'fin';
 type Celda = number | null;
 type Forma = readonly (readonly [number, number])[];
 
-// Colores vívidos y bien diferenciables — misma familia que Jardín ElderTech para que las dos secciones se sientan del mismo mundo.
-const CLARO = ['#FF5252', '#FFD54F', '#66BB6A', '#42A5F5', '#BA68C8', '#FF6FA5'];
-const OSCURO = ['#B71C1C', '#F57F17', '#1B5E20', '#0D47A1', '#4A148C', '#C2185B'];
+// Paleta vívida tipo juego de bloques comercial: rojo, amarillo, verde, azul, violeta, celeste, naranja.
+const CLARO = ['#FF5252', '#FFD54F', '#66BB6A', '#42A5F5', '#BA68C8', '#4DD0E1', '#FFA726'];
+const OSCURO = ['#B71C1C', '#F57F17', '#1B5E20', '#0D47A1', '#4A148C', '#00838F', '#E65100'];
 
+// Set completo estilo Tetris: I, O, T, S, Z, L, J en sus rotaciones, más
+// algunas piezas chicas (1, 2 y 3 celdas) para variar la dificultad.
 const FORMAS: Forma[] = [
+  // chicas
   [[0, 0]],
   [[0, 0], [0, 1]],
   [[0, 0], [1, 0]],
   [[0, 0], [0, 1], [0, 2]],
   [[0, 0], [1, 0], [2, 0]],
+  // O (cuadrado 2×2)
   [[0, 0], [0, 1], [1, 0], [1, 1]],
-  [[0, 0], [1, 0], [1, 1]],
-  [[0, 0], [0, 1], [1, 1]],
-  [[0, 1], [1, 0], [1, 1]],
+  // I (recta de 4)
+  [[0, 0], [0, 1], [0, 2], [0, 3]],
+  [[0, 0], [1, 0], [2, 0], [3, 0]],
+  // T
   [[0, 0], [0, 1], [0, 2], [1, 1]],
-  [[0, 1], [1, 0], [1, 1], [1, 2]],
+  [[1, 0], [1, 1], [1, 2], [0, 1]],
+  [[0, 0], [1, 0], [2, 0], [1, 1]],
+  [[0, 1], [1, 0], [1, 1], [2, 1]],
+  // S
+  [[0, 1], [0, 2], [1, 0], [1, 1]],
+  [[0, 0], [1, 0], [1, 1], [2, 1]],
+  // Z
+  [[0, 0], [0, 1], [1, 1], [1, 2]],
+  [[0, 1], [1, 0], [1, 1], [2, 0]],
+  // L
+  [[0, 0], [1, 0], [2, 0], [2, 1]],
+  [[0, 0], [0, 1], [0, 2], [1, 0]],
+  [[0, 0], [0, 1], [1, 1], [2, 1]],
+  [[1, 0], [1, 1], [1, 2], [0, 2]],
+  // J (espejo de la L)
+  [[0, 1], [1, 1], [2, 0], [2, 1]],
+  [[0, 0], [1, 0], [1, 1], [1, 2]],
+  [[0, 0], [0, 1], [1, 0], [2, 0]],
+  [[0, 0], [0, 1], [0, 2], [1, 2]],
 ];
 
 interface PiezaBloque { id: number; forma: Forma; color: number }
