@@ -1,17 +1,28 @@
-// Jardín ElderTech — match-3 original (temática de jardín/naturaleza, sin
-// relación con Candy Crush más allá de la mecánica general de "combinar 3").
-// Interacción: tocar una pieza y después tocar una pieza adyacente para
-// intercambiarlas — nada de arrastrar, más simple para motricidad reducida.
+// Jardín ElderTech — match-3 estilo "candy crush" (gráficos originales, no
+// copiados de ningún juego con derechos de autor). Se puede jugar de dos
+// formas: tocar una pieza y después tocar una vecina para intercambiarlas
+// (accesible para motricidad reducida), o arrastrar directamente el dedo
+// desde una pieza hacia el lado al que se quiere mover.
 //
-// Capa visual: gemas con gradiente + brillo + sombra (expo-linear-gradient,
-// ya era dependencia del proyecto) y animaciones reales en el hilo de UI vía
-// react-native-reanimated (idem — no hace falta ningún build nativo nuevo
-// para ninguna de las dos). Las piezas se posicionan de forma absoluta
-// dentro del tablero e interpolan su propia posición con un spring cuando
-// cambian de fila/columna — así la "caída" por gravedad es un movimiento
-// real, no un simple re-render en la celda de al lado.
+// Réplica de las mecánicas reales de "combinar 3":
+// - 4 en línea → caramelo RAYADO: al activarse limpia toda la fila (si el
+//   match fue horizontal) o toda la columna (si fue vertical).
+// - Forma de L o T (una corrida horizontal y una vertical que se cruzan) →
+//   caramelo ENVUELTO: al activarse explota un área de 3×3 a su alrededor.
+// - 5 en línea → BOMBA (esfera con puntitos de colores): al activarse limpia
+//   TODOS los caramelos del color con el que se combinó.
+// - Combinar dos especiales entre sí (arrastrando o tocando uno al lado del
+//   otro) da un efecto todavía más grande: dos rayados limpian fila+columna,
+//   un envuelto+rayado limpia 3 filas y 3 columnas, dos envueltos hacen una
+//   explosión más grande, y cualquier combo con una bomba arrasa el tablero.
+//
+// Capa visual: gradientes + brillo + sombra (expo-linear-gradient) y
+// animaciones reales en el hilo de UI vía react-native-reanimated — igual
+// que antes, sin builds nativos nuevos. El arrastre usa react-native-
+// gesture-handler, que ya está instalado y montado en la raíz de la app.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, type ViewStyle } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -36,19 +47,30 @@ const COLUMNAS = 6;
 const MOVIMIENTOS_INICIALES = 20;
 const ESPERA_RESALTADO_MS = 320;
 const ESPERA_GRAVEDAD_MS = 260;
+const ESPERA_ESPECIAL_MS = 90;
+const UMBRAL_ARRASTRE = 14;
 
 type Fase = 'inicio' | 'jugando' | 'fin';
-interface Pieza { id: number; tipo: number }
+type Forma = 'circulo' | 'cuadrado' | 'pildora';
+type EspecialTipo = 'rayada-h' | 'rayada-v' | 'envuelta' | 'bomba';
+interface Pieza { id: number; tipo: number; especial?: EspecialTipo }
 interface Coord { r: number; c: number }
 
-const TIPOS_PIEZA: { icono: keyof typeof Ionicons.glyphMap; claro: string; oscuro: string; nombre: string }[] = [
-  { icono: 'flower', claro: '#FF6FA5', oscuro: '#C2185B', nombre: 'flor' },
-  { icono: 'leaf', claro: '#81C784', oscuro: '#1B5E20', nombre: 'hoja' },
-  { icono: 'sunny', claro: '#FFB74D', oscuro: '#E65100', nombre: 'sol' },
-  { icono: 'water', claro: '#64B5F6', oscuro: '#0D47A1', nombre: 'gota' },
-  { icono: 'heart', claro: '#EF5350', oscuro: '#B71C1C', nombre: 'corazón' },
-  { icono: 'star', claro: '#BA68C8', oscuro: '#4A148C', nombre: 'estrella' },
+const CARAMELOS: { nombre: string; forma: Forma; claro: string; oscuro: string }[] = [
+  { nombre: 'cereza', forma: 'circulo', claro: '#FF8A80', oscuro: '#C62828' },
+  { nombre: 'arándano', forma: 'circulo', claro: '#64B5F6', oscuro: '#1565C0' },
+  { nombre: 'limón', forma: 'cuadrado', claro: '#FFF59D', oscuro: '#F9A825' },
+  { nombre: 'manzana', forma: 'cuadrado', claro: '#AED581', oscuro: '#2E7D32' },
+  { nombre: 'naranja', forma: 'pildora', claro: '#FFB74D', oscuro: '#E65100' },
+  { nombre: 'uva', forma: 'pildora', claro: '#CE93D8', oscuro: '#6A1B9A' },
 ];
+
+const NOMBRE_ESPECIAL: Record<EspecialTipo, string> = {
+  'rayada-h': 'especial, limpia una fila entera',
+  'rayada-v': 'especial, limpia una columna entera',
+  envuelta: 'especial, explota un área',
+  bomba: 'bomba, limpia todo un color',
+};
 
 let siguienteId = 1;
 function crearPieza(tipo: number): Pieza {
@@ -56,11 +78,14 @@ function crearPieza(tipo: number): Pieza {
 }
 function tipoAleatorio(excluidos: number[] = []): number {
   let t: number;
-  do { t = Math.floor(Math.random() * TIPOS_PIEZA.length); } while (excluidos.includes(t));
+  do { t = Math.floor(Math.random() * CARAMELOS.length); } while (excluidos.includes(t));
   return t;
 }
 function esperar(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function clave(co: Coord): string {
+  return `${co.r},${co.c}`;
 }
 
 function generarTablero(): Pieza[][] {
@@ -86,10 +111,20 @@ function intercambiar(tablero: Pieza[][], a: Coord, b: Coord): Pieza[][] {
   return copia;
 }
 
-/** Corridas horizontales/verticales de 3+ — devuelve las celdas a limpiar, con los efectos
- * especiales ya aplicados (4 en línea limpia toda la fila/columna, 5+ limpia un área 3×3). */
-function encontrarCoincidencias(tablero: Pieza[][]): Set<string> {
-  const marcadas = new Set<string>();
+interface Corrida { celdas: Coord[]; tipo: number; horizontal: boolean }
+interface NuevaEspecial extends Coord { especial: EspecialTipo; tipo: number }
+interface GrupoResultado { limpiar: Set<string>; nuevasEspeciales: NuevaEspecial[] }
+
+/**
+ * Detecta las corridas de 3+ (horizontales y verticales), las agrupa por
+ * intersección (para reconocer formas de L/T) y decide qué caramelo especial
+ * nace de cada grupo — igual que las reglas reales de "combinar 3":
+ * línea de 4 → rayado, línea de 5+ → bomba, L/T → envuelto.
+ * `pivot`, si se pasa, es la celda donde el jugador soltó la pieza — el
+ * especial nuevo aparece ahí si es parte del grupo (como en el juego real).
+ */
+function detectarGrupos(tablero: Pieza[][], pivot?: Coord): GrupoResultado {
+  const corridas: Corrida[] = [];
 
   for (let r = 0; r < FILAS; r++) {
     let c = 0;
@@ -98,21 +133,13 @@ function encontrarCoincidencias(tablero: Pieza[][]): Set<string> {
       while (fin + 1 < COLUMNAS && tablero[r][fin + 1].tipo === tablero[r][c].tipo) fin++;
       const largo = fin - c + 1;
       if (largo >= 3) {
-        for (let k = c; k <= fin; k++) marcadas.add(`${r},${k}`);
-        if (largo === 4) {
-          for (let k = 0; k < COLUMNAS; k++) marcadas.add(`${r},${k}`);
-        } else if (largo >= 5) {
-          const medio = Math.floor((c + fin) / 2);
-          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-            const rr = r + dr, cc = medio + dc;
-            if (rr >= 0 && rr < FILAS && cc >= 0 && cc < COLUMNAS) marcadas.add(`${rr},${cc}`);
-          }
-        }
+        const celdas: Coord[] = [];
+        for (let k = c; k <= fin; k++) celdas.push({ r, c: k });
+        corridas.push({ celdas, tipo: tablero[r][c].tipo, horizontal: true });
       }
       c = fin + 1;
     }
   }
-
   for (let c = 0; c < COLUMNAS; c++) {
     let r = 0;
     while (r < FILAS) {
@@ -120,22 +147,154 @@ function encontrarCoincidencias(tablero: Pieza[][]): Set<string> {
       while (fin + 1 < FILAS && tablero[fin + 1][c].tipo === tablero[r][c].tipo) fin++;
       const largo = fin - r + 1;
       if (largo >= 3) {
-        for (let k = r; k <= fin; k++) marcadas.add(`${k},${c}`);
-        if (largo === 4) {
-          for (let k = 0; k < FILAS; k++) marcadas.add(`${k},${c}`);
-        } else if (largo >= 5) {
-          const medio = Math.floor((r + fin) / 2);
-          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-            const rr = medio + dr, cc = c + dc;
-            if (rr >= 0 && rr < FILAS && cc >= 0 && cc < COLUMNAS) marcadas.add(`${rr},${cc}`);
-          }
-        }
+        const celdas: Coord[] = [];
+        for (let k = r; k <= fin; k++) celdas.push({ r: k, c });
+        corridas.push({ celdas, tipo: tablero[r][c].tipo, horizontal: false });
       }
       r = fin + 1;
     }
   }
 
-  return marcadas;
+  if (corridas.length === 0) return { limpiar: new Set(), nuevasEspeciales: [] };
+
+  const idxPorCelda = new Map<string, number[]>();
+  corridas.forEach((corr, i) => {
+    corr.celdas.forEach((co) => {
+      const arr = idxPorCelda.get(clave(co)) ?? [];
+      arr.push(i);
+      idxPorCelda.set(clave(co), arr);
+    });
+  });
+
+  const visitado = new Array(corridas.length).fill(false);
+  const limpiar = new Set<string>();
+  const nuevasEspeciales: NuevaEspecial[] = [];
+
+  for (let i = 0; i < corridas.length; i++) {
+    if (visitado[i]) continue;
+    const grupoIdx: number[] = [];
+    const pila = [i];
+    visitado[i] = true;
+    while (pila.length > 0) {
+      const idx = pila.pop()!;
+      grupoIdx.push(idx);
+      for (const co of corridas[idx].celdas) {
+        for (const vecino of idxPorCelda.get(clave(co)) ?? []) {
+          if (!visitado[vecino]) { visitado[vecino] = true; pila.push(vecino); }
+        }
+      }
+    }
+
+    const celdasGrupo = new Set<string>();
+    grupoIdx.forEach((idx) => corridas[idx].celdas.forEach((co) => celdasGrupo.add(clave(co))));
+    celdasGrupo.forEach((cl) => limpiar.add(cl));
+
+    const tipo = corridas[grupoIdx[0]].tipo;
+    const grupoCorridas = grupoIdx.map((idx) => corridas[idx]);
+    let celdaEspecial: Coord | null = pivot && celdasGrupo.has(clave(pivot)) ? pivot : null;
+
+    if (grupoCorridas.length >= 2) {
+      const larga = grupoCorridas.find((cr) => cr.celdas.length >= 4);
+      if (larga) {
+        if (!celdaEspecial) celdaEspecial = larga.celdas[Math.floor(larga.celdas.length / 2)];
+        const especial: EspecialTipo = larga.celdas.length >= 5 ? 'bomba' : larga.horizontal ? 'rayada-h' : 'rayada-v';
+        nuevasEspeciales.push({ ...celdaEspecial, especial, tipo });
+      } else {
+        const horiz = grupoCorridas.find((cr) => cr.horizontal);
+        const vert = grupoCorridas.find((cr) => !cr.horizontal);
+        let interseccion: Coord | null = null;
+        if (horiz && vert) {
+          for (const ch of horiz.celdas) for (const cv of vert.celdas) {
+            if (ch.r === cv.r && ch.c === cv.c) interseccion = ch;
+          }
+        }
+        if (!celdaEspecial) celdaEspecial = interseccion ?? grupoCorridas[0].celdas[0];
+        nuevasEspeciales.push({ ...celdaEspecial, especial: 'envuelta', tipo });
+      }
+    } else {
+      const corrida = grupoCorridas[0];
+      const largo = corrida.celdas.length;
+      if (largo >= 5) {
+        if (!celdaEspecial) celdaEspecial = corrida.celdas[Math.floor(largo / 2)];
+        nuevasEspeciales.push({ ...celdaEspecial, especial: 'bomba', tipo });
+      } else if (largo === 4) {
+        if (!celdaEspecial) celdaEspecial = corrida.celdas[Math.floor(largo / 2)];
+        nuevasEspeciales.push({ ...celdaEspecial, especial: corrida.horizontal ? 'rayada-h' : 'rayada-v', tipo });
+      }
+    }
+  }
+
+  // La celda donde nace un especial no se limpia — sobrevive convertida en esa pieza.
+  nuevasEspeciales.forEach((n) => limpiar.delete(clave(n)));
+
+  return { limpiar, nuevasEspeciales };
+}
+
+/** Celdas que agrega el efecto de UN especial ya existente al activarse. */
+function celdasEfectoEspecial(tablero: Pieza[][], celda: Coord, pieza: Pieza): Set<string> {
+  const extra = new Set<string>();
+  if (pieza.especial === 'rayada-h') {
+    for (let c = 0; c < COLUMNAS; c++) extra.add(`${celda.r},${c}`);
+  } else if (pieza.especial === 'rayada-v') {
+    for (let r = 0; r < FILAS; r++) extra.add(`${r},${celda.c}`);
+  } else if (pieza.especial === 'envuelta') {
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const rr = celda.r + dr, cc = celda.c + dc;
+      if (rr >= 0 && rr < FILAS && cc >= 0 && cc < COLUMNAS) extra.add(`${rr},${cc}`);
+    }
+  } else if (pieza.especial === 'bomba') {
+    for (let r = 0; r < FILAS; r++) for (let c = 0; c < COLUMNAS; c++) {
+      if (tablero[r][c].tipo === pieza.tipo) extra.add(`${r},${c}`);
+    }
+  }
+  return extra;
+}
+
+/** Encadena detonaciones: si el efecto de un especial alcanza a OTRO especial, también se activa. */
+function expandirEfectosEspeciales(tablero: Pieza[][], inicial: Set<string>): Set<string> {
+  const resultado = new Set(inicial);
+  const procesadas = new Set<string>();
+  const cola = [...inicial];
+  while (cola.length > 0) {
+    const cl = cola.shift()!;
+    if (procesadas.has(cl)) continue;
+    procesadas.add(cl);
+    const [r, c] = cl.split(',').map(Number);
+    const pieza = tablero[r]?.[c];
+    if (!pieza?.especial) continue;
+    celdasEfectoEspecial(tablero, { r, c }, pieza).forEach((extra) => {
+      if (!resultado.has(extra)) { resultado.add(extra); cola.push(extra); }
+    });
+  }
+  return resultado;
+}
+
+/** Combo de DOS especiales al intercambiarlos directamente (el caso de uno solo lo resuelve `celdasActivacionUnEspecial`). */
+function celdasComboDirecto(destino: Coord, piezaEnDestino: Pieza, piezaEnOrigen: Pieza): Set<string> {
+  const limpiar = new Set<string>();
+
+  if (piezaEnDestino.especial === 'bomba' || piezaEnOrigen.especial === 'bomba') {
+    for (let r = 0; r < FILAS; r++) for (let c = 0; c < COLUMNAS; c++) limpiar.add(`${r},${c}`);
+  } else if (piezaEnDestino.especial === 'envuelta' || piezaEnOrigen.especial === 'envuelta') {
+    for (let dr = -1; dr <= 1; dr++) {
+      const rr = destino.r + dr;
+      if (rr >= 0 && rr < FILAS) for (let c = 0; c < COLUMNAS; c++) limpiar.add(`${rr},${c}`);
+    }
+    for (let dc = -1; dc <= 1; dc++) {
+      const cc = destino.c + dc;
+      if (cc >= 0 && cc < COLUMNAS) for (let r = 0; r < FILAS; r++) limpiar.add(`${r},${cc}`);
+    }
+  } else {
+    for (let c = 0; c < COLUMNAS; c++) limpiar.add(`${destino.r},${c}`);
+    for (let r = 0; r < FILAS; r++) limpiar.add(`${r},${destino.c}`);
+  }
+  return limpiar;
+}
+
+/** Igual que `celdasComboDirecto`, pero resolviendo el caso 'bomba' de un solo especial con el tablero real. */
+function celdasActivacionUnEspecial(tablero: Pieza[][], destino: Coord, piezaEspecial: Pieza, colorObjetivo: number): Set<string> {
+  const piezaEfectiva: Pieza = piezaEspecial.especial === 'bomba' ? { ...piezaEspecial, tipo: colorObjetivo } : piezaEspecial;
+  return celdasEfectoEspecial(tablero, destino, piezaEfectiva);
 }
 
 function aplicarGravedadYRellenar(tablero: Pieza[][], marcadas: Set<string>): Pieza[][] {
@@ -156,8 +315,8 @@ function aplicarGravedadYRellenar(tablero: Pieza[][], marcadas: Set<string>): Pi
 function hayMovimientoValido(tablero: Pieza[][]): boolean {
   for (let r = 0; r < FILAS; r++) {
     for (let c = 0; c < COLUMNAS; c++) {
-      if (c + 1 < COLUMNAS && encontrarCoincidencias(intercambiar(tablero, { r, c }, { r, c: c + 1 })).size > 0) return true;
-      if (r + 1 < FILAS && encontrarCoincidencias(intercambiar(tablero, { r, c }, { r: r + 1, c })).size > 0) return true;
+      if (c + 1 < COLUMNAS && detectarGrupos(intercambiar(tablero, { r, c }, { r, c: c + 1 })).limpiar.size > 0) return true;
+      if (r + 1 < FILAS && detectarGrupos(intercambiar(tablero, { r, c }, { r: r + 1, c })).limpiar.size > 0) return true;
     }
   }
   return false;
@@ -173,20 +332,88 @@ function generarTableroValido(): Pieza[][] {
   return tablero;
 }
 
-// ─── Gema animada: gradiente + brillo + sombra, posición absoluta con spring ──
+// ─── Formas y overlays de los especiales ──────────────────────────────────
 
-interface GemaProps {
-  tipo: (typeof TIPOS_PIEZA)[number];
+function estiloForma(forma: Forma, tamano: number): ViewStyle {
+  if (forma === 'cuadrado') return { borderRadius: tamano * 0.22 };
+  if (forma === 'pildora') return { borderRadius: 999, marginHorizontal: tamano * 0.11 };
+  return { borderRadius: 999 };
+}
+
+const PUNTOS_BOMBA = [
+  { x: 0.26, y: 0.22, color: '#FF8A80' },
+  { x: 0.62, y: 0.16, color: '#64B5F6' },
+  { x: 0.8, y: 0.44, color: '#FFF59D' },
+  { x: 0.66, y: 0.7, color: '#AED581' },
+  { x: 0.3, y: 0.74, color: '#CE93D8' },
+  { x: 0.16, y: 0.46, color: '#FFB74D' },
+  { x: 0.48, y: 0.46, color: '#FF8A80' },
+];
+
+function VistaBomba({ tamano }: { tamano: number }) {
+  return (
+    <>
+      <LinearGradient colors={['#6D4C41', '#1B0F09']} start={{ x: 0.2, y: 0.1 }} end={{ x: 0.9, y: 1 }} style={StyleSheet.absoluteFill} />
+      {PUNTOS_BOMBA.map((p, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            left: tamano * p.x,
+            top: tamano * p.y,
+            width: tamano * 0.1,
+            height: tamano * 0.1,
+            borderRadius: 999,
+            backgroundColor: p.color,
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+function VistaRayas({ horizontal }: { horizontal: boolean }) {
+  const franjas = [0.26, 0.5, 0.74];
+  return (
+    <>
+      {franjas.map((pos, i) => (
+        <View
+          key={i}
+          style={
+            horizontal
+              ? { position: 'absolute', left: 0, right: 0, top: `${(pos - 0.06) * 100}%`, height: '12%', backgroundColor: 'rgba(255,255,255,0.6)' }
+              : { position: 'absolute', top: 0, bottom: 0, left: `${(pos - 0.06) * 100}%`, width: '12%', backgroundColor: 'rgba(255,255,255,0.6)' }
+          }
+        />
+      ))}
+    </>
+  );
+}
+
+function VistaEnvuelta() {
+  return (
+    <>
+      <View style={[StyleSheet.absoluteFill, { borderWidth: 3, borderColor: 'rgba(255,213,110,0.9)', borderRadius: 999 }]} />
+      <View style={styles.envueltaAlaIzq} />
+      <View style={styles.envueltaAlaDer} />
+    </>
+  );
+}
+
+// ─── Caramelo animado: gradiente + brillo + sombra, posición absoluta con spring ──
+
+interface CaramelloProps {
+  pieza: Pieza;
   fila: number;
   columna: number;
   tamano: number;
   seleccionada: boolean;
   resaltada: boolean;
   invalida: boolean;
-  nombreAccesible: string;
 }
 
-function Gema({ tipo, fila, columna, tamano, seleccionada, resaltada, invalida, nombreAccesible }: GemaProps) {
+function Caramelo({ pieza, fila, columna, tamano, seleccionada, resaltada, invalida }: CaramelloProps) {
+  const info = CARAMELOS[pieza.tipo];
   const top = useSharedValue(fila * tamano - tamano * 0.4);
   const left = useSharedValue(columna * tamano);
   const escala = useSharedValue(0);
@@ -238,20 +465,30 @@ function Gema({ tipo, fila, columna, tamano, seleccionada, resaltada, invalida, 
   }));
 
   const relleno = tamano * 0.07;
+  const nombreAccesible = `${info.nombre}${pieza.especial ? ', ' + NOMBRE_ESPECIAL[pieza.especial] : ''}${seleccionada ? ', seleccionada' : ''}`;
 
   return (
     <Animated.View style={estiloAnimado} accessibilityLabel={nombreAccesible}>
       <View style={{ flex: 1, padding: relleno }}>
-        <LinearGradient
-          colors={[tipo.claro, tipo.oscuro]}
-          start={{ x: 0.15, y: 0.1 }}
-          end={{ x: 0.9, y: 1 }}
-          style={[styles.gema, seleccionada && styles.gemaSeleccionada]}
-        >
-          <View style={styles.gemaBrilloGrande} />
-          <View style={styles.gemaBrilloChico} />
-          <Ionicons name={tipo.icono} size={tamano * 0.4} color="#FFFFFF" style={styles.gemaIconoSombra} />
-        </LinearGradient>
+        {pieza.especial === 'bomba' ? (
+          <View style={[styles.gema, { borderRadius: 999 }, seleccionada && styles.gemaSeleccionada]}>
+            <VistaBomba tamano={tamano} />
+            <View style={styles.gemaBrilloGrande} />
+          </View>
+        ) : (
+          <LinearGradient
+            colors={[info.claro, info.oscuro]}
+            start={{ x: 0.15, y: 0.1 }}
+            end={{ x: 0.9, y: 1 }}
+            style={[styles.gema, estiloForma(info.forma, tamano), seleccionada && styles.gemaSeleccionada]}
+          >
+            <View style={styles.gemaBrilloGrande} />
+            <View style={styles.gemaBrilloChico} />
+            {pieza.especial === 'rayada-h' && <VistaRayas horizontal />}
+            {pieza.especial === 'rayada-v' && <VistaRayas horizontal={false} />}
+            {pieza.especial === 'envuelta' && <VistaEnvuelta />}
+          </LinearGradient>
+        )}
       </View>
     </Animated.View>
   );
@@ -296,27 +533,43 @@ export default function JardinScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [puntaje]);
 
-  const resolverCadena = useCallback(async (tableroInicial: Pieza[][]) => {
+  const resolverCadena = useCallback(async (tableroInicial: Pieza[][], pivotInicial?: Coord) => {
     let actual = tableroInicial;
     let multiplicador = 1;
     let ganados = 0;
     setResolviendo(true);
 
-    let marcadas = encontrarCoincidencias(actual);
-    while (marcadas.size > 0) {
-      setCeldasResaltadas(marcadas);
-      reproducir(marcadas.size >= 7 ? 'linea_completa' : 'combinacion');
+    let pivot = pivotInicial;
+    let { limpiar, nuevasEspeciales } = detectarGrupos(actual, pivot);
+
+    while (limpiar.size > 0 || nuevasEspeciales.length > 0) {
+      const limpiarExpandido = expandirEfectosEspeciales(actual, limpiar);
+      nuevasEspeciales.forEach((n) => limpiarExpandido.delete(clave(n)));
+
+      const huboEspecial = nuevasEspeciales.length > 0 || limpiarExpandido.size > limpiar.size;
+      setCeldasResaltadas(limpiarExpandido);
+      reproducir(huboEspecial || limpiarExpandido.size >= 7 ? 'linea_completa' : 'combinacion');
       await esperar(ESPERA_RESALTADO_MS);
 
-      ganados += marcadas.size * 10 * multiplicador;
+      ganados += limpiarExpandido.size * 10 * multiplicador;
 
-      actual = aplicarGravedadYRellenar(actual, marcadas);
+      if (nuevasEspeciales.length > 0) {
+        actual = actual.map((fila) => fila.slice());
+        nuevasEspeciales.forEach((n) => {
+          actual[n.r][n.c] = { ...actual[n.r][n.c], especial: n.especial };
+        });
+        setTablero(actual);
+        await esperar(ESPERA_ESPECIAL_MS);
+      }
+
+      actual = aplicarGravedadYRellenar(actual, limpiarExpandido);
       setTablero(actual);
       setCeldasResaltadas(new Set());
       await esperar(ESPERA_GRAVEDAD_MS);
 
       multiplicador += 1;
-      marcadas = encontrarCoincidencias(actual);
+      pivot = undefined;
+      ({ limpiar, nuevasEspeciales } = detectarGrupos(actual, pivot));
     }
 
     if (ganados > 0) {
@@ -346,6 +599,66 @@ export default function JardinScreen() {
     void registrarPartida('jardin', null, puntajeFinal);
   }, [reproducir]);
 
+  const intentarIntercambio = useCallback((origen: Coord, destino: Coord) => {
+    if (resolviendo || fase !== 'jugando') return;
+    if (Math.abs(origen.r - destino.r) + Math.abs(origen.c - destino.c) !== 1) return;
+    if (destino.r < 0 || destino.r >= FILAS || destino.c < 0 || destino.c >= COLUMNAS) return;
+
+    const piezaOrigen = tablero[origen.r][origen.c];
+    const piezaDestino = tablero[destino.r][destino.c];
+    const probado = intercambiar(tablero, origen, destino);
+    setSeleccionado(null);
+
+    // Si hay algún especial de por medio, el intercambio SIEMPRE se acepta
+    // (como en el juego real: un especial se activa al moverlo, forme match
+    // nuevo o no) y dispara su efecto en vez de buscar coincidencias normales.
+    if (piezaOrigen.especial || piezaDestino.especial) {
+      const limpiarCombo = piezaOrigen.especial && piezaDestino.especial
+        ? celdasComboDirecto(destino, piezaDestino, piezaOrigen)
+        : celdasActivacionUnEspecial(
+            probado,
+            piezaDestino.especial ? destino : origen,
+            (piezaDestino.especial ? piezaDestino : piezaOrigen) as Pieza & { especial: EspecialTipo },
+            piezaDestino.especial ? piezaOrigen.tipo : piezaDestino.tipo,
+          );
+
+      setTablero(probado);
+      reproducir('linea_completa');
+      const movimientosNuevos = movimientos - 1;
+      setMovimientos(movimientosNuevos);
+
+      void (async () => {
+        const expandido = expandirEfectosEspeciales(probado, limpiarCombo);
+        setCeldasResaltadas(expandido);
+        await esperar(ESPERA_RESALTADO_MS);
+        setPuntaje((prev) => prev + expandido.size * 10);
+        let siguiente = aplicarGravedadYRellenar(probado, expandido);
+        setTablero(siguiente);
+        setCeldasResaltadas(new Set());
+        await esperar(ESPERA_GRAVEDAD_MS);
+        siguiente = await resolverCadena(siguiente);
+        if (movimientosNuevos <= 0) finalizarPartida();
+      })();
+      return;
+    }
+
+    const { limpiar } = detectarGrupos(probado, destino);
+    if (limpiar.size === 0) {
+      setIntentoInvalido({ a: origen, b: destino });
+      setTimeout(() => setIntentoInvalido(null), 260);
+      return;
+    }
+
+    setTablero(probado);
+    reproducir('colocar');
+    const movimientosNuevos = movimientos - 1;
+    setMovimientos(movimientosNuevos);
+
+    void resolverCadena(probado, destino).then(() => {
+      if (movimientosNuevos <= 0) finalizarPartida();
+    });
+  }, [tablero, resolviendo, fase, movimientos, resolverCadena, finalizarPartida, reproducir]);
+
   const onTapCelda = useCallback((r: number, c: number) => {
     if (resolviendo || fase !== 'jugando') return;
 
@@ -357,34 +670,13 @@ export default function JardinScreen() {
       setSeleccionado(null);
       return;
     }
-
     const esAdyacente = Math.abs(seleccionado.r - r) + Math.abs(seleccionado.c - c) === 1;
     if (!esAdyacente) {
       setSeleccionado({ r, c });
       return;
     }
-
-    const origen = seleccionado;
-    const destino = { r, c };
-    const probado = intercambiar(tablero, origen, destino);
-    const marcadas = encontrarCoincidencias(probado);
-    setSeleccionado(null);
-
-    if (marcadas.size === 0) {
-      setIntentoInvalido({ a: origen, b: destino });
-      setTimeout(() => setIntentoInvalido(null), 260);
-      return;
-    }
-
-    setTablero(probado);
-    reproducir('colocar');
-    const movimientosNuevos = movimientos - 1;
-    setMovimientos(movimientosNuevos);
-
-    void resolverCadena(probado).then(() => {
-      if (movimientosNuevos <= 0) finalizarPartida();
-    });
-  }, [seleccionado, tablero, resolviendo, fase, movimientos, resolverCadena, finalizarPartida, reproducir]);
+    intentarIntercambio(seleccionado, { r, c });
+  }, [seleccionado, resolviendo, fase, intentarIntercambio]);
 
   const empezar = useCallback(() => {
     setTablero(generarTableroValido());
@@ -440,42 +732,34 @@ export default function JardinScreen() {
               ))}
             </View>
 
-            {/* Gemas animadas */}
+            {/* Caramelos animados */}
             {tamanoCelda > 0 && tablero.map((fila, r) => fila.map((pieza, c) => {
-              const clave = `${r},${c}`;
+              const cl = clave({ r, c });
               const seleccionada = seleccionado?.r === r && seleccionado?.c === c;
-              const resaltada = celdasResaltadas.has(clave);
+              const resaltada = celdasResaltadas.has(cl);
               const invalida = intentoInvalido != null &&
                 ((intentoInvalido.a.r === r && intentoInvalido.a.c === c) || (intentoInvalido.b.r === r && intentoInvalido.b.c === c));
-              const tipo = TIPOS_PIEZA[pieza.tipo];
               return (
-                <Gema
+                <Caramelo
                   key={pieza.id}
-                  tipo={tipo}
+                  pieza={pieza}
                   fila={r}
                   columna={c}
                   tamano={tamanoCelda}
                   seleccionada={seleccionada}
                   resaltada={resaltada}
                   invalida={invalida}
-                  nombreAccesible={`${tipo.nombre}${seleccionada ? ', seleccionada' : ''}`}
                 />
               );
             }))}
 
-            {/* Grilla de toque, transparente, encima de todo */}
+            {/* Grilla de toque/arrastre, transparente, encima de todo */}
             {tamanoCelda > 0 && (
               <View style={StyleSheet.absoluteFill}>
                 {Array.from({ length: FILAS }).map((_, r) => (
                   <View key={r} style={{ flexDirection: 'row' }}>
                     {Array.from({ length: COLUMNAS }).map((_, c) => (
-                      <TouchableOpacity
-                        key={c}
-                        style={{ width: tamanoCelda, height: tamanoCelda }}
-                        onPress={() => onTapCelda(r, c)}
-                        activeOpacity={1}
-                        accessibilityRole="button"
-                      />
+                      <CeldaTactil key={c} r={r} c={c} tamano={tamanoCelda} onTap={onTapCelda} onArrastrar={intentarIntercambio} />
                     ))}
                   </View>
                 ))}
@@ -512,20 +796,19 @@ export default function JardinScreen() {
       <Modal visible={showTutorial} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <LinearGradient colors={['#FF6FA5', '#C2185B']} style={styles.modalIconWrap}>
+            <LinearGradient colors={['#FF8A80', '#C62828']} style={styles.modalIconWrap}>
               <Ionicons name="flower" size={40} color={Colors.white} />
             </LinearGradient>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
               <SpeakButton
-                texto="Tocá una pieza y después tocá una pieza vecina para intercambiarlas. Si formás una fila o columna de 3 o más piezas iguales, desaparecen y sumás puntos. Combiná 4 para limpiar toda la fila, o 5 para limpiar un área más grande. Tenés 20 movimientos por partida."
+                texto="Arrastrá un caramelo hacia un costado para moverlo, o tocá uno y después tocá un vecino. Si formás una fila o columna de 3 o más caramelos iguales, desaparecen y sumás puntos. Combiná 4 en línea y creás un caramelo rayado que limpia toda una fila o columna. Combiná en forma de L o de T y creás un caramelo envuelto que explota un área. Combiná 5 en línea y creás una bomba que limpia todo un color. Si movés dos especiales juntos, el efecto es todavía más grande. Tenés 20 movimientos por partida."
                 variante="escuchar"
               />
             </View>
             <Text style={styles.modalSub}>
-              Tocá una pieza y después tocá una pieza vecina para intercambiarlas.{'\n\n'}
-              Si formás una fila o columna de 3 o más piezas iguales, desaparecen y sumás puntos.{'\n\n'}
-              Combiná 4 para limpiar toda la fila, o 5 para limpiar un área más grande.{'\n\n'}
+              Arrastrá un caramelo hacia un costado para moverlo, o tocá uno y después tocá un vecino.{'\n\n'}
+              3 en línea desaparecen. 4 en línea crean un caramelo rayado (limpia una fila o columna). Una L o T crean un caramelo envuelto (explota un área). 5 en línea crean una bomba (limpia todo un color).{'\n\n'}
               Tenés {MOVIMIENTOS_INICIALES} movimientos por partida.
             </Text>
             <TouchableOpacity style={styles.modalBtnPrimary} onPress={dismissTutorial}>
@@ -556,6 +839,46 @@ export default function JardinScreen() {
         </View>
       </Modal>
     </View>
+  );
+}
+
+// ─── Celda táctil: tocar (tap corto) o arrastrar (pan) hacia un vecino ────
+
+interface CeldaTactilProps {
+  r: number;
+  c: number;
+  tamano: number;
+  onTap: (r: number, c: number) => void;
+  onArrastrar: (origen: Coord, destino: Coord) => void;
+}
+
+function CeldaTactil({ r, c, tamano, onTap, onArrastrar }: CeldaTactilProps) {
+  const gesto = Gesture.Pan()
+    .minDistance(0)
+    .runOnJS(true)
+    .onEnd((e) => {
+      const dx = e.translationX;
+      const dy = e.translationY;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < UMBRAL_ARRASTRE) {
+        onTap(r, c);
+        return;
+      }
+      const destino = Math.abs(dx) > Math.abs(dy)
+        ? { r, c: c + (dx > 0 ? 1 : -1) }
+        : { r: r + (dy > 0 ? 1 : -1), c };
+      onArrastrar({ r, c }, destino);
+    });
+
+  return (
+    <GestureDetector gesture={gesto}>
+      <View
+        style={{ width: tamano, height: tamano }}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={`Casillero fila ${r + 1}, columna ${c + 1}`}
+        onAccessibilityTap={() => onTap(r, c)}
+      />
+    </GestureDetector>
   );
 }
 
@@ -598,7 +921,6 @@ const styles = StyleSheet.create({
 
   gema: {
     flex: 1,
-    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -619,7 +941,15 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: '16%', right: '20%', width: '16%', height: '16%',
     borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.25)',
   },
-  gemaIconoSombra: { textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+
+  envueltaAlaIzq: {
+    position: 'absolute', left: '-8%', top: '38%', width: '22%', height: '24%',
+    backgroundColor: 'rgba(255,213,110,0.9)', transform: [{ rotate: '45deg' }],
+  },
+  envueltaAlaDer: {
+    position: 'absolute', right: '-8%', top: '38%', width: '22%', height: '24%',
+    backgroundColor: 'rgba(255,213,110,0.9)', transform: [{ rotate: '45deg' }],
+  },
 
   startBtnWrap: { width: '100%', borderRadius: Radius.sm, overflow: 'hidden' },
   startBtn: {
