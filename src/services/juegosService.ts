@@ -11,6 +11,12 @@ export interface EstadisticasPuntaje {
   partidasJugadas: number;
 }
 
+export interface TopPuntaje {
+  residenteId: string;
+  nombre: string;
+  puntos: number;
+}
+
 /** Best-effort — si falla (sin red, etc.) no interrumpe la experiencia de juego. */
 export async function registrarPartida(juego: Juego, resultado?: 'ganado' | 'perdido' | null, puntos?: number | null): Promise<void> {
   try {
@@ -22,4 +28,9 @@ export async function registrarPartida(juego: Juego, resultado?: 'ganado' | 'per
 
 export async function obtenerEstadisticasPuntaje(juego: Juego): Promise<EstadisticasPuntaje> {
   return apiClient.get<EstadisticasPuntaje>(`/api/games/${juego}/estadisticas`);
+}
+
+/** Top 3 residentes con mejor puntaje en un juego, dentro de la misma organización (residencia). */
+export async function obtenerTopPuntajes(juego: Juego): Promise<TopPuntaje[]> {
+  return apiClient.get<TopPuntaje[]>(`/api/games/${juego}/top`);
 }

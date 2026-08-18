@@ -22,13 +22,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppHeader from '@/components/ui/AppHeader';
 import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
-import { registrarPartida, obtenerEstadisticasPuntaje } from '@/services/juegosService';
+import { useAuth } from '@/context/AuthContext';
+import { registrarPartida, obtenerEstadisticasPuntaje, obtenerTopPuntajes, TopPuntaje } from '@/services/juegosService';
 
 const TAM = 8;
 const PADDING_TABLERO = 5;
@@ -378,6 +380,12 @@ export default function BloquesScreen() {
   const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('bloques');
   const { reproducir } = useGameSounds();
   const { sonidoActivado, toggleSonido } = useSonidoJuegos();
+  const { session } = useAuth();
+
+  // Clave de respaldo local del récord — así "Mejor" sigue apareciendo apenas
+  // se abre la app aunque el pedido al backend tarde, esté sin red, o falle
+  // por algún motivo: no depende únicamente de la respuesta del servidor.
+  const mejorPuntajeKey = `@bloques_mejor_puntaje_v1_${session?.user?.id ?? 'guest'}`;
 
   const [fase, setFase] = useState<Fase>('inicio');
   const [tablero, setTablero] = useState<Celda[][]>(() => tableroVacio());
@@ -388,6 +396,7 @@ export default function BloquesScreen() {
   const [puntaje, setPuntaje] = useState(0);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
+  const [topPuntajes, setTopPuntajes] = useState<TopPuntaje[]>([]);
   const [racha, setRacha] = useState(0);
   const rachaRef = useRef(0);
   // Espejo síncrono de mejorPuntaje — hace falta para comparar "¿esto es
@@ -427,14 +436,44 @@ export default function BloquesScreen() {
   const puntajeEscala = useSharedValue(1);
   const estiloPuntaje = useAnimatedStyle(() => ({ transform: [{ scale: puntajeEscala.value }] }));
 
-  useEffect(() => {
-    obtenerEstadisticasPuntaje('bloques')
-      .then((stats) => {
-        setMejorPuntaje(stats.mejorPuntaje);
-        mejorPuntajeRef.current = stats.mejorPuntaje;
-      })
+  // Toma el mayor valor entre lo que ya se sabía y un valor nuevo (local o
+  // del backend) — nunca "baja" el récord mostrado por una respuesta vieja.
+  const adoptarMejorPuntaje = useCallback((valor: number | null) => {
+    if (valor == null) return;
+    if (mejorPuntajeRef.current == null || valor > mejorPuntajeRef.current) {
+      mejorPuntajeRef.current = valor;
+      setMejorPuntaje(valor);
+    }
+  }, []);
+
+  const cargarTopPuntajes = useCallback(() => {
+    obtenerTopPuntajes('bloques')
+      .then(setTopPuntajes)
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    // Respaldo local primero (instantáneo, no depende de la red) — después
+    // se reconcilia con el backend, que es la fuente de verdad entre
+    // dispositivos, pero nunca deja "Mejor" en blanco mientras responde.
+    AsyncStorage.getItem(mejorPuntajeKey)
+      .then((val) => {
+        const local = val != null ? Number(val) : null;
+        if (local != null && Number.isFinite(local)) adoptarMejorPuntaje(local);
+      })
+      .catch(() => {});
+
+    obtenerEstadisticasPuntaje('bloques')
+      .then((stats) => {
+        adoptarMejorPuntaje(stats.mejorPuntaje);
+        if (mejorPuntajeRef.current != null) {
+          AsyncStorage.setItem(mejorPuntajeKey, String(mejorPuntajeRef.current)).catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    cargarTopPuntajes();
+  }, [mejorPuntajeKey, adoptarMejorPuntaje, cargarTopPuntajes]);
 
   useEffect(() => {
     if (puntaje === 0) return;
@@ -450,8 +489,11 @@ export default function BloquesScreen() {
       mejorPuntajeRef.current = nuevoPuntaje;
       setMejorPuntaje(nuevoPuntaje);
       esteJuegoRecordRef.current = true;
+      // Se guarda ya mismo, no recién al terminar la partida — si la app se
+      // cierra a mitad de juego (o se cuelga), el récord ya quedó guardado.
+      AsyncStorage.setItem(mejorPuntajeKey, String(nuevoPuntaje)).catch(() => {});
     }
-  }, []);
+  }, [mejorPuntajeKey]);
 
   const empezar = useCallback(() => {
     const vacio = tableroVacio();
@@ -477,8 +519,10 @@ export default function BloquesScreen() {
       setMejorPuntaje(puntajeFinal);
       reproducir('puntaje_alto');
     }
-    void registrarPartida('bloques', null, puntajeFinal);
-  }, [reproducir]);
+    // Recién cuando el registro termina (haya salido bien o no — registrarPartida
+    // nunca rechaza) se refresca el top 3, así puede reflejar el puntaje recién jugado.
+    void registrarPartida('bloques', null, puntajeFinal).then(cargarTopPuntajes);
+  }, [reproducir, cargarTopPuntajes]);
 
   const onLayoutTablero = useCallback((e: LayoutChangeEvent) => {
     const ancho = e.nativeEvent.layout.width;
@@ -769,6 +813,20 @@ export default function BloquesScreen() {
               Conseguiste <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> puntos.{'\n'}
               Mejor puntaje: <Text style={{ fontWeight: 'bold', color: Colors.success }}>{mejorPuntaje}</Text>
             </Text>
+
+            {topPuntajes.length > 0 && (
+              <View style={styles.topWrap}>
+                <Text style={styles.topTitulo}>Top 3</Text>
+                {topPuntajes.map((fila, i) => (
+                  <View key={fila.residenteId} style={styles.topFila}>
+                    <Text style={styles.topMedalla}>{['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`}</Text>
+                    <Text style={styles.topNombre} numberOfLines={1}>{fila.nombre}</Text>
+                    <Text style={styles.topPuntos}>{fila.puntos}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
             <TouchableOpacity style={styles.modalBtnPrimary} onPress={empezar}>
               <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
             </TouchableOpacity>
@@ -873,6 +931,20 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.sm },
   speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   modalSub: { fontSize: FontSizes.lg, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26 },
+
+  topWrap: {
+    width: '100%', backgroundColor: '#F5F6FA', borderRadius: Radius.md,
+    padding: Spacing.md, marginBottom: Spacing.xl, gap: Spacing.xs,
+  },
+  topTitulo: {
+    fontSize: FontSizes.sm, fontWeight: 'bold', color: Colors.textSecondary,
+    textAlign: 'center', marginBottom: Spacing.xs, textTransform: 'uppercase',
+  },
+  topFila: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  topMedalla: { fontSize: FontSizes.lg, width: 28, textAlign: 'center' },
+  topNombre: { flex: 1, fontSize: FontSizes.md, color: Colors.textPrimary },
+  topPuntos: { fontSize: FontSizes.md, fontWeight: 'bold', color: Colors.primary },
+
   modalBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, width: '100%', alignItems: 'center', marginBottom: Spacing.sm,

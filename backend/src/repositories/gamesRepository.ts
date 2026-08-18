@@ -61,6 +61,51 @@ export async function obtenerEstadisticasPuntaje(residenteId: string, juego: Jue
   }
 }
 
+export interface TopPuntaje {
+  residenteId: string;
+  nombre: string;
+  puntos: number;
+}
+
+/** Top N residentes con mejor puntaje en un juego, dentro de la organización — para el ranking que ven todos los residentes. */
+export async function obtenerTopPuntajes(organizacionId: string, juego: Juego, limite = 3): Promise<TopPuntaje[]> {
+  logger.info('repo:call', { repository: 'gamesRepository', action: 'obtenerTopPuntajes', organizacionId, juego, limite });
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from('partidas_juegos')
+      .select('residente_id, puntos, residente:residentes(nombre, apellido, nombre_completo)')
+      .eq('organizacion_id', organizacionId)
+      .eq('juego', juego)
+      .not('puntos', 'is', null)
+      .order('puntos', { ascending: false });
+    if (error) throw new Error(`Error al cargar el top de puntajes: ${error.message}`);
+
+    type ResidenteNombre = { nombre: string | null; apellido: string | null; nombre_completo: string | null };
+    type Fila = { residente_id: string; puntos: number; residente: unknown };
+
+    const nombreDe = (residente: unknown): string => {
+      const r = (Array.isArray(residente) ? residente[0] : residente) as ResidenteNombre | null | undefined;
+      return r?.nombre_completo || [r?.nombre, r?.apellido].filter(Boolean).join(' ') || 'Residente';
+    };
+
+    // Las filas ya vienen ordenadas de mayor a menor puntaje — nos quedamos
+    // con la primera aparición de cada residente (su mejor puntaje) hasta
+    // completar el límite pedido.
+    const top: TopPuntaje[] = [];
+    const vistos = new Set<string>();
+    for (const fila of (data ?? []) as unknown as Fila[]) {
+      if (vistos.has(fila.residente_id)) continue;
+      vistos.add(fila.residente_id);
+      top.push({ residenteId: fila.residente_id, nombre: nombreDe(fila.residente), puntos: fila.puntos });
+      if (top.length >= limite) break;
+    }
+    return top;
+  } catch (err) {
+    logger.error('repo:error', { repository: 'gamesRepository', action: 'obtenerTopPuntajes', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}
+
 export interface ConteoPorJuego {
   juego: Juego;
   cantidad: number;

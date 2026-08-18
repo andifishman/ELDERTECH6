@@ -10,3 +10,7 @@ export const registrarPartidaSchema = z.object({
 export const estadisticasParamsSchema = z.object({
   juego: z.enum(JUEGOS),
 });
+
+export const topPuntajesQuerySchema = z.object({
+  limite: z.coerce.number().int().positive().max(20).optional(),
+});

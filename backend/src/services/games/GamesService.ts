@@ -5,6 +5,7 @@ import { StatusCodes } from 'http-status-codes';
 
 export type { ConteoPorJuego } from '../../repositories/gamesRepository';
 export type { EstadisticasPuntaje } from '../../repositories/gamesRepository';
+export type { TopPuntaje } from '../../repositories/gamesRepository';
 
 export async function registrarPartida(
   user: AuthUser,
@@ -25,4 +26,10 @@ export async function contarPartidasPorJuego(residenteId: string): Promise<repo.
 export async function obtenerEstadisticasPuntaje(user: AuthUser, juego: repo.Juego): Promise<repo.EstadisticasPuntaje> {
   if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
   return repo.obtenerEstadisticasPuntaje(user.residenteId, juego);
+}
+
+/** Top 3 (por defecto) de residentes con mejor puntaje en un juego, dentro de la misma organización. */
+export async function obtenerTopPuntajes(user: AuthUser, juego: repo.Juego, limite?: number): Promise<repo.TopPuntaje[]> {
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
+  return repo.obtenerTopPuntajes(user.organizacionId, juego, limite);
 }
