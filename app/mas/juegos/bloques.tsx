@@ -42,8 +42,9 @@ type Forma = readonly (readonly [number, number])[];
 const CLARO = ['#FF5252', '#FFD54F', '#66BB6A', '#42A5F5', '#BA68C8', '#4DD0E1', '#FFA726'];
 const OSCURO = ['#B71C1C', '#F57F17', '#1B5E20', '#0D47A1', '#4A148C', '#00838F', '#E65100'];
 
-// Set completo estilo Tetris: I, O, T, S, Z, L, J en sus rotaciones, más
-// algunas piezas chicas (1, 2 y 3 celdas) para variar la dificultad.
+// Set completo estilo Block Blast: piezas chicas (1-3 celdas), I/O/T/S/Z/L/J
+// en sus rotaciones, más cuadrado 3×3, líneas de 5, rectángulos 2×3/2×4,
+// cruz y "L grande" de esquina (5 celdas) en sus 4 rotaciones.
 const FORMAS: Forma[] = [
   // chicas
   [[0, 0]],
@@ -77,6 +78,24 @@ const FORMAS: Forma[] = [
   [[0, 0], [1, 0], [1, 1], [1, 2]],
   [[0, 0], [0, 1], [1, 0], [2, 0]],
   [[0, 0], [0, 1], [0, 2], [1, 2]],
+  // cuadrado grande 3×3
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]],
+  // línea de 5
+  [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]],
+  [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]],
+  // rectángulo 2×3 / 3×2
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2]],
+  [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1]],
+  // rectángulo 2×4 / 4×2
+  [[0, 0], [0, 1], [0, 2], [0, 3], [1, 0], [1, 1], [1, 2], [1, 3]],
+  [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1], [3, 0], [3, 1]],
+  // cruz (plus)
+  [[0, 1], [1, 0], [1, 1], [1, 2], [2, 1]],
+  // L grande (esquina de 3×3, 5 celdas), 4 rotaciones
+  [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]],
+  [[0, 0], [0, 1], [0, 2], [1, 0], [2, 0]],
+  [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]],
+  [[0, 2], [1, 2], [2, 0], [2, 1], [2, 2]],
 ];
 
 interface PiezaBloque { id: number; forma: Forma; color: number }
@@ -118,11 +137,24 @@ function hayJugadaPosible(tablero: Celda[][], piezas: PiezaBloque[]): boolean {
   return piezas.some((p) => hayColocacionPosibleParaPieza(tablero, p.forma));
 }
 
-/** Si el ancla exacta no entra, prueba las 8 celdas vecinas — así no hace falta soltar pixel-perfecto. */
+// Vecinos ordenados por distancia (radio 1 y 2) — más sensibilidad al soltar:
+// alcanza con estar cerca de una celda, no hace falta acertarle de cerca.
+const VECINOS_CERCANIA: [number, number][] = (() => {
+  const offsets: [number, number][] = [];
+  for (let dr = -2; dr <= 2; dr++) {
+    for (let dc = -2; dc <= 2; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      offsets.push([dr, dc]);
+    }
+  }
+  offsets.sort((a, b) => (a[0] ** 2 + a[1] ** 2) - (b[0] ** 2 + b[1] ** 2));
+  return offsets;
+})();
+
+/** Si el ancla exacta no entra, prueba celdas cercanas (hasta 2 de distancia) — así no hace falta soltar pixel-perfecto. */
 function buscarAnclaCercana(tablero: Celda[][], forma: Forma, anclaR: number, anclaC: number): { r: number; c: number } | null {
   if (puedeColocarse(tablero, forma, anclaR, anclaC)) return { r: anclaR, c: anclaC };
-  const vecinos: [number, number][] = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]];
-  for (const [dr, dc] of vecinos) {
+  for (const [dr, dc] of VECINOS_CERCANIA) {
     const r = anclaR + dr, c = anclaC + dc;
     if (puedeColocarse(tablero, forma, r, c)) return { r, c };
   }
@@ -274,7 +306,7 @@ function PiezaArrastrable({
     // falta tocar el pixel exacto, sobre todo para piezas chicas o con
     // celdas concentradas en una esquina (más difícil para manos con
     // movilidad reducida).
-    .hitSlop({ top: 24, bottom: 24, left: 24, right: 24 })
+    .hitSlop({ top: 36, bottom: 36, left: 36, right: 36 })
     .onStart(() => {
       escala.value = withTiming(1.12, { duration: 100 });
       runOnJS(onComenzar)(pieza);
@@ -488,7 +520,7 @@ export default function BloquesScreen() {
   const onMoverArrastre = useCallback((pieza: PiezaBloque, absX: number, absY: number) => {
     if (tamanoCelda === 0) return;
     const ahora = Date.now();
-    if (ahora - ultimaPreviewMsRef.current < 70) return;
+    if (ahora - ultimaPreviewMsRef.current < 50) return;
     ultimaPreviewMsRef.current = ahora;
 
     const anclaIdeal = calcularAncla(pieza, absX, absY);
