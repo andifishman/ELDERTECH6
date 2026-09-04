@@ -28,15 +28,22 @@ function getChatManager(): ProviderManager<ChatCompletionInput, ChatCompletionOu
   if (chatManager) return chatManager;
   if (!env.groqApiKey) throw new Error('GROQ_API_KEY no configurada en el servidor.');
 
+  // `llama-3.3-70b-versatile` y `llama-3.1-8b-instant` (los tiers 1 y 2 de
+  // acá hasta ahora) dejaron de existir para esta cuenta de Groq — ya no
+  // aparecen ni en GET /v1/models, y cualquier request los devolvía como
+  // "model_not_found" (404). Esto pasaba en TODOS los mensajes, no solo
+  // algunos: cada request perdía 2 intentos garantizados antes de llegar a
+  // un modelo que sí funcionaba, agotando la cuota compartida de tokens/min
+  // mucho más rápido de lo que el diseño de 3 tiers asumía — probablemente
+  // buena parte de la inconsistencia reportada del asistente. Reemplazados
+  // por los modelos reales del catálogo actual (confirmado contra
+  // GET /v1/models con la key de este proyecto) que además soportan tool
+  // calling (`groq/compound*` no lo soportan — tienen sus propias
+  // herramientas internas, no son compatibles con HERRAMIENTAS_IA).
   const providers: IProvider<ChatCompletionInput, ChatCompletionOutput>[] = [
-    new GroqModelProvider('llama-3.3-70b-versatile', env.groqApiKey, 1),
-    new GroqModelProvider('llama-3.1-8b-instant', env.groqApiKey, 2),
-    // llama3-70b-8192 fue decomisionado por Groq (agosto 2025) — cualquier
-    // pedido que llegara hasta el tier 3 fallaba con "model_decommissioned",
-    // sin importar de qué se tratara la pregunta. gpt-oss-120b es de OpenAI
-    // (no Meta/Llama), así que además da diversidad real de modelo, no solo
-    // de tier, ante un problema puntual con la familia Llama.
-    new GroqModelProvider('openai/gpt-oss-120b', env.groqApiKey, 3),
+    new GroqModelProvider('openai/gpt-oss-120b', env.groqApiKey, 1),
+    new GroqModelProvider('qwen/qwen3.8-27b', env.groqApiKey, 2),
+    new GroqModelProvider('openai/gpt-oss-20b', env.groqApiKey, 3),
   ];
 
   // Vendors DISTINTOS a Groq — si Groq se queda sin cuota (su tier gratuito
@@ -153,13 +160,14 @@ async function ejecutarLoopAgentico(
   let yaSeForzoBusqueda = false;
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+    const forzandoBusqueda = busquedaForzadaPendiente;
     const input: ChatCompletionInput = {
       messages: msgs,
       maxTokens,
       tools: conHerramientas ? HERRAMIENTAS_IA : undefined,
       toolChoice: !conHerramientas
         ? undefined
-        : busquedaForzadaPendiente
+        : forzandoBusqueda
           ? { type: 'function', function: { name: 'buscar_informacion_externa' } }
           : 'auto',
       // Baja a propósito: con 0.7 el modelo inventaba detalles que no estaban
@@ -169,7 +177,18 @@ async function ejecutarLoopAgentico(
     };
     busquedaForzadaPendiente = false;
 
-    const { message } = await manager.execute(input);
+    let message: ChatCompletionOutput['message'];
+    try {
+      ({ message } = await manager.execute(input));
+    } catch (err) {
+      // Con toolChoice forzado a buscar_informacion_externa, algún modelo
+      // igual intenta invocar otra herramienta (ej. navegar_a_pantalla) — el
+      // proveedor rechaza ESE pedido entero con un 400 en vez de ignorar el
+      // intento inválido, y sin este fallback toda la respuesta se caía por
+      // un problema de compliance del modelo, no por falta de información.
+      if (!forzandoBusqueda) throw err;
+      ({ message } = await manager.execute({ ...input, toolChoice: 'auto' }));
+    }
     const toolCalls = message.tool_calls;
 
     if (!toolCalls || toolCalls.length === 0) {

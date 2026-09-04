@@ -1,13 +1,21 @@
 import type { NavegacionAccion } from './types';
+import { JUEGOS_SLUGS, SECCIONES_APP } from './appSections';
 
 /**
  * Rutas reales de la app (Expo Router, ver `app/`) a las que la herramienta
  * `navegar_a_pantalla` puede mandar al residente. Cualquier otra cosa que el
  * modelo invente (ej. una pantalla de "resultados" que no existe) se
  * descarta acá — el backend decide qué rutas son válidas, no el modelo.
+ *
+ * Se arma a partir de `appSections.ts` (fuente única de verdad) en vez de
+ * mantenerse a mano: así esta lista y la que el prompt le muestra al modelo
+ * nunca pueden quedar desincronizadas entre sí.
  */
-const RUTAS_ESTATICAS_VALIDAS = new Set(['/', '/horarios', '/articulos', '/llamar', '/mas/radio', '/mas/clima', '/profile']);
-const RUTA_DINAMICA_REGEX = /^\/(horarios|articulos)\/[a-zA-Z0-9-]{1,64}$/;
+const RUTAS_ESTATICAS_VALIDAS = new Set(SECCIONES_APP.map((s) => s.ruta));
+const RUTAS_CON_DETALLE = SECCIONES_APP.filter((s) => s.tieneDetalle).map((s) => s.ruta);
+const RUTA_DINAMICA_REGEX = new RegExp(`^(?:${RUTAS_CON_DETALLE.map((r) => r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\/[a-zA-Z0-9-]{1,64}$`);
+/** Los juegos son un slug fijo ("/mas/juegos/ahorcado"), no un id de base de datos — se valida contra la lista real, no cualquier texto. */
+const RUTA_JUEGO_REGEX = new RegExp(`^/mas/juegos/(${JUEGOS_SLUGS.join('|')})$`);
 /** El prompt usa "ID" como marcador de posición; el modelo lo copia tal cual bastante seguido. */
 const PLACEHOLDER_ID_REGEX = /\/(ID|id|<ID>|\{id\}|:id)$/;
 
@@ -24,9 +32,18 @@ const ALIAS_RUTAS: Record<string, string> = {
   '/radio': '/mas/radio',
   '/contactos': '/llamar',
   '/llamadas': '/llamar',
-  '/perfil': '/profile',
   '/inicio': '/',
   '/actividades': '/horarios',
+  '/hablemos': '/mas/hablemos',
+  '/mensajes': '/mas/hablemos',
+  '/pedidos': '/mas/pedidos',
+  '/sugerencias': '/mas/pedidos',
+  '/juegos': '/mas/juegos',
+  '/accesibilidad': '/mas/accesibilidad',
+  '/ajustes': '/mas/accesibilidad',
+  '/como-usar': '/como-usar',
+  '/comousar': '/como-usar',
+  '/ayuda': '/como-usar',
 };
 
 export function normalizarRuta(ruta: string): string {
@@ -38,12 +55,14 @@ export function normalizarRuta(ruta: string): string {
   if (conId) return `/articulos/${conId[2]}`;
   const actividadConId = /^\/actividades\/(.+)$/i.exec(limpia);
   if (actividadConId) return `/horarios/${actividadConId[1]}`;
+  const juegoConId = /^\/juegos\/(.+)$/i.exec(limpia);
+  if (juegoConId) return `/mas/juegos/${juegoConId[1]}`;
   return limpia;
 }
 
 export function esRutaValida(ruta: string): boolean {
   if (PLACEHOLDER_ID_REGEX.test(ruta)) return false;
-  return RUTAS_ESTATICAS_VALIDAS.has(ruta) || RUTA_DINAMICA_REGEX.test(ruta);
+  return RUTAS_ESTATICAS_VALIDAS.has(ruta) || RUTA_DINAMICA_REGEX.test(ruta) || RUTA_JUEGO_REGEX.test(ruta);
 }
 
 /**
@@ -60,7 +79,11 @@ const LLAMADA_FUNCION_REGEX =
  * Porteo textual de src/services/asistenteService.ts (cliente).
  */
 export function extraerNavegacionDelTexto(texto: string): { texto: string; navegacion?: NavegacionAccion } {
-  const navTagRegex = /<navegar_a_pantalla([^>]*)>(.*?)<\/navegar_a_pantalla>|<navegar_a_pantalla([^/]*)\/>/gs;
+  // La rama de auto-cierre usaba `[^/]*` para los atributos, así que nunca
+  // podía matchear una ruta real (todas empiezan con "/"): el regex se
+  // rompía en el primer "/" de `ruta="/horarios"` y jamás llegaba al cierre
+  // "/>". `[^>]*?` (perezoso, solo excluye ">") sí tolera barras adentro.
+  const navTagRegex = /<navegar_a_pantalla([^>]*)>(.*?)<\/navegar_a_pantalla>|<navegar_a_pantalla([^>]*?)\/>/gs;
   const match = navTagRegex.exec(texto);
   const matchLlamada = /navegar_a_pantalla\s*\(([^)]*)\)/.exec(texto);
 
@@ -102,7 +125,11 @@ export function pareceQueNoSabe(texto: string): boolean {
     .replace(/[̀-ͯ]/g, '');
 
   return /\bno tengo (informacion|datos|acceso|constancia|conocimiento)\b/.test(lower)
-    || /\bno (dispongo|cuento) con\b/.test(lower)
+    // "disponer DE algo" / "contar CON algo" — cada verbo con su preposición
+    // real; antes pedía "con" para los dos y "no dispongo de" (la forma
+    // natural) nunca lo disparaba.
+    || /\bno dispongo de\b/.test(lower)
+    || /\bno cuento con\b/.test(lower)
     || /\bno puedo (buscar|acceder|saber|responder|ayudarte con eso)\b/.test(lower)
     || /\bno (se|sabria) (que|cual|como|cuando|si|el resultado|decirte)\b/.test(lower)
     || /\bno estoy seguro\b/.test(lower)
