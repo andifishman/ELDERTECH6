@@ -33,6 +33,16 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const mountedRef = useRef(true);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Token de operación: `Audio.Sound.createAsync` puede tardar unos segundos
+  // (carga de un stream por red). Si mientras tanto se llama a detener() o a
+  // reproducir() de otra radio, sin esto el resultado de la carga vieja
+  // llegaba igual y pisaba soundRef con un sonido que ya arranca solo
+  // (shouldPlay: true) — la app mostraba "detenido" pero el audio seguía
+  // sonando de verdad. Cada llamada a reproducir()/detener() saca un número
+  // nuevo; si al terminar de cargar el número ya no es el vigente, el
+  // resultado se descarta (y el sonido recién creado se para y libera) en
+  // vez de asignarse.
+  const operacionIdRef = useRef(0);
   //radio que se está reproduciendo actualmente
   const [radioActual, setRadioActual] = useState<RadioStation | null>(null);
   //estado de la reproducción: idle | loading | playing | paused | error
@@ -83,11 +93,12 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Intenta cargar y reproducir una URL de stream.
-   * Devuelve true si tuvo éxito, false si falló.
+   * Devuelve true si tuvo éxito, false si falló (o si quedó obsoleta, ver arriba).
    */
   async function _intentarReproducir(
     url: string,
     onPlayingCallback: () => void,
+    miOperacion: number,
   ): Promise<boolean> {
     try {
       await Audio.setAudioModeAsync({
@@ -102,7 +113,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         { uri: url, headers: STREAM_HEADERS },
         { shouldPlay: true, isLooping: false, volume: volumenRef.current },
         (status) => {
-          if (!mountedRef.current) return;
+          if (!mountedRef.current || miOperacion !== operacionIdRef.current) return;
           if (!status.isLoaded) {
             if (status.error) {
               console.warn(`[Radio] Error en status callback: ${status.error}`);
@@ -118,6 +129,14 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
           }
         },
       );
+
+      // Esta carga tardó y mientras tanto se pidió detener u otra radio —
+      // descartarla en vez de dejarla sonando sin que nadie la controle.
+      if (miOperacion !== operacionIdRef.current) {
+        sound.stopAsync().catch(() => null);
+        sound.unloadAsync().catch(() => null);
+        return false;
+      }
 
       soundRef.current = sound;
       return true;
@@ -153,6 +172,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
   //detiene la reproducción y limpia el estado
   const detener = useCallback(async () => {
+    operacionIdRef.current += 1;
     await _limpiarSonido();
     if (mountedRef.current) {
       setEstado('idle');
@@ -162,22 +182,26 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
   //inicia la reproducción de una radio; intenta el fallback si la url principal falla
   const reproducir = useCallback(async (radio: RadioStation) => {
+    const miOperacion = (operacionIdRef.current += 1);
     await _limpiarSonido();
 
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || miOperacion !== operacionIdRef.current) return;
     setEstado('loading');
     setRadioActual(radio);
 
     const exito = await _intentarReproducir(radio.urlStream, () => {
       if (mountedRef.current) setEstado('playing');
-    });
+    }, miOperacion);
+
+    if (miOperacion !== operacionIdRef.current) return; // se pidió otra cosa mientras tanto
 
     if (!exito) {
       if (radio.urlFallback) {
         console.log(`[Radio] URL principal falló, intentando fallback: ${radio.urlFallback}`);
         const exitoFallback = await _intentarReproducir(radio.urlFallback, () => {
           if (mountedRef.current) setEstado('playing');
-        });
+        }, miOperacion);
+        if (miOperacion !== operacionIdRef.current) return;
         if (!exitoFallback) {
           if (mountedRef.current) {
             setEstado('error');
@@ -195,7 +219,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
     if (radio.urlFallback) {
       fallbackTimerRef.current = setTimeout(async () => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || miOperacion !== operacionIdRef.current) return;
 
         const statusActual = (await soundRef.current?.getStatusAsync().catch(() => null)) ?? null;
         const estaReproduciendo = statusActual !== null && statusActual.isLoaded && statusActual.isPlaying;
@@ -203,12 +227,13 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         if (!estaReproduciendo && mountedRef.current) {
           console.log(`[Radio] Timeout — intentando fallback: ${radio.urlFallback}`);
           await _limpiarSonido();
-          if (!mountedRef.current) return;
+          if (!mountedRef.current || miOperacion !== operacionIdRef.current) return;
 
           const exitoFallback = await _intentarReproducir(radio.urlFallback!, () => {
             if (mountedRef.current) setEstado('playing');
-          });
+          }, miOperacion);
 
+          if (miOperacion !== operacionIdRef.current) return;
           if (!exitoFallback && mountedRef.current) {
             setEstado('error');
             setRadioActual(null);
