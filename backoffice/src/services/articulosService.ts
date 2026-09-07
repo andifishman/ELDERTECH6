@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabase';
 import type { TutorialConCategoria, CategoriaTutorial, FormatoTutorial, PasoTutorial } from '@/types/database.types';
 
 export interface PasoInput {
@@ -92,4 +93,25 @@ export async function subirAudioTutorial(archivo: File): Promise<string> {
   form.append('archivo', archivo);
   const { url } = await apiClient.postForm<{ url: string }>('/api/admin/tutorials/audio', form);
   return url;
+}
+
+// Sube un video al bucket tutorial-videos y devuelve la URL pública.
+// A diferencia de subirImagenTutorial/subirAudioTutorial, esto sube DIRECTO a
+// Supabase Storage desde el navegador en vez de pasar por el backend: un
+// video de tutorial suele pesar bastante más que los ~4.5 MB que acepta el
+// body de una Vercel Serverless Function, así que proxearlo por ahí fallaría
+// para cualquier archivo real. El bucket exige estar autenticado para
+// escribir (ver la migración tutorial_videos_bucket.sql), y el backoffice ya
+// mantiene su propia sesión de Supabase (ver AuthContext), así que esto es
+// seguro con las credenciales del staff logueado.
+export async function subirVideoTutorial(archivo: File): Promise<string> {
+  const extension = archivo.name.split('.').pop() ?? 'mp4';
+  const nombreArchivo = `${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from('tutorial-videos').upload(nombreArchivo, archivo, {
+    contentType: archivo.type || 'video/mp4',
+    upsert: false,
+  });
+  if (error) throw new Error(`No se pudo subir el video: ${error.message}`);
+  const { data } = supabase.storage.from('tutorial-videos').getPublicUrl(nombreArchivo);
+  return data.publicUrl;
 }

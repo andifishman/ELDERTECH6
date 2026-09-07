@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { WebView } from 'react-native-webview';
 import { AppHeader } from '@/components/common/AppHeader';
 import { TutorialImage } from '@/components/tutoriales/TutorialImage';
 import { useAuth } from '@/context/AuthContext';
@@ -42,6 +43,16 @@ const VIDEO_H = Math.round(VIDEO_W * 9 / 16);
 const STEP_PHOTO_W = VIDEO_W;
 const STEP_PHOTO_MAX_H = Math.round(SCREEN_H * 0.42);
 const STEP_PHOTO_DEFAULT_RATIO = 9 / 19.5; // proporción típica de un celular — evita salto de layout antes de cargar
+
+// El reproductor nativo de expo-av solo puede reproducir un archivo de video
+// directo (mp4, etc.) — no una página de YouTube. El backoffice permite
+// pegar cualquiera de los dos en el campo "Video", así que acá se detecta un
+// link de YouTube y se muestra embebido (WebView) en vez de intentar
+// reproducirlo como si fuera un archivo, que fallaba en silencio.
+function extraerIdDeYoutube(url: string): string | null {
+  const match = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.exec(url);
+  return match ? match[1] : null;
+}
 
 export default function TutorialDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -188,6 +199,7 @@ export default function TutorialDetalleScreen() {
   }
 
   const esVideo = tutorial.formato === 'video';
+  const youtubeId = tutorial.url_video ? extraerIdDeYoutube(tutorial.url_video) : null;
   const esFavorito = tutorial.progreso?.favorito ?? false;
   const duracion = formatearDuracion(tutorial.duracion_segundos);
   const aprenderas = tutorial.lo_que_aprenderas ?? [];
@@ -217,7 +229,15 @@ export default function TutorialDetalleScreen() {
         />
         <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
           <View style={styles.videoCard}>
-            {tutorial.url_video ? (
+            {youtubeId ? (
+              <WebView
+                style={{ width: VIDEO_W, height: VIDEO_H }}
+                source={{ uri: `https://www.youtube.com/embed/${youtubeId}?playsinline=1` }}
+                allowsFullscreenVideo
+                javaScriptEnabled
+                mediaPlaybackRequiresUserAction={false}
+              />
+            ) : tutorial.url_video ? (
               <Video
                 ref={videoRef}
                 source={{ uri: tutorial.url_video }}
@@ -234,9 +254,14 @@ export default function TutorialDetalleScreen() {
                 <Text style={styles.videoVacioTexto}>Video no disponible</Text>
               </View>
             )}
-            <View style={styles.videoBarra}>
-              <View style={[styles.videoBarraFill, { width: `${progresoPct}%` as `${number}%` }]} />
-            </View>
+            {/* La barra de progreso depende del callback de expo-av, que un
+                video embebido de YouTube no dispara — se oculta ahí para no
+                mostrar una barra que nunca se mueve. */}
+            {!youtubeId && (
+              <View style={styles.videoBarra}>
+                <View style={[styles.videoBarraFill, { width: `${progresoPct}%` as `${number}%` }]} />
+              </View>
+            )}
           </View>
 
           <View style={styles.pill}>

@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingState } from '@/components/common/states';
 import { cn } from '@/lib/utils';
 import { notify } from '@/components/ui/toast';
-import { subirAudioTutorial, subirImagenTutorial, type PasoInput } from '@/services/articulosService';
+import { subirAudioTutorial, subirImagenTutorial, subirVideoTutorial, type PasoInput } from '@/services/articulosService';
 import {
   useArticulo,
   useCategoriasArticulo,
@@ -56,7 +56,7 @@ export function ArticuloFormPage() {
   const [inputPasos, setInputPasos] = useState('3');
 
   // ── Campos principales ───────────────────────────────────────────────────────
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CamposPrincipales>();
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<CamposPrincipales>();
   const [categoriaId, setCategoriaId] = useState('');
   const [errorCategoria, setErrorCategoria] = useState('');
   const [formato, setFormato] = useState<FormatoTutorial>('video');
@@ -92,6 +92,12 @@ export function ArticuloFormPage() {
   const [audioUrl, setAudioUrl] = useState('');
   const [subiendoAudio, setSubiendoAudio] = useState(false);
   const audioRef = useRef<HTMLInputElement>(null);
+
+  // ── Video ────────────────────────────────────────────────────────────────────
+  const [videoModo, setVideoModo] = useState<'url' | 'archivo'>('url');
+  const [subiendoVideo, setSubiendoVideo] = useState(false);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const urlVideo = watch('url_video');
 
   // ── Pasos ────────────────────────────────────────────────────────────────────
   const [pasos, setPasos] = useState<(PasoInput & { _imagenFile?: File })[]>([]);
@@ -157,6 +163,20 @@ export function ArticuloFormPage() {
       notify.error('No se pudo subir el audio', msg);
     } finally {
       setSubiendoAudio(false);
+    }
+  };
+
+  // ── Helpers video ────────────────────────────────────────────────────────────
+  const subirVideo = async (archivo: File) => {
+    setSubiendoVideo(true);
+    try {
+      const url = await subirVideoTutorial(archivo);
+      setValue('url_video', url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      notify.error('No se pudo subir el video', msg);
+    } finally {
+      setSubiendoVideo(false);
     }
   };
 
@@ -503,16 +523,59 @@ export function ArticuloFormPage() {
               )}
             </div>
 
-            {/* Video URL + duración */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="url_video">Video (URL)</Label>
-                <Input id="url_video" placeholder="https://youtube.com/…" {...register('url_video')} />
+            {/* Video */}
+            <div className="space-y-2">
+              <Label>Video</Label>
+              <div className="flex gap-2 rounded-lg border border-border p-1">
+                <button
+                  type="button"
+                  onClick={() => setVideoModo('url')}
+                  className={cn('flex flex-1 items-center justify-center gap-2 rounded-md py-1.5 text-sm font-medium transition-colors', videoModo === 'url' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}
+                >
+                  <LinkIcon className="h-4 w-4" /> URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVideoModo('archivo')}
+                  className={cn('flex flex-1 items-center justify-center gap-2 rounded-md py-1.5 text-sm font-medium transition-colors', videoModo === 'archivo' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}
+                >
+                  <Upload className="h-4 w-4" /> Subir archivo
+                </button>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="dur">Duración (min)</Label>
-                <Input id="dur" type="number" min={0} placeholder="5" {...register('duracion_minutos')} />
-              </div>
+              {videoModo === 'url' ? (
+                <>
+                  <Input id="url_video" placeholder="https://youtube.com/… o un link directo a un video (.mp4)" {...register('url_video')} />
+                  <p className="text-xs text-muted-foreground">Podés pegar un link de YouTube o la URL directa de un archivo de video.</p>
+                </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={subiendoVideo}
+                    onClick={() => videoRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {subiendoVideo ? 'Subiendo…' : 'Elegir video'}
+                  </Button>
+                  <input
+                    ref={videoRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) subirVideo(f); }}
+                  />
+                  {urlVideo && <span className="truncate text-xs text-muted-foreground">{urlVideo.split('/').pop()}</span>}
+                </div>
+              )}
+              {urlVideo && videoModo === 'archivo' && (
+                <video controls src={urlVideo} className="h-40 w-full rounded-lg bg-black object-contain" />
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="dur">Duración (min)</Label>
+              <Input id="dur" type="number" min={0} placeholder="5" className="max-w-[180px]" {...register('duracion_minutos')} />
             </div>
 
             {/* Audio */}
