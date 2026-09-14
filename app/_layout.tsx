@@ -170,6 +170,7 @@ export default function RootLayout() {
                 <NavigationGuard>
                   <StatusBar style="light" />
                   <View style={{ flex: 1 }}>
+                    <OfflineBanner />
                     <Stack screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="(auth)" />
                       <Stack.Screen name="index" />
@@ -191,7 +192,6 @@ export default function RootLayout() {
                       <Stack.Screen name="asistente/ajustes" />
                     </Stack>
                     <NowPlayingBar />
-                    <OfflineBanner />
                     <NetworkErrorModal />
                   </View>
                 </NavigationGuard>
