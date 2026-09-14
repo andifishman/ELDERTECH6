@@ -397,6 +397,13 @@ export default function BloquesScreen() {
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
   const [topPuntajes, setTopPuntajes] = useState<TopPuntaje[]>([]);
+  // Antes, si el guardado del puntaje o la actualización del Top 3 fallaban
+  // (sesión vencida, sin red, error del servidor), quedaba en silencio — el
+  // jugador terminaba una partida buena y nunca entendía por qué no aparecía
+  // en el Top 3. Ahora se avisa y se puede reintentar sin perder el puntaje.
+  const [errorGuardado, setErrorGuardado] = useState(false);
+  const [guardandoResultado, setGuardandoResultado] = useState(false);
+  const puntajeFinalRef = useRef(0);
   const [racha, setRacha] = useState(0);
   const rachaRef = useRef(0);
   // Espejo síncrono de mejorPuntaje — hace falta para comparar "¿esto es
@@ -446,11 +453,30 @@ export default function BloquesScreen() {
     }
   }, []);
 
-  const cargarTopPuntajes = useCallback(() => {
-    obtenerTopPuntajes('bloques')
-      .then(setTopPuntajes)
-      .catch(() => {});
+  /** Devuelve si se pudo actualizar el Top 3 — antes se tragaba el error y no había forma de saberlo. */
+  const cargarTopPuntajes = useCallback((): Promise<boolean> => {
+    return obtenerTopPuntajes('bloques')
+      .then((datos) => {
+        setTopPuntajes(datos);
+        return true;
+      })
+      .catch(() => false);
   }, []);
+
+  /** Guarda el resultado de la partida y refresca el Top 3 — si cualquiera de
+   * los dos pasos falla, lo marca para poder avisar y ofrecer "Reintentar" en
+   * vez de quedar en silencio (ver comentario en el estado errorGuardado). */
+  const guardarResultado = useCallback(async (puntajeFinal: number) => {
+    setGuardandoResultado(true);
+    const seGuardo = await registrarPartida('bloques', null, puntajeFinal);
+    const seActualizoTop = await cargarTopPuntajes();
+    setGuardandoResultado(false);
+    setErrorGuardado(!seGuardo || !seActualizoTop);
+  }, [cargarTopPuntajes]);
+
+  const reintentarGuardado = useCallback(() => {
+    void guardarResultado(puntajeFinalRef.current);
+  }, [guardarResultado]);
 
   useEffect(() => {
     // Respaldo local primero (instantáneo, no depende de la red) — después
@@ -472,7 +498,7 @@ export default function BloquesScreen() {
       })
       .catch(() => {});
 
-    cargarTopPuntajes();
+    void cargarTopPuntajes();
   }, [mejorPuntajeKey, adoptarMejorPuntaje, cargarTopPuntajes]);
 
   useEffect(() => {
@@ -519,10 +545,10 @@ export default function BloquesScreen() {
       setMejorPuntaje(puntajeFinal);
       reproducir('puntaje_alto');
     }
-    // Recién cuando el registro termina (haya salido bien o no — registrarPartida
-    // nunca rechaza) se refresca el top 3, así puede reflejar el puntaje recién jugado.
-    void registrarPartida('bloques', null, puntajeFinal).then(cargarTopPuntajes);
-  }, [reproducir, cargarTopPuntajes]);
+    puntajeFinalRef.current = puntajeFinal;
+    setErrorGuardado(false);
+    void guardarResultado(puntajeFinal);
+  }, [reproducir, guardarResultado]);
 
   const onLayoutTablero = useCallback((e: LayoutChangeEvent) => {
     const ancho = e.nativeEvent.layout.width;
@@ -827,6 +853,22 @@ export default function BloquesScreen() {
               </View>
             )}
 
+            {errorGuardado && !guardandoResultado && (
+              <View style={styles.errorGuardadoBox}>
+                <Ionicons name="cloud-offline-outline" size={20} color="#C62828" />
+                <Text style={styles.errorGuardadoTexto}>No se pudo guardar tu puntaje en el Top 3. Revisá tu conexión.</Text>
+                <TouchableOpacity style={styles.errorGuardadoBtn} onPress={reintentarGuardado} accessibilityRole="button" accessibilityLabel="Reintentar guardar el puntaje">
+                  <Ionicons name="refresh" size={18} color="#C62828" />
+                  <Text style={styles.errorGuardadoBtnTexto}>Reintentar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {guardandoResultado && (
+              <View style={styles.errorGuardadoBox}>
+                <Text style={styles.errorGuardadoTexto}>Guardando tu puntaje...</Text>
+              </View>
+            )}
+
             <TouchableOpacity style={styles.modalBtnPrimary} onPress={empezar}>
               <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
             </TouchableOpacity>
@@ -944,6 +986,18 @@ const styles = StyleSheet.create({
   topMedalla: { fontSize: FontSizes.lg, width: 28, textAlign: 'center' },
   topNombre: { flex: 1, fontSize: FontSizes.md, color: Colors.textPrimary },
   topPuntos: { fontSize: FontSizes.md, fontWeight: 'bold', color: Colors.primary },
+
+  errorGuardadoBox: {
+    width: '100%', backgroundColor: '#FFEBEE', borderRadius: Radius.md,
+    padding: Spacing.md, marginBottom: Spacing.md, alignItems: 'center', gap: Spacing.sm,
+  },
+  errorGuardadoTexto: { fontSize: FontSizes.sm, color: '#C62828', textAlign: 'center' },
+  errorGuardadoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: '#C62828', borderRadius: Radius.md,
+    paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg,
+  },
+  errorGuardadoBtnTexto: { fontSize: FontSizes.sm, fontWeight: 'bold', color: '#C62828' },
 
   modalBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
