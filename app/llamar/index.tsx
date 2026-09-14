@@ -19,9 +19,11 @@ import { useAuth } from '@/context/AuthContext';
 import {
   useContactos,
   useAgregarContacto,
+  useActualizarContacto,
   useEliminarContacto,
   useToggleFavorito,
 } from '@/hooks/useContactos';
+import { uploadFotoContacto } from '@/services/contactosService';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -38,6 +40,7 @@ export default function LlamarScreen() {
   // Queries y mutaciones
   const { data: contactos = [], isLoading, isError, error, refetch } = useContactos(residenteId);
   const agregarMutation = useAgregarContacto(residenteId ?? '');
+  const actualizarMutation = useActualizarContacto(residenteId ?? '');
   const eliminarMutation = useEliminarContacto(residenteId ?? '');
   const favoritoMutation = useToggleFavorito(residenteId ?? '');
 
@@ -67,18 +70,35 @@ export default function LlamarScreen() {
     if (!residenteId) return;
 
     try {
-      await agregarMutation.mutateAsync({
+      // La foto que devuelve el selector es una URI local del dispositivo
+      // (content:// en Android, file:// en iOS) — no sirve guardarla tal
+      // cual: no es una URL accesible fuera de esa sesión del celular (se
+      // rompe en el backoffice, y a veces hasta en la propia app tras
+      // reiniciarla). Se crea el contacto primero sin foto, y si el
+      // contacto del teléfono tenía una, se sube como archivo real después
+      // — mismo endpoint que usa "agregar foto" a mano.
+      const nuevoContacto = await agregarMutation.mutateAsync({
         residente_id: residenteId,
         nombre: datos.nombre,
         apellido: datos.apellido ?? null,
         telefono: datos.telefono,
-        foto_url: datos.foto_url ?? null,
+        foto_url: null,
         whatsapp_disponible: true,
         origen_contacto: 'dispositivo',
         contacto_device_id: datos.contacto_device_id,
         favorito: false,
         orden: contactos.length,
       });
+
+      if (datos.foto_url) {
+        try {
+          const urlSubida = await uploadFotoContacto(nuevoContacto.id, datos.foto_url);
+          await actualizarMutation.mutateAsync({ id: nuevoContacto.id, updates: { foto_url: urlSubida } });
+        } catch {
+          // La foto es un extra — si falla la subida, el contacto ya quedó
+          // creado igual, solo se ve con las iniciales en vez de la foto.
+        }
+      }
     } catch (err: any) {
       if (err?.message?.includes('ya está en tu lista')) {
         Alert.alert('Contacto duplicado', 'Este contacto ya está en tu lista.');
@@ -86,7 +106,7 @@ export default function LlamarScreen() {
         Alert.alert('Error', 'No se pudo agregar el contacto. Intentá de nuevo.');
       }
     }
-  }, [residenteId, contactos.length, agregarMutation]);
+  }, [residenteId, contactos.length, agregarMutation, actualizarMutation]);
 
   // Confirmar y eliminar contacto
   const handleEliminar = useCallback((contacto: ContactoResumen) => {
