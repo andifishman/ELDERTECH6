@@ -4,12 +4,13 @@ import type { AuthUser } from '../../middlewares/auth';
 import { requireResidenteContext } from '../../utils/validators';
 import { hoyArgentinaISO } from '../../utils/argentinaTime';
 import * as repo from '../../repositories/agendaRepository';
-import type {
-  EstadoRecordatorio,
-  ListarRecordatoriosOpciones,
-  Recordatorio,
-  RecordatorioInput,
-  RecordatorioInputRow,
+import {
+  REPETIR_DIARIO_DIAS,
+  type EstadoRecordatorio,
+  type ListarRecordatoriosOpciones,
+  type Recordatorio,
+  type RecordatorioInput,
+  type RecordatorioInputRow,
 } from '../../providers/agenda/AgendaTypes';
 
 function aRow(residenteId: string, organizacionId: string, creadoPor: string, input: RecordatorioInput): RecordatorioInputRow {
@@ -23,9 +24,29 @@ function aRow(residenteId: string, organizacionId: string, creadoPor: string, in
   };
 }
 
+/** Fecha + `dias` días, en formato YYYY-MM-DD — ancla a mediodía UTC para no pisar el día por husos horarios. */
+function sumarDias(fechaISO: string, dias: number): string {
+  const d = new Date(`${fechaISO}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
 export async function crear(user: AuthUser, input: RecordatorioInput): Promise<Recordatorio> {
   const { residenteId, organizacionId } = requireResidenteContext(user);
-  return repo.crear(aRow(residenteId, organizacionId, residenteId, input));
+
+  if (!input.repetirDiario) {
+    return repo.crear(aRow(residenteId, organizacionId, residenteId, input));
+  }
+
+  // "Todos los días" = una fila por día para una ventana acotada, no una
+  // recurrencia real (ver REPETIR_DIARIO_DIAS). Se devuelve la primera fila
+  // creada para no cambiar el contrato de la pantalla de Agenda, que solo
+  // crea recordatorios sueltos.
+  const filas: RecordatorioInputRow[] = Array.from({ length: REPETIR_DIARIO_DIAS }, (_, i) =>
+    aRow(residenteId, organizacionId, residenteId, { ...input, fecha: sumarDias(input.fecha, i) }),
+  );
+  const creados = await repo.crearVarios(filas);
+  return creados[0] ?? (await repo.crear(aRow(residenteId, organizacionId, residenteId, input)));
 }
 
 export async function editar(user: AuthUser, id: string, input: Partial<RecordatorioInput>): Promise<Recordatorio> {

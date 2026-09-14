@@ -24,6 +24,8 @@ export interface RecordatorioInput {
   titulo: string;
   fecha: string;
   hora: string;
+  /** Si es true al crear, el backend genera un recordatorio por día (ventana acotada), no solo uno. */
+  repetirDiario?: boolean;
 }
 
 export interface ListarRecordatoriosOpciones {

@@ -5,12 +5,15 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { LoadingState, ErrorState } from '@/components/common/LoadingState';
 import { useActividad } from '@/hooks/useActividades';
+import { useCrearRecordatorio } from '@/hooks/useAgenda';
 import { hablar } from '@/utils/tts';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -20,6 +23,8 @@ import { formatHora, esMañana, parseHora } from '@/utils/dateUtils';
 export default function ActividadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: actividad, isLoading, error } = useActividad(id ?? null);
+  const crearRecordatorio = useCrearRecordatorio();
+  const [mostrarOpcionesAgenda, setMostrarOpcionesAgenda] = useState(false);
 
   // Estado reactivo — se actualiza cada 30s para reflejar el minuto actual
   const [minutosRestantes, setMinutosRestantes] = useState(0);
@@ -65,6 +70,27 @@ export default function ActividadDetalleScreen() {
       : '',
   ].filter(Boolean).join(' ');
 
+  const agregarAAgenda = async (repetirDiario: boolean) => {
+    try {
+      await crearRecordatorio.mutateAsync({
+        titulo: actividad.nombre,
+        fecha: actividad.fecha,
+        hora: actividad.hora_inicio.slice(0, 5),
+        repetirDiario,
+      });
+      setMostrarOpcionesAgenda(false);
+      Alert.alert(
+        'Listo',
+        repetirDiario
+          ? 'Vas a recibir un aviso una hora antes, todos los días.'
+          : 'Vas a recibir un aviso una hora antes de esta actividad.',
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo agregar a tu agenda.';
+      Alert.alert('Error', msg);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <AppHeader
@@ -89,6 +115,50 @@ export default function ActividadDetalleScreen() {
           {esPronto && (
             <View style={styles.prontoBadge}>
               <Text style={styles.prontoTexto}>Empieza en {minutosRestantes} minutos</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Agregar a mi agenda — el aviso (1 hora antes) lo maneja Agenda solo, acá solo se elige "solo hoy" o "todos los días" */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionIcon}>🔔</Text>
+            <Text style={styles.sectionTitle}>Recordatorio</Text>
+          </View>
+          {!mostrarOpcionesAgenda ? (
+            <TouchableOpacity
+              style={styles.agendaBtn}
+              onPress={() => setMostrarOpcionesAgenda(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar esta actividad a mi agenda"
+            >
+              <Ionicons name="calendar-outline" size={22} color={Colors.text.onDark} />
+              <Text style={styles.agendaBtnTexto}>Agregar a mi agenda</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.agendaOpciones}>
+              <Text style={styles.agendaPregunta}>¿Querés el aviso solo por hoy, o todos los días?</Text>
+              <View style={styles.agendaOpcionesFila}>
+                <TouchableOpacity
+                  style={[styles.agendaOpcionBtn, styles.agendaOpcionBtnSecundario]}
+                  onPress={() => agregarAAgenda(false)}
+                  disabled={crearRecordatorio.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Agregar recordatorio solo por hoy"
+                >
+                  <Text style={styles.agendaOpcionBtnTextoSecundario}>Solo hoy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.agendaOpcionBtn, styles.agendaOpcionBtnPrimario]}
+                  onPress={() => agregarAAgenda(true)}
+                  disabled={crearRecordatorio.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Agregar recordatorio todos los días"
+                >
+                  <Text style={styles.agendaOpcionBtnTextoPrimario}>Todos los días</Text>
+                </TouchableOpacity>
+              </View>
+              {crearRecordatorio.isPending && <ActivityIndicator color={Colors.brand.greenDark} style={{ marginTop: Spacing.sm }} />}
             </View>
           )}
         </View>
@@ -286,5 +356,55 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
     color: '#3D5AFE',
+  },
+
+  // "Agregar a mi agenda" — botón grande de un solo toque; al tocarlo se
+  // reemplaza por las dos opciones (solo hoy / todos los días).
+  agendaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    minHeight: Spacing.touch.comfortable,
+    backgroundColor: Colors.brand.greenDark,
+    borderRadius: Spacing.radius.lg,
+  },
+  agendaBtnTexto: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
+  },
+  agendaOpciones: { gap: Spacing.md },
+  agendaPregunta: {
+    fontSize: Typography.size.md,
+    color: Colors.text.primary,
+    textAlign: 'center',
+  },
+  agendaOpcionesFila: { flexDirection: 'row', gap: Spacing.md },
+  agendaOpcionBtn: {
+    flex: 1,
+    minHeight: Spacing.touch.comfortable,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Spacing.radius.lg,
+    paddingHorizontal: Spacing.sm,
+  },
+  agendaOpcionBtnSecundario: {
+    backgroundColor: Colors.ui.background,
+    borderWidth: 1.5,
+    borderColor: Colors.brand.greenDark,
+  },
+  agendaOpcionBtnPrimario: {
+    backgroundColor: Colors.brand.greenDark,
+  },
+  agendaOpcionBtnTextoSecundario: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.brand.greenDark,
+  },
+  agendaOpcionBtnTextoPrimario: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.onDark,
   },
 });

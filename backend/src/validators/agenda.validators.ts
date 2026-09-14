@@ -9,6 +9,7 @@ export const crearRecordatorioSchema = z.object({
   titulo: z.string().trim().min(1).max(120),
   fecha: z.string().regex(FECHA_REGEX, 'Formato esperado YYYY-MM-DD'),
   hora: z.string().regex(HORA_REGEX, 'Formato esperado HH:MM'),
+  repetirDiario: z.boolean().optional(),
 });
 
 export const editarRecordatorioSchema = crearRecordatorioSchema.partial();

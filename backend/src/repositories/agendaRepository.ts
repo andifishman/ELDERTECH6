@@ -19,6 +19,14 @@ export const crear = withRepoLogging(REPO, 'crear', async (
   return data as Recordatorio;
 });
 
+export const crearVarios = withRepoLogging(REPO, 'crearVarios', async (
+  rows: RecordatorioInputRow[],
+): Promise<Recordatorio[]> => {
+  const { data, error } = await getSupabaseAdmin().from(TABLA).insert(rows).select('*');
+  if (error) throw new Error(`Error al crear los recordatorios: ${error.message}`);
+  return (data ?? []) as Recordatorio[];
+});
+
 export const obtenerPorId = withRepoLogging(REPO, 'obtenerPorId', async (
   id: string,
   residenteId: string,
