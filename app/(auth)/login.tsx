@@ -14,6 +14,8 @@ import { AuthInput } from '@/components/auth/AuthInput';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { LoadingButton } from '@/components/auth/LoadingButton';
 import { login } from '@/services/authService';
+import { esErrorDeRed, MENSAJE_ERROR_DE_RED } from '@/utils/networkError';
+import { mostrarErrorDeRed } from '@/utils/networkErrorModal';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
@@ -42,7 +44,12 @@ export default function LoginScreen() {
       // Navegar de inmediato — el perfil carga en background en AuthContext
       router.replace('/');
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Error al iniciar sesión.');
+      if (esErrorDeRed(e)) {
+        mostrarErrorDeRed();
+        setError(MENSAJE_ERROR_DE_RED);
+      } else {
+        setError(e instanceof Error ? e.message : 'Error al iniciar sesión.');
+      }
       setLoading(false);
     }
   }

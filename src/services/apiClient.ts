@@ -4,6 +4,8 @@
 // es para el login/sesión — ver src/services/supabase.ts).
 import { supabase } from './supabase';
 import { API_URL } from '@/utils/apiUrlGuard';
+import { esErrorDeRed, MENSAJE_ERROR_DE_RED } from '@/utils/networkError';
+import { mostrarErrorDeRed } from '@/utils/networkErrorModal';
 
 export class ApiError extends Error {
   constructor(
@@ -32,14 +34,28 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   // que el runtime le ponga su propio boundary, nunca hay que fijarlo a mano.
   const isJsonBody = typeof init.body === 'string';
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      ...(isJsonBody ? { 'Content-Type': 'application/json' } : {}),
-      ...(await authHeader()),
-      ...init.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        ...(isJsonBody ? { 'Content-Type': 'application/json' } : {}),
+        ...(await authHeader()),
+        ...init.headers,
+      },
+    });
+  } catch (err) {
+    // El fetch de React Native tira "Network request failed" — sin conexión,
+    // DNS, servidor inalcanzable — antes de llegar siquiera a tener una
+    // respuesta HTTP. Ese texto crudo no le dice nada a un adulto mayor, así
+    // que se dispara el modal de marca (con el botón a ajustes de WiFi) y se
+    // relanza con un mensaje en español, para quien igual muestre err.message.
+    if (esErrorDeRed(err)) {
+      mostrarErrorDeRed();
+      throw new Error(MENSAJE_ERROR_DE_RED);
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);

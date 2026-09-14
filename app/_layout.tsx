@@ -37,6 +37,7 @@ import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 // línea o la estructura interna del archivo.
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { NetworkErrorModal } from '@/components/common/NetworkErrorModal';
 import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
 import { detenerHabla } from '@/utils/tts';
@@ -191,6 +192,7 @@ export default function RootLayout() {
                     </Stack>
                     <NowPlayingBar />
                     <OfflineBanner />
+                    <NetworkErrorModal />
                   </View>
                 </NavigationGuard>
               </RadioProvider>
