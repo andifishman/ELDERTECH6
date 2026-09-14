@@ -18,6 +18,7 @@ hablemosRouter.post('/conversaciones', asyncHandler(controller.postConversacion)
 hablemosRouter.get('/conversaciones/:id/mensajes', asyncHandler(controller.getMensajes));
 hablemosRouter.post('/conversaciones/:id/mensajes/texto', asyncHandler(controller.postMensajeTexto));
 hablemosRouter.post('/conversaciones/:id/mensajes/audio', upload.single('audio'), asyncHandler(controller.postMensajeAudio));
+hablemosRouter.post('/conversaciones/:id/mensajes/imagen', upload.single('imagen'), asyncHandler(controller.postMensajeImagen));
 
 hablemosRouter.patch('/conversaciones/:id/recibidos', asyncHandler(controller.patchRecibidos));
 hablemosRouter.patch('/conversaciones/:id/leidos', asyncHandler(controller.patchLeidos));

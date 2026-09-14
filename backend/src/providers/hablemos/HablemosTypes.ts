@@ -1,4 +1,4 @@
-export type TipoMensajeHablemos = 'texto' | 'audio';
+export type TipoMensajeHablemos = 'texto' | 'audio' | 'imagen';
 export type EstadoMensajeHablemos = 'enviado' | 'recibido' | 'leido';
 
 export interface ResidenteResumenHablemos {
@@ -17,6 +17,7 @@ export interface MensajeHablemos {
   contenido: string | null;
   audio_url: string | null;
   audio_duracion_segundos: number | null;
+  imagen_url: string | null;
   estado: EstadoMensajeHablemos;
   recibido_en: string | null;
   leido_en: string | null;
@@ -51,6 +52,12 @@ export interface CrearMensajeAudioInput {
   remitenteId: string;
   audioUrl: string;
   audioDuracionSegundos: number | null;
+}
+
+export interface CrearMensajeImagenInput {
+  conversacionId: string;
+  remitenteId: string;
+  imagenUrl: string;
 }
 
 export interface ListarMensajesOpciones {

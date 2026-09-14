@@ -3,6 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   buscarResidentes,
   enviarMensajeAudio,
+  enviarMensajeImagen,
   enviarMensajeTexto,
   iniciarConversacion,
   listarConversaciones,
@@ -114,6 +115,17 @@ export function useEnviarMensajeAudioHablemos(conversacionId: string) {
   });
 }
 
+export function useEnviarMensajeImagenHablemos(conversacionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ imagenUri }: { imagenUri: string }) => enviarMensajeImagen(conversacionId, imagenUri),
+    onSuccess: (mensaje) => {
+      agregarMensajeALaCache(qc, conversacionId, mensaje);
+      void qc.invalidateQueries({ queryKey: KEYS.conversaciones });
+    },
+  });
+}
+
 export function useMarcarLeidosHablemos(conversacionId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -184,7 +196,8 @@ export function mergearMensajesEnCache(
           actualizado.contenido === m.contenido &&
           actualizado.estado === m.estado &&
           actualizado.audio_url === m.audio_url &&
-          actualizado.audio_duracion_segundos === m.audio_duracion_segundos
+          actualizado.audio_duracion_segundos === m.audio_duracion_segundos &&
+          actualizado.imagen_url === m.imagen_url
         ) {
           return m;
         }

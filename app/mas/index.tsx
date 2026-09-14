@@ -60,11 +60,11 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
   },
   {
     id: 'accesibilidad',
-    emoji: '🔤',
+    emoji: '⚙️',
     titulo: 'Accesibilidad',
     descripcion: 'Tamaño de texto y actualizaciones',
     ruta: '/mas/accesibilidad',
-    textoHablar: 'Accesibilidad. Tamaño de texto y buscar actualizaciones.',
+    textoHablar: 'Accesibilidad. Tamaño de texto y buscar actualizaciones de la aplicación.',
   },
 ];
 
