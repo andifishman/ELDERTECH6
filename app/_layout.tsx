@@ -36,6 +36,7 @@ import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 // (`npx patch-package react-native`) — probablemente cambien los números de
 // línea o la estructura interna del archivo.
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
+import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
 import { detenerHabla } from '@/utils/tts';
@@ -189,6 +190,7 @@ export default function RootLayout() {
                       <Stack.Screen name="asistente/ajustes" />
                     </Stack>
                     <NowPlayingBar />
+                    <OfflineBanner />
                   </View>
                 </NavigationGuard>
               </RadioProvider>
