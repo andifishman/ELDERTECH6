@@ -53,6 +53,18 @@ export async function postMensajeAudio(req: Request, res: Response): Promise<voi
   res.status(StatusCodes.CREATED).json(mensaje);
 }
 
+export async function postMensajeImagen(req: Request, res: Response): Promise<void> {
+  const conversacionId = requireUuidParam(req, 'id');
+  const file = req.file;
+  if (!file) throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta el archivo de la foto.');
+
+  const mensaje = await hablemosService.enviarMensajeImagen(requireUser(req), {
+    conversacionId,
+    imagen: { buffer: file.buffer, mimeType: file.mimetype, originalName: file.originalname },
+  });
+  res.status(StatusCodes.CREATED).json(mensaje);
+}
+
 export async function patchRecibidos(req: Request, res: Response): Promise<void> {
   const conversacionId = requireUuidParam(req, 'id');
   await hablemosService.marcarRecibidos(requireUser(req), conversacionId);

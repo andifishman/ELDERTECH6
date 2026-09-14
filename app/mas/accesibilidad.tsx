@@ -1,4 +1,4 @@
-// Pantalla de ajustes de accesibilidad — tamaño de texto
+// Pantalla de ajustes de accesibilidad — tamaño de texto y buscar actualizaciones
 import React, { useState } from 'react';
 import {
   View,

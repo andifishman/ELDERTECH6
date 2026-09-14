@@ -12,11 +12,13 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -24,6 +26,7 @@ import { Spacing } from '@/constants/Spacing';
 import {
   useConversacionesHablemos,
   useEnviarMensajeAudioHablemos,
+  useEnviarMensajeImagenHablemos,
   useEnviarMensajeTextoHablemos,
   useMarcarLeidosHablemos,
   useMarcarRecibidosHablemos,
@@ -66,6 +69,7 @@ export default function HablemosChatScreen() {
 
   const enviarTexto = useEnviarMensajeTextoHablemos(conversacionId);
   const enviarAudio = useEnviarMensajeAudioHablemos(conversacionId);
+  const enviarImagen = useEnviarMensajeImagenHablemos(conversacionId);
   const marcarRecibidos = useMarcarRecibidosHablemos(conversacionId);
   const marcarLeidos = useMarcarLeidosHablemos(conversacionId);
 
@@ -73,6 +77,8 @@ export default function HablemosChatScreen() {
   const [grabando, setGrabando] = useState(false);
   const [reproduciendoId, setReproduciendoId] = useState<string | null>(null);
   const [pantallaActiva, setPantallaActiva] = useState(true);
+  const [mostrarOpcionesFoto, setMostrarOpcionesFoto] = useState(false);
+  const [fotoAmpliadaUrl, setFotoAmpliadaUrl] = useState<string | null>(null);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -206,6 +212,42 @@ export default function HablemosChatScreen() {
     [reproduciendoId],
   );
 
+  const enviarFoto = useCallback(
+    async (uri: string) => {
+      try {
+        await enviarImagen.mutateAsync({ imagenUri: uri });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'No se pudo enviar la foto.';
+        Alert.alert('Error', msg);
+      }
+    },
+    [enviarImagen],
+  );
+
+  const tomarFoto = useCallback(async () => {
+    setMostrarOpcionesFoto(false);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso de cámara', 'Para sacar una foto, activá el permiso en los ajustes del teléfono.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (result.canceled) return;
+    await enviarFoto(result.assets[0].uri);
+  }, [enviarFoto]);
+
+  const elegirFotoDeGaleria = useCallback(async () => {
+    setMostrarOpcionesFoto(false);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso de galería', 'Para elegir una foto, activá el permiso en los ajustes del teléfono.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (result.canceled) return;
+    await enviarFoto(result.assets[0].uri);
+  }, [enviarFoto]);
+
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
@@ -285,6 +327,7 @@ export default function HablemosChatScreen() {
                       nombreRemitente={esInicioDeTanda ? (esPropio ? 'Vos' : nombreOtro) : null}
                       reproduciendo={reproduciendoId === item.id}
                       onTogglePlay={() => toggleReproducirMensaje(item)}
+                      onVerFoto={() => setFotoAmpliadaUrl(item.imagen_url)}
                     />
                   </View>
                 );
@@ -296,6 +339,13 @@ export default function HablemosChatScreen() {
             <View style={styles.enviandoBanner}>
               <ActivityIndicator size="small" color={Colors.hablemos.accent} />
               <Text style={styles.enviandoTexto}>Enviando tu mensaje de voz...</Text>
+            </View>
+          )}
+
+          {enviarImagen.isPending && (
+            <View style={styles.enviandoBanner}>
+              <ActivityIndicator size="small" color={Colors.hablemos.accent} />
+              <Text style={styles.enviandoTexto}>Enviando tu foto...</Text>
             </View>
           )}
 
@@ -342,6 +392,15 @@ export default function HablemosChatScreen() {
                 maxLength={2000}
                 accessibilityLabel="Campo de texto para escribir tu mensaje"
               />
+              <TouchableOpacity
+                style={styles.camaraBtn}
+                onPress={() => setMostrarOpcionesFoto(true)}
+                disabled={enviarImagen.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="Mandar una foto"
+              >
+                <Ionicons name="camera" size={24} color={Colors.text.onDark} />
+              </TouchableOpacity>
               {input.trim().length > 0 ? (
                 <TouchableOpacity
                   style={styles.sendBtn}
@@ -367,6 +426,50 @@ export default function HablemosChatScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Elegir origen de la foto — mismo patrón que el modal de foto de contacto
+          en Llamar: botones grandes con texto, nada de un ActionSheet nativo con
+          letra chica. */}
+      <Modal visible={mostrarOpcionesFoto} transparent animationType="fade" onRequestClose={() => setMostrarOpcionesFoto(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalEmoji}>📷</Text>
+            <Text style={styles.modalTitulo}>Mandar una foto</Text>
+            <TouchableOpacity style={styles.modalBtn} onPress={tomarFoto} accessibilityRole="button">
+              <Ionicons name="camera" size={22} color={Colors.text.onDark} />
+              <Text style={styles.modalBtnTexto}>Tomar foto</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnGaleria]} onPress={elegirFotoDeGaleria} accessibilityRole="button">
+              <Ionicons name="images" size={22} color={Colors.text.onDark} />
+              <Text style={styles.modalBtnTexto}>Elegir de galería</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalBtnCancelar} onPress={() => setMostrarOpcionesFoto(false)} accessibilityRole="button">
+              <Text style={styles.modalBtnCancelarTexto}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Ver la foto en grande — tocando la burbuja de una imagen. */}
+      <Modal visible={!!fotoAmpliadaUrl} transparent animationType="fade" onRequestClose={() => setFotoAmpliadaUrl(null)}>
+        <TouchableOpacity
+          style={styles.fotoAmpliadaOverlay}
+          activeOpacity={1}
+          onPress={() => setFotoAmpliadaUrl(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar la foto"
+        >
+          {fotoAmpliadaUrl && <Image source={{ uri: fotoAmpliadaUrl }} style={styles.fotoAmpliada} resizeMode="contain" />}
+          <TouchableOpacity
+            style={[styles.fotoAmpliadaCerrarBtn, { top: insets.top + Spacing.sm }]}
+            onPress={() => setFotoAmpliadaUrl(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+          >
+            <Ionicons name="close" size={28} color={Colors.text.onDark} />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -378,9 +481,10 @@ interface BurbujaProps {
   nombreRemitente: string | null;
   reproduciendo: boolean;
   onTogglePlay: () => void;
+  onVerFoto: () => void;
 }
 
-function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePlay }: BurbujaProps) {
+function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePlay, onVerFoto }: BurbujaProps) {
   return (
     <View style={[styles.burbujaWrapper, esPropio ? styles.burbujaWrapperDerecha : styles.burbujaWrapperIzquierda]}>
       <View style={esPropio ? styles.burbujaColumnaDerecha : styles.burbujaColumnaIzquierda}>
@@ -395,7 +499,7 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
             <Text style={styles.burbujaTexto}>{mensaje.contenido}</Text>
             <HoraEstado mensaje={mensaje} esPropio={esPropio} />
           </>
-        ) : (
+        ) : mensaje.tipo === 'audio' ? (
           <View style={styles.audioMensajeContainer}>
             <Text style={styles.audioMensajeLabel}>
               🎤 Mensaje de voz · {formatearDuracion(mensaje.audio_duracion_segundos ?? 0)}
@@ -418,6 +522,13 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
             </TouchableOpacity>
             <HoraEstado mensaje={mensaje} esPropio={esPropio} />
           </View>
+        ) : (
+          <>
+            <TouchableOpacity onPress={onVerFoto} accessibilityRole="button" accessibilityLabel="Ver la foto en grande" activeOpacity={0.85}>
+              {mensaje.imagen_url && <Image source={{ uri: mensaje.imagen_url }} style={styles.imagenMensaje} resizeMode="cover" />}
+            </TouchableOpacity>
+            <HoraEstado mensaje={mensaje} esPropio={esPropio} />
+          </>
         )}
       </View>
       </View>
@@ -652,5 +763,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  camaraBtn: {
+    width: Spacing.touch.large,
+    height: Spacing.touch.large,
+    borderRadius: Spacing.touch.large / 2,
+    backgroundColor: Colors.hablemos.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+  imagenMensaje: { width: 220, height: 220, borderRadius: Spacing.radius.md },
+
+  // Modal para elegir "Tomar foto" / "Elegir de galería" — mismo patrón que el
+  // modal de foto de contacto en Llamar: botones grandes con texto.
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.screen.horizontal,
+  },
+  modalBox: {
+    backgroundColor: Colors.ui.surface,
+    borderRadius: 20,
+    padding: Spacing.xxl,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    gap: Spacing.md,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  modalEmoji: { fontSize: 48 },
+  modalTitulo: {
+    fontSize: Typography.size.xl,
+    fontWeight: Typography.weight.bold,
+    color: Colors.text.primary,
+    textAlign: 'center',
+  },
+  modalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.hablemos.accent,
+    borderRadius: Spacing.radius.lg,
+    paddingVertical: Spacing.lg,
+    width: '100%',
+    minHeight: Spacing.touch.comfortable,
+  },
+  modalBtnGaleria: { backgroundColor: Colors.brand.greenDark },
+  modalBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
+  modalBtnCancelar: {
+    paddingVertical: Spacing.md,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalBtnCancelarTexto: { fontSize: Typography.size.md, color: Colors.text.secondary },
+
+  // Ver foto en grande
+  fotoAmpliadaOverlay: { flex: 1, backgroundColor: '#000000E6', alignItems: 'center', justifyContent: 'center' },
+  fotoAmpliada: { width: '100%', height: '80%' },
+  fotoAmpliadaCerrarBtn: {
+    position: 'absolute',
+    right: Spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

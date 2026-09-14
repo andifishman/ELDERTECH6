@@ -2,7 +2,7 @@
 // (nunca con Supabase directo) para todo lo que sea lectura/escritura de datos.
 import { apiClient } from './apiClient';
 
-export type TipoMensajeHablemos = 'texto' | 'audio';
+export type TipoMensajeHablemos = 'texto' | 'audio' | 'imagen';
 export type EstadoMensajeHablemos = 'enviado' | 'recibido' | 'leido';
 
 export interface ResidenteBusqueda {
@@ -39,6 +39,7 @@ export interface MensajeHablemos {
   contenido: string | null;
   audio_url: string | null;
   audio_duracion_segundos: number | null;
+  imagen_url: string | null;
   estado: EstadoMensajeHablemos;
   recibido_en: string | null;
   leido_en: string | null;
@@ -79,6 +80,12 @@ export async function enviarMensajeAudio(conversacionId: string, audioUri: strin
   form.append('duracionSegundos', String(duracionSegundos));
   form.append('audio', { uri: audioUri, type: 'audio/m4a', name: 'audio.m4a' } as unknown as Blob);
   return apiClient.postForm<MensajeHablemos>(`/api/hablemos/conversaciones/${conversacionId}/mensajes/audio`, form);
+}
+
+export async function enviarMensajeImagen(conversacionId: string, imagenUri: string): Promise<MensajeHablemos> {
+  const form = new FormData();
+  form.append('imagen', { uri: imagenUri, type: 'image/jpeg', name: 'foto.jpg' } as unknown as Blob);
+  return apiClient.postForm<MensajeHablemos>(`/api/hablemos/conversaciones/${conversacionId}/mensajes/imagen`, form);
 }
 
 export async function marcarRecibidos(conversacionId: string): Promise<void> {
