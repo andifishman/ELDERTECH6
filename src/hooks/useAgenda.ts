@@ -98,7 +98,7 @@ export function useEditarRecordatorio() {
 export function useEliminarRecordatorio() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => eliminarRecordatorio(id),
+    mutationFn: ({ id, eliminarTodas }: { id: string; eliminarTodas?: boolean }) => eliminarRecordatorio(id, eliminarTodas),
     onSuccess: () => invalidarTodo(qc),
   });
 }

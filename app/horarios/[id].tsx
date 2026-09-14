@@ -82,7 +82,7 @@ export default function ActividadDetalleScreen() {
       Alert.alert(
         'Listo',
         repetirDiario
-          ? 'Vas a recibir un aviso una hora antes, todos los días.'
+          ? 'Vas a recibir un aviso una hora antes, todos los días de este mes.'
           : 'Vas a recibir un aviso una hora antes de esta actividad.',
       );
     } catch (err) {
@@ -119,7 +119,7 @@ export default function ActividadDetalleScreen() {
           )}
         </View>
 
-        {/* Agregar a mi agenda — el aviso (1 hora antes) lo maneja Agenda solo, acá solo se elige "solo hoy" o "todos los días" */}
+        {/* Agregar a mi agenda — el aviso (1 hora antes) lo maneja Agenda solo, acá solo se elige "solo hoy" o "todo el mes" */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionIcon}>🔔</Text>
@@ -137,7 +137,7 @@ export default function ActividadDetalleScreen() {
             </TouchableOpacity>
           ) : (
             <View style={styles.agendaOpciones}>
-              <Text style={styles.agendaPregunta}>¿Querés el aviso solo por hoy, o todos los días?</Text>
+              <Text style={styles.agendaPregunta}>¿Querés el aviso solo por hoy, o todo el mes?</Text>
               <View style={styles.agendaOpcionesFila}>
                 <TouchableOpacity
                   style={[styles.agendaOpcionBtn, styles.agendaOpcionBtnSecundario]}
@@ -153,9 +153,9 @@ export default function ActividadDetalleScreen() {
                   onPress={() => agregarAAgenda(true)}
                   disabled={crearRecordatorio.isPending}
                   accessibilityRole="button"
-                  accessibilityLabel="Agregar recordatorio todos los días"
+                  accessibilityLabel="Agregar recordatorio para todo el mes"
                 >
-                  <Text style={styles.agendaOpcionBtnTextoPrimario}>Todos los días</Text>
+                  <Text style={styles.agendaOpcionBtnTextoPrimario}>Todo el mes</Text>
                 </TouchableOpacity>
               </View>
               {crearRecordatorio.isPending && <ActivityIndicator color={Colors.brand.greenDark} style={{ marginTop: Spacing.sm }} />}

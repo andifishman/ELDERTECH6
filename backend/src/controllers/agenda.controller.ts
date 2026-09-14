@@ -6,6 +6,7 @@ import {
   cambiarEstadoSchema,
   crearRecordatorioSchema,
   editarRecordatorioSchema,
+  eliminarQuerySchema,
   listarRecordatoriosQuerySchema,
   proximosQuerySchema,
   rangoFechaQuerySchema,
@@ -35,7 +36,8 @@ export async function patchEditar(req: Request, res: Response): Promise<void> {
 
 export async function deleteEliminar(req: Request, res: Response): Promise<void> {
   const id = requireUuidParam(req, 'id');
-  await agendaService.eliminar(requireUser(req), id);
+  const { todas } = eliminarQuerySchema.parse(req.query);
+  await agendaService.eliminar(requireUser(req), id, todas ?? false);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 

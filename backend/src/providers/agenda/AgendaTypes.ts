@@ -4,15 +4,13 @@ export type EstadoRecordatorio = 'pendiente' | 'realizado' | 'vencido' | 'cancel
 export const RECORDATORIO_OFFSET_MINUTOS = 60;
 
 /**
- * "Repetir todos los días" no es una recurrencia real: este modelo no tiene
- * columna de recurrencia ni un cron que la expanda (ver comentario de la
- * migración del módulo — es a propósito mínimo, título + fecha + hora). Se
- * resuelve creando una fila por día para una ventana acotada, no de forma
- * indefinida. 60 días (~2 meses) es un techo razonable para una actividad de
- * la residencia sin tener que rediseñar el modelo.
+ * "Repetir" (opción "Todo el mes" al agregar desde Horarios) no es una
+ * recurrencia real: este modelo no tiene columna de recurrencia ni un cron
+ * que la expanda (ver comentario de la migración del módulo — es a propósito
+ * mínimo, título + fecha + hora). Se resuelve creando una fila por día desde
+ * la fecha elegida hasta el último día de ESE mes — no de forma indefinida —
+ * todas compartiendo `grupo_id` para poder borrarlas juntas después.
  */
-export const REPETIR_DIARIO_DIAS = 60;
-
 export interface Recordatorio {
   id: string;
   residente_id: string;
@@ -29,6 +27,9 @@ export interface Recordatorio {
   notificacion_enviada: boolean;
   notificacion_enviada_en: string | null;
 
+  /** Comparten el mismo grupo_id las filas creadas juntas con la opción "todo el mes" — null en un recordatorio suelto. */
+  grupo_id: string | null;
+
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +44,7 @@ export interface RecordatorioInputRow {
   hora: string;
   estado?: EstadoRecordatorio;
   notificacion_enviada?: boolean;
+  grupo_id?: string | null;
 }
 
 /** Input de creación/edición recibido del cliente (ya validado por Zod). */
@@ -50,7 +52,7 @@ export interface RecordatorioInput {
   titulo: string;
   fecha: string;
   hora: string;
-  /** Si viene en true al crear, se generan filas para REPETIR_DIARIO_DIAS días seguidos en vez de una sola. */
+  /** Si viene en true al crear, se generan filas desde `fecha` hasta fin de ese mes en vez de una sola. */
   repetirDiario?: boolean;
 }
 

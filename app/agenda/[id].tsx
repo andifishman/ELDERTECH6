@@ -42,27 +42,41 @@ export default function DetalleRecordatorioScreen() {
 
   const confirmarEliminar = useCallback(() => {
     if (!id) return;
+
+    const eliminarYVolver = async (eliminarTodas: boolean) => {
+      try {
+        await eliminar.mutateAsync({ id, eliminarTodas });
+        router.replace('/agenda');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'No se pudo eliminar el recordatorio.';
+        Alert.alert('Error', msg);
+      }
+    };
+
+    // Creado con "Todo el mes" desde Horarios — comparte grupo_id con los
+    // demás días de la serie, así que se pregunta antes de borrar cuál.
+    if (recordatorio?.grupo_id) {
+      Alert.alert(
+        'Eliminar recordatorio',
+        `"${recordatorio.titulo}" se repite varios días. ¿Querés eliminar solo este día, o todos los de esta serie?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Solo este día', onPress: () => eliminarYVolver(false) },
+          { text: 'Toda la serie', style: 'destructive', onPress: () => eliminarYVolver(true) },
+        ],
+      );
+      return;
+    }
+
     Alert.alert(
       'Eliminar recordatorio',
       '¿Seguro que querés eliminar este recordatorio? Esta acción no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await eliminar.mutateAsync(id);
-              router.replace('/agenda');
-            } catch (err) {
-              const msg = err instanceof Error ? err.message : 'No se pudo eliminar el recordatorio.';
-              Alert.alert('Error', msg);
-            }
-          },
-        },
+        { text: 'Eliminar', style: 'destructive', onPress: () => eliminarYVolver(false) },
       ],
     );
-  }, [id, eliminar]);
+  }, [id, eliminar, recordatorio?.grupo_id, recordatorio?.titulo]);
 
   if (isLoading || !recordatorio) {
     return (

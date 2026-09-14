@@ -137,6 +137,15 @@ export const eliminar = withRepoLogging(REPO, 'eliminar', async (
   if (error) throw new Error(`Error al eliminar el recordatorio: ${error.message}`);
 });
 
+/** Borra todos los recordatorios de una serie ("todo el mes") — usado cuando el residente elige "eliminar todos" en vez de solo uno. */
+export const eliminarPorGrupo = withRepoLogging(REPO, 'eliminarPorGrupo', async (
+  grupoId: string,
+  residenteId: string,
+): Promise<void> => {
+  const { error } = await getSupabaseAdmin().from(TABLA).delete().eq('grupo_id', grupoId).eq('residente_id', residenteId);
+  if (error) throw new Error(`Error al eliminar los recordatorios de la serie: ${error.message}`);
+});
+
 // ─── Usadas por el cron (`AgendaReminderProcessorService`) — sin scope de residente. ──
 
 /** Pendientes sin notificar cuya ventana de aviso (evento - 1 hora) ya llegó. */

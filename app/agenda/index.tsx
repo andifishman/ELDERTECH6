@@ -130,23 +130,36 @@ export default function AgendaScreen() {
   }
 
   function pedirEliminar(r: Recordatorio) {
+    const eliminar = async (eliminarTodas: boolean) => {
+      try {
+        await eliminarRecordatorio.mutateAsync({ id: r.id, eliminarTodas });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'No se pudo eliminar el recordatorio.';
+        Alert.alert('Error', msg);
+      }
+    };
+
+    // Los creados con "Todo el mes" desde Horarios comparten grupo_id —
+    // ahí se pregunta si borrar solo este día o toda la serie.
+    if (r.grupo_id) {
+      Alert.alert(
+        'Eliminar recordatorio',
+        `"${r.titulo}" se repite varios días. ¿Querés eliminar solo este día, o todos los de esta serie?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Solo este día', onPress: () => eliminar(false) },
+          { text: 'Toda la serie', style: 'destructive', onPress: () => eliminar(true) },
+        ],
+      );
+      return;
+    }
+
     Alert.alert(
       'Eliminar recordatorio',
       `¿Seguro que querés eliminar "${r.titulo}"? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await eliminarRecordatorio.mutateAsync(r.id);
-            } catch (err) {
-              const msg = err instanceof Error ? err.message : 'No se pudo eliminar el recordatorio.';
-              Alert.alert('Error', msg);
-            }
-          },
-        },
+        { text: 'Eliminar', style: 'destructive', onPress: () => eliminar(false) },
       ],
     );
   }

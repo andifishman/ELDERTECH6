@@ -18,6 +18,10 @@ export const cambiarEstadoSchema = z.object({
   estado: z.enum(['pendiente', 'realizado', 'cancelado']),
 });
 
+export const eliminarQuerySchema = z.object({
+  todas: z.coerce.boolean().optional(),
+});
+
 export const listarRecordatoriosQuerySchema = z.object({
   desde: z.string().regex(FECHA_REGEX).optional(),
   hasta: z.string().regex(FECHA_REGEX).optional(),

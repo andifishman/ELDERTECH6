@@ -16,6 +16,8 @@ export interface Recordatorio {
   completado_en: string | null;
   notificacion_enviada: boolean;
   notificacion_enviada_en: string | null;
+  /** Comparten grupo_id los recordatorios creados juntos con "Todo el mes" — null en uno suelto. */
+  grupo_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,8 +62,8 @@ export async function editarRecordatorio(id: string, input: Partial<Recordatorio
   return apiClient.patch<Recordatorio>(`/api/agenda/${id}`, input);
 }
 
-export async function eliminarRecordatorio(id: string): Promise<void> {
-  await apiClient.delete<void>(`/api/agenda/${id}`);
+export async function eliminarRecordatorio(id: string, eliminarTodas = false): Promise<void> {
+  await apiClient.delete<void>(`/api/agenda/${id}${eliminarTodas ? '?todas=true' : ''}`);
 }
 
 export async function cambiarEstadoRecordatorio(id: string, estado: 'pendiente' | 'realizado' | 'cancelado'): Promise<Recordatorio> {

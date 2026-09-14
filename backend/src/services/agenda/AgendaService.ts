@@ -1,19 +1,25 @@
+import { randomUUID } from 'node:crypto';
 import { StatusCodes } from 'http-status-codes';
 import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import { requireResidenteContext } from '../../utils/validators';
 import { hoyArgentinaISO } from '../../utils/argentinaTime';
 import * as repo from '../../repositories/agendaRepository';
-import {
-  REPETIR_DIARIO_DIAS,
-  type EstadoRecordatorio,
-  type ListarRecordatoriosOpciones,
-  type Recordatorio,
-  type RecordatorioInput,
-  type RecordatorioInputRow,
+import type {
+  EstadoRecordatorio,
+  ListarRecordatoriosOpciones,
+  Recordatorio,
+  RecordatorioInput,
+  RecordatorioInputRow,
 } from '../../providers/agenda/AgendaTypes';
 
-function aRow(residenteId: string, organizacionId: string, creadoPor: string, input: RecordatorioInput): RecordatorioInputRow {
+function aRow(
+  residenteId: string,
+  organizacionId: string,
+  creadoPor: string,
+  input: RecordatorioInput,
+  grupoId?: string,
+): RecordatorioInputRow {
   return {
     residente_id: residenteId,
     organizacion_id: organizacionId,
@@ -21,6 +27,7 @@ function aRow(residenteId: string, organizacionId: string, creadoPor: string, in
     titulo: input.titulo,
     fecha: input.fecha,
     hora: input.hora.length === 5 ? `${input.hora}:00` : input.hora,
+    grupo_id: grupoId ?? null,
   };
 }
 
@@ -31,6 +38,13 @@ function sumarDias(fechaISO: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Cuántos días hay desde `fechaISO` (inclusive) hasta el último día de ESE mes (inclusive). */
+function diasHastaFinDeMes(fechaISO: string): number {
+  const d = new Date(`${fechaISO}T12:00:00Z`);
+  const ultimoDiaDelMes = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  return ultimoDiaDelMes - d.getUTCDate() + 1;
+}
+
 export async function crear(user: AuthUser, input: RecordatorioInput): Promise<Recordatorio> {
   const { residenteId, organizacionId } = requireResidenteContext(user);
 
@@ -38,12 +52,15 @@ export async function crear(user: AuthUser, input: RecordatorioInput): Promise<R
     return repo.crear(aRow(residenteId, organizacionId, residenteId, input));
   }
 
-  // "Todos los días" = una fila por día para una ventana acotada, no una
-  // recurrencia real (ver REPETIR_DIARIO_DIAS). Se devuelve la primera fila
-  // creada para no cambiar el contrato de la pantalla de Agenda, que solo
-  // crea recordatorios sueltos.
-  const filas: RecordatorioInputRow[] = Array.from({ length: REPETIR_DIARIO_DIAS }, (_, i) =>
-    aRow(residenteId, organizacionId, residenteId, { ...input, fecha: sumarDias(input.fecha, i) }),
+  // "Todo el mes" = una fila por día desde la fecha elegida hasta el último
+  // día de ese mes, no una recurrencia real (no hay columna de recurrencia ni
+  // cron que la expanda). Todas comparten grupoId para poder borrarlas
+  // juntas después. Se devuelve la primera fila creada para no cambiar el
+  // contrato de la pantalla de Agenda, que solo crea recordatorios sueltos.
+  const grupoId = randomUUID();
+  const dias = diasHastaFinDeMes(input.fecha);
+  const filas: RecordatorioInputRow[] = Array.from({ length: dias }, (_, i) =>
+    aRow(residenteId, organizacionId, residenteId, { ...input, fecha: sumarDias(input.fecha, i) }, grupoId),
   );
   const creados = await repo.crearVarios(filas);
   return creados[0] ?? (await repo.crear(aRow(residenteId, organizacionId, residenteId, input)));
@@ -70,8 +87,15 @@ export async function editar(user: AuthUser, id: string, input: Partial<Recordat
   return actualizado;
 }
 
-export async function eliminar(user: AuthUser, id: string): Promise<void> {
+export async function eliminar(user: AuthUser, id: string, eliminarTodas = false): Promise<void> {
   const { residenteId } = requireResidenteContext(user);
+  if (eliminarTodas) {
+    const actual = await repo.obtenerPorId(id, residenteId);
+    if (actual?.grupo_id) {
+      await repo.eliminarPorGrupo(actual.grupo_id, residenteId);
+      return;
+    }
+  }
   await repo.eliminar(id, residenteId);
 }
 
