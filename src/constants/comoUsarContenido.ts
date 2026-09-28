@@ -144,10 +144,10 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     emoji: '➕',
     titulo: 'Más',
     color: '#FFA726',
-    intro: 'Más reúne otras funciones útiles: el clima, la radio, juegos, y un lugar para mandar sugerencias al personal.',
+    intro: 'Más reúne otras funciones útiles: el clima, la radio, juegos, un lugar para mandar sugerencias al personal, y los ajustes de accesibilidad.',
     pasos: [
       'Desde la pantalla principal, tocá el botón naranja "Más".',
-      'Vas a ver varias tarjetas: Clima, Radio, Juegos y Sugerencias. Tocá "Ver más" en cualquiera para entrar.',
+      'Vas a ver varias tarjetas: Clima, Radio, Juegos, Sugerencias y Accesibilidad. Tocá "Ver más" en cualquiera para entrar.',
     ],
     subsecciones: [
       {
@@ -297,6 +297,18 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
           'Tocá "Enviar" para mandarlo al personal.',
           'Después vas a poder ver el estado de tu mensaje: "Pendiente", "En proceso" o "Resuelta".',
         ],
+      },
+      {
+        id: 'accesibilidad',
+        emoji: '⚙️',
+        titulo: 'Accesibilidad',
+        color: '#546E7A',
+        intro: 'Ajustes para que la aplicación sea más fácil de usar, y para bajar las últimas mejoras.',
+        pasos: [
+          'En "Tamaño de texto" elegí entre "Normal" o "Grande" — se aplica enseguida a toda la aplicación.',
+          'Tocá "Buscar actualización" para revisar si hay una versión nueva de la aplicación. Si la hay, se descarga sola y la aplicación se reinicia con los últimos cambios.',
+        ],
+        tip: 'Si el botón dice "Ya tenés la última versión instalada", no hace falta hacer nada más.',
       },
     ],
   },

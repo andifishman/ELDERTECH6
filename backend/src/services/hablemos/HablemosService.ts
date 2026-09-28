@@ -129,6 +129,25 @@ export async function enviarMensajeAudio(user: AuthUser, input: EnviarMensajeAud
   return mensaje;
 }
 
+export interface EnviarMensajeImagenInput {
+  conversacionId: string;
+  imagen: { buffer: Buffer; mimeType: string; originalName: string };
+}
+
+export async function enviarMensajeImagen(user: AuthUser, input: EnviarMensajeImagenInput): Promise<MensajeHablemos> {
+  const { residenteId } = requireResidenteContext(user);
+  await requireParticipante(residenteId, input.conversacionId);
+
+  const imagenUrl = await repo.subirImagen(input.conversacionId, residenteId, input.imagen.buffer, input.imagen.mimeType, input.imagen.originalName);
+  const mensaje = await repo.crearMensajeImagen({
+    conversacionId: input.conversacionId,
+    remitenteId: residenteId,
+    imagenUrl,
+  });
+  void notificarNuevoMensaje(input.conversacionId, residenteId, '📷 Te envió una foto');
+  return mensaje;
+}
+
 export async function marcarRecibidos(user: AuthUser, conversacionId: string): Promise<void> {
   const { residenteId } = requireResidenteContext(user);
   await requireParticipante(residenteId, conversacionId);

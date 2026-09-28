@@ -1,15 +1,18 @@
-// Pantalla de ajustes de accesibilidad — tamaño de texto
-import React from 'react';
+// Pantalla de ajustes de accesibilidad — tamaño de texto y buscar actualizaciones
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Updates from 'expo-updates';
 import { useAccesibilidad, getEscala, type TamanoTexto } from '@/context/AccesibilidadContext';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -24,6 +27,39 @@ export default function AccesibilidadScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { config, setTamanoTexto } = useAccesibilidad();
+
+  const [buscando, setBuscando] = useState(false);
+  const [estadoActualizacion, setEstadoActualizacion] = useState<string | null>(null);
+
+  // Busca, descarga y aplica la última actualización OTA publicada — sin esto,
+  // la app solo revisa updates al abrirse desde cero, lo que no siempre es
+  // obvio para probar cambios recién publicados.
+  const buscarActualizacion = useCallback(async () => {
+    if (!Updates.isEnabled) {
+      Alert.alert(
+        'No disponible',
+        'Las actualizaciones automáticas no están activas en esta versión de la app (por ejemplo, si la estás probando desde Expo Go o un build de desarrollo).',
+      );
+      return;
+    }
+    setBuscando(true);
+    setEstadoActualizacion(null);
+    try {
+      const resultado = await Updates.checkForUpdateAsync();
+      if (!resultado.isAvailable) {
+        setEstadoActualizacion('Ya tenés la última versión instalada.');
+        return;
+      }
+      setEstadoActualizacion('Encontramos una actualización, descargando...');
+      await Updates.fetchUpdateAsync();
+      // Reinicia la app ya con la nueva versión cargada.
+      await Updates.reloadAsync();
+    } catch {
+      setEstadoActualizacion('No se pudo buscar actualizaciones. Revisá tu conexión a internet e intentá de nuevo.');
+    } finally {
+      setBuscando(false);
+    }
+  }, []);
 
   return (
     <View style={styles.root}>
@@ -83,6 +119,29 @@ export default function AccesibilidadScreen() {
           })}
         </View>
 
+        {/* ── Buscar actualización ── */}
+        <Text style={styles.seccionTitulo}>Actualizaciones</Text>
+
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.actualizarBtn}
+            onPress={buscarActualizacion}
+            disabled={buscando}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Buscar actualización de la aplicación"
+          >
+            {buscando ? (
+              <ActivityIndicator color={Colors.text.onDark} />
+            ) : (
+              <Ionicons name="refresh" size={22} color={Colors.text.onDark} />
+            )}
+            <Text style={styles.actualizarBtnTexto}>{buscando ? 'Buscando...' : 'Buscar actualización'}</Text>
+          </TouchableOpacity>
+          {estadoActualizacion && (
+            <Text style={styles.actualizarEstadoTexto}>{estadoActualizacion}</Text>
+          )}
+        </View>
 
       </ScrollView>
     </View>
@@ -185,6 +244,25 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     backgroundColor: Colors.brand.greenDark,
+  },
+
+  actualizarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.brand.greenDark,
+    paddingVertical: Spacing.lg,
+    minHeight: Spacing.touch.large,
+  },
+  actualizarBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
+  actualizarEstadoTexto: {
+    fontSize: Typography.size.sm,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    paddingTop: Spacing.sm,
   },
 
   preview: {

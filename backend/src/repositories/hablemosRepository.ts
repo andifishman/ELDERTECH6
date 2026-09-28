@@ -4,6 +4,7 @@ import type {
   Conversacion,
   ConversacionConDetalle,
   CrearMensajeAudioInput,
+  CrearMensajeImagenInput,
   CrearMensajeTextoInput,
   ListarMensajesOpciones,
   MensajeHablemos,
@@ -233,6 +234,23 @@ export const crearMensajeAudio = withRepoLogging(REPO, 'crearMensajeAudio', asyn
   return data as MensajeHablemos;
 });
 
+export const crearMensajeImagen = withRepoLogging(REPO, 'crearMensajeImagen', async (
+  input: CrearMensajeImagenInput,
+): Promise<MensajeHablemos> => {
+  const { data, error } = await getSupabaseAdmin()
+    .from('mensajes_hablemos')
+    .insert({
+      conversacion_id: input.conversacionId,
+      remitente_id: input.remitenteId,
+      tipo: 'imagen',
+      imagen_url: input.imagenUrl,
+    })
+    .select('*')
+    .single();
+  if (error) throw new Error(`Error al enviar la foto: ${error.message}`);
+  return data as MensajeHablemos;
+});
+
 /** Marca como "recibido" los mensajes ajenos que todavía estaban en "enviado" (nunca retrocede uno ya "leído"). */
 export const marcarRecibidos = withRepoLogging(REPO, 'marcarRecibidos', async (
   conversacionId: string,
@@ -281,5 +299,23 @@ export const subirAudio = withRepoLogging(REPO, 'subirAudio', async (
   if (error) throw new Error(`Error al subir el mensaje de voz: ${error.message}`);
 
   const { data } = getSupabaseAdmin().storage.from('hablemos-audio').getPublicUrl(path);
+  return data.publicUrl;
+});
+
+/** Sube al bucket `hablemos-imagenes`. */
+export const subirImagen = withRepoLogging(REPO, 'subirImagen', async (
+  conversacionId: string,
+  residenteId: string,
+  buffer: Buffer,
+  contentType: string,
+  originalName: string,
+): Promise<string> => {
+  const ext = originalName.split('.').pop() ?? 'jpg';
+  const path = `${conversacionId}/${residenteId}-${Date.now()}.${ext}`;
+
+  const { error } = await getSupabaseAdmin().storage.from('hablemos-imagenes').upload(path, buffer, { contentType, upsert: false });
+  if (error) throw new Error(`Error al subir la foto: ${error.message}`);
+
+  const { data } = getSupabaseAdmin().storage.from('hablemos-imagenes').getPublicUrl(path);
   return data.publicUrl;
 });
