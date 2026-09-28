@@ -254,12 +254,14 @@ export interface ResidenteDetalleRaw {
   tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
   ciudadesClima: string[];
   contactos: Array<Record<string, unknown>>;
+  /** Modelo real del último dispositivo que registró un token de push — ej. "samsung SM-A356E" o "iPhone 13". null si nunca abrió la app. */
+  dispositivoDetectado: { modelo: string | null; plataforma: string; ultimaConexion: string } | null;
 }
 
 export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteDetalleRaw> {
   logger.info('repo:call', { repository: 'residentsRepository', action: 'obtenerResidenteDetalleRaw', id });
   try {
-  const [mensajesR, interesesR, tutorialesR, climaR, contactosR] = await Promise.allSettled([
+  const [mensajesR, interesesR, tutorialesR, climaR, contactosR, dispositivoR] = await Promise.allSettled([
     getSupabaseAdmin()
       .from('mensajes_asistente')
       .select('id, contenido, created_at')
@@ -284,6 +286,14 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
       .order('favorito', { ascending: false })
       .order('orden', { ascending: true })
       .order('nombre', { ascending: true }),
+    getSupabaseAdmin()
+      .from('device_tokens')
+      .select('dispositivo, plataforma, last_seen_at')
+      .eq('residente_id', id)
+      .eq('activo', true)
+      .order('last_seen_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   return {
@@ -320,6 +330,14 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
             tipo_contacto: Array.isArray(r.tipo_contacto) ? (r.tipo_contacto[0] ?? null) : r.tipo_contacto,
           }))
         : [],
+    dispositivoDetectado:
+      dispositivoR.status === 'fulfilled' && dispositivoR.value.data
+        ? {
+            modelo: (dispositivoR.value.data as { dispositivo: string | null }).dispositivo,
+            plataforma: (dispositivoR.value.data as { plataforma: string }).plataforma,
+            ultimaConexion: (dispositivoR.value.data as { last_seen_at: string }).last_seen_at,
+          }
+        : null,
   };
 
   } catch (err) {

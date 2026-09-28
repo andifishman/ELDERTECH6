@@ -58,6 +58,7 @@ export interface ResidenteDetalle {
   ciudadesClima: string[];
   contactos: ContactoResumen[];
   partidasPorJuego: ConteoPorJuego[];
+  dispositivoDetectado: { modelo: string | null; plataforma: string; ultimaConexion: string } | null;
 }
 
 export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDetalle> {

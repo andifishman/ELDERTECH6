@@ -44,7 +44,7 @@ export function ResidenteDetailPage() {
   if (isLoading) return <LoadingState mensaje="Cargando perfil del residente…" />;
   if (isError || !data) return <ErrorState onReintentar={() => void refetch()} />;
 
-  const { residente: r, mensajes, intereses, tutorialesCompletados, ciudadesClima, contactos, partidasPorJuego } = data;
+  const { residente: r, mensajes, intereses, tutorialesCompletados, ciudadesClima, contactos, partidasPorJuego, dispositivoDetectado } = data;
   const totalPartidas = partidasPorJuego.reduce((sum, p) => sum + p.cantidad, 0);
   const edad = r.fecha_nacimiento ? differenceInYears(new Date(), new Date(r.fecha_nacimiento)) : null;
   const nivel = NIVEL_LABEL[r.nivel_dificultad] ?? NIVEL_LABEL['independiente'];
@@ -117,7 +117,10 @@ export function ResidenteDetailPage() {
             )}
             <div className="flex items-center gap-2">
               <Smartphone className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>{TIPO_CELULAR_LABEL[r.tipo_celular] ?? 'Ninguno / No especificado'}</span>
+              <span>
+                {TIPO_CELULAR_LABEL[r.tipo_celular] ?? 'Ninguno / No especificado'}
+                {dispositivoDetectado?.modelo ? ` — ${dispositivoDetectado.modelo}` : ''}
+              </span>
             </div>
             {!r.fecha_nacimiento && !r.telefono && (
               <p className="text-muted-foreground">Sin más datos cargados.</p>
