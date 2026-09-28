@@ -8,6 +8,8 @@ export const residenteAdminInputSchema = z.object({
   // Nombre para mostrar en Hablemos (búsqueda, chat, notificaciones) en vez de
   // "nombre apellido" — opcional, sin valor cae al fallback de siempre.
   nombre_completo: z.string().trim().nullable().optional(),
+  // Con qué dispositivo se filtran los tutoriales que ve este residente.
+  tipo_celular: z.enum(['android', 'iphone', 'no_especificado']).optional(),
 });
 
 export const crearUsuarioSchema = residenteAdminInputSchema.extend({

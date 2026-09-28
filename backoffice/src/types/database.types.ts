@@ -30,6 +30,22 @@ export const SECCIONES: SeccionResidente[] = [
   'BAIT',
 ];
 
+export type TipoCelular = 'android' | 'iphone' | 'no_especificado';
+
+export const TIPOS_CELULAR: { value: TipoCelular; label: string }[] = [
+  { value: 'android', label: 'Android' },
+  { value: 'iphone', label: 'iPhone' },
+  { value: 'no_especificado', label: 'Ninguno / No especificado' },
+];
+
+export type DispositivoTutorial = 'android' | 'iphone' | 'ambos';
+
+export const DISPOSITIVOS_TUTORIAL: { value: DispositivoTutorial; label: string }[] = [
+  { value: 'android', label: 'Android' },
+  { value: 'iphone', label: 'iPhone' },
+  { value: 'ambos', label: 'Ambos' },
+];
+
 // ─── Núcleo ──────────────────────────────────────────────────────────────────
 
 export interface Organizacion {
@@ -63,6 +79,7 @@ export interface Residente {
   nombre: string;
   apellido: string;
   nombre_completo: string | null;
+  tipo_celular: TipoCelular;
   fecha_nacimiento: string | null;
   nivel_dificultad: NivelDificultad;
   seccion: SeccionResidente | null;
@@ -191,6 +208,7 @@ export interface Tutorial {
   descripcion: string | null;
   formato: FormatoTutorial;
   nivel: string;
+  dispositivo: DispositivoTutorial;
   url_video: string | null;
   duracion_segundos: number | null;
   thumbnail_url: string | null;

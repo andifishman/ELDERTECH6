@@ -23,6 +23,7 @@ export interface CrearUsuarioInput {
   seccion?: string | null;
   notas?: string | null;
   nombre_completo?: string | null;
+  tipo_celular?: 'android' | 'iphone' | 'no_especificado';
   username: string;
   dni: string;
 }

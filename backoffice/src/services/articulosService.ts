@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/apiClient';
 import { supabase } from '@/lib/supabase';
-import type { TutorialConCategoria, CategoriaTutorial, FormatoTutorial, PasoTutorial } from '@/types/database.types';
+import type { TutorialConCategoria, CategoriaTutorial, FormatoTutorial, DispositivoTutorial, PasoTutorial } from '@/types/database.types';
 
 export interface PasoInput {
   orden: number;
@@ -16,6 +16,7 @@ export interface TutorialInput {
   categoria_id?: string | null;
   formato: FormatoTutorial;
   nivel: string;
+  dispositivo: DispositivoTutorial;
   url_video?: string | null;
   thumbnail_url?: string | null;
   duracion_segundos?: number | null;

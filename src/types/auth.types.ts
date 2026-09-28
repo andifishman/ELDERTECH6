@@ -1,4 +1,4 @@
-import { NivelDificultad, SeccionResidente } from './database.types';
+import { NivelDificultad, SeccionResidente, TipoCelular } from './database.types';
 
 export type RolUsuario = 'residente' | 'admin' | 'staff';
 
@@ -23,6 +23,7 @@ export interface ResidenteAuth {
   seccion: SeccionResidente | null;
   habitacion: string | null;
   activo: boolean;
+  tipo_celular: TipoCelular;
 }
 
 export interface AuthProfile {

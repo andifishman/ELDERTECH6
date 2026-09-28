@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Save, X, Plus, Trash2, Upload, Link as LinkIcon, ChevronDown, ChevronUp, Music } from 'lucide-react';
+import { Save, X, Plus, Trash2, Upload, Link as LinkIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingState } from '@/components/common/states';
 import { cn } from '@/lib/utils';
 import { notify } from '@/components/ui/toast';
-import { subirAudioTutorial, subirImagenTutorial, subirVideoTutorial, type PasoInput } from '@/services/articulosService';
+import { subirImagenTutorial, subirVideoTutorial, type PasoInput } from '@/services/articulosService';
 import {
   useArticulo,
   useCategoriasArticulo,
@@ -22,7 +22,7 @@ import {
   useGuardarArticulo,
   usePasosTutorial,
 } from './useArticulos';
-import type { FormatoTutorial } from '@/types/database.types';
+import type { FormatoTutorial, DispositivoTutorial } from '@/types/database.types';
 
 interface CamposPrincipales {
   titulo: string;
@@ -36,6 +36,17 @@ const NIVELES = [
   { v: 'intermedio', label: 'Intermedio', dot: 'bg-amber-500' },
   { v: 'avanzado', label: 'Avanzado', dot: 'bg-red-500' },
 ] as const;
+
+const DISPOSITIVOS = [
+  { v: 'android', label: 'Android' },
+  { v: 'iphone', label: 'iPhone' },
+  { v: 'ambos', label: 'Ambos' },
+] as const;
+
+// Mismos MIME types que acepta el bucket tutorial-videos (ver migración
+// tutorial_videos_bucket.sql) — se valida acá también para dar un error
+// claro antes de subir, en vez del mensaje técnico de Supabase después.
+const VIDEO_MIME_PERMITIDOS = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/3gpp'];
 
 export function ArticuloFormPage() {
   const { id } = useParams();
@@ -61,6 +72,7 @@ export function ArticuloFormPage() {
   const [errorCategoria, setErrorCategoria] = useState('');
   const [formato, setFormato] = useState<FormatoTutorial>('video');
   const [nivel, setNivel] = useState<'principiante' | 'intermedio' | 'avanzado'>('principiante');
+  const [dispositivo, setDispositivo] = useState<DispositivoTutorial>('ambos');
   const [loQueAprenderas, setLoQueAprenderas] = useState<string[]>(['']);
 
   // ── Nueva categoría (inline) ─────────────────────────────────────────────────
@@ -88,11 +100,6 @@ export function ArticuloFormPage() {
   const [subiendoThumb, setSubiendoThumb] = useState(false);
   const thumbRef = useRef<HTMLInputElement>(null);
 
-  // ── Audio ────────────────────────────────────────────────────────────────────
-  const [audioUrl, setAudioUrl] = useState('');
-  const [subiendoAudio, setSubiendoAudio] = useState(false);
-  const audioRef = useRef<HTMLInputElement>(null);
-
   // ── Video ────────────────────────────────────────────────────────────────────
   const [videoModo, setVideoModo] = useState<'url' | 'archivo'>('url');
   const [subiendoVideo, setSubiendoVideo] = useState(false);
@@ -115,6 +122,7 @@ export function ArticuloFormPage() {
     setCategoriaId(tutorial.categoria_id ?? '');
     setFormato((tutorial.formato as FormatoTutorial) || 'video');
     setNivel(tutorial.nivel as any);
+    setDispositivo(tutorial.dispositivo ?? 'ambos');
     setThumbnailUrl(tutorial.thumbnail_url ?? '');
     setLoQueAprenderas(tutorial.lo_que_aprenderas?.length ? tutorial.lo_que_aprenderas : ['']);
   }, [tutorial, reset]);
@@ -152,22 +160,19 @@ export function ArticuloFormPage() {
     setDialogAbierto(false);
   };
 
-  // ── Helpers audio ────────────────────────────────────────────────────────────
-  const subirAudio = async (archivo: File) => {
-    setSubiendoAudio(true);
-    try {
-      const url = await subirAudioTutorial(archivo);
-      setAudioUrl(url);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : JSON.stringify(err);
-      notify.error('No se pudo subir el audio', msg);
-    } finally {
-      setSubiendoAudio(false);
-    }
-  };
-
   // ── Helpers video ────────────────────────────────────────────────────────────
   const subirVideo = async (archivo: File) => {
+    // Chequeo del lado del cliente antes de subir: el bucket tutorial-videos
+    // solo acepta estos formatos (ver migración tutorial_videos_bucket.sql) —
+    // sin esto, el error real de Supabase recién aparecía después de subir
+    // el archivo entero, con un mensaje técnico poco claro para el staff.
+    if (archivo.type && !VIDEO_MIME_PERMITIDOS.includes(archivo.type)) {
+      notify.error(
+        'Formato de video no soportado',
+        `Usá un archivo MP4, MOV, AVI, WebM o 3GP. Este archivo es "${archivo.type || 'desconocido'}".`,
+      );
+      return;
+    }
     setSubiendoVideo(true);
     try {
       const url = await subirVideoTutorial(archivo);
@@ -243,6 +248,7 @@ export function ArticuloFormPage() {
       categoria_id: categoriaId || null,
       formato: formato || 'video',
       nivel,
+      dispositivo,
       url_video: campos.url_video || null,
       thumbnail_url: thumbnailUrl || null,
       duracion_segundos: campos.duracion_minutos ? Number(campos.duracion_minutos) * 60 : null,
@@ -432,6 +438,28 @@ export function ArticuloFormPage() {
             </div>
 
             <div className="space-y-1.5">
+              <Label>Dispositivo *</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {DISPOSITIVOS.map((d) => (
+                  <button
+                    key={d.v}
+                    type="button"
+                    onClick={() => setDispositivo(d.v)}
+                    className={cn(
+                      'rounded-lg border p-2.5 text-sm font-medium transition-colors',
+                      dispositivo === d.v ? 'border-primary bg-primary-50 text-primary-700' : 'border-border hover:bg-accent',
+                    )}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                "Ambos" se muestra a todo el mundo. Si el tutorial explica algo que cambia entre Android e iPhone, elegí el que corresponda.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
               <Label htmlFor="descripcion">Descripción</Label>
               <Textarea
                 id="descripcion"
@@ -577,33 +605,6 @@ export function ArticuloFormPage() {
               <Label htmlFor="dur">Duración (min)</Label>
               <Input id="dur" type="number" min={0} placeholder="5" className="max-w-[180px]" {...register('duracion_minutos')} />
             </div>
-
-            {/* Audio */}
-            <div className="space-y-2">
-              <Label>Audio</Label>
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={subiendoAudio}
-                  onClick={() => audioRef.current?.click()}
-                >
-                  <Music className="h-4 w-4" />
-                  {subiendoAudio ? 'Subiendo…' : 'Elegir archivo de audio'}
-                </Button>
-                <input
-                  ref={audioRef}
-                  type="file"
-                  accept="audio/*,.mp4,.m4a,.mp3,.wav,.ogg,.aac"
-                  className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) subirAudio(f); }}
-                />
-                {audioUrl && <span className="truncate text-xs text-muted-foreground">{audioUrl.split('/').pop()}</span>}
-              </div>
-              {audioUrl && (
-                <audio controls src={audioUrl} className="w-full rounded-lg" />
-              )}
-            </div>
           </CardContent>
         </Card>
 
@@ -701,7 +702,7 @@ interface PasoEditorProps {
 
 function PasoEditor({ indice, paso, cargando, onChange, onSubirImagen, onEliminar }: PasoEditorProps) {
   const [expandido, setExpandido] = useState(true);
-  const [modoImagen, setModoImagen] = useState<'url' | 'archivo'>(paso.imagen_url ? 'url' : 'url');
+  const [modoImagen, setModoImagen] = useState<'url' | 'archivo'>(paso.imagen_url ? 'url' : 'archivo');
   const archivoRef = useRef<HTMLInputElement>(null);
 
   return (
