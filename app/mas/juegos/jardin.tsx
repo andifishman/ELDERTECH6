@@ -32,7 +32,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '@/components/ui/AppHeader';
 import { SpeakButton } from '@/components/common/SpeakButton';
@@ -40,7 +40,8 @@ import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
 import { useTutorial } from '@/hooks/useTutorial';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
-import { registrarPartida, obtenerEstadisticasPuntaje } from '@/services/juegosService';
+import { registrarPartida, obtenerEstadisticasPuntaje, completarNivelJardin } from '@/services/juegosService';
+import { obtenerNivelJardin, calcularEstrellasJardin, TOTAL_NIVELES_JARDIN } from '@/constants/nivelesJardin';
 
 const FILAS = 6;
 const COLUMNAS = 6;
@@ -497,6 +498,10 @@ function Caramelo({ pieza, fila, columna, tamano, seleccionada, resaltada, inval
 export default function JardinScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { nivel: nivelParam } = useLocalSearchParams<{ nivel?: string }>();
+  const nivelConfig = nivelParam ? obtenerNivelJardin(Number(nivelParam)) : undefined;
+  const modoNivel = nivelConfig != null;
+  const presupuestoMovimientos = nivelConfig?.movimientos ?? MOVIMIENTOS_INICIALES;
   const { showTutorial, dismissTutorial, reopenTutorial } = useTutorial('jardin');
   const { reproducir } = useGameSounds();
   const { sonidoActivado, toggleSonido } = useSonidoJuegos();
@@ -507,16 +512,20 @@ export default function JardinScreen() {
   const [intentoInvalido, setIntentoInvalido] = useState<{ a: Coord; b: Coord } | null>(null);
   const [celdasResaltadas, setCeldasResaltadas] = useState<Set<string>>(new Set());
   const [puntaje, setPuntaje] = useState(0);
-  const [movimientos, setMovimientos] = useState(MOVIMIENTOS_INICIALES);
+  const [movimientos, setMovimientos] = useState(presupuestoMovimientos);
   const [resolviendo, setResolviendo] = useState(false);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
   const [medida, setMedida] = useState(0);
+  const [resultadoNivel, setResultadoNivel] = useState<'ganado' | 'perdido' | null>(null);
+  const [estrellasGanadas, setEstrellasGanadas] = useState<1 | 2 | 3 | null>(null);
 
   const puntajeRef = useRef(0);
   const mejorPuntajeRef = useRef<number | null>(null);
+  const movimientosRef = useRef(presupuestoMovimientos);
   puntajeRef.current = puntaje;
   mejorPuntajeRef.current = mejorPuntaje;
+  movimientosRef.current = movimientos;
 
   const puntajeEscala = useSharedValue(1);
   const estiloPuntaje = useAnimatedStyle(() => ({ transform: [{ scale: puntajeEscala.value }] }));
@@ -599,6 +608,33 @@ export default function JardinScreen() {
     void registrarPartida('jardin', null, puntajeFinal);
   }, [reproducir]);
 
+  const finalizarNivel = useCallback((resultado: 'ganado' | 'perdido') => {
+    setFase('fin');
+    setResultadoNivel(resultado);
+    const puntajeFinal = puntajeRef.current;
+    void registrarPartida('jardin', resultado, puntajeFinal);
+    if (resultado === 'ganado' && nivelConfig) {
+      const movimientosUsados = nivelConfig.movimientos - movimientosRef.current;
+      const estrellas = calcularEstrellasJardin(movimientosUsados, nivelConfig.movimientos);
+      setEstrellasGanadas(estrellas);
+      reproducir('puntaje_alto');
+      void completarNivelJardin(nivelConfig.numero, estrellas, movimientosUsados).catch(() => {});
+    }
+  }, [reproducir, nivelConfig]);
+
+  /** Chequea, después de resolver un movimiento, si el nivel se ganó (objetivo alcanzado) o se perdió (sin movimientos). En modo libre, solo corta cuando se acaban los movimientos. */
+  const evaluarFinDeTurno = useCallback((movimientosRestantes: number) => {
+    if (!modoNivel || !nivelConfig) {
+      if (movimientosRestantes <= 0) finalizarPartida();
+      return;
+    }
+    if (puntajeRef.current >= nivelConfig.objetivoPuntos) {
+      finalizarNivel('ganado');
+    } else if (movimientosRestantes <= 0) {
+      finalizarNivel('perdido');
+    }
+  }, [modoNivel, nivelConfig, finalizarPartida, finalizarNivel]);
+
   const intentarIntercambio = useCallback((origen: Coord, destino: Coord) => {
     if (resolviendo || fase !== 'jugando') return;
     if (Math.abs(origen.r - destino.r) + Math.abs(origen.c - destino.c) !== 1) return;
@@ -637,7 +673,7 @@ export default function JardinScreen() {
         setCeldasResaltadas(new Set());
         await esperar(ESPERA_GRAVEDAD_MS);
         siguiente = await resolverCadena(siguiente);
-        if (movimientosNuevos <= 0) finalizarPartida();
+        evaluarFinDeTurno(movimientosNuevos);
       })();
       return;
     }
@@ -655,9 +691,9 @@ export default function JardinScreen() {
     setMovimientos(movimientosNuevos);
 
     void resolverCadena(probado, destino).then(() => {
-      if (movimientosNuevos <= 0) finalizarPartida();
+      evaluarFinDeTurno(movimientosNuevos);
     });
-  }, [tablero, resolviendo, fase, movimientos, resolverCadena, finalizarPartida, reproducir]);
+  }, [tablero, resolviendo, fase, movimientos, resolverCadena, evaluarFinDeTurno, reproducir]);
 
   const onTapCelda = useCallback((r: number, c: number) => {
     if (resolviendo || fase !== 'jugando') return;
@@ -681,18 +717,30 @@ export default function JardinScreen() {
   const empezar = useCallback(() => {
     setTablero(generarTableroValido());
     setPuntaje(0);
-    setMovimientos(MOVIMIENTOS_INICIALES);
+    setMovimientos(presupuestoMovimientos);
     setSeleccionado(null);
     setCeldasResaltadas(new Set());
     setEsRecordNuevo(false);
+    setResultadoNivel(null);
+    setEstrellasGanadas(null);
     setFase('jugando');
-  }, []);
+  }, [presupuestoMovimientos]);
+
+  const irASiguienteNivel = useCallback(() => {
+    if (!nivelConfig) return;
+    router.replace(`/mas/juegos/jardin?nivel=${nivelConfig.numero + 1}` as never);
+  }, [nivelConfig, router]);
 
   const tamanoCelda = medida > 0 ? medida / COLUMNAS : 0;
 
+  const explicacionMecanica = 'Arrastrá un caramelo hacia un costado para moverlo, o tocá uno y después tocá un vecino. Si formás una fila o columna de 3 o más caramelos iguales, desaparecen y sumás puntos. Combiná 4 en línea y creás un caramelo rayado que limpia toda una fila o columna. Combiná en forma de L o de T y creás un caramelo envuelto que explota un área. Combiná 5 en línea y creás una bomba que limpia todo un color. Si movés dos especiales juntos, el efecto es todavía más grande.';
+  const textoTutorialHablado = modoNivel
+    ? `${explicacionMecanica} En este nivel tenés que llegar a ${nivelConfig!.objetivoPuntos} puntos en ${nivelConfig!.movimientos} movimientos. Cuantos menos movimientos uses, más estrellas ganás.`
+    : `${explicacionMecanica} Tenés ${MOVIMIENTOS_INICIALES} movimientos por partida.`;
+
   return (
     <View style={styles.container}>
-      <AppHeader title="Jardín ElderTech" showBack />
+      <AppHeader title={modoNivel ? `Jardín — Nivel ${nivelConfig!.numero}` : 'Jardín ElderTech'} showBack />
 
       <View style={[styles.content, { paddingBottom: insets.bottom + Spacing.lg }]}>
         <View style={styles.scoreboard}>
@@ -703,13 +751,20 @@ export default function JardinScreen() {
           <View style={styles.scoreDivider} />
           <View style={styles.scoreItem}>
             <Text style={styles.scoreLabel}>Movimientos</Text>
-            <Text style={styles.scoreValue}>{fase === 'inicio' ? MOVIMIENTOS_INICIALES : movimientos}</Text>
+            <Text style={styles.scoreValue}>{fase === 'inicio' ? presupuestoMovimientos : movimientos}</Text>
           </View>
           <View style={styles.scoreDivider} />
-          <View style={styles.scoreItem}>
-            <Text style={[styles.scoreLabel, { color: '#FFD54F' }]}>Mejor</Text>
-            <Text style={[styles.scoreValue, { color: '#FFD54F' }]}>{mejorPuntaje ?? '—'}</Text>
-          </View>
+          {modoNivel ? (
+            <View style={styles.scoreItem}>
+              <Text style={[styles.scoreLabel, { color: '#FFD54F' }]}>Objetivo</Text>
+              <Text style={[styles.scoreValue, { color: '#FFD54F' }]}>{nivelConfig!.objetivoPuntos}</Text>
+            </View>
+          ) : (
+            <View style={styles.scoreItem}>
+              <Text style={[styles.scoreLabel, { color: '#FFD54F' }]}>Mejor</Text>
+              <Text style={[styles.scoreValue, { color: '#FFD54F' }]}>{mejorPuntaje ?? '—'}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.tableroWrap} onLayout={(e) => setMedida(e.nativeEvent.layout.width)}>
@@ -801,15 +856,14 @@ export default function JardinScreen() {
             </LinearGradient>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
             <View style={styles.speakRowWrapper}>
-              <SpeakButton
-                texto="Arrastrá un caramelo hacia un costado para moverlo, o tocá uno y después tocá un vecino. Si formás una fila o columna de 3 o más caramelos iguales, desaparecen y sumás puntos. Combiná 4 en línea y creás un caramelo rayado que limpia toda una fila o columna. Combiná en forma de L o de T y creás un caramelo envuelto que explota un área. Combiná 5 en línea y creás una bomba que limpia todo un color. Si movés dos especiales juntos, el efecto es todavía más grande. Tenés 20 movimientos por partida."
-                variante="escuchar"
-              />
+              <SpeakButton texto={textoTutorialHablado} variante="escuchar" />
             </View>
             <Text style={styles.modalSub}>
               Arrastrá un caramelo hacia un costado para moverlo, o tocá uno y después tocá un vecino.{'\n\n'}
               3 en línea desaparecen. 4 en línea crean un caramelo rayado (limpia una fila o columna). Una L o T crean un caramelo envuelto (explota un área). 5 en línea crean una bomba (limpia todo un color).{'\n\n'}
-              Tenés {MOVIMIENTOS_INICIALES} movimientos por partida.
+              {modoNivel
+                ? `Tenés que llegar a ${nivelConfig!.objetivoPuntos} puntos en ${nivelConfig!.movimientos} movimientos. Cuantos menos uses, más estrellas ganás.`
+                : `Tenés ${MOVIMIENTOS_INICIALES} movimientos por partida.`}
             </Text>
             <TouchableOpacity style={styles.modalBtnPrimary} onPress={dismissTutorial}>
               <Text style={styles.modalBtnPrimaryText}>¡Entendido, a jugar!</Text>
@@ -821,20 +875,71 @@ export default function JardinScreen() {
       <Modal visible={fase === 'fin'} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <LinearGradient colors={esRecordNuevo ? ['#FFD54F', '#F57F17'] : ['#66BB6A', Colors.primary]} style={styles.modalIconWrap}>
-              <Ionicons name={esRecordNuevo ? 'trophy' : 'checkmark-circle'} size={40} color={Colors.white} />
-            </LinearGradient>
-            <Text style={styles.modalTitle}>{esRecordNuevo ? '¡Nuevo récord!' : '¡Fin de la partida!'}</Text>
-            <Text style={styles.modalSub}>
-              Conseguiste <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> puntos.{'\n'}
-              Mejor puntaje: <Text style={{ fontWeight: 'bold', color: Colors.success }}>{mejorPuntaje}</Text>
-            </Text>
-            <TouchableOpacity style={styles.modalBtnPrimary} onPress={empezar}>
-              <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalBtnSecondary} onPress={() => router.back()}>
-              <Text style={styles.modalBtnSecondaryText}>Volver a Juegos</Text>
-            </TouchableOpacity>
+            {modoNivel ? (
+              <>
+                <LinearGradient
+                  colors={resultadoNivel === 'ganado' ? ['#FFD54F', '#F57F17'] : ['#B0BEC5', '#78909C']}
+                  style={styles.modalIconWrap}
+                >
+                  <Ionicons name={resultadoNivel === 'ganado' ? 'trophy' : 'refresh'} size={40} color={Colors.white} />
+                </LinearGradient>
+                <Text style={styles.modalTitle}>
+                  {resultadoNivel === 'ganado' ? `¡Nivel ${nivelConfig!.numero} superado!` : 'No llegaste al objetivo'}
+                </Text>
+                {resultadoNivel === 'ganado' && (
+                  <View style={styles.estrellasGrandes}>
+                    {[1, 2, 3].map((n) => (
+                      <Ionicons
+                        key={n}
+                        name={estrellasGanadas != null && n <= estrellasGanadas ? 'star' : 'star-outline'}
+                        size={36}
+                        color={estrellasGanadas != null && n <= estrellasGanadas ? '#F9A825' : '#CFD8DC'}
+                      />
+                    ))}
+                  </View>
+                )}
+                <Text style={styles.modalSub}>
+                  {resultadoNivel === 'ganado' ? (
+                    <>Conseguiste <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> puntos.</>
+                  ) : (
+                    <>
+                      Llegaste a <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> de{' '}
+                      <Text style={{ fontWeight: 'bold' }}>{nivelConfig!.objetivoPuntos}</Text> puntos. ¡Probá de nuevo!
+                    </>
+                  )}
+                </Text>
+                {resultadoNivel === 'ganado' && nivelConfig!.numero < TOTAL_NIVELES_JARDIN && (
+                  <TouchableOpacity style={styles.modalBtnPrimary} onPress={irASiguienteNivel}>
+                    <Text style={styles.modalBtnPrimaryText}>Siguiente nivel</Text>
+                  </TouchableOpacity>
+                )}
+                {resultadoNivel !== 'ganado' && (
+                  <TouchableOpacity style={styles.modalBtnPrimary} onPress={empezar}>
+                    <Text style={styles.modalBtnPrimaryText}>Reintentar</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.modalBtnSecondary} onPress={() => router.back()}>
+                  <Text style={styles.modalBtnSecondaryText}>Volver al mapa de niveles</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <LinearGradient colors={esRecordNuevo ? ['#FFD54F', '#F57F17'] : ['#66BB6A', Colors.primary]} style={styles.modalIconWrap}>
+                  <Ionicons name={esRecordNuevo ? 'trophy' : 'checkmark-circle'} size={40} color={Colors.white} />
+                </LinearGradient>
+                <Text style={styles.modalTitle}>{esRecordNuevo ? '¡Nuevo récord!' : '¡Fin de la partida!'}</Text>
+                <Text style={styles.modalSub}>
+                  Conseguiste <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> puntos.{'\n'}
+                  Mejor puntaje: <Text style={{ fontWeight: 'bold', color: Colors.success }}>{mejorPuntaje}</Text>
+                </Text>
+                <TouchableOpacity style={styles.modalBtnPrimary} onPress={empezar}>
+                  <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalBtnSecondary} onPress={() => router.back()}>
+                  <Text style={styles.modalBtnSecondaryText}>Volver a Juegos</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -981,6 +1086,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: FontSizes.xxl, fontWeight: 'bold', color: Colors.textPrimary, marginBottom: Spacing.sm },
   speakRowWrapper: { flexDirection: 'row', justifyContent: 'center', width: '100%', marginBottom: Spacing.md },
   modalSub: { fontSize: FontSizes.lg, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 26 },
+  estrellasGrandes: { flexDirection: 'row', gap: 6, marginBottom: Spacing.md },
   modalBtnPrimary: {
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, width: '100%', alignItems: 'center', marginBottom: Spacing.sm,

@@ -45,3 +45,19 @@ export async function obtenerEstadisticasPuntaje(juego: Juego): Promise<Estadist
 export async function obtenerTopPuntajes(juego: Juego): Promise<TopPuntaje[]> {
   return apiClient.get<TopPuntaje[]>(`/api/games/${juego}/top`);
 }
+
+export interface ProgresoNivelJardin {
+  nivel: number;
+  estrellas: number;
+  movimientosUsados: number;
+}
+
+/** Progreso de todos los niveles de Jardín ya completados por el residente — usado por el mapa de niveles. */
+export async function obtenerProgresoNivelesJardin(): Promise<ProgresoNivelJardin[]> {
+  return apiClient.get<ProgresoNivelJardin[]>('/api/games/jardin/niveles');
+}
+
+/** Registra el resultado de un nivel de Jardín completado (el backend solo guarda el mejor intento). */
+export async function completarNivelJardin(nivel: number, estrellas: number, movimientosUsados: number): Promise<ProgresoNivelJardin> {
+  return apiClient.post<ProgresoNivelJardin>(`/api/games/jardin/niveles/${nivel}/completar`, { estrellas, movimientosUsados });
+}

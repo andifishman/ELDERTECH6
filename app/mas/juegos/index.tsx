@@ -19,7 +19,7 @@ const JUEGOS: {
     id: 'jardin',
     icono: 'flower',
     titulo: 'Jardín ElderTech',
-    descripcion: 'Combiná piezas y conseguí puntos',
+    descripcion: 'Superá niveles combinando piezas',
     color: '#D81B60',
   },
   {
@@ -99,7 +99,7 @@ export default function JuegosScreen() {
           <TouchableOpacity
             key={juego.id}
             style={styles.card}
-            onPress={() => router.push(`/mas/juegos/${juego.id}` as never)}
+            onPress={() => router.push(`/mas/juegos/${juego.id === 'jardin' ? 'jardin-niveles' : juego.id}` as never)}
             activeOpacity={0.82}
             accessibilityLabel={`Jugar ${juego.titulo}: ${juego.descripcion}`}
             accessibilityRole="button"

@@ -31,6 +31,8 @@ const JUEGOS_INFO: Record<string, { emoji: string; titulo: string }> = {
   laberinto: { emoji: '🌀', titulo: 'Laberinto' },
   sopa: { emoji: '🔤', titulo: 'Sopa de Letras' },
   puntos: { emoji: '🔵', titulo: 'Une los Puntos' },
+  jardin: { emoji: '🌸', titulo: 'Jardín ElderTech' },
+  bloques: { emoji: '🧱', titulo: 'Bloques ElderTech' },
 };
 
 export function ResidenteDetailPage() {
