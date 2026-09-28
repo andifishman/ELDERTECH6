@@ -196,6 +196,30 @@ export async function actualizarResidenteAdmin(id: string, input: ResidenteAdmin
   }
 }
 
+/**
+ * Detecta y guarda solo el tipo de celular a partir de la plataforma real del
+ * dispositivo (se llama desde el registro del token de notificaciones push,
+ * que ya pasa la plataforma en cada apertura de la app) — nunca hace falta
+ * que el staff lo cargue a mano al crear un usuario. "web" no es un celular,
+ * así que se ignora (no pisa un valor ya detectado).
+ */
+export async function actualizarTipoCelularDetectado(residenteId: string, plataforma: 'ios' | 'android' | 'web'): Promise<void> {
+  if (plataforma === 'web') return;
+  const tipoCelular: TipoCelular = plataforma === 'ios' ? 'iphone' : 'android';
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'actualizarTipoCelularDetectado', residenteId, tipoCelular });
+  try {
+    const { error } = await getSupabaseAdmin()
+      .from('residentes')
+      .update({ tipo_celular: tipoCelular })
+      .eq('id', residenteId)
+      .neq('tipo_celular', tipoCelular); // evita un UPDATE (y su trigger de updated_at) si no cambió nada
+    if (error) throw new Error(`Error al detectar el tipo de celular: ${error.message}`);
+  } catch (err) {
+    // Best-effort: nunca debe romper el registro del push token por esto.
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'actualizarTipoCelularDetectado', error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
 export async function setActivoResidenteAdmin(id: string, activo: boolean): Promise<void> {
   logger.info('repo:call', { repository: 'residentsRepository', action: 'setActivoResidenteAdmin', id, activo });
   try {

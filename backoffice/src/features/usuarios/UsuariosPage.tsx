@@ -39,10 +39,16 @@ import {
   useResidentes,
   useToggleResidente,
 } from './useResidentes';
-import { SECCIONES, TIPOS_CELULAR } from '@/types/database.types';
+import { SECCIONES } from '@/types/database.types';
 import { coincideBusqueda } from '@/lib/textSearch';
-import type { Residente, SeccionResidente, TipoCelular } from '@/types/database.types';
+import type { Residente, SeccionResidente } from '@/types/database.types';
 import type { ResidenteConCuenta } from '@/services/residentesService';
+
+const TIPO_CELULAR_LABEL: Record<string, string> = {
+  android: 'Android',
+  iphone: 'iPhone',
+  no_especificado: 'Todavía no entró a la app',
+};
 
 interface Campos {
   nombre: string;
@@ -51,11 +57,10 @@ interface Campos {
   username: string;
   dni: string;
   seccion: SeccionResidente | '';
-  tipoCelular: TipoCelular;
 }
 
 const CAMPOS_VACIOS: Campos = {
-  nombre: '', apellido: '', nombreCompleto: '', username: '', dni: '', seccion: '', tipoCelular: 'no_especificado',
+  nombre: '', apellido: '', nombreCompleto: '', username: '', dni: '', seccion: '',
 };
 
 export function UsuariosPage() {
@@ -79,7 +84,6 @@ export function UsuariosPage() {
     defaultValues: CAMPOS_VACIOS,
   });
   const seccion = watch('seccion');
-  const tipoCelular = watch('tipoCelular');
 
   const toggleOrden = (col: typeof ordenarPor) => {
     if (ordenarPor === col) setOrdenDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -127,7 +131,6 @@ export function UsuariosPage() {
       username: '',
       dni: '',
       seccion: r.seccion ?? '',
-      tipoCelular: r.tipo_celular ?? 'no_especificado',
     });
     setAbierto(true);
   };
@@ -142,7 +145,6 @@ export function UsuariosPage() {
           username: c.username,
           dni: c.dni,
           seccion: c.seccion || null,
-          tipo_celular: c.tipoCelular,
         },
         { onSuccess: () => setAbierto(false) },
       );
@@ -157,7 +159,6 @@ export function UsuariosPage() {
           apellido: c.apellido,
           nombre_completo: c.nombreCompleto.trim() || null,
           seccion: c.seccion || null,
-          tipo_celular: c.tipoCelular,
         },
       },
       {
@@ -348,20 +349,21 @@ export function UsuariosPage() {
                 </Select>
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Tipo de celular</Label>
-                <Select value={tipoCelular} onValueChange={(v) => setValue('tipoCelular', v as TipoCelular)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TIPOS_CELULAR.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Se usa para elegir qué tutoriales mostrar primero. Si no sabés cuál usa, dejá "Ninguno / No especificado".
-                </p>
-              </div>
+              {/* No es un campo editable: se detecta solo la primera vez que el
+                  residente abre la app (con qué dispositivo se registra a
+                  notificaciones), y se usa para elegir qué tutoriales mostrar
+                  primero. No hace falta cargarlo a mano. */}
+              {editando && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Tipo de celular</Label>
+                  <p className="text-sm text-foreground">
+                    {TIPO_CELULAR_LABEL[editando.tipo_celular] ?? 'Todavía no entró a la app'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Se detecta solo la primera vez que entra a la app — no hace falta cargarlo.
+                  </p>
+                </div>
+              )}
 
               {editando && (
                 <div className="space-y-1.5 sm:col-span-2 rounded-lg border border-dashed p-3">
