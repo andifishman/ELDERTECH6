@@ -25,6 +25,9 @@ export const SECCIONES: SeccionResidente[] = [
   'BAIT',
 ];
 
+export type TipoCelular = 'android' | 'iphone' | 'no_especificado';
+export type DispositivoTutorial = 'android' | 'iphone' | 'ambos';
+
 // ─── Núcleo ──────────────────────────────────────────────────────────────────
 
 export interface Organizacion {
@@ -65,6 +68,7 @@ export interface Residente {
   notas: string | null;
   fecha_ingreso: string | null;
   activo: boolean;
+  tipo_celular: TipoCelular;
   created_at: string;
   updated_at: string;
 }
@@ -270,6 +274,7 @@ export interface Tutorial {
   titulo: string;
   descripcion: string | null;
   formato: FormatoTutorial;
+  dispositivo: DispositivoTutorial;
   url_video: string | null;
   duracion_segundos: number | null;
   thumbnail_url: string | null;

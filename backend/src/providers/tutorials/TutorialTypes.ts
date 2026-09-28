@@ -6,12 +6,15 @@ export interface CategoriaTutorial {
   activo: boolean;
 }
 
+export type DispositivoTutorial = 'android' | 'iphone' | 'ambos';
+
 export interface Tutorial {
   id: string;
   categoria_id: string | null;
   titulo: string;
   descripcion: string | null;
   formato: string;
+  dispositivo: DispositivoTutorial;
   url_video: string | null;
   duracion_segundos: number | null;
   thumbnail_url: string | null;
@@ -60,6 +63,7 @@ export interface TutorialAdminInput {
   categoria_id?: string | null;
   formato: string;
   nivel: string;
+  dispositivo: DispositivoTutorial;
   url_video?: string | null;
   thumbnail_url?: string | null;
   duracion_segundos?: number | null;

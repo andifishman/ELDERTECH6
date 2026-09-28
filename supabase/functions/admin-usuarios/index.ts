@@ -69,6 +69,10 @@ Deno.serve(async (req: Request) => {
     const usernameRaw = String(body.username ?? '').trim();
     const nombreCompletoRaw = body.nombre_completo ? String(body.nombre_completo).trim() : '';
     const nombreCompleto = nombreCompletoRaw.length > 0 ? nombreCompletoRaw : null;
+    const TIPOS_CELULAR_VALIDOS = ['android', 'iphone', 'no_especificado'];
+    const tipoCelular = TIPOS_CELULAR_VALIDOS.includes(String(body.tipo_celular))
+      ? String(body.tipo_celular)
+      : 'no_especificado';
 
     if (!nombre || !apellido) return json({ error: 'Nombre y apellido son obligatorios' }, 400);
     if (!dni || dni.length < 4) return json({ error: 'El DNI es obligatorio (mínimo 4 caracteres)' }, 400);
@@ -111,6 +115,7 @@ Deno.serve(async (req: Request) => {
         nombre,
         apellido,
         nombre_completo: nombreCompleto,
+        tipo_celular: tipoCelular,
         dni,
         seccion,
         activo: true,

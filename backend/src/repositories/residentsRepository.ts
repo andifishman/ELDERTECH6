@@ -49,12 +49,15 @@ export async function getResidenteContext(residenteId: string): Promise<Resident
 // ─── Admin (backoffice) ──────────────────────────────────────────────────────
 // Porteo de `backoffice/src/services/residentesService.ts`.
 
+export type TipoCelular = 'android' | 'iphone' | 'no_especificado';
+
 export interface Residente {
   id: string;
   organizacion_id: string;
   nombre: string;
   apellido: string;
   nombre_completo: string | null;
+  tipo_celular: TipoCelular;
   fecha_nacimiento: string | null;
   nivel_dificultad: string;
   seccion: string | null;
@@ -175,6 +178,7 @@ export interface ResidenteAdminInput {
   seccion?: string | null;
   notas?: string | null;
   nombre_completo?: string | null;
+  tipo_celular?: TipoCelular;
 }
 
 export async function actualizarResidenteAdmin(id: string, input: ResidenteAdminInput): Promise<void> {

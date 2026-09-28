@@ -35,6 +35,7 @@ export default function TutorialesScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const residenteId = profile?.residente?.id ?? null;
+  const tipoCelular = profile?.residente?.tipo_celular ?? 'no_especificado';
 
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
@@ -58,6 +59,13 @@ export default function TutorialesScreen() {
   const tutorialesFiltrados = useMemo(() => {
     let lista = tutoriales;
 
+    // Filtro por dispositivo: si sabemos qué celular usa (Android/iPhone), se
+    // ven esos + los marcados "Ambos". Si no sabemos (no_especificado), se ven
+    // todos — nunca se oculta contenido por falta de información.
+    if (tipoCelular === 'android' || tipoCelular === 'iphone') {
+      lista = lista.filter((t) => t.dispositivo === tipoCelular || t.dispositivo === 'ambos');
+    }
+
     // Filtro por categoría en cliente: garantiza que solo se vean los tutoriales
     // de la categoría seleccionada aunque el servidor devuelva todos (keepPreviousData)
     if (categoriaSeleccionada) {
@@ -76,7 +84,7 @@ export default function TutorialesScreen() {
       );
     }
     return lista;
-  }, [tutoriales, busqueda, soloFavoritos, categoriaSeleccionada]);
+  }, [tutoriales, busqueda, soloFavoritos, categoriaSeleccionada, tipoCelular]);
 
   // Agrupamos por función (categoría) solo en la vista "Todo" sin búsqueda ni favoritos.
   const agrupar = categoriaActivaNombre === 'Todo' && !busqueda.trim() && !soloFavoritos;

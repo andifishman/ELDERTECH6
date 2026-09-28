@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users, Gamepad2, Smartphone } from 'lucide-react';
 import { formatDistanceToNow, format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +15,12 @@ const NIVEL_LABEL: Record<string, { label: string; variant: 'success' | 'warning
   independiente: { label: 'Independiente', variant: 'success' },
   necesita_ayuda: { label: 'Necesita ayuda', variant: 'warning' },
   dependiente: { label: 'Dependiente', variant: 'danger' },
+};
+
+const TIPO_CELULAR_LABEL: Record<string, string> = {
+  android: 'Android',
+  iphone: 'iPhone',
+  no_especificado: 'Ninguno / No especificado',
 };
 
 const JUEGOS_INFO: Record<string, { emoji: string; titulo: string }> = {
@@ -109,8 +115,12 @@ export function ResidenteDetailPage() {
                 <span>Ingresó el {format(new Date(r.fecha_ingreso + 'T00:00:00'), "d MMM yyyy", { locale: es })}</span>
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>{TIPO_CELULAR_LABEL[r.tipo_celular] ?? 'Ninguno / No especificado'}</span>
+            </div>
             {!r.fecha_nacimiento && !r.telefono && (
-              <p className="text-muted-foreground">Sin datos cargados.</p>
+              <p className="text-muted-foreground">Sin más datos cargados.</p>
             )}
           </CardContent>
         </Card>

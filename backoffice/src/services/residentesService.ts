@@ -8,7 +8,7 @@
 // un residente le quita acceso a la app.
 // ========================================
 import { apiClient } from '@/lib/apiClient';
-import type { ContactoResumen, Residente, SeccionResidente } from '@/types/database.types';
+import type { ContactoResumen, Residente, SeccionResidente, TipoCelular } from '@/types/database.types';
 
 export interface ResidenteInput {
   nombre: string;
@@ -18,6 +18,8 @@ export interface ResidenteInput {
   // Nombre para mostrar en Hablemos (búsqueda, chat, notificaciones) en vez de
   // "nombre apellido" — opcional.
   nombre_completo?: string | null;
+  // Con qué dispositivo se filtran los tutoriales que ve este residente.
+  tipo_celular?: TipoCelular;
 }
 
 export interface CrearUsuarioInput extends ResidenteInput {

@@ -14,6 +14,7 @@ export const tutorialAdminInputSchema = z.object({
   categoria_id: z.string().uuid().nullable().optional(),
   formato: z.enum(['video', 'guia']),
   nivel: z.enum(['principiante', 'intermedio', 'avanzado']),
+  dispositivo: z.enum(['android', 'iphone', 'ambos']),
   url_video: z.string().url().nullable().optional(),
   thumbnail_url: z.string().url().nullable().optional(),
   duracion_segundos: z.number().int().nonnegative().nullable().optional(),
