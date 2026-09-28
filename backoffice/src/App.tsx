@@ -22,6 +22,7 @@ const HorariosPage = lazy(() => import('@/features/horarios/HorariosPage').then(
 const ActividadFormPage = lazy(() => import('@/features/horarios/ActividadFormPage').then((m) => ({ default: m.ActividadFormPage })));
 const TutorialesPage = lazy(() => import('@/features/tutoriales/TutorialesPage').then((m) => ({ default: m.TutorialesPage })));
 const ArticuloFormPage = lazy(() => import('@/features/tutoriales/ArticuloFormPage').then((m) => ({ default: m.ArticuloFormPage })));
+const TutorialesVistosPage = lazy(() => import('@/features/tutoriales/TutorialesVistosPage').then((m) => ({ default: m.TutorialesVistosPage })));
 const UsuariosPage = lazy(() => import('@/features/usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })));
 const ResidenteDetailPage = lazy(() => import('@/features/usuarios/ResidenteDetailPage').then((m) => ({ default: m.ResidenteDetailPage })));
 const AsistentePage = lazy(() => import('@/features/asistente/AsistentePage').then((m) => ({ default: m.AsistentePage })));
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
           { path: '/horarios/:id/editar', element: <ActividadFormPage />, handle: { titulo: 'Editar actividad' } },
           { path: '/tutoriales', element: <TutorialesPage />, handle: { titulo: 'Tutoriales' } },
           { path: '/tutoriales/nuevo', element: <ArticuloFormPage />, handle: { titulo: 'Nuevo contenido' } },
+          { path: '/tutoriales/vistos', element: <TutorialesVistosPage />, handle: { titulo: 'Tutoriales vistos' } },
           { path: '/tutoriales/:id/editar', element: <ArticuloFormPage />, handle: { titulo: 'Editar contenido' } },
           { path: '/usuarios', element: <UsuariosPage />, handle: { titulo: 'Usuarios' } },
           { path: '/usuarios/:id', element: <ResidenteDetailPage />, handle: { titulo: 'Perfil del residente' } },

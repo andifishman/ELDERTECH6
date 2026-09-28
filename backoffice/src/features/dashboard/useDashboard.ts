@@ -32,6 +32,11 @@ export function useTutorialesMasVistos() {
   return useQuery({ queryKey: [...queryKeys.dashboard, 'tutoriales-vistos'], queryFn: () => obtenerTutorialesMasVistos(6), refetchInterval: REFETCH_INTERVAL });
 }
 
+/** Listado completo (sin límite) — lo usa la pantalla "Tutoriales vistos". */
+export function useTutorialesVistosCompleto() {
+  return useQuery({ queryKey: [...queryKeys.dashboard, 'tutoriales-vistos-completo'], queryFn: () => obtenerTutorialesMasVistos(), refetchInterval: REFETCH_INTERVAL });
+}
+
 export function useActividadesPorCategoria() {
   return useQuery({ queryKey: [...queryKeys.dashboard, 'act-categoria'], queryFn: obtenerActividadesPorCategoria, refetchInterval: REFETCH_INTERVAL });
 }

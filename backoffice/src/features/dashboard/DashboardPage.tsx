@@ -87,6 +87,7 @@ export function DashboardPage() {
           titulo="Tutoriales más vistos"
           data={(tutorialesVistos.data ?? []).map((t) => ({ label: t.titulo, valor: t.vistas }))}
           isLoading={tutorialesVistos.isLoading}
+          enlace="/tutoriales/vistos"
         />
         <DonutChartCard
           titulo="Actividades por categoría"
