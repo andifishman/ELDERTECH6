@@ -6,7 +6,6 @@
 // acá tocando esa tarjeta.
 // ========================================
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ArrowLeft, Eye, EyeOff, TrendingUp, FileText, PlayCircle, GraduationCap } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -18,9 +17,6 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { useRealtime } from '@/hooks/useRealtime';
 import { queryKeys } from '@/lib/queryClient';
 import { useTutorialesVistosCompleto } from '@/features/dashboard/useDashboard';
-
-const COLOR_CON_VISTAS = '#1B5E3B';
-const COLOR_SIN_VISTAS = '#D9E4DE';
 
 // Podio de los primeros 3 puestos — un color distinto para cada uno, el resto queda neutro.
 const RANK_STYLE = [
@@ -42,13 +38,6 @@ export function TutorialesVistosPage() {
   const sinVistas = tutoriales.filter((t) => t.vistas === 0).length;
   const masVisto = tutoriales[0];
   const maxVistas = masVisto?.vistas ?? 0;
-
-  // El gráfico solo muestra el top 15 (más legible); la lista de abajo tiene el ranking completo.
-  const datosGrafico = tutoriales.slice(0, 15).map((t) => ({
-    label: truncar(t.titulo, 30),
-    valor: t.vistas,
-  }));
-  const alturaGrafico = Math.max(280, datosGrafico.length * 38);
 
   return (
     <div className="space-y-6">
@@ -83,39 +72,6 @@ export function TutorialesVistosPage() {
             />
             <KpiCard etiqueta="Tutoriales sin ninguna vista" valor={sinVistas} icono={EyeOff} acento="amber" />
           </div>
-
-          {/* Gráfico grande, horizontal — se lee mejor con títulos largos que el de barras verticales del Dashboard */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {tutoriales.length > 15 ? `Top 15 de ${tutoriales.length} tutoriales` : 'Vistas por tutorial'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={alturaGrafico}>
-                <BarChart data={datosGrafico} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 4 }}>
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="label"
-                    width={220}
-                    tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'hsl(var(--accent))' }}
-                    contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 13 }}
-                  />
-                  <Bar dataKey="valor" radius={[0, 6, 6, 0]} maxBarSize={22}>
-                    {datosGrafico.map((d, i) => (
-                      <Cell key={i} fill={d.valor > 0 ? COLOR_CON_VISTAS : COLOR_SIN_VISTAS} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
 
           {/* Ranking completo */}
           <Card>
