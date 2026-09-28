@@ -81,7 +81,11 @@ export function TutorialesVistosPage() {
             <CardContent className="p-0">
               <ul className="divide-y divide-border">
                 {tutoriales.map((t, i) => (
-                  <li key={t.id} className="flex items-center gap-4 px-6 py-4">
+                  <li key={t.id}>
+                  <Link
+                    to={`/tutoriales/${t.id}/editar`}
+                    className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-accent"
+                  >
                     <span
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                         i < 3 ? RANK_STYLE[i] : 'bg-muted text-muted-foreground'
@@ -114,6 +118,7 @@ export function TutorialesVistosPage() {
                       <p className="text-xl font-extrabold tabular-nums text-foreground">{t.vistas}</p>
                       <p className="text-xs text-muted-foreground">{t.vistas === 1 ? 'vista' : 'vistas'}</p>
                     </div>
+                  </Link>
                   </li>
                 ))}
               </ul>
