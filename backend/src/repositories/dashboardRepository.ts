@@ -106,32 +106,45 @@ export async function obtenerResidentesRecientes(organizacionId: string, limite 
   }
 }
 
-export async function obtenerTutorialesMasVistos(limite = 6): Promise<{ titulo: string; vistas: number }[]> {
+export interface TutorialConVistas {
+  id: string;
+  titulo: string;
+  formato: string;
+  activo: boolean;
+  categoria: string | null;
+  vistas: number;
+}
+
+/** Todos los tutoriales (publicados y borradores) con su cantidad de vistas, ordenados de más a menos —
+ * incluye los que todavía no tienen ninguna vista (vistas: 0), a diferencia de antes que solo traía los
+ * que ya habían sido vistos. Sin `limite`, devuelve el listado completo (lo usa la pantalla "Tutoriales vistos"). */
+export async function obtenerTutorialesMasVistos(limite?: number): Promise<TutorialConVistas[]> {
   logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerTutorialesMasVistos', limite });
   try {
-  try {
-    const { data: progreso } = await getSupabaseAdmin().from('progreso_tutorial').select('tutorial_id');
-    if (!progreso || progreso.length === 0) return [];
+    const [{ data: progreso }, { data: tutoriales }] = await Promise.all([
+      getSupabaseAdmin().from('progreso_tutorial').select('tutorial_id'),
+      getSupabaseAdmin().from('tutoriales').select('id, titulo, formato, activo, categoria:categorias_tutorial(nombre)'),
+    ]);
 
     const conteo = new Map<string, number>();
-    for (const row of progreso as Array<{ tutorial_id: string | null }>) {
+    for (const row of (progreso ?? []) as Array<{ tutorial_id: string | null }>) {
       if (row.tutorial_id) conteo.set(row.tutorial_id, (conteo.get(row.tutorial_id) ?? 0) + 1);
     }
 
-    const topIds = Array.from(conteo.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, limite)
-      .map(([id]) => id);
-    if (topIds.length === 0) return [];
-
-    const { data: tutoriales } = await getSupabaseAdmin().from('tutoriales').select('id, titulo').in('id', topIds);
-    return ((tutoriales ?? []) as Array<{ id: string; titulo: string }>)
-      .map((t) => ({ titulo: t.titulo, vistas: conteo.get(t.id) ?? 0 }))
+    const resultado = ((tutoriales ?? []) as unknown as Array<{
+      id: string; titulo: string; formato: string; activo: boolean; categoria: { nombre: string } | null;
+    }>)
+      .map((t) => ({
+        id: t.id,
+        titulo: t.titulo,
+        formato: t.formato,
+        activo: t.activo,
+        categoria: t.categoria?.nombre ?? null,
+        vistas: conteo.get(t.id) ?? 0,
+      }))
       .sort((a, b) => b.vistas - a.vistas);
-  } catch {
-    return [];
-  }
 
+    return typeof limite === 'number' ? resultado.slice(0, limite) : resultado;
   } catch (err) {
     logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerTutorialesMasVistos', error: err instanceof Error ? err.message : String(err) });
     throw err;

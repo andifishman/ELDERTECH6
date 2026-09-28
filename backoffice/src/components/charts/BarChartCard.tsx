@@ -4,24 +4,41 @@
 // Tarjeta con gráfico de barras (Recharts). Se usa para
 // "tutoriales más vistos" y "actividades por categoría".
 // ========================================
+import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/states';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, ArrowRight } from 'lucide-react';
 
 interface BarChartCardProps {
   titulo: string;
   data: { label: string; valor: number }[];
   color?: string;
   isLoading?: boolean;
+  /** Si se pasa, toda la tarjeta se vuelve clickeable y navega a esta ruta (ej: ver el ranking completo).
+   * Usa onClick (no un <Link> superpuesto) para no tapar los hovers del gráfico con un overlay invisible. */
+  enlace?: string;
 }
 
-export function BarChartCard({ titulo, data, color = '#1B5E3B', isLoading }: BarChartCardProps) {
+export function BarChartCard({ titulo, data, color = '#1B5E3B', isLoading, enlace }: BarChartCardProps) {
+  const navigate = useNavigate();
+
   return (
-    <Card>
-      <CardHeader>
+    <Card
+      className={enlace ? 'group cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md' : undefined}
+      onClick={enlace ? () => navigate(enlace) : undefined}
+      role={enlace ? 'button' : undefined}
+      tabIndex={enlace ? 0 : undefined}
+      onKeyDown={enlace ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(enlace); } } : undefined}
+    >
+      <CardHeader className={enlace ? 'flex-row items-center justify-between space-y-0' : undefined}>
         <CardTitle className="text-base">{titulo}</CardTitle>
+        {enlace && (
+          <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-primary-600 opacity-70 transition-opacity group-hover:opacity-100">
+            Ver todos <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (

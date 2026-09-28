@@ -18,8 +18,20 @@ export async function obtenerResidentesRecientes(limite = 5): Promise<ResidenteC
   return apiClient.get<ResidenteConConexion[]>(`/api/admin/dashboard/residents-recent?limite=${limite}`);
 }
 
-export async function obtenerTutorialesMasVistos(limite = 6): Promise<{ titulo: string; vistas: number }[]> {
-  return apiClient.get<{ titulo: string; vistas: number }[]>(`/api/admin/dashboard/tutorials-top?limite=${limite}`);
+export interface TutorialConVistas {
+  id: string;
+  titulo: string;
+  formato: string;
+  activo: boolean;
+  categoria: string | null;
+  vistas: number;
+}
+
+/** Sin `limite`, trae el listado completo (todos los tutoriales, publicados y borradores) — lo usa la
+ * pantalla "Tutoriales vistos". Con `limite`, trae solo el top N — lo usa el gráfico del Dashboard. */
+export async function obtenerTutorialesMasVistos(limite?: number): Promise<TutorialConVistas[]> {
+  const query = typeof limite === 'number' ? `?limite=${limite}` : '';
+  return apiClient.get<TutorialConVistas[]>(`/api/admin/dashboard/tutorials-top${query}`);
 }
 
 export async function obtenerActividadReciente(limite = 6): Promise<AuditLog[]> {
