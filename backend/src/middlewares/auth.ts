@@ -10,6 +10,8 @@ export interface AuthUser {
   residenteId: string | null;
   organizacionId: string | null;
   rol: 'residente' | 'admin' | 'staff' | null;
+  /** false = cuenta deshabilitada: no puede usar el backoffice aunque tenga rol admin/staff. */
+  activo: boolean;
   /** Cuenta del allowlist de super-admins — ver `config/superAdmins.ts`. Bypassa el chequeo de `rol`. */
   isSuperAdmin: boolean;
 }
@@ -54,7 +56,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const { data, error } = await supabase
     .from('perfiles_usuario')
-    .select('residente_id, organizacion_id, rol')
+    .select('residente_id, organizacion_id, rol, activo')
     .eq('id', userData.user.id)
     .maybeSingle();
 
@@ -71,6 +73,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     residenteId: data?.residente_id ?? null,
     organizacionId: data?.organizacion_id ?? null,
     rol: (data?.rol as AuthUser['rol']) ?? null,
+    activo: data?.activo !== false,
     isSuperAdmin: !!email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase()),
   };
   next();
@@ -84,6 +87,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
  * mecanismo que ya usaba el backoffice antes de esta migración).
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  // Cuenta deshabilitada (perfiles_usuario.activo = false): fuera, sin importar el rol.
+  // El super admin por allowlist no se puede bloquear desde la base.
+  if (req.user && !req.user.isSuperAdmin && !req.user.activo) {
+    res.status(StatusCodes.FORBIDDEN).json({ error: 'Tu cuenta está deshabilitada.' });
+    return;
+  }
   if (!req.user?.isSuperAdmin && req.user?.rol !== 'admin' && req.user?.rol !== 'staff') {
     res.status(StatusCodes.FORBIDDEN).json({ error: 'No autorizado' });
     return;

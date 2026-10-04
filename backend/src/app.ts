@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { corsMiddleware } from './middlewares/cors';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
+import { accessRouter } from './routes/access.routes';
 import { activitiesRouter } from './routes/activities.routes';
 import { activitiesAdminRouter } from './routes/activitiesAdmin.routes';
 import { administradoresRouter } from './routes/administradores.routes';
@@ -82,6 +83,7 @@ export function createApp(): Express {
   app.use('/api/admin/assistant', assistantAdminRouter);
   app.use('/api/admin/residents', residentsAdminRouter);
   app.use('/api/admin/administradores', administradoresRouter);
+  app.use('/api/admin/accesos', accessRouter);
   app.use('/api/admin/audit', auditRouter);
   app.use('/api/admin/configuracion', configuracionRouter);
   app.use('/api/admin/dashboard', dashboardRouter);

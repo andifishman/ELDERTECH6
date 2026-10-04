@@ -32,6 +32,7 @@ import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { iniciales } from '@/lib/utils';
 import { useRealtime } from '@/hooks/useRealtime';
+import { usePermisos } from '@/hooks/usePermisos';
 import {
   useActualizarResidente,
   useCrearUsuario,
@@ -65,6 +66,7 @@ const CAMPOS_VACIOS: Campos = {
 
 export function UsuariosPage() {
   const navigate = useNavigate();
+  const permisos = usePermisos('usuarios');
   const { data, isLoading, isError, refetch } = useResidentes();
   const crearUsuario = useCrearUsuario();
   const actualizar = useActualizarResidente();
@@ -179,7 +181,7 @@ export function UsuariosPage() {
       <PageHeader
         titulo="Usuarios"
         descripcion="Creá y administrá los usuarios que acceden a la app. Elegís un nombre de usuario y la contraseña es el DNI."
-        acciones={<Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>}
+        acciones={permisos.puedeCrear && <Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>}
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -210,7 +212,7 @@ export function UsuariosPage() {
           <div className="p-5"><ErrorState onReintentar={() => void refetch()} /></div>
         ) : filtrados.length === 0 ? (
           <div className="p-5">
-            <EmptyState icono={UserCog} titulo="Sin usuarios" descripcion="Creá el primer usuario." accion={<Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>} />
+            <EmptyState icono={UserCog} titulo="Sin usuarios" descripcion={permisos.puedeCrear ? 'Creá el primer usuario.' : 'Todavía no hay usuarios cargados.'} accion={permisos.puedeCrear && <Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>} />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -265,15 +267,16 @@ export function UsuariosPage() {
                   <TableCell><Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge></TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-3">
-                      <button
+                      {!permisos.puedeEditar && <span className="text-xs text-muted-foreground">Solo lectura</span>}
+                      {permisos.puedeEditar && <button
                         type="button"
                         onClick={() => abrirEditar(r)}
                         className="flex flex-col items-center gap-0.5 rounded-md p-1.5 text-primary-700 hover:bg-accent transition-colors"
                       >
                         <Pencil className="h-4 w-4" />
                         <span className="text-[10px] font-medium text-muted-foreground">Editar</span>
-                      </button>
-                      <button
+                      </button>}
+                      {permisos.puedeEditar && <button
                         type="button"
                         disabled={toggle.isPending}
                         onClick={() => toggle.mutate({ id: r.id, activo: !r.activo, nombre: `${r.nombre} ${r.apellido}` })}
@@ -283,7 +286,7 @@ export function UsuariosPage() {
                         <span className={`text-[10px] font-medium ${r.activo ? 'text-destructive' : 'text-primary'}`}>
                           {r.activo ? 'Desactivar' : 'Activar'}
                         </span>
-                      </button>
+                      </button>}
                     </div>
                   </TableCell>
                 </TableRow>

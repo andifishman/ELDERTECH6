@@ -7,6 +7,7 @@
 // ========================================
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { usePermisos } from '@/hooks/usePermisos';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ArrowLeft, Pencil, Trash2, Send, Ban, RotateCw, Copy, CheckCircle2, XCircle, Clock, Users, Eye } from 'lucide-react';
@@ -47,6 +48,7 @@ const STAT_ITEMS: { key: keyof import('@/services/notificacionesService').Recipi
 ];
 
 export function NotificacionDetailPage() {
+  const permisos = usePermisos('notificaciones');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useNotificacionDetalle(id);
@@ -98,32 +100,36 @@ export function NotificacionDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-            {(n.estado === 'borrador' || n.estado === 'programada') && (
+            {permisos.puedeEditar && (n.estado === 'borrador' || n.estado === 'programada') && (
               <Button size="sm" onClick={() => enviarAhora.mutate(n.id)} disabled={enviarAhora.isPending}>
                 <Send className="h-4 w-4" /> Enviar ahora
               </Button>
             )}
-            {n.estado === 'borrador' && (
+            {permisos.puedeEditar && n.estado === 'borrador' && (
               <Button size="sm" variant="outline" onClick={() => navigate(`/notificaciones/${n.id}/editar`)}>
                 <Pencil className="h-4 w-4" /> Editar
               </Button>
             )}
-            {n.estado === 'programada' && (
+            {permisos.puedeEditar && n.estado === 'programada' && (
               <Button size="sm" variant="outline" onClick={() => cancelar.mutate(n.id)} disabled={cancelar.isPending}>
                 <Ban className="h-4 w-4" /> Cancelar programación
               </Button>
             )}
-            {(n.estado === 'enviada' || n.estado === 'fallida') && (
+            {permisos.puedeEditar && (n.estado === 'enviada' || n.estado === 'fallida') && (
               <Button size="sm" variant="outline" onClick={() => reenviar.mutate(n.id)} disabled={reenviar.isPending}>
                 <RotateCw className="h-4 w-4" /> Reenviar
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => duplicar.mutate(n.id)} disabled={duplicar.isPending}>
-              <Copy className="h-4 w-4" /> Duplicar
-            </Button>
-            <Button size="sm" variant="destructive" className="ml-auto" onClick={() => setConfirmarEliminar(true)}>
-              <Trash2 className="h-4 w-4" /> Eliminar
-            </Button>
+            {permisos.puedeCrear && (
+              <Button size="sm" variant="outline" onClick={() => duplicar.mutate(n.id)} disabled={duplicar.isPending}>
+                <Copy className="h-4 w-4" /> Duplicar
+              </Button>
+            )}
+            {permisos.puedeEliminar && (
+              <Button size="sm" variant="destructive" className="ml-auto" onClick={() => setConfirmarEliminar(true)}>
+                <Trash2 className="h-4 w-4" /> Eliminar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

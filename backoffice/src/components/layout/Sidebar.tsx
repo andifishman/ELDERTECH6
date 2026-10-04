@@ -11,7 +11,6 @@ import { NavLink } from 'react-router-dom';
 import { LogOut, X } from 'lucide-react';
 import { cn, iniciales } from '@/lib/utils';
 import { NAV_ITEMS } from './nav.config';
-import { usePermisos } from '@/hooks/usePermisos';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -28,9 +27,9 @@ const ROL_LABEL: Record<string, string> = {
 };
 
 export function Sidebar({ abierto, onCerrar }: SidebarProps) {
-  const permisos = usePermisos();
-  const { perfil, rol, signOut } = useAuth();
-  const items = NAV_ITEMS.filter((i) => !i.visible || i.visible(permisos));
+  const { perfil, rol, signOut, puede } = useAuth();
+  // solo los módulos a los que el usuario tiene acceso (el servidor igual lo verifica en cada request)
+  const items = NAV_ITEMS.filter((i) => puede(i.modulo, 'ver'));
   const [confirmarCerrar, setConfirmarCerrar] = useState(false);
 
   return (

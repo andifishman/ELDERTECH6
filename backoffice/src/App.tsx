@@ -11,6 +11,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppProviders } from '@/providers/AppProviders';
 import { AppShell } from '@/components/layout/AppShell';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
+import { Inicio, RequireModulo } from '@/features/auth/RequireModulo';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RecuperarContrasenaPage } from '@/features/auth/RecuperarContrasenaPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
@@ -31,6 +32,7 @@ const ConfiguracionPage = lazy(() => import('@/features/configuracion/Configurac
 const AdministradoresPage = lazy(() => import('@/features/administradores/AdministradoresPage').then((m) => ({ default: m.AdministradoresPage })));
 const PedidosPage = lazy(() => import('@/features/pedidos/PedidosPage').then((m) => ({ default: m.PedidosPage })));
 const PedidoDetailPage = lazy(() => import('@/features/pedidos/PedidoDetailPage').then((m) => ({ default: m.PedidoDetailPage })));
+const AccesosPage = lazy(() => import('@/features/accesos/AccesosPage').then((m) => ({ default: m.AccesosPage })));
 const NotificacionesPage = lazy(() => import('@/features/notificaciones/NotificacionesPage').then((m) => ({ default: m.NotificacionesPage })));
 const NotificacionFormPage = lazy(() => import('@/features/notificaciones/NotificacionFormPage').then((m) => ({ default: m.NotificacionFormPage })));
 const NotificacionDetailPage = lazy(() => import('@/features/notificaciones/NotificacionDetailPage').then((m) => ({ default: m.NotificacionDetailPage })));
@@ -45,26 +47,27 @@ const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { path: '/', element: <DashboardPage />, handle: { titulo: 'Dashboard', subtitulo: 'Resumen general · ElderTech Backoffice' } },
-          { path: '/horarios', element: <HorariosPage />, handle: { titulo: 'Horarios' } },
-          { path: '/horarios/nueva', element: <ActividadFormPage />, handle: { titulo: 'Nueva actividad' } },
-          { path: '/horarios/:id/editar', element: <ActividadFormPage />, handle: { titulo: 'Editar actividad' } },
-          { path: '/tutoriales', element: <TutorialesPage />, handle: { titulo: 'Tutoriales' } },
-          { path: '/tutoriales/nuevo', element: <ArticuloFormPage />, handle: { titulo: 'Nuevo contenido' } },
-          { path: '/tutoriales/vistos', element: <TutorialesVistosPage />, handle: { titulo: 'Tutoriales vistos' } },
-          { path: '/tutoriales/:id/editar', element: <ArticuloFormPage />, handle: { titulo: 'Editar contenido' } },
-          { path: '/usuarios', element: <UsuariosPage />, handle: { titulo: 'Usuarios' } },
-          { path: '/usuarios/:id', element: <ResidenteDetailPage />, handle: { titulo: 'Perfil del residente' } },
-          { path: '/asistente', element: <AsistentePage />, handle: { titulo: 'Asistente / FAQ' } },
-          { path: '/auditoria', element: <AuditoriaPage />, handle: { titulo: 'Auditoría' } },
-          { path: '/configuracion', element: <ConfiguracionPage />, handle: { titulo: 'Configuración' } },
-          { path: '/administradores', element: <AdministradoresPage />, handle: { titulo: 'Administradores' } },
-          { path: '/pedidos', element: <PedidosPage />, handle: { titulo: 'Pedidos y Sugerencias' } },
-          { path: '/pedidos/:id', element: <PedidoDetailPage />, handle: { titulo: 'Detalle de solicitud' } },
-          { path: '/notificaciones', element: <NotificacionesPage />, handle: { titulo: 'Notificaciones' } },
-          { path: '/notificaciones/nueva', element: <NotificacionFormPage />, handle: { titulo: 'Nueva notificación' } },
-          { path: '/notificaciones/:id', element: <NotificacionDetailPage />, handle: { titulo: 'Detalle de notificación' } },
-          { path: '/notificaciones/:id/editar', element: <NotificacionFormPage />, handle: { titulo: 'Editar notificación' } },
+          { path: '/', element: <Inicio><DashboardPage /></Inicio>, handle: { titulo: 'Dashboard', subtitulo: 'Resumen general · ElderTech Backoffice' } },
+          { path: '/horarios', element: <RequireModulo modulo="horarios"><HorariosPage /></RequireModulo>, handle: { titulo: 'Horarios' } },
+          { path: '/horarios/nueva', element: <RequireModulo modulo="horarios" accion="crear"><ActividadFormPage /></RequireModulo>, handle: { titulo: 'Nueva actividad' } },
+          { path: '/horarios/:id/editar', element: <RequireModulo modulo="horarios" accion="editar"><ActividadFormPage /></RequireModulo>, handle: { titulo: 'Editar actividad' } },
+          { path: '/tutoriales', element: <RequireModulo modulo="tutoriales"><TutorialesPage /></RequireModulo>, handle: { titulo: 'Tutoriales' } },
+          { path: '/tutoriales/nuevo', element: <RequireModulo modulo="tutoriales" accion="crear"><ArticuloFormPage /></RequireModulo>, handle: { titulo: 'Nuevo contenido' } },
+          { path: '/tutoriales/vistos', element: <RequireModulo modulo="tutoriales"><TutorialesVistosPage /></RequireModulo>, handle: { titulo: 'Tutoriales vistos' } },
+          { path: '/tutoriales/:id/editar', element: <RequireModulo modulo="tutoriales" accion="editar"><ArticuloFormPage /></RequireModulo>, handle: { titulo: 'Editar contenido' } },
+          { path: '/usuarios', element: <RequireModulo modulo="usuarios"><UsuariosPage /></RequireModulo>, handle: { titulo: 'Usuarios' } },
+          { path: '/usuarios/:id', element: <RequireModulo modulo="usuarios"><ResidenteDetailPage /></RequireModulo>, handle: { titulo: 'Perfil del residente' } },
+          { path: '/asistente', element: <RequireModulo modulo="asistente"><AsistentePage /></RequireModulo>, handle: { titulo: 'Asistente / FAQ' } },
+          { path: '/auditoria', element: <RequireModulo modulo="auditoria"><AuditoriaPage /></RequireModulo>, handle: { titulo: 'Auditoría' } },
+          { path: '/configuracion', element: <RequireModulo modulo="configuracion"><ConfiguracionPage /></RequireModulo>, handle: { titulo: 'Configuración' } },
+          { path: '/administradores', element: <RequireModulo modulo="administradores"><AdministradoresPage /></RequireModulo>, handle: { titulo: 'Administradores' } },
+          { path: '/accesos', element: <RequireModulo modulo="accesos"><AccesosPage /></RequireModulo>, handle: { titulo: 'Accesos', subtitulo: 'Permisos de cada usuario por módulo' } },
+          { path: '/pedidos', element: <RequireModulo modulo="pedidos"><PedidosPage /></RequireModulo>, handle: { titulo: 'Pedidos y Sugerencias' } },
+          { path: '/pedidos/:id', element: <RequireModulo modulo="pedidos"><PedidoDetailPage /></RequireModulo>, handle: { titulo: 'Detalle de solicitud' } },
+          { path: '/notificaciones', element: <RequireModulo modulo="notificaciones"><NotificacionesPage /></RequireModulo>, handle: { titulo: 'Notificaciones' } },
+          { path: '/notificaciones/nueva', element: <RequireModulo modulo="notificaciones" accion="crear"><NotificacionFormPage /></RequireModulo>, handle: { titulo: 'Nueva notificación' } },
+          { path: '/notificaciones/:id', element: <RequireModulo modulo="notificaciones"><NotificacionDetailPage /></RequireModulo>, handle: { titulo: 'Detalle de notificación' } },
+          { path: '/notificaciones/:id/editar', element: <RequireModulo modulo="notificaciones" accion="editar"><NotificacionFormPage /></RequireModulo>, handle: { titulo: 'Editar notificación' } },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

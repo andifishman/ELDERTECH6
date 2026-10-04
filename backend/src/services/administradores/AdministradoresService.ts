@@ -2,6 +2,7 @@ import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/administradoresRepository';
 import * as auditService from '../audit/AuditService';
+import * as accessService from '../access/AccessService';
 import { SUPER_ADMIN_IDS } from '../../config/superAdmins';
 import { StatusCodes } from 'http-status-codes';
 
@@ -37,6 +38,10 @@ export async function cambiarRol(user: AuthUser, id: string, rol: repo.RolUsuari
   }
 
   await repo.actualizarRol(id, rol);
+  // Los permisos por módulo acompañan al acceso: quien entra al backoffice arranca con lo mínimo
+  // (ver el Dashboard) y quien sale pierde todo. El Super Admin después ajusta desde Accesos.
+  if (rol === 'residente') await accessService.quitarPermisos(id);
+  else await accessService.darPermisosIniciales(user, id);
   await auditService.registrarAuditoria(user, {
     accion: 'editar',
     tabla: 'perfiles_usuario',

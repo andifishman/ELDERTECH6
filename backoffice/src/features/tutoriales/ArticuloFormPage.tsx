@@ -23,6 +23,7 @@ import {
   usePasosTutorial,
 } from './useArticulos';
 import type { FormatoTutorial, DispositivoTutorial } from '@/types/database.types';
+import { usePermisos } from '@/hooks/usePermisos';
 
 interface CamposPrincipales {
   titulo: string;
@@ -58,6 +59,7 @@ export function ArticuloFormPage() {
   const { data: pasosExistentes } = usePasosTutorial(id);
   const guardar = useGuardarArticulo();
   const eliminar = useEliminarArticulo();
+  const permisos = usePermisos('tutoriales');
   const crearCategoria = useCrearCategoriaTutorial();
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
 
@@ -640,7 +642,7 @@ export function ArticuloFormPage() {
 
         {/* Acciones */}
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {esEdicion && tutorial ? (
+          {esEdicion && tutorial && permisos.puedeEliminar ? (
             <Button
               type="button"
               variant="outline"

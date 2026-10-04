@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { LoadingState } from '@/components/common/states';
 import { notify } from '@/components/ui/toast';
 import type { Organizacion } from '@/types/database.types';
+import { usePermisos } from '@/hooks/usePermisos';
 
 interface Campos {
   nombre: string;
@@ -35,6 +36,7 @@ async function obtenerOrganizacion(): Promise<Organizacion | null> {
 
 export function ConfiguracionPage() {
   const qc = useQueryClient();
+  const permisos = usePermisos('configuracion');
   const { data, isLoading } = useQuery({ queryKey: queryKeys.organizacion, queryFn: obtenerOrganizacion });
   const { register, handleSubmit, reset } = useForm<Campos>();
 
@@ -102,7 +104,7 @@ export function ConfiguracionPage() {
               </div>
             </div>
             <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={guardar.isPending}>
+              <Button type="submit" disabled={guardar.isPending || !permisos.puedeEditar} title={permisos.puedeEditar ? undefined : 'Tu usuario solo puede ver esta sección'}>
                 <Save className="h-4 w-4" /> {guardar.isPending ? 'Guardando…' : 'Guardar cambios'}
               </Button>
             </div>

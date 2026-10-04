@@ -26,7 +26,7 @@ import type { Faq } from '@/types/backoffice.types';
 interface Campos { pregunta: string; categoria: string; emoji: string; }
 
 export function AsistentePage() {
-  const permisos = usePermisos();
+  const permisos = usePermisos('asistente');
   const faqs = useFaqs();
   const stats = useAsistenteStats();
   const historial = useHistorialMensajes();

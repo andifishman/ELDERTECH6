@@ -87,12 +87,61 @@ export interface DashboardKpis {
   tutorialMasVisto: { titulo: string; vistas: number } | null;
 }
 
-// Permisos derivados del rol — fuente única de verdad para la UI
+// ─── Permisos por módulo ─────────────────────────────────────────────────────
+// Cada sección del backoffice es un módulo, y cada usuario tiene ver / crear /
+// editar / eliminar por módulo (tabla modulo_usuario). El "Super Super Admin"
+// (allowlist de emails) tiene todo. Fuente de verdad: el backend — esto es solo
+// lo que la UI usa para mostrar u ocultar cosas; el servidor igual lo verifica.
+export type ModuloId =
+  | 'dashboard'
+  | 'horarios'
+  | 'tutoriales'
+  | 'usuarios'
+  | 'pedidos'
+  | 'notificaciones'
+  | 'asistente'
+  | 'auditoria'
+  | 'configuracion'
+  | 'administradores'
+  | 'accesos';
+
+export type AccionModulo = 'ver' | 'crear' | 'editar' | 'eliminar';
+
+export interface PermisoModulo {
+  moduloId: string;
+  ver: boolean;
+  crear: boolean;
+  editar: boolean;
+  eliminar: boolean;
+}
+
+export interface ModuloInfo {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  orden: number;
+  asignable: boolean;
+}
+
+export interface MisPermisos {
+  isSuperAdmin: boolean;
+  rol: string | null;
+  permisos: PermisoModulo[];
+}
+
+export interface UsuarioConAccesos {
+  id: string;
+  username: string;
+  rol: 'residente' | 'admin' | 'staff';
+  activo: boolean;
+  esSuperAdmin: boolean;
+  permisos: PermisoModulo[];
+}
+
+// Lo que una pantalla necesita saber de SU módulo
 export interface Permisos {
+  puedeVer: boolean;
   puedeCrear: boolean;
   puedeEditar: boolean;
   puedeEliminar: boolean;
-  puedeGestionarUsuarios: boolean;
-  puedeConfigurar: boolean;
-  puedeGestionarAdmins: boolean; // solo super_admin puede promover/degradar roles
 }

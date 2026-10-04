@@ -1,8 +1,9 @@
 // ========================================
 // CONFIG: Navegación del Sidebar
 // DESCRIPCIÓN:
-// Define los ítems del menú lateral, su ícono, ruta y
-// el permiso requerido para verlos.
+// Define los ítems del menú lateral, su ícono, ruta y el módulo
+// cuyo permiso "ver" hace falta para mostrarlos. Los módulos
+// "accesos" y "administradores" son solo del Super Super Admin.
 // ========================================
 import {
   LayoutDashboard,
@@ -13,30 +14,30 @@ import {
   Settings,
   History,
   ShieldCheck,
+  KeyRound,
   Inbox,
   Bell,
   type LucideIcon,
 } from 'lucide-react';
-import type { Permisos } from '@/types/backoffice.types';
+import type { ModuloId } from '@/types/backoffice.types';
 
 export interface NavItem {
   label: string;
   to: string;
   icon: LucideIcon;
-  // función que decide si el ítem es visible según los permisos
-  visible?: (p: Permisos) => boolean;
+  modulo: ModuloId;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', to: '/', icon: LayoutDashboard },
-  { label: 'Horarios', to: '/horarios', icon: CalendarClock },
-  { label: 'Tutoriales', to: '/tutoriales', icon: GraduationCap },
-  { label: 'Usuarios', to: '/usuarios', icon: Users, visible: (p) => p.puedeGestionarUsuarios },
-  { label: 'Pedidos y Sugerencias', to: '/pedidos', icon: Inbox },
-  { label: 'Notificaciones', to: '/notificaciones', icon: Bell },
-  { label: 'Asistente / FAQ', to: '/asistente', icon: Bot },
-  { label: 'Residentes', to: '/usuarios', icon: Users, visible: (p) => !p.puedeGestionarUsuarios },
-  { label: 'Auditoría', to: '/auditoria', icon: History, visible: (p) => p.puedeGestionarUsuarios },
-  { label: 'Configuración', to: '/configuracion', icon: Settings, visible: (p) => p.puedeConfigurar },
-  { label: 'Administradores', to: '/administradores', icon: ShieldCheck, visible: (p) => p.puedeGestionarAdmins },
+  { label: 'Dashboard', to: '/', icon: LayoutDashboard, modulo: 'dashboard' },
+  { label: 'Horarios', to: '/horarios', icon: CalendarClock, modulo: 'horarios' },
+  { label: 'Tutoriales', to: '/tutoriales', icon: GraduationCap, modulo: 'tutoriales' },
+  { label: 'Usuarios', to: '/usuarios', icon: Users, modulo: 'usuarios' },
+  { label: 'Pedidos y Sugerencias', to: '/pedidos', icon: Inbox, modulo: 'pedidos' },
+  { label: 'Notificaciones', to: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
+  { label: 'Asistente / FAQ', to: '/asistente', icon: Bot, modulo: 'asistente' },
+  { label: 'Auditoría', to: '/auditoria', icon: History, modulo: 'auditoria' },
+  { label: 'Configuración', to: '/configuracion', icon: Settings, modulo: 'configuracion' },
+  { label: 'Administradores', to: '/administradores', icon: ShieldCheck, modulo: 'administradores' },
+  { label: 'Accesos', to: '/accesos', icon: KeyRound, modulo: 'accesos' },
 ];

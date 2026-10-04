@@ -45,7 +45,7 @@ const BORDE_PAPELERA = 'border-l-8 border-destructive/60';
 
 export function TutorialesPage() {
   const navigate = useNavigate();
-  const permisos = usePermisos();
+  const permisos = usePermisos('tutoriales');
   const { data, isLoading, isError, refetch } = useArticulos();
   const eliminar = useEliminarArticulo();
   useRealtime('tutoriales', [queryKeys.tutoriales]);

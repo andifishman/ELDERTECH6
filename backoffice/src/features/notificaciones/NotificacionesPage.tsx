@@ -6,6 +6,7 @@
 // ========================================
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePermisos } from '@/hooks/usePermisos';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Search, Bell, Plus, Copy, Trash2, Send, Ban, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -60,6 +61,7 @@ const TIPO_LABEL: Record<string, string> = {
 const POR_PAGINA = 15;
 
 export function NotificacionesPage() {
+  const permisos = usePermisos('notificaciones');
   const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState('');
   const [estado, setEstado] = useState<EstadoNotificacion | 'todas'>('todas');
@@ -87,9 +89,11 @@ export function NotificacionesPage() {
         titulo="Notificaciones"
         descripcion="Enviá comunicados push a los residentes."
         acciones={
-          <Button onClick={() => navigate('/notificaciones/nueva')}>
-            <Plus className="h-4 w-4" /> Nueva notificación
-          </Button>
+          permisos.puedeCrear && (
+            <Button onClick={() => navigate('/notificaciones/nueva')}>
+              <Plus className="h-4 w-4" /> Nueva notificación
+            </Button>
+          )
         }
       />
 
@@ -155,27 +159,31 @@ export function NotificacionesPage() {
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
-                          {(n.estado === 'borrador' || n.estado === 'programada') && (
+                          {permisos.puedeEditar && (n.estado === 'borrador' || n.estado === 'programada') && (
                             <Button variant="ghost" size="sm" title="Enviar ahora" onClick={() => enviarAhora.mutate(n.id)}>
                               <Send className="h-4 w-4" />
                             </Button>
                           )}
-                          {n.estado === 'programada' && (
+                          {permisos.puedeEditar && n.estado === 'programada' && (
                             <Button variant="ghost" size="sm" title="Cancelar programación" onClick={() => cancelar.mutate(n.id)}>
                               <Ban className="h-4 w-4" />
                             </Button>
                           )}
-                          {(n.estado === 'enviada' || n.estado === 'fallida') && (
+                          {permisos.puedeEditar && (n.estado === 'enviada' || n.estado === 'fallida') && (
                             <Button variant="ghost" size="sm" title="Reenviar" onClick={() => reenviar.mutate(n.id)}>
                               <RotateCw className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" title="Duplicar" onClick={() => duplicar.mutate(n.id)}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" title="Eliminar" onClick={() => setAEliminar(n.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          {permisos.puedeCrear && (
+                            <Button variant="ghost" size="sm" title="Duplicar" onClick={() => duplicar.mutate(n.id)}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {permisos.puedeEliminar && (
+                            <Button variant="ghost" size="sm" title="Eliminar" onClick={() => setAEliminar(n.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

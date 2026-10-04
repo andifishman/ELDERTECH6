@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { notify } from '@/components/ui/toast';
+import { usePermisos } from '@/hooks/usePermisos';
 import { iniciales } from '@/lib/utils';
 import {
   usePedidoDetalle,
@@ -50,6 +51,7 @@ const ESTADO_LABEL: Record<EstadoPedido, string> = {
 export function PedidoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const permisos = usePermisos('pedidos');
   const { data: pedido, isLoading, isError, refetch } = usePedidoDetalle(id);
   const actualizarEstado = useActualizarEstadoPedido();
   const eliminar = useEliminarPedido();
@@ -132,10 +134,10 @@ export function PedidoDetailPage() {
                   <span className="text-xs text-muted-foreground">
                     {pedido.transcripcion_estado === 'fallida' ? 'No se pudo transcribir este audio.' : 'Transcripción no disponible.'}
                   </span>
-                  <Button variant="outline" size="sm" onClick={() => reintentar.mutate(pedido.id)} disabled={reintentar.isPending}>
+                  {permisos.puedeEditar && <Button variant="outline" size="sm" onClick={() => reintentar.mutate(pedido.id)} disabled={reintentar.isPending}>
                     {reintentar.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                     Reintentar transcripción
-                  </Button>
+                  </Button>}
                 </div>
               )}
             </div>
@@ -147,24 +149,29 @@ export function PedidoDetailPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Acciones</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          {pedido.estado !== 'en_proceso' && (
+          {permisos.puedeEditar && pedido.estado !== 'en_proceso' && (
             <Button variant="outline" onClick={() => actualizarEstado.mutate({ id: pedido.id, estado: 'en_proceso' })} disabled={actualizarEstado.isPending}>
               En proceso
             </Button>
           )}
-          {pedido.estado !== 'resuelta' && (
+          {permisos.puedeEditar && pedido.estado !== 'resuelta' && (
             <Button onClick={() => actualizarEstado.mutate({ id: pedido.id, estado: 'resuelta' })} disabled={actualizarEstado.isPending}>
               <CheckCircle2 className="h-4 w-4" /> Marcar como resuelta
             </Button>
           )}
-          {pedido.estado !== 'pendiente' && (
+          {permisos.puedeEditar && pedido.estado !== 'pendiente' && (
             <Button variant="outline" onClick={() => actualizarEstado.mutate({ id: pedido.id, estado: 'pendiente' })} disabled={actualizarEstado.isPending}>
               <RotateCcw className="h-4 w-4" /> Volver a pendiente
             </Button>
           )}
-          <Button variant="destructive" className="ml-auto" onClick={() => setConfirmarEliminar(true)}>
-            <Trash2 className="h-4 w-4" /> Eliminar
-          </Button>
+          {permisos.puedeEliminar && (
+            <Button variant="destructive" className="ml-auto" onClick={() => setConfirmarEliminar(true)}>
+              <Trash2 className="h-4 w-4" /> Eliminar
+            </Button>
+          )}
+          {!permisos.puedeEditar && !permisos.puedeEliminar && (
+            <p className="text-sm text-muted-foreground">Tu usuario solo puede ver este pedido.</p>
+          )}
         </CardContent>
       </Card>
 

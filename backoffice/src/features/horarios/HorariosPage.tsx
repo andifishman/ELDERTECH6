@@ -38,7 +38,7 @@ function etiquetaRecurrencia(a: ActividadCompleta): string {
 
 export function HorariosPage() {
   const navigate = useNavigate();
-  const permisos = usePermisos();
+  const permisos = usePermisos('horarios');
   const [fecha, setFecha] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
   const [aEliminar, setAEliminar] = useState<ActividadCompleta | null>(null);
 
