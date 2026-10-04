@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Easing,
@@ -204,19 +205,31 @@ const NodoNivel = memo(function NodoNivel({
   const esJefe = esNivelJefeJardin(numero);
   const tam = esJefe ? TAM_NODO + 14 : TAM_NODO;
 
-  // el nivel actual "late" para llamar la atención
-  const pulso = useRef(new Animated.Value(0)).current;
+  // El nivel actual NO se anima todo el tiempo (cansa y distrae): el globo "¡Jugá!"
+  // flota suavemente 3 veces al entrar al mapa y después queda quieto. Si el celular
+  // tiene activado "reducir movimiento", no se anima nada.
+  const flote = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (estado !== 'actual') return;
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulso, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulso, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [estado, pulso]);
+    let cancelado = false;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reducir) => {
+        if (cancelado || reducir) return;
+        Animated.sequence(
+          Array.from({ length: 3 }, () =>
+            Animated.sequence([
+              Animated.timing(flote, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+              Animated.timing(flote, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+            ]),
+          ),
+        ).start();
+      });
+    return () => {
+      cancelado = true;
+      flote.stopAnimation();
+    };
+  }, [estado, flote]);
 
   const paleta: Record<EstadoNivel, { claro: string; oscuro: string; base: string }> = {
     bloqueado: { claro: '#CFD8DC', oscuro: '#90A4AE', base: '#607D8B' },
@@ -228,20 +241,9 @@ const NodoNivel = memo(function NodoNivel({
   return (
     <View style={[styles.nodoPosicion, { left: x - tam / 2, top: y - tam / 2, width: tam }]}>
       {estado === 'actual' && (
-        <Animated.View
+        <View
           pointerEvents="none"
-          style={[
-            styles.aro,
-            {
-              width: tam + 26,
-              height: tam + 26,
-              borderRadius: (tam + 26) / 2,
-              left: -13,
-              top: -13,
-              opacity: pulso.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0.2] }),
-              transform: [{ scale: pulso.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.12] }) }],
-            },
-          ]}
+          style={[styles.aro, { width: tam + 22, height: tam + 22, borderRadius: (tam + 22) / 2, left: -11, top: -11 }]}
         />
       )}
 
@@ -291,12 +293,15 @@ const NodoNivel = memo(function NodoNivel({
 
       {/* globo sobre el nivel actual */}
       {estado === 'actual' && (
-        <View style={styles.globoWrap} pointerEvents="none">
+        <Animated.View
+          style={[styles.globoWrap, { transform: [{ translateY: flote.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }] }]}
+          pointerEvents="none"
+        >
           <View style={styles.globo}>
             <Text style={styles.globoTexto}>¡Jugá!</Text>
           </View>
           <View style={styles.globoPunta} />
-        </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -513,7 +518,7 @@ const styles = StyleSheet.create({
 
   // nodo
   nodoPosicion: { position: 'absolute', alignItems: 'center' },
-  aro: { position: 'absolute', borderWidth: 4, borderColor: '#FFB300', backgroundColor: 'rgba(255,193,7,0.25)' },
+  aro: { position: 'absolute', borderWidth: 4, borderColor: '#FFB300', backgroundColor: 'rgba(255,193,7,0.22)' },
   nodoBase: {
     position: 'absolute',
     top: 8,

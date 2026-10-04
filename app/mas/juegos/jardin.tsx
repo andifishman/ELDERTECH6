@@ -26,9 +26,11 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
   withSequence,
+  withDelay,
+  Easing,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,7 +49,7 @@ const FILAS = 6;
 const COLUMNAS = 6;
 const MOVIMIENTOS_INICIALES = 20;
 const ESPERA_RESALTADO_MS = 320;
-const ESPERA_GRAVEDAD_MS = 260;
+const ESPERA_GRAVEDAD_MS = 320;
 const ESPERA_ESPECIAL_MS = 90;
 const UMBRAL_ARRASTRE = 14;
 
@@ -413,44 +415,59 @@ interface CaramelloProps {
   invalida: boolean;
 }
 
+// Principios de movimiento (pensados para adultos mayores): todo es suave y
+// predecible — curvas de salida lentas, sin rebotes ni "resortes", nada crece
+// más de un 6% y nada se anima si no pasó algo (un toque, una jugada). Si el
+// celular tiene activado "reducir movimiento", las piezas se mueven sin animar.
+const SUAVE = Easing.out(Easing.cubic);
+const SUAVE_IN_OUT = Easing.inOut(Easing.quad);
+const DUR_MOVER = 300;
+
 function Caramelo({ pieza, fila, columna, tamano, seleccionada, resaltada, invalida }: CaramelloProps) {
   const info = CARAMELOS[pieza.tipo];
+  const reducir = useReducedMotion();
+  const dur = (ms: number) => (reducir ? 0 : ms);
   const top = useSharedValue(fila * tamano - tamano * 0.4);
   const left = useSharedValue(columna * tamano);
-  const escala = useSharedValue(0);
-  const rotacion = useSharedValue(0);
+  const escala = useSharedValue(1);
+  const opacidad = useSharedValue(0);
+  const desvio = useSharedValue(0);
   const primerRenderRef = useRef(true);
 
   useEffect(() => {
     if (primerRenderRef.current) {
+      // pieza nueva: baja desde un poco más arriba apareciendo de a poco, sin rebote
       primerRenderRef.current = false;
-      top.value = withSpring(fila * tamano, { damping: 12, stiffness: 140 });
+      top.value = withTiming(fila * tamano, { duration: dur(DUR_MOVER), easing: SUAVE });
       left.value = columna * tamano;
-      escala.value = withSpring(1, { damping: 11, stiffness: 160 });
+      opacidad.value = withTiming(1, { duration: dur(DUR_MOVER) });
       return;
     }
-    top.value = withSpring(fila * tamano, { damping: 13, stiffness: 120 });
-    left.value = withSpring(columna * tamano, { damping: 13, stiffness: 120 });
+    top.value = withTiming(fila * tamano, { duration: dur(DUR_MOVER), easing: SUAVE });
+    left.value = withTiming(columna * tamano, { duration: dur(DUR_MOVER), easing: SUAVE });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fila, columna, tamano]);
 
   useEffect(() => {
     if (primerRenderRef.current) return;
     if (resaltada) {
-      escala.value = withSequence(withTiming(1.35, { duration: 140 }), withTiming(0, { duration: 180 }));
+      // al combinarse la pieza se achica y se desvanece (no crece primero)
+      escala.value = withTiming(0.7, { duration: dur(260), easing: SUAVE_IN_OUT });
+      opacidad.value = withTiming(0, { duration: dur(260), easing: SUAVE_IN_OUT });
     } else {
-      escala.value = withSpring(seleccionada ? 1.14 : 1, { damping: 9, stiffness: 170 });
+      // seleccionada: apenas más grande (+6%); el resalte principal es el aro fijo de abajo
+      escala.value = withTiming(seleccionada && !reducir ? 1.06 : 1, { duration: dur(160), easing: SUAVE });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seleccionada, resaltada]);
 
   useEffect(() => {
-    if (invalida) {
-      rotacion.value = withSequence(
-        withTiming(-7, { duration: 55 }),
-        withTiming(7, { duration: 55 }),
-        withTiming(-5, { duration: 55 }),
-        withTiming(0, { duration: 55 }),
+    if (invalida && !reducir) {
+      // jugada que no se puede: un corrimiento chico y lento hacia los costados
+      desvio.value = withSequence(
+        withTiming(-4, { duration: 110, easing: SUAVE_IN_OUT }),
+        withTiming(4, { duration: 160, easing: SUAVE_IN_OUT }),
+        withTiming(0, { duration: 110, easing: SUAVE_IN_OUT }),
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -462,7 +479,8 @@ function Caramelo({ pieza, fila, columna, tamano, seleccionada, resaltada, inval
     left: left.value,
     width: tamano,
     height: tamano,
-    transform: [{ scale: escala.value }, { rotate: `${rotacion.value}deg` }],
+    opacity: opacidad.value,
+    transform: [{ translateX: desvio.value }, { scale: escala.value }],
   }));
 
   const relleno = tamano * 0.07;
@@ -491,6 +509,28 @@ function Caramelo({ pieza, fila, columna, tamano, seleccionada, resaltada, inval
           </LinearGradient>
         )}
       </View>
+    </Animated.View>
+  );
+}
+
+// Estrellas del resultado: aparecen una por una, con un fundido suave y un
+// crecimiento mínimo (de 85% a 100%), sin rebote. Con "reducir movimiento"
+// aparecen todas juntas de una vez.
+function EstrellaResultado({ indice, ganada }: { indice: number; ganada: boolean }) {
+  const reducir = useReducedMotion();
+  const opacidad = useSharedValue(reducir ? 1 : 0);
+  const escala = useSharedValue(reducir ? 1 : 0.85);
+  useEffect(() => {
+    if (reducir) return;
+    const demora = 350 + indice * 400;
+    opacidad.value = withDelay(demora, withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) }));
+    escala.value = withDelay(demora, withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const estilo = useAnimatedStyle(() => ({ opacity: opacidad.value, transform: [{ scale: escala.value }] }));
+  return (
+    <Animated.View style={estilo}>
+      <Ionicons name={ganada ? 'star' : 'star-outline'} size={40} color={ganada ? '#F9A825' : '#CFD8DC'} />
     </Animated.View>
   );
 }
@@ -527,6 +567,7 @@ export default function JardinScreen() {
   mejorPuntajeRef.current = mejorPuntaje;
   movimientosRef.current = movimientos;
 
+  const reducirMovimiento = useReducedMotion();
   const puntajeEscala = useSharedValue(1);
   const estiloPuntaje = useAnimatedStyle(() => ({ transform: [{ scale: puntajeEscala.value }] }));
 
@@ -538,7 +579,12 @@ export default function JardinScreen() {
 
   useEffect(() => {
     if (puntaje === 0) return;
-    puntajeEscala.value = withSequence(withTiming(1.25, { duration: 110 }), withSpring(1, { damping: 8, stiffness: 180 }));
+    if (reducirMovimiento) return;
+    // el puntaje "respira" apenas (8%) cuando suma, sin rebote
+    puntajeEscala.value = withSequence(
+      withTiming(1.08, { duration: 160, easing: Easing.out(Easing.quad) }),
+      withTiming(1, { duration: 240, easing: Easing.inOut(Easing.quad) }),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [puntaje]);
 
@@ -889,12 +935,7 @@ export default function JardinScreen() {
                 {resultadoNivel === 'ganado' && (
                   <View style={styles.estrellasGrandes}>
                     {[1, 2, 3].map((n) => (
-                      <Ionicons
-                        key={n}
-                        name={estrellasGanadas != null && n <= estrellasGanadas ? 'star' : 'star-outline'}
-                        size={36}
-                        color={estrellasGanadas != null && n <= estrellasGanadas ? '#F9A825' : '#CFD8DC'}
-                      />
+                      <EstrellaResultado key={n} indice={n - 1} ganada={estrellasGanadas != null && n <= estrellasGanadas} />
                     ))}
                   </View>
                 )}
