@@ -24,7 +24,7 @@ const DEFAULT: AccesibilidadConfig = {
   altoContraste: false,
 };
 
-const AccesibilidadContext = createContext<AccesibilidadContextValue>({
+export const AccesibilidadContext = createContext<AccesibilidadContextValue>({
   config: DEFAULT,
   escala: 1,
   setTamanoTexto: () => {},

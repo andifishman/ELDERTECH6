@@ -13,6 +13,8 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AccesibilidadProvider } from '@/context/AccesibilidadContext';
+import { instalarEscalaTexto } from '@/utils/escalaTexto';
 import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
 import { SonidoJuegosProvider } from '@/context/SonidoJuegosContext';
 import { ActivityIndicator, View, Text } from 'react-native';
@@ -42,6 +44,10 @@ import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNot
 import { marcarNotificacionAbierta } from '@/services/notificationsService';
 import { detenerHabla } from '@/utils/tts';
 import { cambiarEstadoRecordatorio } from '@/services/agendaService';
+import { useActualizacionAutomatica } from '@/hooks/useActualizacionAutomatica';
+
+// Hace que el ajuste Accesibilidad → Tamaño de texto agrande el texto de toda la app
+instalarEscalaTexto();
 
 /** Corta cualquier lectura en voz alta (botón "Escuchar") al cambiar de pantalla —
  * si no, el audio de una sección sigue sonando aunque el usuario ya se haya ido. */
@@ -148,6 +154,7 @@ export default function RootLayout() {
   useHideNavigationBar();
   useNotificationTapHandler();
   useStopSpeechOnNavigate();
+  useActualizacionAutomatica();
 
   if (apiUrlMisconfigurada) {
     return (
@@ -162,6 +169,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <QueryProvider>
+        <AccesibilidadProvider>
         <AuthProvider>
           <FavoritosProvider>
             <AsistenteConfigProvider>
@@ -200,6 +208,7 @@ export default function RootLayout() {
             </AsistenteConfigProvider>
           </FavoritosProvider>
         </AuthProvider>
+        </AccesibilidadProvider>
       </QueryProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>

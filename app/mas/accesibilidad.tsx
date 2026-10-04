@@ -113,7 +113,8 @@ export default function AccesibilidadScreen() {
                   accessibilityState={{ checked: activo }}
                 >
                   <View style={styles.opcionTextos}>
-                    <Text style={[
+                    {/* allowFontScaling={false}: cada opción se muestra a SU tamaño, sin sumarle el de la opción activa */}
+                    <Text allowFontScaling={false} style={[
                       styles.opcionEtiqueta,
                       { fontSize: 18 * getEscala(op.valor) },
                       activo && styles.opcionEtiquetaActiva,
