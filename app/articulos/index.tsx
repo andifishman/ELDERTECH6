@@ -1,5 +1,5 @@
 // Pantalla principal de Tutoriales — categorías, buscador y lista agrupada por función
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,6 +47,13 @@ export default function TutorialesScreen() {
     residenteId,
     categoriaSeleccionada,
   );
+
+  // Precarga las miniaturas de la lista para que las tarjetas no aparezcan vacías al deslizar
+  useEffect(() => {
+    for (const t of tutoriales) {
+      if (t.thumbnail_url) Image.prefetch(t.thumbnail_url).catch(() => null);
+    }
+  }, [tutoriales]);
 
   const handleRefresh = useCallback(() => {
     refetch();

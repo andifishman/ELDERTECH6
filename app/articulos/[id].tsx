@@ -12,6 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,6 +118,14 @@ export default function TutorialDetalleScreen() {
     setProgresoPct(0);
     completadoRef.current = false;
   }, [id]);
+
+  // Precarga las fotos de todos los pasos apenas llegan los datos: al tocar
+  // "Siguiente" la imagen ya está en caché y no hay espera.
+  useEffect(() => {
+    for (const p of pasos) {
+      if (p.imagen_url) Image.prefetch(p.imagen_url).catch(() => null);
+    }
+  }, [pasos]);
 
   // Cada paso tiene su propia foto — al cambiar de paso, volvemos a la
   // proporción por defecto hasta que la nueva imagen informe su tamaño real.

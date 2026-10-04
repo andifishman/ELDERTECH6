@@ -431,7 +431,7 @@ export async function subirImagenTutorial(carpeta: string, buffer: Buffer, conte
   const ext = originalName.split('.').pop() ?? 'jpg';
   const path = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  const { error } = await getSupabaseAdmin().storage.from('tutorial-images').upload(path, buffer, { contentType, upsert: false });
+  const { error } = await getSupabaseAdmin().storage.from('tutorial-images').upload(path, buffer, { contentType, upsert: false, cacheControl: '31536000' }); // nombre único por subida → caché de 1 año sin riesgo
   if (error) throw new Error(`Error al subir la imagen: ${error.message}`);
 
   const { data } = getSupabaseAdmin().storage.from('tutorial-images').getPublicUrl(path);

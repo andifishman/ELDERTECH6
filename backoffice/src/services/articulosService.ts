@@ -80,10 +80,36 @@ export async function eliminarDefinitivamente(id: string, titulo?: string): Prom
   await apiClient.delete<void>(`/api/admin/tutorials/${id}/permanent${query}`);
 }
 
+// Las capturas de celular pesan varios MB y se bajan por datos móviles en la
+// app — se achican antes de subir. 1280px de lado largo sobra para una pantalla
+// de celular; WebP a calidad 0.82 suele dejarlas en 100-250 KB.
+const IMAGEN_LADO_MAX = 1280;
+const IMAGEN_CALIDAD = 0.82;
+
+async function optimizarImagen(archivo: File): Promise<File> {
+  // GIF animado y SVG no se tocan (el canvas los aplanaría)
+  if (!archivo.type.startsWith('image/') || archivo.type === 'image/gif' || archivo.type === 'image/svg+xml') return archivo;
+  try {
+    const bitmap = await createImageBitmap(archivo);
+    const escala = Math.min(1, IMAGEN_LADO_MAX / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * escala);
+    canvas.height = Math.round(bitmap.height * escala);
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', IMAGEN_CALIDAD));
+    // Si no se pudo convertir o quedó más pesada que la original, se sube la original
+    if (!blob || blob.size >= archivo.size) return archivo;
+    return new File([blob], archivo.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+  } catch {
+    return archivo;
+  }
+}
+
 // Sube una imagen al bucket tutorial-images y devuelve la URL pública
 export async function subirImagenTutorial(archivo: File, carpeta = 'thumbnails'): Promise<string> {
   const form = new FormData();
-  form.append('archivo', archivo);
+  form.append('archivo', await optimizarImagen(archivo));
   const { url } = await apiClient.postForm<{ url: string }>(`/api/admin/tutorials/images?carpeta=${carpeta}`, form);
   return url;
 }
