@@ -3,7 +3,7 @@ import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/jardinNivelesRepository';
 import { StatusCodes } from 'http-status-codes';
 
-export const TOTAL_NIVELES_JARDIN = 30;
+export const TOTAL_NIVELES_JARDIN = 60;
 
 export type { ProgresoNivel } from '../../repositories/jardinNivelesRepository';
 
