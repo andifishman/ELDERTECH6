@@ -23,7 +23,6 @@ export interface PerfilAdmin {
 // El chequeo real (server-side) vive en AdministradoresService del backend;
 // esto es solo para no mostrar la opción en la UI antes de intentarlo.
 const SUPER_ADMIN_IDS = [
-  'b035a808-2a4b-4296-9a69-76ac491b1367', // andresfishman@gmail.com
   '9cb4b7a5-759b-432d-a805-bd4722954c88', // eldertech6@gmail.com
 ];
 

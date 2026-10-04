@@ -18,11 +18,11 @@ import { SUPER_ADMIN_IDS } from '../../config/superAdmins';
 import { guardarPermisos, obtenerMisPermisos } from './AccessService';
 import type { AuthUser } from '../../middlewares/auth';
 
-const [ID_SUPER_1 = 'super-1', ID_SUPER_2 = 'super-2'] = SUPER_ADMIN_IDS;
+const [ID_SUPER_1 = 'super-1'] = SUPER_ADMIN_IDS;
 
 const superAdmin: AuthUser = {
   supabaseUserId: ID_SUPER_1,
-  email: 'andresfishman@gmail.com',
+  email: 'eldertech6@gmail.com',
   residenteId: null,
   organizacionId: 'org',
   rol: 'residente',
@@ -49,8 +49,8 @@ describe('guardarPermisos', () => {
     expect(repo.reemplazarPermisosUsuario).toHaveBeenCalledWith('juan', [p('tutoriales', true, true, true, false)], superAdmin.supabaseUserId);
   });
 
-  it('no deja modificar a otro Super Admin', async () => {
-    await expect(guardarPermisos(superAdmin, ID_SUPER_2, [p('tutoriales', true)])).rejects.toMatchObject({ status: 403 });
+  it('no deja modificar a una cuenta Super Admin', async () => {
+    await expect(guardarPermisos(superAdmin, ID_SUPER_1, [p('tutoriales', true)])).rejects.toMatchObject({ status: 403 });
     expect(repo.reemplazarPermisosUsuario).not.toHaveBeenCalled();
   });
 

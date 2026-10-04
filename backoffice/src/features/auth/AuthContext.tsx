@@ -13,7 +13,7 @@ import { apiClient } from '@/lib/apiClient';
 import type { AccionModulo, MisPermisos, ModuloId, PerfilUsuario, RolBackoffice } from '@/types/backoffice.types';
 
 // Cuentas con acceso total al backoffice y gestión de administradores
-const SUPER_ADMIN_EMAILS = ['andresfishman@gmail.com', 'eldertech6@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['eldertech6@gmail.com'];
 
 function mapearRol(rawRol: string | null, email: string | null): RolBackoffice {
   if (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) return 'super_admin';

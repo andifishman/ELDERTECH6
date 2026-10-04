@@ -8,7 +8,6 @@ const CORS_HEADERS = {
 };
 
 const SUPER_ADMIN_IDS = [
-  'b035a808-2a4b-4296-9a69-76ac491b1367',
   '9cb4b7a5-759b-432d-a805-bd4722954c88',
 ];
 
