@@ -1,5 +1,6 @@
 // Servicio: Pedidos y Sugerencias — habla con el backend propio (nunca con Supabase directo).
 import { apiClient } from './apiClient';
+import { adjuntarAudio } from '@/utils/archivoForm';
 
 export type TipoPedido = 'pedido' | 'comentario' | 'sugerencia' | 'actividad_propuesta' | 'recomendacion_pelicula';
 export type EstadoPedido = 'pendiente' | 'en_proceso' | 'resuelta';
@@ -34,7 +35,7 @@ export async function enviarPedido(input: EnviarPedidoInput): Promise<PedidoSuge
   if (input.descripcion) form.append('descripcion', input.descripcion);
   if (input.duracionSegundos != null) form.append('duracionSegundos', String(input.duracionSegundos));
   if (input.audioUri) {
-    form.append('audio', { uri: input.audioUri, type: 'audio/m4a', name: 'audio.m4a' } as unknown as Blob);
+    await adjuntarAudio(form, input.audioUri);
   }
   return apiClient.postForm<PedidoSugerencia>('/api/requests', form);
 }

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Linking,
   Alert,
   ScrollView,
   Platform,
@@ -24,6 +23,7 @@ import { formatearTelefono, uploadFotoContacto } from '@/services/contactosServi
 import { useActualizarContacto } from '@/hooks/useContactos';
 import { pickImage, takePhoto } from '@/services/authService';
 import { hablar } from '@/utils/tts';
+import { abrirLlamada, abrirWhatsApp } from '@/utils/enlaces';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ContactoDetalleScreen() {
@@ -96,7 +96,7 @@ export default function ContactoDetalleScreen() {
     hablar(`Llamando a ${nombreCompleto}`);
 
     try {
-      await Linking.openURL(`tel:${tel}`);
+      await abrirLlamada(tel);
     } catch {
       Alert.alert(
         'No disponible',
@@ -111,33 +111,17 @@ export default function ContactoDetalleScreen() {
     const tel = params.telefono;
     if (!tel) return;
 
-    // Número limpio sin el "+" para wa.me
-    const numLimpio = tel.replace(/\D/g, '');
-
-    // URL oficial de WhatsApp Click-to-Chat
-    // Formato: https://wa.me/<número_internacional_sin_+>
-    const urlWa = `https://wa.me/${numLimpio}`;
-
-    // Fallback con esquema nativo (mejor en algunos dispositivos Android)
-    const urlNativa = `whatsapp://send?phone=${numLimpio}`;
-
     hablar(`Abriendo WhatsApp de ${nombreCompleto}`);
 
     try {
-      // Esquema nativo primero (abre directo la app).
-      // No usar canOpenURL: en Android 11+ miente sin <queries> en el manifest.
-      await Linking.openURL(urlNativa);
+      // nativo: esquema whatsapp:// con respaldo a wa.me · web: wa.me (ver utils/enlaces.ts)
+      await abrirWhatsApp(tel);
     } catch {
-      try {
-        // Fallback a URL web (si WhatsApp no está instalado, abre whatsapp.com)
-        await Linking.openURL(urlWa);
-      } catch {
-        Alert.alert(
-          'WhatsApp no disponible',
-          'No se pudo abrir WhatsApp. Verificá que esté instalado.',
-          [{ text: 'Aceptar' }],
-        );
-      }
+      Alert.alert(
+        'WhatsApp no disponible',
+        'No se pudo abrir WhatsApp. Verificá que esté instalado.',
+        [{ text: 'Aceptar' }],
+      );
     }
   }, [params.telefono, nombreCompleto]);
 

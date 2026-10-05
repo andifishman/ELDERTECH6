@@ -1,4 +1,5 @@
 import { env } from '../../config/env';
+import { esTokenWeb, sendWebPushMessages } from './WebPushProvider';
 
 const EXPO_PUSH_SEND_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_PUSH_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
@@ -57,6 +58,29 @@ function headers(): Record<string, string> {
  * (los recibos tardan un rato en estar listos y expiran a las 24hs).
  */
 export async function sendPushMessages(messages: ExpoPushMessage[]): Promise<ExpoPushTicket[]> {
+  // Los destinos "webpush:…" (navegadores/PWA) van por Web Push; el resto por Expo. Se arma un
+  // arreglo de tickets alineado con la entrada para que los llamadores no noten la diferencia.
+  const tickets: ExpoPushTicket[] = new Array(messages.length);
+  const indicesWeb: number[] = [];
+  const indicesExpo: number[] = [];
+  messages.forEach((m, i) => (esTokenWeb(m.to) ? indicesWeb : indicesExpo).push(i));
+
+  if (indicesWeb.length > 0) {
+    const resultados = await sendWebPushMessages(indicesWeb.map((i) => messages[i] as ExpoPushMessage));
+    indicesWeb.forEach((original, k) => {
+      tickets[original] = resultados[k] as ExpoPushTicket;
+    });
+  }
+  if (indicesExpo.length > 0) {
+    const resultados = await sendExpoPushMessages(indicesExpo.map((i) => messages[i] as ExpoPushMessage));
+    indicesExpo.forEach((original, k) => {
+      tickets[original] = resultados[k] as ExpoPushTicket;
+    });
+  }
+  return tickets;
+}
+
+async function sendExpoPushMessages(messages: ExpoPushMessage[]): Promise<ExpoPushTicket[]> {
   const tickets: ExpoPushTicket[] = [];
   for (const batch of chunk(messages, BATCH_SIZE)) {
     const res = await fetch(EXPO_PUSH_SEND_URL, {
