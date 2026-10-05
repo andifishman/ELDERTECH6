@@ -40,7 +40,7 @@ interface SeleccionarContactoModalProps {
     apellido?: string;
     telefono: string;
     foto_url?: string;
-    contacto_device_id: string;
+    contacto_device_id?: string;
   }) => void;
 }
 

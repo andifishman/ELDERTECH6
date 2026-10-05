@@ -18,7 +18,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-import { WebView } from 'react-native-webview';
+import { VideoYoutube } from '@/components/tutoriales/VideoYoutube';
 import { AppHeader } from '@/components/common/AppHeader';
 import { TutorialImage } from '@/components/tutoriales/TutorialImage';
 import { useAuth } from '@/context/AuthContext';
@@ -48,30 +48,11 @@ const STEP_PHOTO_DEFAULT_RATIO = 9 / 19.5; // proporción típica de un celular 
 // El reproductor nativo de expo-av solo puede reproducir un archivo de video
 // directo (mp4, etc.) — no una página de YouTube. El backoffice permite
 // pegar cualquiera de los dos en el campo "Video", así que acá se detecta un
-// link de YouTube y se muestra embebido (WebView) en vez de intentar
+// link de YouTube y se muestra embebido (WebView en nativo, iframe en web) en vez de intentar
 // reproducirlo como si fuera un archivo, que fallaba en silencio.
 function extraerIdDeYoutube(url: string): string | null {
   const match = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.exec(url);
   return match ? match[1] : null;
-}
-
-// Navegar el WebView DIRECTO a la URL de youtube.com/embed/... da "Error 153"
-// (YouTube rechaza el origen/referrer de esa navegación de nivel superior).
-// Envolver el iframe en una página HTML propia (`source.html` en vez de
-// `source.uri`) no alcanza solo: YouTube exige que el origen sea válido,
-// y sin `baseUrl` la página queda en el origen "null"/about:blank, que
-// YouTube también rechaza. Hace falta un `baseUrl` (WebView) que combine
-// con el parámetro `origin` del iframe — ver issue #3889 de
-// react-native-webview, confirmado por varios devs.
-const ORIGEN_EMBED = 'https://eldertech.app';
-
-function htmlEmbedYoutube(youtubeId: string): string {
-  return `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#000;overflow:hidden;">
-<iframe src="https://www.youtube.com/embed/${youtubeId}?playsinline=1&origin=${ORIGEN_EMBED}" width="100%" height="100%" frameborder="0" referrerpolicy="strict-origin-when-cross-origin"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen
-  style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
-</body></html>`;
 }
 
 export default function TutorialDetalleScreen() {
@@ -258,16 +239,7 @@ export default function TutorialDetalleScreen() {
         <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
           <View style={styles.videoCard}>
             {youtubeId ? (
-              <WebView
-                style={{ width: VIDEO_W, height: VIDEO_H }}
-                source={{ html: htmlEmbedYoutube(youtubeId), baseUrl: ORIGEN_EMBED }}
-                allowsFullscreenVideo
-                allowsInlineMediaPlayback
-                javaScriptEnabled
-                domStorageEnabled
-                mediaPlaybackRequiresUserAction={false}
-                originWhitelist={['*']}
-              />
+              <VideoYoutube youtubeId={youtubeId} ancho={VIDEO_W} alto={VIDEO_H} />
             ) : tutorial.url_video ? (
               <Video
                 ref={videoRef}

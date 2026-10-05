@@ -45,7 +45,13 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/logo-puente.png"
+      "favicon": "./public/icons/favicon-48.png",
+      "name": "ElderTech",
+      "shortName": "ElderTech",
+      "lang": "es-AR",
+      "description": "ElderTech — la app para residentes: horarios, llamadas, radio, asistente y más, con botones grandes y fáciles de usar.",
+      "themeColor": "#1B5E3B",
+      "backgroundColor": "#1B5E3B"
     },
     "plugins": [
       "expo-router",

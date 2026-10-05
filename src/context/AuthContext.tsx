@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
@@ -183,6 +184,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_OUT') {
           // No borramos el cache en logout: el dispositivo es de un solo residente
           // y el cache es por uid. En el próximo login se restaura instantáneamente.
+          // En web el navegador puede ser compartido: ahi si se borra el perfil guardado (nombre, habitacion).
+          if (Platform.OS === 'web' && currentUidRef.current) void clearCache(currentUidRef.current);
           currentUidRef.current = null;
           setProfile(null);
           setIsLoading(false);

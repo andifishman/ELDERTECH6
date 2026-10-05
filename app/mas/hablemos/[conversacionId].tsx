@@ -17,7 +17,8 @@ import {
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { Audio } from '@/utils/audioCompat';
+import { pedirPermisoMicrofono, iniciarGrabacion as crearGrabacion, finalizarModoGrabacion, type Grabacion } from '@/utils/grabadora';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/Colors';
@@ -80,7 +81,7 @@ export default function HablemosChatScreen() {
   const [mostrarOpcionesFoto, setMostrarOpcionesFoto] = useState(false);
   const [fotoAmpliadaUrl, setFotoAmpliadaUrl] = useState<string | null>(null);
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recordingRef = useRef<Grabacion | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const inicioGrabacionRef = useRef<number>(0);
 
@@ -131,14 +132,12 @@ export default function HablemosChatScreen() {
 
   const iniciarGrabacion = useCallback(async () => {
     try {
-      const { granted } = await Audio.requestPermissionsAsync();
-      if (!granted) {
-        Alert.alert('Permiso de micrófono', 'Para grabar audio, activá el permiso en los ajustes del teléfono.');
+      const permiso = await pedirPermisoMicrofono();
+      if (!permiso.granted) {
+        Alert.alert('Permiso de micrófono', permiso.mensaje);
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      recordingRef.current = recording;
+      recordingRef.current = await crearGrabacion();
       inicioGrabacionRef.current = Date.now();
       setGrabando(true);
     } catch (err) {
@@ -156,7 +155,7 @@ export default function HablemosChatScreen() {
     let duracion = 0;
     try {
       await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      await finalizarModoGrabacion();
       uri = recording.getURI();
       duracion = Math.max(1, Math.round((Date.now() - inicioGrabacionRef.current) / 1000));
     } catch (err) {
@@ -185,7 +184,7 @@ export default function HablemosChatScreen() {
     if (!recording) return;
     try {
       await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      await finalizarModoGrabacion();
     } catch {}
   }, []);
 

@@ -2,7 +2,7 @@
 // ElderTech, Bloques ElderTech). Respeta la preferencia global de sonido
 // (SonidoJuegosContext) — si está apagado, no carga ni reproduce nada.
 import { useCallback, useEffect, useRef } from 'react';
-import { Audio } from 'expo-av';
+import { Audio } from '@/utils/audioCompat';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 
 const ARCHIVOS = {

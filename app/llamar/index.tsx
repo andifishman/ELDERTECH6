@@ -65,7 +65,7 @@ export default function LlamarScreen() {
     apellido?: string;
     telefono: string;
     foto_url?: string;
-    contacto_device_id: string;
+    contacto_device_id?: string;
   }) => {
     if (!residenteId) return;
 
@@ -84,8 +84,8 @@ export default function LlamarScreen() {
         telefono: datos.telefono,
         foto_url: null,
         whatsapp_disponible: true,
-        origen_contacto: 'dispositivo',
-        contacto_device_id: datos.contacto_device_id,
+        origen_contacto: datos.contacto_device_id ? 'dispositivo' : 'manual',
+        contacto_device_id: datos.contacto_device_id ?? null,
         favorito: false,
         orden: contactos.length,
       });
