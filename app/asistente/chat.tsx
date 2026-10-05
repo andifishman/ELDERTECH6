@@ -23,7 +23,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
-import { pedirPermisoMicrofono, iniciarGrabacion as crearGrabacion, finalizarModoGrabacion, type Grabacion } from '@/utils/grabadora';
+import { Audio } from 'expo-av';
 import { useAuth } from '@/context/AuthContext';
 import { useAsistenteConfig, getFontScale, getSpeechRate } from '@/context/AsistenteConfigContext';
 import { useCrearSesion, useEnviarMensaje, useToggleFavoritoMensaje } from '@/hooks/useAsistente';
@@ -56,7 +56,9 @@ export default function ChatAsistenteScreen() {
   const [grabando, setGrabando] = useState(false);
   const [transcribiendo, setTranscribiendo] = useState(false);
   const [mensajeDestacado, setMensajeDestacado] = useState<string | null>(null);
-  const recordingRef = useRef<Grabacion | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const webRecognitionRef = useRef<any>(null);
   const pulsoAnim = useRef(new Animated.Value(1)).current;
 
   const flatRef = useRef<FlatList>(null);
@@ -388,14 +390,57 @@ export default function ChatAsistenteScreen() {
   const iniciarGrabacion = useCallback(async () => {
     if (grabando || transcribiendo || enviando) return;
 
-    // ── Grabar y transcribir con Whisper (backend). Nativo: expo-av · Web: MediaRecorder — ver utils/grabadora ──
-    try {
-      const permiso = await pedirPermisoMicrofono();
-      if (!permiso.granted) {
-        Alert.alert('Permiso de micrófono', permiso.mensaje);
+    // ── Web: usar Web Speech API (Chrome/Edge) ─────────────────────────────
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const SpeechRecognitionAPI = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognitionAPI) {
+        Alert.alert(
+          'Micrófono no disponible',
+          'Para usar el micrófono en la computadora, abrí la app en Chrome o Edge.',
+        );
         return;
       }
-      recordingRef.current = await crearGrabacion();
+      const recognition = new SpeechRecognitionAPI();
+      recognition.lang = 'es-AR';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      webRecognitionRef.current = recognition;
+
+      recognition.onstart = () => { setGrabando(true); animarPulso(); };
+      recognition.onend = () => { setGrabando(false); detenerAnimacion(); };
+      recognition.onerror = () => {
+        setGrabando(false);
+        detenerAnimacion();
+        Alert.alert('Sin reconocimiento', 'No se pudo escuchar. Intentá de nuevo.');
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        const texto: string = event.results[0]?.[0]?.transcript ?? '';
+        if (texto.trim()) {
+          setInput(texto.trim());
+          setTimeout(() => enviar(texto.trim()), 100);
+        }
+      };
+      recognition.start();
+      return;
+    }
+
+    // ── Nativo (iOS/Android): expo-av + Groq Whisper ──────────────────────
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert(
+          'Permiso de micrófono',
+          'Para usar el micrófono, active el permiso en los ajustes del teléfono.',
+        );
+        return;
+      }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      recordingRef.current = recording;
       setGrabando(true);
       animarPulso();
     } catch (err) {
@@ -405,6 +450,14 @@ export default function ChatAsistenteScreen() {
   }, [grabando, transcribiendo, enviando, animarPulso, detenerAnimacion, enviar]);
 
   const detenerYTranscribir = useCallback(async () => {
+    // ── Web: detener Web Speech API ────────────────────────────────────────
+    if (Platform.OS === 'web') {
+      webRecognitionRef.current?.stop();
+      setGrabando(false);
+      detenerAnimacion();
+      return;
+    }
+
     // ── Nativo: detener grabación y transcribir ────────────────────────────
     if (!recordingRef.current || !grabando) return;
     setGrabando(false);
@@ -413,7 +466,7 @@ export default function ChatAsistenteScreen() {
 
     try {
       await recordingRef.current.stopAndUnloadAsync();
-      await finalizarModoGrabacion();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
       const uri = recordingRef.current.getURI();
       recordingRef.current = null;
 
@@ -527,7 +580,7 @@ export default function ChatAsistenteScreen() {
           <View style={styles.grabandoBanner}>
             <Animated.View style={[styles.grabandoPunto, { transform: [{ scale: pulsoAnim }] }]} />
             <Text style={styles.grabandoTexto}>
-              {transcribiendo ? 'Transcribiendo...' : 'Grabando... Toque el micrófono para detener'}
+              {transcribiendo ? 'Transcribiendo...' : Platform.OS === 'web' ? 'Escuchando... Hable ahora' : 'Grabando... Toque el micrófono para detener'}
             </Text>
           </View>
         )}

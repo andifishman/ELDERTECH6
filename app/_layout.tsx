@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as Notifications from 'expo-notifications';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { RadioProvider } from '@/context/RadioContext';
 import { FavoritosProvider } from '@/context/FavoritosContext';
@@ -16,8 +17,7 @@ import { AccesibilidadProvider } from '@/context/AccesibilidadContext';
 import { instalarEscalaTexto } from '@/utils/escalaTexto';
 import { AsistenteConfigProvider } from '@/context/AsistenteConfigContext';
 import { SonidoJuegosProvider } from '@/context/SonidoJuegosContext';
-import { ActivityIndicator, View, Text, type ViewStyle } from 'react-native';
-import { MAX_ANCHO_APP } from '@/utils/marcoWeb';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 
@@ -40,22 +40,14 @@ import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { NetworkErrorModal } from '@/components/common/NetworkErrorModal';
+import { AGENDA_ACCION_MARCAR_REALIZADO, PANTALLA_A_RUTA, registrarCategoriasNotificacion } from '@/utils/pushNotifications';
+import { marcarNotificacionAbierta } from '@/services/notificationsService';
 import { detenerHabla } from '@/utils/tts';
-import { useNotificationTapHandler } from '@/hooks/useNotificationTapHandler';
+import { cambiarEstadoRecordatorio } from '@/services/agendaService';
 import { useActualizacionAutomatica } from '@/hooks/useActualizacionAutomatica';
-import { instalarAlertWeb, AlertaWebHost } from '@/utils/alertWeb';
-import { instalarAudioWeb } from '@/utils/audioWeb';
-import { registrarServiceWorker } from '@/pwa/serviceWorker';
-import { BannersPwa } from '@/pwa/BannersPwa';
 
 // Hace que el ajuste Accesibilidad → Tamaño de texto agrande el texto de toda la app
 instalarEscalaTexto();
-
-// Solo web (no-ops en Android/iOS): Alert.alert real, voz en español + desbloqueo de audio de Safari,
-// y Service Worker de la PWA. Ver docs/WEB_PWA.md.
-instalarAlertWeb();
-instalarAudioWeb();
-registrarServiceWorker();
 
 /** Corta cualquier lectura en voz alta (botón "Escuchar") al cambiar de pantalla —
  * si no, el audio de una sección sigue sonando aunque el usuario ya se haya ido. */
@@ -64,6 +56,41 @@ function useStopSpeechOnNavigate() {
   useEffect(() => {
     void detenerHabla();
   }, [pathname]);
+}
+
+/** Al tocar una notificación (app en background/cerrada), navega a la pantalla indicada y la marca como abierta. */
+function useNotificationTapHandler() {
+  const router = useRouter();
+
+  useEffect(() => {
+    void registrarCategoriasNotificacion();
+
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as
+        | { notificationId?: string; pantallaDestino?: string; conversationId?: string; recordatorioId?: string }
+        | undefined;
+      if (data?.notificationId) void marcarNotificacionAbierta(data.notificationId).catch(() => {});
+
+      // Botón "✓ Realizado" tocado directo desde la notificación de Agenda —
+      // no navega, solo marca el recordatorio (best-effort, no bloquea nada si falla).
+      if (response.actionIdentifier === AGENDA_ACCION_MARCAR_REALIZADO && data?.recordatorioId) {
+        void cambiarEstadoRecordatorio(data.recordatorioId, 'realizado').catch(() => {});
+        return;
+      }
+
+      if (data?.pantallaDestino === 'hablemos' && data.conversationId) {
+        router.push(`/mas/hablemos/${data.conversationId}` as never);
+        return;
+      }
+      if (data?.pantallaDestino === 'agenda' && data.recordatorioId) {
+        router.push(`/agenda/${data.recordatorioId}` as never);
+        return;
+      }
+      const ruta = data?.pantallaDestino ? PANTALLA_A_RUTA[data.pantallaDestino] : undefined;
+      if (ruta) router.push(ruta as never);
+    });
+    return () => sub.remove();
+  }, [router]);
 }
 
 function NavigationGuard({ children }: { children: React.ReactNode }) {
@@ -123,11 +150,6 @@ function useHideNavigationBar() {
   }, []);
 }
 
-// En web, columna centrada de hasta MAX_ANCHO_APP (ver utils/marcoWeb.ts); en nativo ocupa todo.
-const marcoApp: ViewStyle = Platform.OS === 'web'
-  ? { flex: 1, width: '100%', maxWidth: MAX_ANCHO_APP, marginHorizontal: 'auto', overflow: 'hidden', backgroundColor: Colors.ui.background }
-  : { flex: 1 };
-
 export default function RootLayout() {
   useHideNavigationBar();
   useNotificationTapHandler();
@@ -146,7 +168,6 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
-      <View style={marcoApp}>
       <QueryProvider>
         <AccesibilidadProvider>
         <AuthProvider>
@@ -178,10 +199,8 @@ export default function RootLayout() {
                       <Stack.Screen name="asistente/historial" />
                       <Stack.Screen name="asistente/ajustes" />
                     </Stack>
-                    <BannersPwa />
                     <NowPlayingBar />
                     <NetworkErrorModal />
-                    <AlertaWebHost />
                   </View>
                 </NavigationGuard>
               </RadioProvider>
@@ -191,7 +210,6 @@ export default function RootLayout() {
         </AuthProvider>
         </AccesibilidadProvider>
       </QueryProvider>
-      </View>
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );

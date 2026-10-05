@@ -43,12 +43,6 @@ en redes corporativas/escolares con inspección TLS), corré
 `cd backend && npm run setup:certs` — también se corre solo antes de cada
 `npm run dev` (`predev`), así que normalmente no hace falta a mano.
 
-## Versión web / PWA
-`npm run build:web` (build) · `npm run serve:web` (prueba local con las cabeceras de Vercel).
-Adaptadores por plataforma (`*.web.ts(x)`), arquitectura, limitaciones de Safari/iOS, DNS de DonWeb,
-variables y matriz de funcionalidades: **`docs/WEB_PWA.md`**. El backend necesita `CORS_ALLOWED_ORIGINS`
-con el dominio web y las claves `VAPID_*` para Web Push.
-
 ## Reglas de desarrollo
 1. **Accesibilidad primero**: botones mínimo 48×48pt, texto mínimo 17px body
 2. **Sin tabs**: la navegación es Stack (Expo Router), no bottom tabs

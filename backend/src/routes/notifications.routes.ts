@@ -9,4 +9,3 @@ notificationsRouter.use(requireAuth);
 
 notificationsRouter.post('/register-token', asyncHandler(controller.postRegistrarToken));
 notificationsRouter.post('/mark-opened', asyncHandler(controller.postMarcarAbierto));
-notificationsRouter.get('/web-push-key', asyncHandler(controller.getWebPushKey));

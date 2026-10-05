@@ -51,13 +51,4 @@ export const env = {
 
   // Opcional — sube los límites de rate-limit de Expo Push. Sin esto también funciona.
   expoAccessToken: optional('EXPO_ACCESS_TOKEN'),
-
-  // Web Push (versión web / PWA). Par de claves VAPID: se generan UNA vez con
-  // `npx web-push generate-vapid-keys` y no deben cambiar (cambiarlas invalida todas las
-  // suscripciones web existentes). La privada NUNCA va al frontend; la pública se sirve
-  // desde GET /api/notifications/web-push-key. Sin ellas el push web queda deshabilitado
-  // (no rompe nada más). `vapidSubject` tiene que ser un mailto: o https: de contacto real.
-  vapidPublicKey: optional('VAPID_PUBLIC_KEY'),
-  vapidPrivateKey: optional('VAPID_PRIVATE_KEY'),
-  vapidSubject: process.env.VAPID_SUBJECT || 'mailto:eldertech6@gmail.com',
 };

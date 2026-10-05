@@ -1,7 +1,6 @@
 // Servicio: Hablemos — mensajería entre residentes. Habla con el backend propio
 // (nunca con Supabase directo) para todo lo que sea lectura/escritura de datos.
 import { apiClient } from './apiClient';
-import { adjuntarAudio, adjuntarFoto } from '@/utils/archivoForm';
 
 export type TipoMensajeHablemos = 'texto' | 'audio' | 'imagen';
 export type EstadoMensajeHablemos = 'enviado' | 'recibido' | 'leido';
@@ -79,13 +78,13 @@ export async function enviarMensajeTexto(conversacionId: string, contenido: stri
 export async function enviarMensajeAudio(conversacionId: string, audioUri: string, duracionSegundos: number): Promise<MensajeHablemos> {
   const form = new FormData();
   form.append('duracionSegundos', String(duracionSegundos));
-  await adjuntarAudio(form, audioUri);
+  form.append('audio', { uri: audioUri, type: 'audio/m4a', name: 'audio.m4a' } as unknown as Blob);
   return apiClient.postForm<MensajeHablemos>(`/api/hablemos/conversaciones/${conversacionId}/mensajes/audio`, form);
 }
 
 export async function enviarMensajeImagen(conversacionId: string, imagenUri: string): Promise<MensajeHablemos> {
   const form = new FormData();
-  await adjuntarFoto(form, 'imagen', imagenUri);
+  form.append('imagen', { uri: imagenUri, type: 'image/jpeg', name: 'foto.jpg' } as unknown as Blob);
   return apiClient.postForm<MensajeHablemos>(`/api/hablemos/conversaciones/${conversacionId}/mensajes/imagen`, form);
 }
 

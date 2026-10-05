@@ -1,5 +1,5 @@
 // Pantalla de ajustes de accesibilidad — tamaño de texto y buscar actualizaciones
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,6 @@ import { useAccesibilidad, getEscala, type TamanoTexto } from '@/context/Accesib
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { aplicarActualizacion, buscarActualizacionWeb, versionDelBuildWeb } from '@/pwa/serviceWorker';
 
 // Muestra qué versión del código está corriendo y permite forzar la
 // búsqueda/descarga de una actualización a mano. Se agregó porque varias
@@ -46,41 +45,10 @@ export default function AccesibilidadScreen() {
   const insets = useSafeAreaInsets();
   const { config, setTamanoTexto } = useAccesibilidad();
   const [buscando, setBuscando] = useState(false);
-  const [versionWeb, setVersionWeb] = useState<string | null>(null);
-  const info = Platform.OS === 'web'
-    ? { canal: 'web', id: versionWeb ?? '—', fecha: '—' }
-    : infoActualizacion();
-
-  useEffect(() => {
-    if (Platform.OS === 'web') void versionDelBuildWeb().then(setVersionWeb);
-  }, []);
-
-  const buscarActualizacionEnWeb = async () => {
-    setBuscando(true);
-    try {
-      const resultado = await buscarActualizacionWeb();
-      if (resultado === 'hay-nueva') {
-        Alert.alert('¡Hay una versión nueva!', 'La aplicación se va a reiniciar para usarla.', [
-          { text: 'Actualizar ahora', onPress: aplicarActualizacion },
-        ]);
-      } else if (resultado === 'al-dia') {
-        Alert.alert('Ya estás al día', 'No hay ninguna actualización nueva — esta es la última versión.');
-      } else {
-        Alert.alert('No disponible', 'Las actualizaciones automáticas solo funcionan en la versión publicada (no en modo desarrollo).');
-      }
-    } catch {
-      Alert.alert('No se pudo buscar la actualización', 'Revisá tu conexión a internet e intentá de nuevo.');
-    } finally {
-      setBuscando(false);
-    }
-  };
+  const info = infoActualizacion();
 
   const buscarActualizacion = async () => {
-    if (Platform.OS === 'web') {
-      await buscarActualizacionEnWeb();
-      return;
-    }
-    if (__DEV__) {
+    if (Platform.OS === 'web' || __DEV__) {
       Alert.alert('No disponible', 'Buscar actualizaciones solo funciona en la app instalada (APK), no en modo desarrollo.');
       return;
     }

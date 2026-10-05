@@ -1,7 +1,7 @@
 //contexto global del reproductor de radio con manejo de fallback automático
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { Audio } from '@/utils/audioCompat';
+import { Audio } from 'expo-av';
 import type { RadioStation, RadioPlayerState } from '@/types/radio.types';
 
 // Headers necesarios para compatibilidad con Icecast/SHOUTcast en Android

@@ -10,8 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { Audio } from '@/utils/audioCompat';
-import { pedirPermisoMicrofono, iniciarGrabacion as crearGrabacion, finalizarModoGrabacion, type Grabacion } from '@/utils/grabadora';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { Colors } from '@/constants/Colors';
@@ -67,7 +66,7 @@ export default function PedidosScreen() {
   const [duracionSegundos, setDuracionSegundos] = useState(0);
   const [reproduciendo, setReproduciendo] = useState(false);
 
-  const recordingRef = useRef<Grabacion | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const inicioGrabacionRef = useRef<number>(0);
 
@@ -80,12 +79,14 @@ export default function PedidosScreen() {
 
   const iniciarGrabacion = useCallback(async () => {
     try {
-      const permiso = await pedirPermisoMicrofono();
-      if (!permiso.granted) {
-        Alert.alert('Permiso de micrófono', permiso.mensaje);
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permiso de micrófono', 'Para grabar audio, activá el permiso en los ajustes del teléfono.');
         return;
       }
-      recordingRef.current = await crearGrabacion();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recordingRef.current = recording;
       inicioGrabacionRef.current = Date.now();
       setGrabando(true);
     } catch (err) {
@@ -98,7 +99,7 @@ export default function PedidosScreen() {
     if (!recordingRef.current) return;
     try {
       await recordingRef.current.stopAndUnloadAsync();
-      await finalizarModoGrabacion();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
       const uri = recordingRef.current.getURI();
       recordingRef.current = null;
       setGrabando(false);
