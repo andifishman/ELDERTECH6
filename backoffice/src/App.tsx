@@ -33,6 +33,9 @@ const AdministradoresPage = lazy(() => import('@/features/administradores/Admini
 const PedidosPage = lazy(() => import('@/features/pedidos/PedidosPage').then((m) => ({ default: m.PedidosPage })));
 const PedidoDetailPage = lazy(() => import('@/features/pedidos/PedidoDetailPage').then((m) => ({ default: m.PedidoDetailPage })));
 const AccesosPage = lazy(() => import('@/features/accesos/AccesosPage').then((m) => ({ default: m.AccesosPage })));
+const GruposPage = lazy(() => import('@/features/grupos/GruposPage').then((m) => ({ default: m.GruposPage })));
+const GrupoFormPage = lazy(() => import('@/features/grupos/GrupoFormPage').then((m) => ({ default: m.GrupoFormPage })));
+const GrupoDetailPage = lazy(() => import('@/features/grupos/GrupoDetailPage').then((m) => ({ default: m.GrupoDetailPage })));
 const NotificacionesPage = lazy(() => import('@/features/notificaciones/NotificacionesPage').then((m) => ({ default: m.NotificacionesPage })));
 const NotificacionFormPage = lazy(() => import('@/features/notificaciones/NotificacionFormPage').then((m) => ({ default: m.NotificacionFormPage })));
 const NotificacionDetailPage = lazy(() => import('@/features/notificaciones/NotificacionDetailPage').then((m) => ({ default: m.NotificacionDetailPage })));
@@ -57,6 +60,9 @@ const router = createBrowserRouter([
           { path: '/tutoriales/:id/editar', element: <RequireModulo modulo="tutoriales" accion="editar"><ArticuloFormPage /></RequireModulo>, handle: { titulo: 'Editar contenido' } },
           { path: '/usuarios', element: <RequireModulo modulo="usuarios"><UsuariosPage /></RequireModulo>, handle: { titulo: 'Usuarios' } },
           { path: '/usuarios/:id', element: <RequireModulo modulo="usuarios"><ResidenteDetailPage /></RequireModulo>, handle: { titulo: 'Perfil del residente' } },
+          { path: '/grupos', element: <RequireModulo modulo="grupos"><GruposPage /></RequireModulo>, handle: { titulo: 'Grupos' } },
+          { path: '/grupos/nuevo', element: <RequireModulo modulo="grupos" accion="crear"><GrupoFormPage /></RequireModulo>, handle: { titulo: 'Nuevo grupo' } },
+          { path: '/grupos/:id', element: <RequireModulo modulo="grupos"><GrupoDetailPage /></RequireModulo>, handle: { titulo: 'Detalle de grupo' } },
           { path: '/asistente', element: <RequireModulo modulo="asistente"><AsistentePage /></RequireModulo>, handle: { titulo: 'Asistente / FAQ' } },
           { path: '/auditoria', element: <RequireModulo modulo="auditoria"><AuditoriaPage /></RequireModulo>, handle: { titulo: 'Auditoría' } },
           { path: '/configuracion', element: <RequireModulo modulo="configuracion"><ConfiguracionPage /></RequireModulo>, handle: { titulo: 'Configuración' } },

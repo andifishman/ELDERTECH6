@@ -18,7 +18,8 @@ export type ModuloId =
   | 'auditoria'
   | 'configuracion'
   | 'administradores'
-  | 'accesos';
+  | 'accesos'
+  | 'grupos';
 
 export function tienePermiso(permisos: accessRepo.PermisoModulo[], modulo: ModuloId, accion: AccionModulo): boolean {
   const p = permisos.find((x) => x.moduloId === modulo);

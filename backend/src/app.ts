@@ -17,6 +17,7 @@ import { configuracionRouter } from './routes/configuracion.routes';
 import { contactsRouter } from './routes/contacts.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
 import { gamesRouter } from './routes/games.routes';
+import { gruposRouter } from './routes/grupos.routes';
 import { hablemosRouter } from './routes/hablemos.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { notificationsAdminRouter } from './routes/notificationsAdmin.routes';
@@ -84,6 +85,7 @@ export function createApp(): Express {
   app.use('/api/admin/residents', residentsAdminRouter);
   app.use('/api/admin/administradores', administradoresRouter);
   app.use('/api/admin/accesos', accessRouter);
+  app.use('/api/admin/grupos', gruposRouter);
   app.use('/api/admin/audit', auditRouter);
   app.use('/api/admin/configuracion', configuracionRouter);
   app.use('/api/admin/dashboard', dashboardRouter);

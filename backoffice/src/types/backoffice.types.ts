@@ -103,7 +103,8 @@ export type ModuloId =
   | 'auditoria'
   | 'configuracion'
   | 'administradores'
-  | 'accesos';
+  | 'accesos'
+  | 'grupos';
 
 export type AccionModulo = 'ver' | 'crear' | 'editar' | 'eliminar';
 

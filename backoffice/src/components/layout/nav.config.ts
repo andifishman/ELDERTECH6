@@ -17,6 +17,7 @@ import {
   KeyRound,
   Inbox,
   Bell,
+  Users2,
   type LucideIcon,
 } from 'lucide-react';
 import type { ModuloId } from '@/types/backoffice.types';
@@ -33,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Horarios', to: '/horarios', icon: CalendarClock, modulo: 'horarios' },
   { label: 'Tutoriales', to: '/tutoriales', icon: GraduationCap, modulo: 'tutoriales' },
   { label: 'Usuarios', to: '/usuarios', icon: Users, modulo: 'usuarios' },
+  { label: 'Grupos', to: '/grupos', icon: Users2, modulo: 'grupos' },
   { label: 'Pedidos y Sugerencias', to: '/pedidos', icon: Inbox, modulo: 'pedidos' },
   { label: 'Notificaciones', to: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
   { label: 'Asistente / FAQ', to: '/asistente', icon: Bot, modulo: 'asistente' },

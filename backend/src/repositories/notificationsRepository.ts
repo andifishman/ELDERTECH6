@@ -64,6 +64,22 @@ export async function resolverAudiencia(
         residentes.push({ id: r.id, nombre: r.nombre, apellido: r.apellido });
       }
     }
+  } else if (destinoTipo === 'grupo') {
+    const grupoIds = destinoFiltro?.grupo_ids ?? [];
+    if (grupoIds.length === 0) return [];
+    const { data, error } = await db
+      .from('grupo_residentes')
+      .select('residente:residentes!inner(id, nombre, apellido, activo, organizacion_id)')
+      .in('grupo_id', grupoIds);
+    if (error) throw new Error(`Error al resolver destinatarios: ${error.message}`);
+    const vistos = new Set<string>();
+    for (const row of (data ?? []) as unknown as Array<{ residente: ResidenteBasico & { activo: boolean; organizacion_id: string } }>) {
+      const r = row.residente;
+      if (r && r.activo && r.organizacion_id === organizacionId && !vistos.has(r.id)) {
+        vistos.add(r.id);
+        residentes.push({ id: r.id, nombre: r.nombre, apellido: r.apellido });
+      }
+    }
   } else {
     let query = db.from('residentes').select('id, nombre, apellido').eq('organizacion_id', organizacionId).eq('activo', true);
     if (destinoTipo === 'seccion' && destinoFiltro?.seccion) query = query.eq('seccion', destinoFiltro.seccion);

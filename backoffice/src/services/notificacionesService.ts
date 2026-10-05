@@ -4,7 +4,7 @@
 import { apiClient } from '@/lib/apiClient';
 
 export type TipoNotificacion = 'informacion' | 'importante' | 'recordatorio' | 'urgente' | 'actividad' | 'tutorial' | 'general';
-export type DestinoTipo = 'todos' | 'residentes' | 'especificos' | 'seccion' | 'habitacion' | 'intereses' | 'nivel_dificultad';
+export type DestinoTipo = 'todos' | 'residentes' | 'especificos' | 'seccion' | 'habitacion' | 'intereses' | 'nivel_dificultad' | 'grupo';
 export type ProgramacionTipo = 'instantanea' | 'programada';
 export type Recurrencia = 'ninguna' | 'diaria' | 'semanal' | 'mensual';
 export type EstadoNotificacion = 'borrador' | 'programada' | 'enviando' | 'enviada' | 'fallida' | 'cancelada';
@@ -17,6 +17,7 @@ export interface DestinoFiltro {
   nivel_dificultad?: string;
   interes_ids?: string[];
   residente_ids?: string[];
+  grupo_ids?: string[];
 }
 
 export interface Notificacion {

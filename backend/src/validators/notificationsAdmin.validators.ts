@@ -6,6 +6,7 @@ const destinoFiltroSchema = z.object({
   nivel_dificultad: z.string().optional(),
   interes_ids: z.array(z.string().uuid()).optional(),
   residente_ids: z.array(z.string().uuid()).optional(),
+  grupo_ids: z.array(z.string().uuid()).optional(),
 });
 
 export const notificationInputSchema = z.object({
@@ -14,7 +15,7 @@ export const notificationInputSchema = z.object({
   imagen_url: z.string().url().nullable().optional(),
   icono: z.string().nullable().optional(),
   tipo: z.enum(['informacion', 'importante', 'recordatorio', 'urgente', 'actividad', 'tutorial', 'general']),
-  destino_tipo: z.enum(['todos', 'residentes', 'especificos', 'seccion', 'habitacion', 'intereses', 'nivel_dificultad']),
+  destino_tipo: z.enum(['todos', 'residentes', 'especificos', 'seccion', 'habitacion', 'intereses', 'nivel_dificultad', 'grupo']),
   destino_filtro: destinoFiltroSchema.nullable().optional(),
   excluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),
   incluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),
@@ -47,7 +48,7 @@ export const listarQuerySchema = z.object({
 });
 
 export const previewAudienciaSchema = z.object({
-  destino_tipo: z.enum(['todos', 'residentes', 'especificos', 'seccion', 'habitacion', 'intereses', 'nivel_dificultad']),
+  destino_tipo: z.enum(['todos', 'residentes', 'especificos', 'seccion', 'habitacion', 'intereses', 'nivel_dificultad', 'grupo']),
   destino_filtro: destinoFiltroSchema.nullable().optional(),
   excluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),
   incluir_residente_ids: z.array(z.string().uuid()).nullable().optional(),

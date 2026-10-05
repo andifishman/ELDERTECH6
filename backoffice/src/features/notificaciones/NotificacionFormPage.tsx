@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/common/states';
 import { useCatalogos } from '@/features/horarios/useActividades';
+import { useGruposLista } from '@/features/grupos/useGrupos';
 import { listarResidentes } from '@/services/residentesService';
 import { useQuery } from '@tanstack/react-query';
 import { coincideBusqueda } from '@/lib/textSearch';
@@ -46,6 +47,7 @@ export function NotificacionFormPage() {
 
   const { data: detalle, isLoading: cargandoDetalle } = useNotificacionDetalle(id);
   const { data: catalogos } = useCatalogos();
+  const { data: grupos } = useGruposLista();
   const { data: residentes } = useQuery({ queryKey: ['residentes-notif'], queryFn: () => listarResidentes().then((rs) => rs.filter((r) => r.activo)) });
   const crear = useCrearNotificacion();
   const actualizar = useActualizarNotificacion();
@@ -61,6 +63,7 @@ export function NotificacionFormPage() {
   const [habitacion, setHabitacion] = useState('');
   const [nivelDificultad, setNivelDificultad] = useState('');
   const [interesIds, setInteresIds] = useState<string[]>([]);
+  const [grupoIds, setGrupoIds] = useState<string[]>([]);
   const [residenteIds, setResidenteIds] = useState<string[]>([]);
   const [excluirIds, setExcluirIds] = useState<string[]>([]);
   const [incluirIds, setIncluirIds] = useState<string[]>([]);
@@ -89,6 +92,7 @@ export function NotificacionFormPage() {
     setHabitacion(n.destino_filtro?.habitacion ?? '');
     setNivelDificultad(n.destino_filtro?.nivel_dificultad ?? '');
     setInteresIds(n.destino_filtro?.interes_ids ?? []);
+    setGrupoIds(n.destino_filtro?.grupo_ids ?? []);
     setResidenteIds(n.destino_filtro?.residente_ids ?? []);
     setExcluirIds(n.excluir_residente_ids ?? []);
     setIncluirIds(n.incluir_residente_ids ?? []);
@@ -118,9 +122,10 @@ export function NotificacionFormPage() {
     if (destinoTipo === 'habitacion') return habitacion ? { habitacion } : null;
     if (destinoTipo === 'nivel_dificultad') return nivelDificultad ? { nivel_dificultad: nivelDificultad } : null;
     if (destinoTipo === 'intereses') return interesIds.length ? { interes_ids: interesIds } : null;
+    if (destinoTipo === 'grupo') return grupoIds.length ? { grupo_ids: grupoIds } : null;
     if (destinoTipo === 'especificos') return residenteIds.length ? { residente_ids: residenteIds } : null;
     return null;
-  }, [destinoTipo, seccion, habitacion, nivelDificultad, interesIds, residenteIds]);
+  }, [destinoTipo, seccion, habitacion, nivelDificultad, interesIds, grupoIds, residenteIds]);
 
   // Ids que matchean el filtro de destino elegido, sin considerar los ajustes manuales
   // de incluir/excluir — se usan para saber qué aparece tildado por defecto en el picker.
@@ -241,6 +246,7 @@ export function NotificacionFormPage() {
                 <SelectItem value="habitacion">Por habitación</SelectItem>
                 <SelectItem value="nivel_dificultad">Por nivel de dificultad</SelectItem>
                 <SelectItem value="intereses">Por intereses</SelectItem>
+                <SelectItem value="grupo">Por grupo</SelectItem>
                 <SelectItem value="especificos">Usuarios específicos</SelectItem>
               </SelectContent>
             </Select>
@@ -290,6 +296,28 @@ export function NotificacionFormPage() {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {destinoTipo === 'grupo' && (
+            <div className="flex flex-wrap gap-2">
+              {(grupos ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Todavía no hay grupos creados. Creá uno desde la sección Grupos.</p>
+              ) : (
+                (grupos ?? []).map((g) => {
+                  const activo = grupoIds.includes(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setGrupoIds((prev) => (activo ? prev.filter((x) => x !== g.id) : [...prev, g.id]))}
+                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${activo ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:bg-muted'}`}
+                    >
+                      {g.nombre} <span className={activo ? 'text-primary-foreground/80' : 'text-muted-foreground'}>· {g.cantidad_residentes}</span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           )}
 
