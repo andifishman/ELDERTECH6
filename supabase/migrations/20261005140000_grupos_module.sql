@@ -149,3 +149,8 @@ on conflict (id) do nothing;
 -- se inserta una fila con ese valor — al estar en su propia migración, no hay
 -- problema (cada migración de Supabase corre en su propia transacción).
 alter type public.destino_tipo_enum add value if not exists 'grupo';
+
+-- Fuerza a PostgREST a recargar el esquema ya mismo — sin esto, a veces tarda
+-- un rato en darse cuenta de que hay tablas nuevas (`grupos`/`grupo_residentes`)
+-- y el backend devuelve "Could not find the table... in the schema cache".
+notify pgrst, 'reload schema';
