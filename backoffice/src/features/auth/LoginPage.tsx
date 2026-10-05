@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Leaf, Loader2, Lock, Mail } from 'lucide-react';
+import { Leaf, Loader2, Lock, User } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { notify } from '@/components/ui/toast';
 
 interface FormValues {
-  email: string;
+  usuario: string;
   password: string;
 }
 
@@ -35,10 +35,10 @@ export function LoginPage() {
 
   const onSubmit = async (values: FormValues) => {
     setEnviando(true);
-    const { error } = await signIn(values.email.trim(), values.password);
+    const { error } = await signIn(values.usuario.trim(), values.password);
     setEnviando(false);
     if (error) {
-      notify.error('No pudimos iniciar sesión', 'Verificá tu email y contraseña.');
+      notify.error('No pudimos iniciar sesión', 'Verificá tu email o usuario y la contraseña.');
       return;
     }
     notify.success('¡Bienvenido!');
@@ -85,19 +85,19 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="usuario">Email o usuario</Label>
               <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="admin@eldertech.com"
+                  id="usuario"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="admin@eldertech.com o usuario"
                   className="pl-9"
-                  {...register('email', { required: 'Ingresá tu email' })}
+                  {...register('usuario', { required: 'Ingresá tu email o usuario' })}
                 />
               </div>
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              {errors.usuario && <p className="text-xs text-destructive">{errors.usuario.message}</p>}
             </div>
 
             <div className="space-y-1.5">

@@ -134,8 +134,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [cargarPerfil, cargarMisPermisos]);
 
-  const signIn = React.useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const signIn = React.useCallback(async (usernameOrEmail: string, password: string) => {
+    const input = usernameOrEmail.trim();
+
+    // Si parece un email, ir directo sin resolver username
+    if (input.includes('@')) {
+      const { error } = await supabase.auth.signInWithPassword({ email: input.toLowerCase(), password });
+      return { error: error?.message ?? null };
+    }
+
+    // Es un username — resolver a email (mismo RPC que usa la app móvil)
+    const { data: resolved, error: lookupError } = await supabase.rpc('get_email_by_username', { p_username: input });
+    if (lookupError || !resolved) {
+      return { error: 'Usuario no encontrado. Revisá el nombre de usuario.' };
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: resolved, password });
     return { error: error?.message ?? null };
   }, []);
 
