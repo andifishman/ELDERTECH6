@@ -104,7 +104,7 @@ Siempre copiar los valores exactos que Vercel muestra en *Project › Settings �
 | Frontend (`.env.production`, versionado — **sin secretos**) | `EXPO_PUBLIC_API_URL` | `https://api.TUDOMINIO.com.ar` |
 | Frontend (variables de Vercel o `.env`) | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_ORG_ID` | los de Supabase (la *anon key* es pública por diseño; RLS la protege) |
 | Backend (Vercel, secretas) | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, … | ya existentes — **nunca** en el frontend |
-| Backend | `CORS_ALLOWED_ORIGINS` | `https://app.TUDOMINIO.com.ar,https://admin.TUDOMINIO.com.ar` (sin barra final). Sin esto el navegador bloquea todo: la app queda "sin datos" |
+| Backend | `CORS_ALLOWED_ORIGINS` | `https://app.TUDOMINIO.com.ar,https://admin.TUDOMINIO.com.ar` (sin barra final). Sin esto el navegador bloquea todo: la app queda "sin datos". `https://eldertech6web.vercel.app` ya está permitido fijo en `backend/src/middlewares/cors.ts` (`ORIGENES_FIJOS`) — un dominio propio nuevo hay que agregarlo acá o ahí |
 | Backend | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` (una sola vez, no rotar). Sin ellas el push web queda deshabilitado |
 | Backoffice | `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ORG_ID` | análogas |
 
