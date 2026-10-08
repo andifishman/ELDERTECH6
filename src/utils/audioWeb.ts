@@ -46,17 +46,28 @@ function instalarSeleccionDeVoz(synth: SpeechSynthesis): void {
  * en `true` sin que suene nada (ej. tras el texto vacío del desbloqueo), y el botón no leía nunca.
  * Además Chrome puede dejar el motor "en pausa" al volver de segundo plano (speak() queda en cola,
  * mudo) y descartar textos en cola que nadie referencia (nunca suenan ni terminan).
+ * Y Chrome (sobre todo en Android) DESCARTA en silencio un speak() hecho enseguida después de un
+ * cancel() — justo lo que hacen los botones "Escuchar" de la Home (Speech.stop() + Speech.speak()):
+ * por eso, si hubo un cancel() recién, el speak() se demora un instante.
  * Acá: `speaking` pasa a significar "uno de NUESTROS textos está en curso de verdad", se reanuda el
  * motor antes de hablar y se guarda una referencia a cada texto hasta que termina.
  */
+const DEMORA_TRAS_CANCELAR_MS = 120;
+
 function instalarSeguimientoDeVoz(synth: SpeechSynthesis): void {
   const activas = new Set<SpeechSynthesisUtterance>();
+  const demoradas = new Set<SpeechSynthesisUtterance>();
+  let ultimoCancel = -Infinity;
   const descriptor = (nombre: 'speaking' | 'pending') => Object.getOwnPropertyDescriptor(Object.getPrototypeOf(synth), nombre)?.get;
   const speakingNativo = descriptor('speaking');
   const pendingNativo = descriptor('pending');
   if (!speakingNativo) return;
 
   const originalSpeak = synth.speak.bind(synth);
+  const hablarYa = (utterance: SpeechSynthesisUtterance) => {
+    if (synth.paused) synth.resume();
+    originalSpeak(utterance);
+  };
   synth.speak = (utterance: SpeechSynthesisUtterance) => {
     if (utterance.text.trim() !== '') {
       activas.add(utterance);
@@ -64,19 +75,30 @@ function instalarSeguimientoDeVoz(synth: SpeechSynthesis): void {
       utterance.addEventListener('end', fin);
       utterance.addEventListener('error', fin);
     }
-    if (synth.paused) synth.resume();
-    originalSpeak(utterance);
+    const desdeCancel = performance.now() - ultimoCancel;
+    if (desdeCancel >= DEMORA_TRAS_CANCELAR_MS) {
+      hablarYa(utterance);
+      return;
+    }
+    demoradas.add(utterance);
+    setTimeout(() => {
+      if (!demoradas.delete(utterance)) return; // la cancelaron mientras esperaba
+      hablarYa(utterance);
+    }, DEMORA_TRAS_CANCELAR_MS - desdeCancel);
   };
 
   const originalCancel = synth.cancel.bind(synth);
   synth.cancel = () => {
+    ultimoCancel = performance.now();
     activas.clear();
+    demoradas.clear();
     originalCancel();
   };
 
   Object.defineProperty(synth, 'speaking', {
     configurable: true,
     get: () => {
+      if (demoradas.size > 0) return true;
       if (activas.size === 0) return false;
       const enCurso = speakingNativo.call(synth) === true || pendingNativo?.call(synth) === true;
       if (!enCurso) activas.clear(); // terminaron sin avisar (pasa en Chrome): no quedar trabado

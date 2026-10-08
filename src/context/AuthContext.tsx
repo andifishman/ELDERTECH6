@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
-import { Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/services/supabase';
+import { supabase, AUTH_STORAGE_KEY } from '@/services/supabase';
 import { getProfileForUser } from '@/services/authService';
 import { registrarPushToken } from '@/services/notificationsService';
 import { pedirPermisoYObtenerToken, plataformaActual, nombreDispositivo } from '@/utils/pushNotifications';
@@ -50,6 +50,16 @@ async function clearCache(uid: string): Promise<void> {
   try { await AsyncStorage.removeItem(cacheKey(uid)); } catch {}
 }
 
+/** Sesión tal como la guardó Supabase en el dispositivo, leída directo (sin red ni candados). */
+async function leerSesionGuardada(): Promise<Session | null> {
+  try {
+    const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Session;
+    return s?.user?.id && s.refresh_token ? s : null;
+  } catch { return null; }
+}
+
 interface AuthContextValue {
   session: Session | null;
   profile: AuthProfile | null;
@@ -84,11 +94,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let sesionResuelta = false;
 
     async function init() {
-      // Timeout de seguridad — si algo falla, nunca quedarse en loading para siempre
+      // Timeout de seguridad — si algo falla, nunca quedarse en loading para siempre.
+      // Pero NO mandar al login a alguien que sí tiene sesión guardada solo porque Supabase tardó
+      // (red lenta al abrir, refresco del token): para un residente eso es "se me cerró la sesión"
+      // y no sabe volver a entrar. Si hay sesión guardada se usa; Supabase la confirma después.
       const safetyTimer = setTimeout(() => {
-        if (mounted) setIsLoading(false);
+        void (async () => {
+          if (!mounted || sesionResuelta) return;
+          const guardada = await leerSesionGuardada();
+          if (!mounted || sesionResuelta) return;
+          if (guardada) {
+            setSession((actual) => actual ?? guardada);
+            const cached = await readCache(guardada.user.id);
+            if (!mounted || sesionResuelta) return;
+            if (cached) setProfile((actual) => actual ?? cached);
+          }
+          setIsLoading(false);
+        })();
       }, 5000);
 
       try {
@@ -107,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!mounted) return;
+        sesionResuelta = true;
         setSession(s);
 
         if (s?.user.id) {
@@ -162,8 +188,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, s) => {
+    // Supabase ejecuta este callback CON su candado de sesión tomado y espera a que termine: si adentro
+    // se consulta Supabase (getProfileForUser, signOut) se traba esperando ese mismo candado
+    // (lo advierte su documentación). Por eso el trabajo se hace en un setTimeout, ya afuera.
+    async function alCambiarSesion(event: AuthChangeEvent, s: Session | null): Promise<void> {
         if (!mounted) return;
 
         // Token inválido disparado por Supabase — limpiar y dejar que NavigationGuard redirija al login
@@ -230,8 +258,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null);
         }
         if (mounted) setIsLoading(false);
-      },
-    );
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      setTimeout(() => void alCambiarSesion(event, s), 0);
+    });
 
     return () => {
       mounted = false;
