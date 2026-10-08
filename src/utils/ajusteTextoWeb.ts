@@ -16,16 +16,41 @@ function desborda(el: HTMLElement): boolean {
   return el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
 }
 
+interface Ajuste {
+  /** font-size inline que puso React (react-native-web escribe inline los estilos dinámicos, ej. el título de AppHeader). */
+  original: string;
+  /** font-size que dejó este ajuste la última vez. */
+  aplicado: string;
+}
+
+const ajustes = new WeakMap<HTMLElement, Ajuste>();
+
 function ajustar(el: HTMLElement): void {
   const minimo = Number(el.dataset.fit) || 0.5;
-  el.style.removeProperty('font-size');
-  if (!desborda(el)) return;
-  const base = parseFloat(getComputedStyle(el).fontSize);
-  if (!Number.isFinite(base)) return;
+  // NO borrar el font-size inline para medir: si React lo puso ahí, borrarlo hace caer el texto al
+  // tamaño por defecto (~14px), que siempre entra, y el título queda chiquito para siempre.
+  // Si el valor actual no es el que dejamos nosotros, React lo cambió: ese es el nuevo original.
+  const previo = ajustes.get(el);
+  const actual = el.style.fontSize;
+  const original = previo && actual === previo.aplicado ? previo.original : actual;
+  const recordar = (): void => {
+    ajustes.set(el, { original, aplicado: el.style.fontSize });
+  };
+
+  if (original) el.style.fontSize = original;
+  else el.style.removeProperty('font-size');
+  if (!desborda(el)) return recordar();
+
+  const base = parseFloat(original || getComputedStyle(el).fontSize);
+  if (!Number.isFinite(base)) {
+    recordar();
+    return;
+  }
   for (let escala = 1 - PASO; escala >= minimo - 1e-6; escala -= PASO) {
     el.style.fontSize = `${(base * escala).toFixed(2)}px`;
-    if (!desborda(el)) return;
+    if (!desborda(el)) break;
   }
+  recordar();
 }
 
 let instalado = false;
