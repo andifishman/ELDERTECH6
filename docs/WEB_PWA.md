@@ -27,7 +27,7 @@ Backoffice (Vite)  ──┘      + Supabase Auth (login/sesión)
 | `adjustsFontSizeToFit` | nativo | `src/utils/ajusteTextoWeb.ts` (RN-web lo ignora → textos cortados con "…") |
 | Texto grande (Accesibilidad) | parche de `Text` | `escalaTexto.ts` rama web (el parche nativo **crashea** en web) |
 | Pantalla ancha | — | columna de 600 px centrada (`marcoWeb.ts`), mismo diseño y botones |
-| Actualizaciones | expo-updates (OTA) | Service Worker + aviso "Actualizar ahora" |
+| Actualizaciones | expo-updates (OTA) | Service Worker — se aplica sola en un momento seguro, sin avisos |
 | Cerrar sesión | no existe (celular personal) | botón en Más (equipos compartidos) |
 
 La lógica, la sesión (Supabase Auth: `localStorage` en web, AsyncStorage en nativo) y **los permisos (validados en el backend)** son los mismos.
@@ -54,7 +54,7 @@ Backoffice: `cd backoffice && npm run dev` (ya funciona en navegador; `npm run b
 2. Botón **Compartir** → **Agregar a inicio** → **Agregar**.
 3. Abrir ElderTech **desde el ícono nuevo**. En Más → "Activar avisos" para recibir notificaciones.
 
-La app muestra sola un cartel con estos pasos en iPhone/iPad no instalados. En Android/Chrome muestra un botón "Instalar".
+La app **no** muestra ningún cartel de instalación (ni el propio de Chrome en Android, se bloquea con `beforeinstallprompt` en `src/pwa/serviceWorker.ts`): confundía a los residentes. El ícono se lo instala el equipo de ElderTech en persona siguiendo estos pasos.
 
 ## 4. Limitaciones reales en Safari/iOS
 
@@ -120,7 +120,7 @@ Cambiar `EXPO_PUBLIC_API_URL` de `.env.production` también afecta al APK/OTA (v
 
 1. Crear en Vercel 3 proyectos desde el mismo repo (ver tabla §5). El de la raíz usa `vercel.json` (build `npm run build:web`).
 2. Cargar variables (§6), agregar dominios, configurar DNS (§5).
-3. Cada `git push` a `main` redeploya. `build:web` cambia el `BUILD_ID` de `sw.js` → los celulares detectan la versión nueva, muestran **"Hay una versión nueva — Actualizar ahora"** (también en Más › Accesibilidad › Buscar actualización) y recargan sin perder la sesión.
+3. Cada `git push` a `main` redeploya. `build:web` cambia el `BUILD_ID` de `sw.js` → los celulares detectan la versión nueva y la aplican **solos**, sin preguntar, recargando sin perder la sesión: cuando la persona sale de la app, o al abrirla/volver antes de tocar nada. Nunca con radio/audio sonando, grabando, la voz leyendo o un texto sin enviar (`src/pwa/enCursoWeb.ts`). A mano: Más › Accesibilidad › Buscar actualización.
 4. `/sw.js` y `index.html` se sirven sin caché; `/_expo/static/*` y `/assets/*` con caché inmutable de 1 año (nombres con hash).
 5. Seguridad: HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` (micrófono/cámara solo propios) y CSP en `vercel.json`. Sin Sentry/monitoreo externo configurado: el backend ya loguea JSON a stdout (Vercel Logs); agregar Sentry es opcional y no se hizo.
 

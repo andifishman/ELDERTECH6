@@ -11,6 +11,7 @@
 //
 // Requisitos del navegador: contexto seguro (HTTPS o localhost) y un gesto del usuario.
 import type { Grabacion, PermisoMicrofono } from './grabadora';
+import { marcarEnCurso } from '@/pwa/enCursoWeb';
 
 export type { Grabacion, PermisoMicrofono };
 
@@ -76,12 +77,14 @@ class GrabacionWeb implements Grabacion {
   }
 
   empezar(): void {
+    marcarEnCurso(this, true); // no recargar la página por una actualización mientras se graba
     this.recorder.start();
   }
 
   stopAndUnloadAsync(): Promise<void> {
     return new Promise((resolve) => {
       const terminar = () => {
+        marcarEnCurso(this, false);
         this.stream.getTracks().forEach((t) => t.stop()); // apaga el indicador de micrófono del navegador
         if (this.trozos.length > 0) {
           // Sin forzar `type` con codecs: el MIME real queda en el blob (ver utils/archivoForm.ts).
