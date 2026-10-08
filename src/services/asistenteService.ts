@@ -3,6 +3,7 @@
 // (chat + Whisper) directo desde el cliente con EXPO_PUBLIC_GROQ_API_KEY —
 // esa key viajaba adentro del build. Ahora vive solo en el backend.
 import { apiClient } from './apiClient';
+import { adjuntarAudio } from '@/utils/archivoForm';
 import type {
   SesionAsistente,
   MensajeAsistente,
@@ -85,7 +86,7 @@ export async function consultarIA(
 
 export async function transcribirAudio(audioUri: string): Promise<string> {
   const formData = new FormData();
-  formData.append('audio', { uri: audioUri, type: 'audio/m4a', name: 'audio.m4a' } as unknown as Blob);
+  await adjuntarAudio(formData, audioUri);
 
   const { texto } = await apiClient.postForm<{ texto: string }>('/api/assistant/transcribe', formData);
   if (!texto) throw new Error('No se detectó voz en el audio.');

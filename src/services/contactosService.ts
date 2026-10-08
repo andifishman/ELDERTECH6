@@ -3,6 +3,7 @@
 // residente autenticado antes de cualquier update/toggle/delete/foto (antes
 // eso lo garantizaba RLS con la anon key; ahora el chequeo vive server-side).
 import { apiClient } from './apiClient';
+import { adjuntarFoto } from '@/utils/archivoForm';
 import type { ContactoResumen, ContactoUpsert, TipoContacto } from '@/types/database.types';
 
 // ─── Lectura ──────────────────────────────────────────────────────────────────
@@ -120,7 +121,7 @@ export function formatearTelefono(telefono: string): string {
 export async function uploadFotoContacto(contactoId: string, uri: string): Promise<string> {
   const ext = uri.split('?')[0].split('.').pop()?.toLowerCase() === 'png' ? 'png' : 'jpg';
   const formData = new FormData();
-  formData.append('foto', { uri, type: ext === 'png' ? 'image/png' : 'image/jpeg', name: `foto.${ext}` } as unknown as Blob);
+  await adjuntarFoto(formData, 'foto', uri, ext);
 
   const { url } = await apiClient.postForm<{ url: string }>(`/api/contacts/${contactoId}/photo`, formData);
   return url;

@@ -13,6 +13,8 @@ import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
+import { AvisosWebCard } from '@/pwa/AvisosWebCard';
+import { CerrarSesionWeb } from '@/pwa/CerrarSesionWeb';
 
 interface OpcionMenu {
   id: string;
@@ -119,6 +121,9 @@ export default function MasScreen() {
           </View>
         ))}
 
+        {/* Solo web: activar Web Push (en la app nativa el permiso se pide al iniciar sesión) */}
+        <AvisosWebCard />
+        <CerrarSesionWeb />
       </ScrollView>
 
       {/* Botón Volver */}
