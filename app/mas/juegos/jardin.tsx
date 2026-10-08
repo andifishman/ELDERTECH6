@@ -53,7 +53,7 @@ const ESPERA_GRAVEDAD_MS = 320;
 const ESPERA_ESPECIAL_MS = 90;
 const UMBRAL_ARRASTRE = 14;
 
-type Fase = 'inicio' | 'jugando' | 'fin';
+type Fase = 'jugando' | 'fin';
 type Forma = 'circulo' | 'cuadrado' | 'pildora';
 type EspecialTipo = 'rayada-h' | 'rayada-v' | 'envuelta' | 'bomba';
 interface Pieza { id: number; tipo: number; especial?: EspecialTipo }
@@ -546,7 +546,8 @@ export default function JardinScreen() {
   const { reproducir } = useGameSounds();
   const { sonidoActivado, toggleSonido } = useSonidoJuegos();
 
-  const [fase, setFase] = useState<Fase>('inicio');
+  // Arranca directo, sin botón "Empezar": un paso menos para el residente (el tablero ya está listo).
+  const [fase, setFase] = useState<Fase>('jugando');
   const [tablero, setTablero] = useState<Pieza[][]>(() => generarTableroValido());
   const [seleccionado, setSeleccionado] = useState<Coord | null>(null);
   const [intentoInvalido, setIntentoInvalido] = useState<{ a: Coord; b: Coord } | null>(null);
@@ -797,7 +798,7 @@ export default function JardinScreen() {
           <View style={styles.scoreDivider} />
           <View style={styles.scoreItem}>
             <Text style={styles.scoreLabel}>Movimientos</Text>
-            <Text style={styles.scoreValue}>{fase === 'inicio' ? presupuestoMovimientos : movimientos}</Text>
+            <Text style={styles.scoreValue}>{movimientos}</Text>
           </View>
           <View style={styles.scoreDivider} />
           {modoNivel ? (
@@ -868,15 +869,6 @@ export default function JardinScreen() {
             )}
           </LinearGradient>
         </View>
-
-        {fase !== 'jugando' && (
-          <TouchableOpacity style={styles.startBtnWrap} onPress={empezar} activeOpacity={0.85}>
-            <LinearGradient colors={['#66BB6A', Colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-              <Ionicons name="play" size={22} color={Colors.white} />
-              <Text style={styles.startBtnText}>{fase === 'inicio' ? 'Empezar' : 'Jugar de nuevo'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
 
         <View style={styles.filaBotones}>
           <TouchableOpacity style={styles.helpBtn} onPress={reopenTutorial} accessibilityLabel="¿Cómo se juega?">
@@ -1097,13 +1089,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,213,110,0.9)', transform: [{ rotate: '45deg' }],
   },
 
-  startBtnWrap: { width: '100%', borderRadius: Radius.sm, overflow: 'hidden' },
-  startBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.xxl,
-  },
-  startBtnText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
-
   filaBotones: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
   helpBtn: {
     flexDirection: 'row',
@@ -1116,7 +1101,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     backgroundColor: Colors.white,
   },
-  helpBtnText: { color: Colors.primary, fontSize: FontSizes.sm, fontWeight: 'bold' },
+  helpBtnText: { color: Colors.primary, fontSize: FontSizes.sm, fontWeight: 'bold', textAlign: 'center' },
 
   modalOverlay: { flex: 1, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center' },
   modalBox: { backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.xxl, width: '82%', alignItems: 'center' },
@@ -1132,10 +1117,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, width: '100%', alignItems: 'center', marginBottom: Spacing.sm,
   },
-  modalBtnPrimaryText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold' },
+  modalBtnPrimaryText: { color: Colors.white, fontSize: FontSizes.xl, fontWeight: 'bold', textAlign: 'center' },
   modalBtnSecondary: {
     borderWidth: 2, borderColor: Colors.primary, borderRadius: Radius.sm,
     paddingVertical: Spacing.md, width: '100%', alignItems: 'center',
   },
-  modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.xl, fontWeight: 'bold' },
+  modalBtnSecondaryText: { color: Colors.primary, fontSize: FontSizes.xl, fontWeight: 'bold', textAlign: 'center' },
 });
