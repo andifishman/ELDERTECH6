@@ -2,7 +2,7 @@
  *
  * BUILD_ID lo reemplaza tools/postexport-web.mjs en cada `npm run build:web`:
  * así este archivo cambia byte a byte en cada deploy, el navegador detecta una
- * versión nueva y la app muestra el aviso "Actualizar" (ver src/pwa/).
+ * versión nueva y la app la aplica sola en un momento seguro (ver src/pwa/serviceWorker.ts).
  *
  * Qué se cachea y qué NO:
  *  - Navegaciones (HTML): red primero, con la copia guardada como respaldo offline.
@@ -17,8 +17,8 @@ const PRECACHE = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/i
 const TIMEOUT_RED_MS = 4000;
 
 self.addEventListener('install', (event) => {
-  // Sin skipWaiting automático: la versión nueva espera hasta que la persona toque
-  // "Actualizar", para no recargar la pantalla en medio de una llamada o un mensaje.
+  // Sin skipWaiting automático: la versión nueva espera a que la app elija un momento seguro
+  // (src/pwa/serviceWorker.ts), para no recargar la pantalla en medio de una llamada o un mensaje.
   event.waitUntil(caches.open(CACHE_SHELL).then((cache) => cache.addAll(PRECACHE)));
 });
 

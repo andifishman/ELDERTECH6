@@ -46,7 +46,6 @@ import { useActualizacionAutomatica } from '@/hooks/useActualizacionAutomatica';
 import { instalarAlertWeb, AlertaWebHost } from '@/utils/alertWeb';
 import { instalarAudioWeb } from '@/utils/audioWeb';
 import { registrarServiceWorker } from '@/pwa/serviceWorker';
-import { BannersPwa } from '@/pwa/BannersPwa';
 
 // Hace que el ajuste Accesibilidad → Tamaño de texto agrande el texto de toda la app
 instalarEscalaTexto();
@@ -178,7 +177,6 @@ export default function RootLayout() {
                       <Stack.Screen name="asistente/historial" />
                       <Stack.Screen name="asistente/ajustes" />
                     </Stack>
-                    <BannersPwa />
                     <NowPlayingBar />
                     <NetworkErrorModal />
                     <AlertaWebHost />

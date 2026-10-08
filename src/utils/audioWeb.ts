@@ -40,6 +40,51 @@ function instalarSeleccionDeVoz(synth: SpeechSynthesis): void {
   };
 }
 
+/**
+ * Los botones "Escuchar" funcionan como interruptor (utils/tts.ts): si `speechSynthesis.speaking` dice
+ * que ya está hablando, cortan en vez de leer. En Chrome/Safari ese `speaking` a veces queda trabado
+ * en `true` sin que suene nada (ej. tras el texto vacío del desbloqueo), y el botón no leía nunca.
+ * Además Chrome puede dejar el motor "en pausa" al volver de segundo plano (speak() queda en cola,
+ * mudo) y descartar textos en cola que nadie referencia (nunca suenan ni terminan).
+ * Acá: `speaking` pasa a significar "uno de NUESTROS textos está en curso de verdad", se reanuda el
+ * motor antes de hablar y se guarda una referencia a cada texto hasta que termina.
+ */
+function instalarSeguimientoDeVoz(synth: SpeechSynthesis): void {
+  const activas = new Set<SpeechSynthesisUtterance>();
+  const descriptor = (nombre: 'speaking' | 'pending') => Object.getOwnPropertyDescriptor(Object.getPrototypeOf(synth), nombre)?.get;
+  const speakingNativo = descriptor('speaking');
+  const pendingNativo = descriptor('pending');
+  if (!speakingNativo) return;
+
+  const originalSpeak = synth.speak.bind(synth);
+  synth.speak = (utterance: SpeechSynthesisUtterance) => {
+    if (utterance.text.trim() !== '') {
+      activas.add(utterance);
+      const fin = () => activas.delete(utterance);
+      utterance.addEventListener('end', fin);
+      utterance.addEventListener('error', fin);
+    }
+    if (synth.paused) synth.resume();
+    originalSpeak(utterance);
+  };
+
+  const originalCancel = synth.cancel.bind(synth);
+  synth.cancel = () => {
+    activas.clear();
+    originalCancel();
+  };
+
+  Object.defineProperty(synth, 'speaking', {
+    configurable: true,
+    get: () => {
+      if (activas.size === 0) return false;
+      const enCurso = speakingNativo.call(synth) === true || pendingNativo?.call(synth) === true;
+      if (!enCurso) activas.clear(); // terminaron sin avisar (pasa en Chrome): no quedar trabado
+      return enCurso;
+    },
+  });
+}
+
 function instalarDesbloqueo(synth: SpeechSynthesis): void {
   const eventos: Array<keyof WindowEventMap> = ['touchend', 'pointerup', 'click', 'keydown'];
   const desbloquear = () => {
@@ -71,6 +116,7 @@ export function instalarAudioWeb(): void {
   instalado = true;
   if ('speechSynthesis' in window) {
     instalarSeleccionDeVoz(window.speechSynthesis);
+    instalarSeguimientoDeVoz(window.speechSynthesis);
     instalarDesbloqueo(window.speechSynthesis);
   }
 }

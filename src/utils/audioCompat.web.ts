@@ -8,6 +8,7 @@
 // rechazado con NotAllowedError — la radio quedaba muda en iPhone. Acá `play()` se llama de
 // inmediato (el navegador va bufereando) y recién después se espera confirmación.
 import { Asset } from 'expo-asset';
+import { marcarEnCurso } from '@/pwa/enCursoWeb';
 
 interface Estado {
   isLoaded: boolean;
@@ -42,6 +43,9 @@ class SonidoWeb {
 
   constructor(private readonly el: HTMLAudioElement) {
     const emitir = () => this.emitir();
+    // Mientras suena, la actualización automática de la web no recarga la página (ver pwa/enCursoWeb.ts).
+    el.addEventListener('playing', () => marcarEnCurso(el, true));
+    ['pause', 'ended', 'error', 'emptied'].forEach((evento) => el.addEventListener(evento, () => marcarEnCurso(el, false)));
     el.addEventListener('playing', emitir);
     el.addEventListener('pause', emitir);
     el.addEventListener('timeupdate', emitir);
