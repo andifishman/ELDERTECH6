@@ -24,10 +24,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // En nativo: AsyncStorage para persistencia en el dispositivo
 const authStorage = Platform.OS === 'web' ? undefined : AsyncStorage;
 
+/** Clave donde Supabase guarda la sesión (es la misma que usa por defecto; se fija explícita para poder leerla en AuthContext). */
+export const AUTH_STORAGE_KEY = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
+
 //crea el cliente de supabase con sesión persistente
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: authStorage,
+    storageKey: AUTH_STORAGE_KEY,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

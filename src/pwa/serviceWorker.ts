@@ -49,6 +49,9 @@ export function registrarServiceWorker(): void {
   // Sin cartel de "Instalar"/"Agregar a pantalla de inicio" (ni el propio de Chrome en Android):
   // confunde a los residentes, y el ícono se lo instala el equipo de ElderTech en persona.
   window.addEventListener('beforeinstallprompt', (e) => e.preventDefault());
+  // Que el navegador no borre los datos guardados (ahí está la sesión) cuando el celular se queda sin
+  // espacio: con almacenamiento "best-effort" Chrome puede vaciarlo y el residente aparece deslogueado.
+  void navigator.storage?.persist?.().catch(() => false);
 
   if (process.env.NODE_ENV !== 'production') return;
 
