@@ -561,10 +561,16 @@ export default function JardinScreen() {
   const [resultadoNivel, setResultadoNivel] = useState<'ganado' | 'perdido' | null>(null);
   const [estrellasGanadas, setEstrellasGanadas] = useState<1 | 2 | 3 | null>(null);
 
+  // El puntaje "real" vive en el ref y se actualiza EN EL MOMENTO de sumar: evaluarFinDeTurno corre
+  // apenas termina la jugada, antes de que React vuelva a dibujar. Si el ref se copiara del estado en
+  // cada render, ahí todavía tendría el puntaje viejo y el nivel seguía 1-2 jugadas después del objetivo.
   const puntajeRef = useRef(0);
+  const sumarPuntos = useCallback((puntos: number) => {
+    puntajeRef.current += puntos;
+    setPuntaje(puntajeRef.current);
+  }, []);
   const mejorPuntajeRef = useRef<number | null>(null);
   const movimientosRef = useRef(presupuestoMovimientos);
-  puntajeRef.current = puntaje;
   mejorPuntajeRef.current = mejorPuntaje;
   movimientosRef.current = movimientos;
 
@@ -629,7 +635,7 @@ export default function JardinScreen() {
     }
 
     if (ganados > 0) {
-      setPuntaje((prev) => prev + ganados);
+      sumarPuntos(ganados);
     }
 
     if (!hayMovimientoValido(actual)) {
@@ -641,7 +647,7 @@ export default function JardinScreen() {
 
     setResolviendo(false);
     return actual;
-  }, [reproducir]);
+  }, [reproducir, sumarPuntos]);
 
   const finalizarPartida = useCallback(() => {
     setFase('fin');
@@ -714,7 +720,7 @@ export default function JardinScreen() {
         const expandido = expandirEfectosEspeciales(probado, limpiarCombo);
         setCeldasResaltadas(expandido);
         await esperar(ESPERA_RESALTADO_MS);
-        setPuntaje((prev) => prev + expandido.size * 10);
+        sumarPuntos(expandido.size * 10);
         let siguiente = aplicarGravedadYRellenar(probado, expandido);
         setTablero(siguiente);
         setCeldasResaltadas(new Set());
@@ -740,7 +746,7 @@ export default function JardinScreen() {
     void resolverCadena(probado, destino).then(() => {
       evaluarFinDeTurno(movimientosNuevos);
     });
-  }, [tablero, resolviendo, fase, movimientos, resolverCadena, evaluarFinDeTurno, reproducir]);
+  }, [tablero, resolviendo, fase, movimientos, resolverCadena, evaluarFinDeTurno, reproducir, sumarPuntos]);
 
   const onTapCelda = useCallback((r: number, c: number) => {
     if (resolviendo || fase !== 'jugando') return;
@@ -763,6 +769,7 @@ export default function JardinScreen() {
 
   const empezar = useCallback(() => {
     setTablero(generarTableroValido());
+    puntajeRef.current = 0;
     setPuntaje(0);
     setMovimientos(presupuestoMovimientos);
     setSeleccionado(null);
