@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import { usePrefetchHome } from '@/hooks/usePrefetchHome';
-import { ProximaActividadWidget } from '@/components/home/ProximaActividadWidget';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -161,9 +160,6 @@ export default function HomeScreen() {
         <View style={styles.welcomeSection}>
           <Text style={styles.welcome} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Hoy es {fecha}</Text>
         </View>
-
-        {/* Widget próxima actividad */}
-        <ProximaActividadWidget />
 
         {/* Large Horarios Card */}
         <TouchableOpacity
