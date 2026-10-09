@@ -4,6 +4,25 @@
 App móvil exclusiva para residentes de geriátricos. Pensada para adultos mayores con dificultades tecnológicas.
 Organización inicial: **Ledor Vador** (Buenos Aires, Argentina).
 
+## Dos plataformas, un solo código
+ElderTech existe en **dos versiones** — mismo código (Expo Router + React
+Native Web), mismo backend, misma base de datos, pero cada una pensada para
+un dispositivo distinto:
+- **App nativa (APK, Android)** — vía EAS Build/Update. Para residentes con
+  Android, que sí pueden tener el APK instalado normalmente.
+- **Web / PWA (navegador, Safari)** — para residentes con **iPhone**, que no
+  pueden tener la app nativa instalada en el celular. Se instala como ícono
+  en la pantalla de inicio desde Safari (no App Store).
+
+Dónde el navegador no puede hacer lo mismo que el celular (grabar audio,
+hablar por voz, subir archivos, notificaciones, etc.) hay un adaptador por
+plataforma — archivo `.web.ts(x)` al lado del nativo, que Metro elige solo en
+web. **Un fix en el archivo nativo NO necesariamente aplica a la web, y
+viceversa** — si el archivo tiene una contraparte `.web.ts(x)` (o un helper
+dedicado como `src/utils/audioWeb.ts`), hay que revisar si el bug también
+está ahí antes de asumir que ya quedó resuelto en ambas. Ver el detalle
+completo de cada adaptador en `docs/WEB_PWA.md`.
+
 ## Público objetivo
 - Adultos mayores (70–95 años)
 - Nivel tecnológico bajo o muy bajo
