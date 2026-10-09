@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   pillTexto: {
-    fontSize: Typography.size.xs,
+    fontSize: Typography.size.sm,
     fontWeight: Typography.weight.bold,
     color: Colors.brand.purple,
     letterSpacing: 0.3,
@@ -694,14 +694,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   descripcion: {
+    fontSize: Typography.size.lg,
+    color: Colors.text.secondary,
+    lineHeight: 28,
+  },
+  ayuda: {
     fontSize: Typography.size.md,
     color: Colors.text.secondary,
     lineHeight: 26,
-  },
-  ayuda: {
-    fontSize: Typography.size.sm,
-    color: Colors.text.hint,
-    lineHeight: 22,
   },
 
   // ── Qué vas a aprender ──
@@ -717,16 +717,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   aprenderasTitulo: {
-    fontSize: Typography.size.lg,
+    fontSize: Typography.size.xl,
     fontWeight: Typography.weight.bold,
     color: Colors.text.primary,
   },
   aprenderasItem: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   aprenderasTexto: {
     flex: 1,
-    fontSize: Typography.size.md,
+    fontSize: Typography.size.lg,
     color: Colors.text.primary,
-    lineHeight: 24,
+    lineHeight: 26,
   },
 
   // ── Cabecera de progreso (pasos) ──
