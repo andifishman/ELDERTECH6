@@ -660,7 +660,17 @@ const styles = StyleSheet.create({
   // 28px — más grande todavía que el cuerpo normal (18) para mejor lectura.
   // paddingRight de colchón: con "Texto en negrita" activado, el ancho real
   // dibujado supera al medido — este margen absorbe esa diferencia.
-  burbujaTexto: { fontSize: 28, color: Colors.text.primary, lineHeight: 36, paddingRight: 6 },
+  burbujaTexto: {
+    fontSize: 28,
+    color: Colors.text.primary,
+    lineHeight: 36,
+    paddingRight: 6,
+    // En la web (react-native-web), una palabra sin espacios (o pegada, como
+    // "aaaaaaaaa...") no baja de línea por defecto y empuja la burbuja fuera
+    // de la pantalla — en nativo esto no pasa. word-break la fuerza a cortar
+    // dentro de la palabra, como hace WhatsApp.
+    ...(Platform.OS === 'web' ? ({ wordBreak: 'break-word' } as Record<string, string>) : null),
+  },
   burbujaMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: Spacing.xs, marginTop: 2 },
   burbujaHora: { fontSize: Typography.size.xs, color: Colors.text.hint },
   burbujaEstado: { fontSize: Typography.size.xs, color: Colors.text.hint, fontStyle: 'italic' },
