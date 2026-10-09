@@ -34,54 +34,79 @@ async function obtenerVozEs(): Promise<string | null> {
 
 let avisoVozFaltanteMostrado = false;
 
+function avisarFalla(mensaje: string): void {
+  if (avisoVozFaltanteMostrado) return;
+  avisoVozFaltanteMostrado = true;
+  Alert.alert('Función de voz no disponible', mensaje);
+}
+
 //lee el texto en voz alta; si ya está hablando lo detiene
 export async function hablar(texto: string): Promise<void> {
-  const estaHablando = await Speech.isSpeakingAsync();
+  // TODA la función va en un solo try/catch: antes solo `Speech.speak()` estaba
+  // cubierto, pero `Speech.isSpeakingAsync()` (de acá abajo) puede fallar por
+  // la MISMA causa (el navegador no soporta `speechSynthesis` en absoluto) y
+  // quedaba como una promesa sin manejar, sin ningún aviso — igual de en
+  // silencio que el problema original de la voz faltante, pero sin pasar
+  // siquiera por el diagnóstico de abajo.
+  try {
+    const estaHablando = await Speech.isSpeakingAsync();
 
-  if (estaHablando) {
-    Speech.stop();
-    hablandoId = null;
-    return;
-  }
-
-  const voiceId = Platform.OS === 'web' ? null : await obtenerVozEs();
-  if (Platform.OS !== 'web' && !voiceId && !avisoVozFaltanteMostrado) {
-    // No hay NINGUNA voz en español instalada en el equipo — avisar una sola
-    // vez por sesión en vez de quedarse en silencio sin explicación, ya que
-    // esta función la usan personas con poca visibilidad que dependen de
-    // escuchar el texto.
-    avisoVozFaltanteMostrado = true;
-    Alert.alert(
-      'Función de voz no disponible',
-      'Este teléfono no tiene instalada una voz en español para leer en voz alta. Se puede instalar desde Ajustes → Accesibilidad → Texto a voz.',
-    );
-  }
-
-  hablandoId = texto;
-  Speech.speak(texto, {
-    language: 'es-AR',
-    voice: voiceId ?? undefined,
-    pitch: 1.0,
-    rate: 0.85, // ligeramente más lento para adultos mayores
-    onDone: () => { hablandoId = null; },
-    onError: (err) => {
+    if (estaHablando) {
+      Speech.stop();
       hablandoId = null;
-      console.warn('[TTS] Error al hablar:', err);
-    },
-    onStopped: () => { hablandoId = null; },
-  });
+      return;
+    }
+
+    const voiceId = Platform.OS === 'web' ? null : await obtenerVozEs();
+    if (Platform.OS !== 'web' && !voiceId) {
+      // No hay NINGUNA voz en español instalada en el equipo — avisar en vez
+      // de quedarse en silencio sin explicación, ya que esta función la usan
+      // personas con poca visibilidad que dependen de escuchar el texto.
+      avisarFalla('Este teléfono no tiene instalada una voz en español para leer en voz alta. Se puede instalar desde Ajustes → Accesibilidad → Texto a voz.');
+    }
+
+    hablandoId = texto;
+    await Speech.speak(texto, {
+      language: 'es-AR',
+      voice: voiceId ?? undefined,
+      pitch: 1.0,
+      rate: 0.85, // ligeramente más lento para adultos mayores
+      onDone: () => { hablandoId = null; },
+      onError: (err) => {
+        hablandoId = null;
+        console.warn('[TTS] Error al hablar:', err);
+      },
+      onStopped: () => { hablandoId = null; },
+    });
+  } catch (err) {
+    hablandoId = null;
+    console.warn('[TTS] Falló la lectura en voz alta:', err);
+    avisarFalla('No se pudo leer el texto en voz alta en este dispositivo. Probá cerrar y volver a abrir la aplicación.');
+  }
 }
 
 //detiene la lectura si está activa
 export async function detenerHabla(): Promise<void> {
-  const estaHablando = await Speech.isSpeakingAsync();
-  if (estaHablando) {
-    Speech.stop();
-    hablandoId = null;
+  try {
+    const estaHablando = await Speech.isSpeakingAsync();
+    if (estaHablando) {
+      Speech.stop();
+      hablandoId = null;
+    }
+  } catch (err) {
+    console.warn('[TTS] detenerHabla falló:', err);
   }
 }
 
+// `SpeakButton` llama esto ANTES que `hablar()` — si `Speech.isSpeakingAsync()`
+// falla (ej. sin soporte de `speechSynthesis` en el navegador) sin este
+// try/catch, el error queda sin manejar acá y ni siquiera se llega a `hablar()`
+// (que es donde está el diagnóstico/aviso): el botón no hace nada, en silencio.
 //devuelve true si el sintetizador de voz está activo en este momento
 export async function estaHablando(): Promise<boolean> {
-  return Speech.isSpeakingAsync();
+  try {
+    return await Speech.isSpeakingAsync();
+  } catch {
+    return false;
+  }
 }
