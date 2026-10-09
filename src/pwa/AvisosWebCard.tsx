@@ -5,7 +5,7 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { activarAvisos, estadoAvisos, type EstadoAvisos } from './avisosWeb';
+import { activarAvisos, estadoAvisosReal, type EstadoAvisos } from './avisosWeb';
 
 const TEXTO_ESTADO: Record<EstadoAvisos, string> = {
   activo: '✅ Los avisos están activados en este dispositivo.',
@@ -22,14 +22,14 @@ export function AvisosWebCard(): React.ReactElement | null {
   const [trabajando, setTrabajando] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS === 'web') setEstado(estadoAvisos());
+    if (Platform.OS === 'web') void estadoAvisosReal().then(setEstado);
   }, []);
 
   const activar = useCallback(async () => {
     setTrabajando(true);
     const r = await activarAvisos();
     setResultado(r.ok ? null : r.mensaje);
-    setEstado(estadoAvisos());
+    setEstado(await estadoAvisosReal());
     setTrabajando(false);
   }, []);
 

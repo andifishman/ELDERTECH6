@@ -45,6 +45,28 @@ export function estadoAvisos(): EstadoAvisos {
   return Notification.permission === 'granted' ? 'activo' : 'pendiente';
 }
 
+/**
+ * Como `estadoAvisos()`, pero si el permiso está "granted" confirma además que
+ * haya una suscripción real en el navegador. El permiso del navegador es
+ * PERMANENTE una vez concedido, pase lo que pase después — si en su momento la
+ * suscripción falló (ej. el servidor no tenía las claves VAPID configuradas
+ * todavía), el permiso quedaba en "granted" para siempre pero nunca hubo
+ * suscripción real, y sin este chequeo la tarjeta mostraba "✅ ya activado"
+ * (falso) escondiendo el botón para reintentar — la persona quedaba sin
+ * forma de arreglarlo ella misma.
+ */
+export async function estadoAvisosReal(): Promise<EstadoAvisos> {
+  const base = estadoAvisos();
+  if (base !== 'activo') return base;
+  try {
+    const registro = await navigator.serviceWorker.ready;
+    const sub = await registro.pushManager.getSubscription();
+    return sub ? 'activo' : 'pendiente';
+  } catch {
+    return 'pendiente';
+  }
+}
+
 function base64UrlABytes(base64Url: string): Uint8Array {
   const relleno = '='.repeat((4 - (base64Url.length % 4)) % 4);
   const base64 = (base64Url + relleno).replace(/-/g, '+').replace(/_/g, '/');
