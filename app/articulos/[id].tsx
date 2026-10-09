@@ -26,7 +26,6 @@ import {
   useTutorialDetalle,
   usePasosTutorial,
   useProgresoTutorial,
-  useTutorialesRelacionados,
 } from '@/hooks/useTutoriales';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -69,11 +68,6 @@ export default function TutorialDetalleScreen() {
     id ?? '',
     tutorial?.categoria_id ?? null,
   );
-  const { data: relacionados = [] } = useTutorialesRelacionados(
-    tutorial?.id ?? null,
-    tutorial?.categoria_id ?? null,
-  );
-
   const videoRef = useRef<Video>(null);
   const [progresoPct, setProgresoPct] = useState(0);
   // Para videos: arranca mostrando el video; el botón pasa a la vista de pasos.
@@ -165,15 +159,6 @@ export default function TutorialDetalleScreen() {
     hablar(nuevo ? 'Agregado a favoritos' : 'Quitado de favoritos');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [residenteId, tutorial?.progreso?.favorito]);
-
-  const irATutorial = useCallback(
-    (otroId: string) => {
-      setVerPasos(false);
-      setPasoActual(0);
-      router.push({ pathname: '/articulos/[id]', params: { id: otroId } });
-    },
-    [router],
-  );
 
   if (isError) {
     return (
@@ -306,8 +291,6 @@ export default function TutorialDetalleScreen() {
               ))}
             </View>
           )}
-
-          {relacionados.length > 0 && <Relacionados items={relacionados} onPress={irATutorial} />}
         </ScrollView>
 
         {tienePasos && (
@@ -560,42 +543,6 @@ export default function TutorialDetalleScreen() {
   );
 }
 
-// Sección de relacionados — horizontal, con foto temática
-function Relacionados({
-  items,
-  onPress,
-}: {
-  items: Array<{ id: string; titulo: string; thumbnail_url: string | null; formato: string; categoria?: { nombre: string } | null }>;
-  onPress: (id: string) => void;
-}) {
-  return (
-    <View style={styles.relSection}>
-      <Text style={styles.relTitulo}>Tutoriales relacionados</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.relList}>
-        {items.map((r) => (
-          <TouchableOpacity
-            key={r.id}
-            style={styles.relCard}
-            onPress={() => onPress(r.id)}
-            activeOpacity={0.85}
-            accessibilityLabel={`Ver tutorial: ${r.titulo}`}
-            accessibilityRole="button"
-          >
-            <TutorialImage
-              uri={r.thumbnail_url}
-              fallbackSeed={r.id}
-              categoria={r.categoria?.nombre}
-              iconSize={26}
-              style={styles.relThumb}
-            />
-            <Text style={styles.relCardTitulo} numberOfLines={2}>{r.titulo}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Colors.ui.background },
   centrado: {
@@ -632,9 +579,10 @@ const styles = StyleSheet.create({
   },
 
   scrollBody: {
-    padding: Spacing.screen.horizontal,
+    padding: Spacing.xl,
     paddingBottom: Spacing.section,
-    gap: Spacing.md,
+    gap: Spacing.xl,
+    flexGrow: 1,
   },
 
   // ── Video ──
@@ -662,11 +610,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 6,
+    gap: Spacing.xs,
     backgroundColor: Colors.tutoriales.soft,
     borderRadius: Spacing.radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
   },
   pillTexto: {
     fontSize: Typography.size.sm,
@@ -678,14 +626,14 @@ const styles = StyleSheet.create({
   tituloRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.sm,
+    gap: Spacing.md,
   },
   titulo: {
     flex: 1,
-    fontSize: Typography.size.xl,
+    fontSize: Typography.size.xxl,
     fontWeight: Typography.weight.heavy,
     color: Colors.text.primary,
-    lineHeight: 30,
+    lineHeight: 38,
   },
   favBtn: {
     width: Spacing.touch.min,
@@ -708,8 +656,8 @@ const styles = StyleSheet.create({
   aprenderasCard: {
     backgroundColor: Colors.tutoriales.soft,
     borderRadius: Spacing.radius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
+    padding: Spacing.xl,
+    gap: Spacing.md,
   },
   aprenderasHeader: {
     flexDirection: 'row',
@@ -930,28 +878,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 26,
     maxWidth: 300,
-  },
-
-  // ── Relacionados ──
-  relSection: { gap: Spacing.sm },
-  relTitulo: {
-    fontSize: Typography.size.lg,
-    fontWeight: Typography.weight.bold,
-    color: Colors.text.primary,
-  },
-  relList: { gap: Spacing.md, paddingRight: Spacing.sm },
-  relCard: { width: 150 },
-  relThumb: {
-    width: 150,
-    height: 96,
-    borderRadius: Spacing.radius.md,
-  },
-  relCardTitulo: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.semibold,
-    color: Colors.text.primary,
-    marginTop: Spacing.xs,
-    lineHeight: 19,
   },
 
   // ── Nav (footer) ──
