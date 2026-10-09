@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, AUTH_STORAGE_KEY } from '@/services/supabase';
@@ -194,8 +194,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function alCambiarSesion(event: AuthChangeEvent, s: Session | null): Promise<void> {
         if (!mounted) return;
 
-        // Token inválido disparado por Supabase — limpiar y dejar que NavigationGuard redirija al login
+        // TOKEN_REFRESHED con sesión null: puede ser un refresh token genuinamente
+        // vencido/revocado, pero TAMBIÉN puede ser un hipo transitorio de red
+        // durante el refresh automático — no son lo mismo. Antes se asumía siempre
+        // lo primero y se cerraba sesión de inmediato, lo que un residente percibe
+        // como "se me cerró la sesión sin razón". Se re-verifica contra el storage
+        // local antes de decidir: si la sesión real sigue viva, no se toca nada.
         if (event === 'TOKEN_REFRESHED' && !s) {
+          const { data } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          if (data.session) return; // hipo transitorio — la sesión sigue viva
           await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
           setSession(null);
           setProfile(null);
@@ -268,6 +275,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
+  }, []);
+
+  // Recomendación oficial de Supabase para React Native: sin esto, el timer
+  // interno de autoRefreshToken se pausa cuando la app queda en segundo plano
+  // (los timers de JS no corren de forma confiable ahí) y el token puede
+  // vencerse en silencio mientras el residente tiene el celular bloqueado o
+  // está en otra app — al volver, la sesión ya está vencida. No aplica en web
+  // (el navegador no tiene este problema de timers en background).
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') void supabase.auth.startAutoRefresh();
+      else void supabase.auth.stopAutoRefresh();
+    });
+    return () => sub.remove();
   }, []);
 
   return (

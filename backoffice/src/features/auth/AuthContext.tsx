@@ -119,7 +119,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // escuchamos cambios de sesión (login/logout/refresh)
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      // Una sesión null que NO es un logout explícito (ej. un TOKEN_REFRESHED
+      // fallido por un hipo transitorio de red) se re-verifica contra el
+      // storage local antes de limpiar el perfil — si la sesión real sigue
+      // viva, no hay que cerrarla solo porque este evento puntual vino vacío.
+      if (!newSession && event !== 'SIGNED_OUT') {
+        const { data } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+        if (data.session) return;
+      }
       setSession(newSession);
       if (newSession?.user) {
         await cargarPerfil(newSession.user.id, newSession.user.email);

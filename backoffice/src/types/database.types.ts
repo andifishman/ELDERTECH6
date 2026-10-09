@@ -21,13 +21,15 @@ export type SeccionResidente =
   | '1 AC' | '1 B' | '1 FRAGA'
   | '2 AC' | '2 B' | '2 MODERADO' | '2 REHABILITACION'
   | '3 AC' | '3B'
-  | 'BAIT';
+  | 'BAIT'
+  | 'EMPLEADO LEDOR VADOR';
 
 export const SECCIONES: SeccionResidente[] = [
   '1 AC', '1 B', '1 FRAGA',
   '2 AC', '2 B', '2 MODERADO', '2 REHABILITACION',
   '3 AC', '3B',
   'BAIT',
+  'EMPLEADO LEDOR VADOR',
 ];
 
 export type TipoCelular = 'android' | 'iphone' | 'no_especificado';
