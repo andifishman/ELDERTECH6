@@ -56,6 +56,7 @@ const estilos = StyleSheet.create({
     borderColor: Colors.ui.border,
     padding: Spacing.lg,
     gap: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   titulo: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.primary },
   texto: { fontSize: Typography.size.md, color: Colors.text.primary, lineHeight: 26 },

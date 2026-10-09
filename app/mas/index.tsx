@@ -88,6 +88,11 @@ export default function MasScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Solo web: activar Web Push. Arriba de todo, sin tener que scrollear
+            para encontrarla — para alguien mayor, "activar avisos" tiene que
+            verse apenas entra a Más, no estar escondido al final de la lista. */}
+        <AvisosWebCard />
+
         {/* ── Opciones disponibles ── */}
         {OPCIONES_ACTIVAS.map((opcion) => (
           <View
@@ -121,8 +126,6 @@ export default function MasScreen() {
           </View>
         ))}
 
-        {/* Solo web: activar Web Push (en la app nativa el permiso se pide al iniciar sesión) */}
-        <AvisosWebCard />
         <CerrarSesionWeb />
       </ScrollView>
 
