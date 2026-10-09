@@ -22,16 +22,21 @@ const PREFERENCIA_VOCES = ['es-ar', 'es-419', 'es-us', 'es-mx', 'es-es'];
 // ya que esto lo usan personas con poca visibilidad que dependen de
 // escuchar el texto.
 //
-// Ojo: `getVoices()` en Chrome carga la lista de forma asíncrona — puede
-// devolver [] un instante mientras todavía no cargó, no porque falte la voz
-// de verdad. Por eso solo se avisa cuando SÍ hay voces cargadas (de
-// cualquier idioma) pero ninguna es española — una lista total vacía se
-// trata como "todavía cargando", no como "no hay voz".
+// `getVoices()` en Chrome carga la lista de forma asíncrona — puede devolver
+// [] un instante mientras todavía no cargó, no porque falte la voz de
+// verdad. Por eso la primera vez que da vacío NO se avisa todavía: se espera
+// al evento `voiceschanged` (o, si nunca llega, un timeout corto) y se
+// reintenta una sola vez antes de decidir que realmente no hay voz — así se
+// cubre tanto "está cargando" como "esto no va a cargar nunca".
 let avisoVozFaltanteMostrado = false;
-function avisarSiFaltaVoz(todasLasVoces: SpeechSynthesisVoice[]): void {
-  if (avisoVozFaltanteMostrado || todasLasVoces.length === 0) return;
-  const hayVozEs = todasLasVoces.some((v) => v.lang.toLowerCase().startsWith('es'));
-  if (hayVozEs) return;
+let reintentoProgramado = false;
+
+function hayVozEspanola(voces: SpeechSynthesisVoice[]): boolean {
+  return voces.some((v) => v.lang.toLowerCase().startsWith('es'));
+}
+
+function mostrarAvisoVozFaltante(): void {
+  if (avisoVozFaltanteMostrado) return;
   avisoVozFaltanteMostrado = true;
   Alert.alert(
     'Función de voz no disponible',
@@ -39,9 +44,29 @@ function avisarSiFaltaVoz(todasLasVoces: SpeechSynthesisVoice[]): void {
   );
 }
 
+function avisarSiFaltaVoz(synth: SpeechSynthesis, todasLasVoces: SpeechSynthesisVoice[]): void {
+  if (avisoVozFaltanteMostrado) return;
+  if (hayVozEspanola(todasLasVoces)) return;
+  if (todasLasVoces.length > 0) {
+    // Ya cargó la lista y no hay ninguna voz en español: es definitivo.
+    mostrarAvisoVozFaltante();
+    return;
+  }
+  // Lista todavía vacía — puede ser que esté cargando. Reintentar una sola
+  // vez (evento voiceschanged, o 1.5s si ese evento nunca llega) antes de
+  // avisar, para no mostrar un falso aviso apenas arranca la página.
+  if (reintentoProgramado) return;
+  reintentoProgramado = true;
+  const reintentar = () => {
+    if (!hayVozEspanola(synth.getVoices())) mostrarAvisoVozFaltante();
+  };
+  synth.addEventListener('voiceschanged', reintentar, { once: true });
+  setTimeout(reintentar, 1500);
+}
+
 function mejorVozEspanol(synth: SpeechSynthesis): SpeechSynthesisVoice | null {
   const todas = synth.getVoices();
-  avisarSiFaltaVoz(todas);
+  avisarSiFaltaVoz(synth, todas);
   const voces = todas.filter((v) => v.lang.toLowerCase().startsWith('es'));
   if (voces.length === 0) return null;
   for (const lang of PREFERENCIA_VOCES) {
