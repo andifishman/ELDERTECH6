@@ -11,12 +11,38 @@
 //    una PC en inglés, `lang = 'es-AR'` sin una voz instalada para ese idioma lee
 //    el texto con acento inglés. Se envuelve `speechSynthesis.speak` para asignar
 //    la mejor voz en español disponible (es-AR → es-419 → es-US/MX → cualquier es-*).
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 const PREFERENCIA_VOCES = ['es-ar', 'es-419', 'es-us', 'es-mx', 'es-es'];
 
+// Si el navegador/sistema no tiene NINGUNA voz en español (pasa en algunos
+// Android con Chrome, ej. sin el paquete de voz instalado), antes quedaba en
+// silencio total sin ninguna pista — justo el mismo bug que había del lado
+// nativo. Se avisa una sola vez por sesión en vez de fallar sin explicación,
+// ya que esto lo usan personas con poca visibilidad que dependen de
+// escuchar el texto.
+//
+// Ojo: `getVoices()` en Chrome carga la lista de forma asíncrona — puede
+// devolver [] un instante mientras todavía no cargó, no porque falte la voz
+// de verdad. Por eso solo se avisa cuando SÍ hay voces cargadas (de
+// cualquier idioma) pero ninguna es española — una lista total vacía se
+// trata como "todavía cargando", no como "no hay voz".
+let avisoVozFaltanteMostrado = false;
+function avisarSiFaltaVoz(todasLasVoces: SpeechSynthesisVoice[]): void {
+  if (avisoVozFaltanteMostrado || todasLasVoces.length === 0) return;
+  const hayVozEs = todasLasVoces.some((v) => v.lang.toLowerCase().startsWith('es'));
+  if (hayVozEs) return;
+  avisoVozFaltanteMostrado = true;
+  Alert.alert(
+    'Función de voz no disponible',
+    'Este navegador no tiene instalada una voz en español para leer en voz alta. Se puede instalar desde Ajustes del teléfono → Accesibilidad → Texto a voz.',
+  );
+}
+
 function mejorVozEspanol(synth: SpeechSynthesis): SpeechSynthesisVoice | null {
-  const voces = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith('es'));
+  const todas = synth.getVoices();
+  avisarSiFaltaVoz(todas);
+  const voces = todas.filter((v) => v.lang.toLowerCase().startsWith('es'));
   if (voces.length === 0) return null;
   for (const lang of PREFERENCIA_VOCES) {
     const exacta = voces.find((v) => v.lang.toLowerCase().replace('_', '-') === lang);

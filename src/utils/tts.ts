@@ -1,6 +1,6 @@
 //utilidad para texto a voz — usa expo-speech con voz en español para adultos mayores
 import * as Speech from 'expo-speech';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 //guarda el texto que se está leyendo para saber si hay que detener o empezar
 let hablandoId: string | null = null;
@@ -11,6 +11,11 @@ let hablandoId: string | null = null;
 // fallaba en silencio: no sonaba nada y no había ningún error visible. Se
 // busca una vez la mejor voz en español realmente instalada en ESTE equipo
 // y se usa su identifier, en vez de asumir que "es-AR" siempre existe.
+//
+// Esto es SOLO nativo (Platform.OS !== 'web' abajo): en web ya existe un
+// mecanismo propio y más completo para lo mismo (src/utils/audioWeb.ts, que
+// parchea window.speechSynthesis directo) — duplicar la selección de voz acá
+// arriesga pisarse con ese parche en vez de complementarlo.
 let vozEsPromise: Promise<string | null> | null = null;
 
 async function obtenerVozEs(): Promise<string | null> {
@@ -39,8 +44,8 @@ export async function hablar(texto: string): Promise<void> {
     return;
   }
 
-  const voiceId = await obtenerVozEs();
-  if (!voiceId && !avisoVozFaltanteMostrado) {
+  const voiceId = Platform.OS === 'web' ? null : await obtenerVozEs();
+  if (Platform.OS !== 'web' && !voiceId && !avisoVozFaltanteMostrado) {
     // No hay NINGUNA voz en español instalada en el equipo — avisar una sola
     // vez por sesión en vez de quedarse en silencio sin explicación, ya que
     // esta función la usan personas con poca visibilidad que dependen de
