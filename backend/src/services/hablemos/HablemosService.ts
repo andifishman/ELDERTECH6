@@ -66,7 +66,13 @@ export async function listarMensajes(user: AuthUser, conversacionId: string, opc
   return repo.listarMensajes(conversacionId, { ...opciones, limit: opciones.limit || LIMITE_MENSAJES_DEFAULT });
 }
 
-/** Envía la notificación push del mensaje al otro participante — best-effort, nunca bloquea el envío del mensaje. */
+/**
+ * Envía la notificación push del mensaje al otro participante — best-effort:
+ * nunca lanza, así que un error acá no hace fallar el envío del mensaje. Se
+ * espera con `await` (no `void`) a propósito: en Vercel la función se congela
+ * apenas responde, y un push "suelto" recién salía en el próximo request
+ * (típicamente cuando alguien abría la app), no cuando llegaba el mensaje.
+ */
 async function notificarNuevoMensaje(conversacionId: string, remitenteId: string, preview: string): Promise<void> {
   try {
     const [detalle, remitente] = await Promise.all([
@@ -88,6 +94,7 @@ async function notificarNuevoMensaje(conversacionId: string, remitenteId: string
         title: titulo,
         body: preview,
         sound: 'default',
+        priority: 'high', // si no, Android en reposo demora el aviso
         data: { pantallaDestino: 'hablemos', conversationId: conversacionId },
       })),
     );
@@ -106,7 +113,7 @@ export async function enviarMensajeTexto(user: AuthUser, input: EnviarMensajeTex
   await requireParticipante(residenteId, input.conversacionId);
 
   const mensaje = await repo.crearMensajeTexto({ conversacionId: input.conversacionId, remitenteId: residenteId, contenido: input.contenido });
-  void notificarNuevoMensaje(input.conversacionId, residenteId, input.contenido);
+  await notificarNuevoMensaje(input.conversacionId, residenteId, input.contenido);
   return mensaje;
 }
 
@@ -126,7 +133,7 @@ export async function enviarMensajeAudio(user: AuthUser, input: EnviarMensajeAud
     audioUrl,
     audioDuracionSegundos: input.audio.duracionSegundos,
   });
-  void notificarNuevoMensaje(input.conversacionId, residenteId, '🎤 Te envió un mensaje de voz');
+  await notificarNuevoMensaje(input.conversacionId, residenteId, '🎤 Te envió un mensaje de voz');
   return mensaje;
 }
 
@@ -145,7 +152,7 @@ export async function enviarMensajeImagen(user: AuthUser, input: EnviarMensajeIm
     remitenteId: residenteId,
     imagenUrl,
   });
-  void notificarNuevoMensaje(input.conversacionId, residenteId, '📷 Te envió una foto');
+  await notificarNuevoMensaje(input.conversacionId, residenteId, '📷 Te envió una foto');
   return mensaje;
 }
 

@@ -34,6 +34,7 @@ export async function procesarNotificaciones(): Promise<{ enviados: number }> {
             title: `Recordatorio: ${r.titulo}`,
             body: `Falta una hora — hoy a las ${hora}.`,
             sound: 'default',
+            priority: 'high', // recordatorio con hora: no puede llegar tarde
             categoryId: 'agenda-recordatorio',
             data: { pantallaDestino: 'agenda', recordatorioId: r.id },
           })),

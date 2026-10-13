@@ -85,7 +85,11 @@ export async function sendWebPushMessages(messages: ExpoPushMessage[]): Promise<
       try {
         await webpush.sendNotification(suscripcion, carga, {
           TTL: 60 * 60 * 24, // si el teléfono está apagado, el aviso vale 24 h
-          urgency: m.priority === 'high' ? 'high' : 'normal',
+          // Siempre 'high': todas estas notificaciones son avisos visibles para
+          // la persona. Con 'normal', Android (Doze) e iOS retienen el push
+          // mientras el celular está en reposo y el aviso recién aparecía al
+          // abrir la página — justo lo que no tiene que pasar con la app cerrada.
+          urgency: 'high',
         });
         return { status: 'ok' };
       } catch (err) {
