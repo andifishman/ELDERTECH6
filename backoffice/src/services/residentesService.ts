@@ -20,6 +20,10 @@ export interface ResidenteInput {
   nombre_completo?: string | null;
   // Con qué dispositivo se filtran los tutoriales que ve este residente.
   tipo_celular?: TipoCelular;
+  // Puesto del empleado (solo sección EMPLEADO LEDOR VADOR).
+  rol_empleado?: string | null;
+  // IDs del catálogo de intereses — si viene, reemplaza los del usuario.
+  intereses?: string[];
 }
 
 export interface CrearUsuarioInput extends ResidenteInput {
@@ -27,7 +31,7 @@ export interface CrearUsuarioInput extends ResidenteInput {
   dni: string;
 }
 
-export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean };
+export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean; intereses_ids: string[] };
 
 export async function listarResidentes(): Promise<ResidenteConCuenta[]> {
   return apiClient.get<ResidenteConCuenta[]>('/api/admin/residents');
@@ -39,6 +43,10 @@ export async function crearUsuario(input: CrearUsuarioInput): Promise<{ id: stri
 
 export async function actualizarResidente(id: string, input: ResidenteInput): Promise<void> {
   await apiClient.patch<void>(`/api/admin/residents/${id}`, input);
+}
+
+export async function eliminarResidente(id: string): Promise<void> {
+  await apiClient.delete<void>(`/api/admin/residents/${id}`);
 }
 
 export async function resetearPassword(residenteId: string, dni: string): Promise<void> {
@@ -53,7 +61,7 @@ export interface ConteoPorJuego {
 export interface ResidenteDetalle {
   residente: Residente;
   mensajes: { id: string; contenido: string; created_at: string }[];
-  intereses: { nombre: string; emoji: string | null }[];
+  intereses: { id: string; nombre: string; emoji: string | null }[];
   tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
   ciudadesClima: string[];
   contactos: ContactoResumen[];

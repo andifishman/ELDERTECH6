@@ -26,6 +26,10 @@ export async function getActividadReciente(req: Request, res: Response): Promise
   res.json(await dashboardService.obtenerActividadReciente(requireUser(req), limite));
 }
 
+export async function getUsuariosPorSeccion(req: Request, res: Response): Promise<void> {
+  res.json(await dashboardService.obtenerUsuariosPorSeccion(requireUser(req)));
+}
+
 export async function getActividadesPorCategoria(req: Request, res: Response): Promise<void> {
   res.json(await dashboardService.obtenerActividadesPorCategoria(requireUser(req)));
 }

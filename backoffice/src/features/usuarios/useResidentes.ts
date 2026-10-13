@@ -6,6 +6,7 @@ import { queryKeys } from '@/lib/queryClient';
 import {
   actualizarResidente,
   crearUsuario,
+  eliminarResidente,
   listarResidentes,
   obtenerResidenteDetalle,
   resetearPassword,
@@ -32,6 +33,7 @@ function useInvalidar() {
   return () => {
     void qc.invalidateQueries({ queryKey: queryKeys.residentes });
     void qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    void qc.invalidateQueries({ queryKey: ['residente-detalle'] });
   };
 }
 
@@ -55,7 +57,19 @@ export function useActualizarResidente() {
       notify.success('Usuario guardado');
       invalidar();
     },
-    onError: () => notify.error('No se pudo guardar el usuario'),
+    onError: (err: Error) => notify.error('No se pudo guardar el usuario', err.message),
+  });
+}
+
+export function useEliminarResidente() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; nombre: string }) => eliminarResidente(id),
+    onSuccess: (_d, v) => {
+      notify.success('Usuario eliminado', v.nombre);
+      invalidar();
+    },
+    onError: (err: Error) => notify.error('No se pudo eliminar el usuario', err.message),
   });
 }
 

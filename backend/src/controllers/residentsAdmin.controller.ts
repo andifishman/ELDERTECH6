@@ -30,6 +30,11 @@ export async function getDetalle(req: Request, res: Response): Promise<void> {
   res.json(await residentsAdminService.obtenerDetalle(requireParam(req, 'id')));
 }
 
+export async function deleteResidente(req: Request, res: Response): Promise<void> {
+  await residentsAdminService.eliminar(requireUser(req), requireParam(req, 'id'));
+  res.status(StatusCodes.NO_CONTENT).end();
+}
+
 export async function patchActivo(req: Request, res: Response): Promise<void> {
   const { activo, nombre } = setActivoSchema.parse(req.body);
   await residentsAdminService.setActivo(requireUser(req), requireParam(req, 'id'), activo, nombre);

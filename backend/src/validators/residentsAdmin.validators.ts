@@ -10,6 +10,10 @@ export const residenteAdminInputSchema = z.object({
   nombre_completo: z.string().trim().nullable().optional(),
   // Con qué dispositivo se filtran los tutoriales que ve este residente.
   tipo_celular: z.enum(['android', 'iphone', 'no_especificado']).optional(),
+  // Puesto del empleado (solo sección EMPLEADO LEDOR VADOR) — ej. "Enfermera".
+  rol_empleado: z.string().trim().max(80).nullable().optional(),
+  // IDs del catálogo `intereses`. Si viene, reemplaza los intereses del usuario.
+  intereses: z.array(z.string().uuid()).max(50).optional(),
 });
 
 export const crearUsuarioSchema = residenteAdminInputSchema.extend({

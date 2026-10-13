@@ -11,7 +11,6 @@ import {
   GraduationCap,
   Users,
   Bot,
-  Settings,
   History,
   ShieldCheck,
   KeyRound,
@@ -39,7 +38,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Notificaciones', to: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
   { label: 'Asistente / FAQ', to: '/asistente', icon: Bot, modulo: 'asistente' },
   { label: 'Auditoría', to: '/auditoria', icon: History, modulo: 'auditoria' },
-  { label: 'Configuración', to: '/configuracion', icon: Settings, modulo: 'configuracion' },
   { label: 'Administradores', to: '/administradores', icon: ShieldCheck, modulo: 'administradores' },
   { label: 'Accesos', to: '/accesos', icon: KeyRound, modulo: 'accesos' },
 ];

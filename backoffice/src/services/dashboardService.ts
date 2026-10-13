@@ -38,6 +38,10 @@ export async function obtenerActividadReciente(limite = 6): Promise<AuditLog[]> 
   return apiClient.get<AuditLog[]>(`/api/admin/dashboard/audit-recent?limite=${limite}`);
 }
 
+export async function obtenerUsuariosPorSeccion(): Promise<{ nombre: string; total: number }[]> {
+  return apiClient.get<{ nombre: string; total: number }[]>('/api/admin/dashboard/users-by-section');
+}
+
 export async function obtenerActividadesPorCategoria(): Promise<{ nombre: string; total: number }[]> {
   return apiClient.get<{ nombre: string; total: number }[]>('/api/admin/dashboard/activities-by-category');
 }

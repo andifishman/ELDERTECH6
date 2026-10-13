@@ -10,6 +10,7 @@ import {
   obtenerActividadesHoy,
   obtenerActividadesPorCategoria,
   obtenerKpis,
+  obtenerUsuariosPorSeccion,
   obtenerResidentesRecientes,
   obtenerTutorialesMasVistos,
 } from '@/services/dashboardService';
@@ -39,6 +40,10 @@ export function useTutorialesVistosCompleto() {
 
 export function useActividadesPorCategoria() {
   return useQuery({ queryKey: [...queryKeys.dashboard, 'act-categoria'], queryFn: obtenerActividadesPorCategoria, refetchInterval: REFETCH_INTERVAL });
+}
+
+export function useUsuariosPorSeccion() {
+  return useQuery({ queryKey: [...queryKeys.dashboard, 'usuarios-seccion'], queryFn: obtenerUsuariosPorSeccion, refetchInterval: REFETCH_INTERVAL });
 }
 
 export function useActividadReciente() {

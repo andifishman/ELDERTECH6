@@ -4,12 +4,14 @@
 // Alta y administración de usuarios de la app. Se elige un
 // nombre de usuario y una sección; la contraseña es el DNI.
 // No usa email ni foto de perfil. Activar/desactivar da o
-// quita acceso a la app.
+// quita acceso a la app; eliminar lo borra definitivamente.
+// Los intereses se cargan al crear y se editan desde "Editar";
+// a los empleados de Ledor Vador se les carga además su rol.
 // ========================================
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound } from 'lucide-react';
+import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, Trash2, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -30,19 +32,22 @@ import {
 } from '@/components/ui/dialog';
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
-import { iniciales } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { cn, iniciales } from '@/lib/utils';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermisos } from '@/hooks/usePermisos';
+import { useCatalogos } from '@/features/horarios/useActividades';
 import {
   useActualizarResidente,
   useCrearUsuario,
+  useEliminarResidente,
   useResetearPassword,
   useResidentes,
   useToggleResidente,
 } from './useResidentes';
-import { SECCIONES } from '@/types/database.types';
+import { SECCIONES, SECCION_EMPLEADO } from '@/types/database.types';
 import { coincideBusqueda } from '@/lib/textSearch';
-import type { Residente, SeccionResidente } from '@/types/database.types';
+import type { Interes, SeccionResidente } from '@/types/database.types';
 import type { ResidenteConCuenta } from '@/services/residentesService';
 
 const TIPO_CELULAR_LABEL: Record<string, string> = {
@@ -58,11 +63,56 @@ interface Campos {
   username: string;
   dni: string;
   seccion: SeccionResidente | '';
+  rolEmpleado: string;
 }
 
 const CAMPOS_VACIOS: Campos = {
-  nombre: '', apellido: '', nombreCompleto: '', username: '', dni: '', seccion: '',
+  nombre: '', apellido: '', nombreCompleto: '', username: '', dni: '', seccion: '', rolEmpleado: '',
 };
+
+/** Selector de intereses: chips que se prenden/apagan con un clic. */
+function SelectorIntereses({
+  intereses,
+  seleccionados,
+  onCambiar,
+  cargando,
+}: {
+  intereses: Interes[];
+  seleccionados: string[];
+  onCambiar: (ids: string[]) => void;
+  cargando: boolean;
+}) {
+  if (cargando) return <p className="text-sm text-muted-foreground">Cargando intereses…</p>;
+  if (intereses.length === 0) return <p className="text-sm text-muted-foreground">No hay intereses cargados.</p>;
+
+  const alternar = (id: string) =>
+    onCambiar(seleccionados.includes(id) ? seleccionados.filter((x) => x !== id) : [...seleccionados, id]);
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {intereses.map((i) => {
+        const activo = seleccionados.includes(i.id);
+        return (
+          <button
+            key={i.id}
+            type="button"
+            onClick={() => alternar(i.id)}
+            aria-pressed={activo}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+              activo
+                ? 'border-primary bg-primary/10 font-medium text-primary'
+                : 'border-input bg-background text-muted-foreground hover:border-ring hover:text-foreground',
+            )}
+          >
+            {activo ? <Check className="h-3.5 w-3.5" /> : i.emoji && <span aria-hidden>{i.emoji}</span>}
+            {i.nombre}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function UsuariosPage() {
   const navigate = useNavigate();
@@ -72,6 +122,8 @@ export function UsuariosPage() {
   const actualizar = useActualizarResidente();
   const resetearPassword = useResetearPassword();
   const toggle = useToggleResidente();
+  const eliminar = useEliminarResidente();
+  const catalogos = useCatalogos();
   useRealtime('residentes', [['residentes']]);
 
   const [busqueda, setBusqueda] = useState('');
@@ -79,13 +131,16 @@ export function UsuariosPage() {
   const [ordenarPor, setOrdenarPor] = useState<'nombre' | 'habitacion' | 'seccion' | 'conexion'>('nombre');
   const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('asc');
   const [abierto, setAbierto] = useState(false);
-  const [editando, setEditando] = useState<Residente | null>(null);
+  const [editando, setEditando] = useState<ResidenteConCuenta | null>(null);
   const [nuevoDni, setNuevoDni] = useState('');
+  const [intereses, setIntereses] = useState<string[]>([]);
+  const [aEliminar, setAEliminar] = useState<ResidenteConCuenta | null>(null);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Campos>({
     defaultValues: CAMPOS_VACIOS,
   });
   const seccion = watch('seccion');
+  const esEmpleado = seccion === SECCION_EMPLEADO;
 
   const toggleOrden = (col: typeof ordenarPor) => {
     if (ordenarPor === col) setOrdenDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -119,13 +174,15 @@ export function UsuariosPage() {
   const abrirNuevo = () => {
     setEditando(null);
     setNuevoDni('');
+    setIntereses([]);
     reset(CAMPOS_VACIOS);
     setAbierto(true);
   };
 
-  const abrirEditar = (r: Residente) => {
+  const abrirEditar = (r: ResidenteConCuenta) => {
     setEditando(r);
     setNuevoDni('');
+    setIntereses(r.intereses_ids ?? []);
     reset({
       nombre: r.nombre,
       apellido: r.apellido,
@@ -133,11 +190,21 @@ export function UsuariosPage() {
       username: '',
       dni: '',
       seccion: r.seccion ?? '',
+      rolEmpleado: r.rol_empleado ?? '',
     });
     setAbierto(true);
   };
 
+  const confirmarEliminar = () => {
+    if (!aEliminar) return;
+    eliminar.mutate(
+      { id: aEliminar.id, nombre: `${aEliminar.nombre} ${aEliminar.apellido}` },
+      { onSettled: () => setAEliminar(null) },
+    );
+  };
+
   const onSubmit = (c: Campos) => {
+    const rolEmpleado = c.seccion === SECCION_EMPLEADO ? c.rolEmpleado.trim() || null : null;
     if (!editando) {
       crearUsuario.mutate(
         {
@@ -147,6 +214,8 @@ export function UsuariosPage() {
           username: c.username,
           dni: c.dni,
           seccion: c.seccion || null,
+          rol_empleado: rolEmpleado,
+          intereses,
         },
         { onSuccess: () => setAbierto(false) },
       );
@@ -161,6 +230,8 @@ export function UsuariosPage() {
           apellido: c.apellido,
           nombre_completo: c.nombreCompleto.trim() || null,
           seccion: c.seccion || null,
+          rol_empleado: rolEmpleado,
+          intereses,
         },
       },
       {
@@ -255,7 +326,12 @@ export function UsuariosPage() {
                     </button>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{r.habitacion ?? '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{r.seccion ?? '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {r.seccion ?? '—'}
+                    {r.seccion === SECCION_EMPLEADO && r.rol_empleado && (
+                      <span className="block text-xs font-medium text-foreground">{r.rol_empleado}</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       {r.ultima_conexion
@@ -266,12 +342,12 @@ export function UsuariosPage() {
                   </TableCell>
                   <TableCell><Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge></TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end gap-3">
-                      {!permisos.puedeEditar && <span className="text-xs text-muted-foreground">Solo lectura</span>}
+                    <div className="flex items-center justify-end gap-1">
+                      {!permisos.puedeEditar && !permisos.puedeEliminar && <span className="text-xs text-muted-foreground">Solo lectura</span>}
                       {permisos.puedeEditar && <button
                         type="button"
                         onClick={() => abrirEditar(r)}
-                        className="flex flex-col items-center gap-0.5 rounded-md p-1.5 text-primary-700 hover:bg-accent transition-colors"
+                        className="flex w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-md p-1.5 text-primary-700 hover:bg-accent transition-colors"
                       >
                         <Pencil className="h-4 w-4" />
                         <span className="text-[10px] font-medium text-muted-foreground">Editar</span>
@@ -280,12 +356,21 @@ export function UsuariosPage() {
                         type="button"
                         disabled={toggle.isPending}
                         onClick={() => toggle.mutate({ id: r.id, activo: !r.activo, nombre: `${r.nombre} ${r.apellido}` })}
-                        className="flex flex-col items-center gap-0.5 rounded-md p-1.5 hover:bg-accent transition-colors disabled:opacity-50"
+                        className="flex w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-md p-1.5 hover:bg-accent transition-colors disabled:opacity-50"
                       >
-                        <Power className={r.activo ? 'h-4 w-4 text-destructive' : 'h-4 w-4 text-primary'} />
-                        <span className={`text-[10px] font-medium ${r.activo ? 'text-destructive' : 'text-primary'}`}>
+                        <Power className={r.activo ? 'h-4 w-4 text-amber-600' : 'h-4 w-4 text-primary'} />
+                        <span className={`text-center text-[10px] font-medium ${r.activo ? 'text-amber-600' : 'text-primary'}`}>
                           {r.activo ? 'Desactivar' : 'Activar'}
                         </span>
+                      </button>}
+                      {permisos.puedeEliminar && <button
+                        type="button"
+                        disabled={eliminar.isPending}
+                        onClick={() => setAEliminar(r)}
+                        className="flex w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-md p-1.5 hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <span className="text-center text-[10px] font-medium text-destructive">Eliminar</span>
                       </button>}
                     </div>
                   </TableCell>
@@ -352,6 +437,31 @@ export function UsuariosPage() {
                 </Select>
               </div>
 
+              {esEmpleado && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="rolEmpleado">Rol en Ledor Vador</Label>
+                  <Input
+                    id="rolEmpleado"
+                    placeholder="Ej: Enfermera, Cocina, Recepción, Mantenimiento…"
+                    {...register('rolEmpleado', {
+                      validate: (v) => !esEmpleado || v.trim().length > 0 || 'Indicá el rol del empleado',
+                      maxLength: { value: 80, message: 'Máximo 80 caracteres' },
+                    })}
+                  />
+                  {errors.rolEmpleado && <p className="text-xs text-destructive">{errors.rolEmpleado.message}</p>}
+                </div>
+              )}
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Intereses {intereses.length > 0 && <span className="font-normal text-muted-foreground">({intereses.length} elegidos)</span>}</Label>
+                <SelectorIntereses
+                  intereses={catalogos.data?.intereses ?? []}
+                  seleccionados={intereses}
+                  onCambiar={setIntereses}
+                  cargando={catalogos.isLoading}
+                />
+              </div>
+
               {/* No es un campo editable: se detecta solo la primera vez que el
                   residente abre la app (con qué dispositivo se registra a
                   notificaciones), y se usa para elegir qué tutoriales mostrar
@@ -389,6 +499,17 @@ export function UsuariosPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        abierto={!!aEliminar}
+        onOpenChange={(v) => { if (!v && !eliminar.isPending) setAEliminar(null); }}
+        titulo={`¿Eliminar a ${aEliminar ? `${aEliminar.nombre} ${aEliminar.apellido}` : 'este usuario'}?`}
+        descripcion="Se borra definitivamente su cuenta y sus datos (intereses, contactos, progreso). No se puede deshacer. Si solo querés quitarle el acceso por un tiempo, usá Desactivar."
+        textoConfirmar="Eliminar usuario"
+        variante="destructive"
+        cargando={eliminar.isPending}
+        onConfirmar={confirmarEliminar}
+      />
     </div>
   );
 }

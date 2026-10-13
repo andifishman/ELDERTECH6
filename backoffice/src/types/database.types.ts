@@ -24,6 +24,9 @@ export type SeccionResidente =
   | 'BAIT'
   | 'EMPLEADO LEDOR VADOR';
 
+/** Sección de los empleados de Ledor Vador — solo a ellos se les carga un rol/puesto. */
+export const SECCION_EMPLEADO: SeccionResidente = 'EMPLEADO LEDOR VADOR';
+
 export const SECCIONES: SeccionResidente[] = [
   '1 AC', '1 B', '1 FRAGA',
   '2 AC', '2 B', '2 MODERADO', '2 REHABILITACION',
@@ -85,6 +88,8 @@ export interface Residente {
   fecha_nacimiento: string | null;
   nivel_dificultad: NivelDificultad;
   seccion: SeccionResidente | null;
+  /** Puesto del empleado de Ledor Vador (solo sección EMPLEADO LEDOR VADOR). */
+  rol_empleado?: string | null;
   habitacion: string | null;
   dni: string | null;
   telefono: string | null;

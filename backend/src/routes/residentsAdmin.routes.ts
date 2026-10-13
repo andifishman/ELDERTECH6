@@ -12,5 +12,6 @@ residentsAdminRouter.get('/', requirePermission('usuarios', 'ver'), asyncHandler
 residentsAdminRouter.post('/', requirePermission('usuarios', 'crear'), asyncHandler(controller.postUsuario));
 residentsAdminRouter.get('/:id', requirePermission('usuarios', 'ver'), asyncHandler(controller.getDetalle));
 residentsAdminRouter.patch('/:id', requirePermission('usuarios', 'editar'), asyncHandler(controller.patchResidente));
+residentsAdminRouter.delete('/:id', requirePermission('usuarios', 'eliminar'), asyncHandler(controller.deleteResidente));
 residentsAdminRouter.patch('/:id/active', requirePermission('usuarios', 'editar'), asyncHandler(controller.patchActivo));
 residentsAdminRouter.post('/:id/reset-password', requirePermission('usuarios', 'editar'), asyncHandler(controller.postResetPassword));

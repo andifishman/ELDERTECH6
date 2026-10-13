@@ -1,22 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Menu, Search, Bell, ChevronDown, LogOut, Sun, Moon, Calendar, GraduationCap, Users, Pencil, Plus, UserCog } from 'lucide-react';
+import { useState } from 'react';
+import { Menu, Bell, Sun, Moon, Calendar, GraduationCap, Users, Pencil, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { iniciales } from '@/lib/utils';
-import { useAuth } from '@/features/auth/AuthContext';
 import { useTema } from '@/hooks/useTema';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SearchModal } from '@/components/common/SearchModal';
-import { EditarPerfilDialog } from '@/features/auth/EditarPerfilDialog';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type { AuditLog } from '@/types/backoffice.types';
@@ -51,30 +43,14 @@ interface TopbarProps {
 }
 
 export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
-  const { perfil, signOut } = useAuth();
   const { tema, alternar } = useTema();
-  const [searchAbierto, setSearchAbierto] = useState(false);
   const [notifVistas, setNotifVistas] = useState<string | null>(() => {
     try { return localStorage.getItem('backoffice_notif_vista'); } catch { return null; }
   });
   const [limpiadoEn, setLimpiadoEn] = useState<string | null>(() => {
     try { return localStorage.getItem('backoffice_notif_limpiado'); } catch { return null; }
   });
-  const [perfilAbierto, setPerfilAbierto] = useState(false);
-  const [confirmarCerrar, setConfirmarCerrar] = useState(false);
   const notif = useNotificaciones();
-
-  // Ctrl+K para abrir búsqueda
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchAbierto(true);
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, []);
 
   const logs = notif.data ?? [];
   // Solo mostrar logs posteriores al último limpiado
@@ -110,18 +86,6 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
           <h1 className="truncate text-lg font-bold tracking-tight text-foreground sm:text-xl">{titulo}</h1>
           {subtitulo && <p className="truncate text-xs text-muted-foreground">{subtitulo}</p>}
         </div>
-
-        {/* Buscador */}
-        <button
-          onClick={() => setSearchAbierto(true)}
-          className="relative hidden cursor-text items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-ring md:flex"
-          style={{ width: '220px' }}
-          aria-label="Buscar"
-        >
-          <Search className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">Buscar…</span>
-          <kbd className="rounded border border-border px-1.5 py-0.5 font-mono text-xs">⌃K</kbd>
-        </button>
 
         {/* Separador */}
         <div className="hidden h-8 w-px bg-border sm:block" />
@@ -194,53 +158,8 @@ export function Topbar({ titulo, subtitulo, onAbrirMenu }: TopbarProps) {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-
         </div>
-
-        {/* Separador */}
-        <div className="hidden h-8 w-px bg-border sm:block" />
-
-        {/* Perfil */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent sm:gap-2.5">
-            <Avatar className="h-8 w-8 shrink-0">
-              {perfil?.avatar_url && <AvatarImage src={perfil.avatar_url} alt="" />}
-              <AvatarFallback className="text-xs font-semibold">{iniciales(perfil?.nombre_completo)}</AvatarFallback>
-            </Avatar>
-            <div className="hidden flex-col sm:flex">
-              <span className="text-sm font-medium leading-tight text-foreground">{perfil?.nombre_completo ?? 'Administrador'}</span>
-              <span className="text-xs leading-tight text-muted-foreground">Mi perfil</span>
-            </div>
-            <ChevronDown className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="flex flex-col">
-              <span>{perfil?.nombre_completo ?? 'Administrador'}</span>
-              <span className="text-xs font-normal text-muted-foreground">{perfil?.email}</span>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setPerfilAbierto(true)} className="cursor-pointer">
-              <UserCog className="h-4 w-4" /> Editar perfil
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setConfirmarCerrar(true)} className="cursor-pointer text-destructive">
-              <LogOut className="h-4 w-4" /> Cerrar sesión
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </header>
-
-      <SearchModal abierto={searchAbierto} onCerrar={() => setSearchAbierto(false)} />
-      <EditarPerfilDialog abierto={perfilAbierto} onCerrar={() => setPerfilAbierto(false)} />
-      <ConfirmDialog
-        abierto={confirmarCerrar}
-        onOpenChange={setConfirmarCerrar}
-        titulo="¿Cerrar sesión?"
-        descripcion="Vas a salir del backoffice. Podés volver a ingresar cuando quieras."
-        textoConfirmar="Cerrar sesión"
-        variante="default"
-        onConfirmar={() => void signOut()}
-      />
     </>
   );
 }

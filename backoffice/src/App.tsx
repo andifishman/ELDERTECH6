@@ -28,7 +28,6 @@ const UsuariosPage = lazy(() => import('@/features/usuarios/UsuariosPage').then(
 const ResidenteDetailPage = lazy(() => import('@/features/usuarios/ResidenteDetailPage').then((m) => ({ default: m.ResidenteDetailPage })));
 const AsistentePage = lazy(() => import('@/features/asistente/AsistentePage').then((m) => ({ default: m.AsistentePage })));
 const AuditoriaPage = lazy(() => import('@/features/auditoria/AuditoriaPage').then((m) => ({ default: m.AuditoriaPage })));
-const ConfiguracionPage = lazy(() => import('@/features/configuracion/ConfiguracionPage').then((m) => ({ default: m.ConfiguracionPage })));
 const AdministradoresPage = lazy(() => import('@/features/administradores/AdministradoresPage').then((m) => ({ default: m.AdministradoresPage })));
 const PedidosPage = lazy(() => import('@/features/pedidos/PedidosPage').then((m) => ({ default: m.PedidosPage })));
 const PedidoDetailPage = lazy(() => import('@/features/pedidos/PedidoDetailPage').then((m) => ({ default: m.PedidoDetailPage })));
@@ -65,7 +64,6 @@ const router = createBrowserRouter([
           { path: '/grupos/:id', element: <RequireModulo modulo="grupos"><GrupoDetailPage /></RequireModulo>, handle: { titulo: 'Detalle de grupo' } },
           { path: '/asistente', element: <RequireModulo modulo="asistente"><AsistentePage /></RequireModulo>, handle: { titulo: 'Asistente / FAQ' } },
           { path: '/auditoria', element: <RequireModulo modulo="auditoria"><AuditoriaPage /></RequireModulo>, handle: { titulo: 'Auditoría' } },
-          { path: '/configuracion', element: <RequireModulo modulo="configuracion"><ConfiguracionPage /></RequireModulo>, handle: { titulo: 'Configuración' } },
           { path: '/administradores', element: <RequireModulo modulo="administradores"><AdministradoresPage /></RequireModulo>, handle: { titulo: 'Administradores' } },
           { path: '/accesos', element: <RequireModulo modulo="accesos"><AccesosPage /></RequireModulo>, handle: { titulo: 'Accesos', subtitulo: 'Permisos de cada usuario por módulo' } },
           { path: '/pedidos', element: <RequireModulo modulo="pedidos"><PedidosPage /></RequireModulo>, handle: { titulo: 'Pedidos y Sugerencias' } },

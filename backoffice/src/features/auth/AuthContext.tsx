@@ -94,16 +94,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Permisos por módulo: los resuelve el backend (tabla modulo_usuario). Si falla,
-  // el usuario se queda sin módulos — nunca se asume un permiso por defecto.
-  const cargarMisPermisos = React.useCallback(async () => {
-    setCargandoPermisos(true);
+  // Usuario cuyos permisos ya están cargados. Sirve para distinguir la primera
+  // carga (login) de las re-verificaciones que dispara Supabase solo — al volver
+  // a la pestaña refresca el token y emite SIGNED_IN / TOKEN_REFRESHED.
+  const usuarioCargadoRef = React.useRef<string | null>(null);
+
+  // Permisos por módulo: los resuelve el backend (tabla modulo_usuario). Si falla
+  // la primera carga, el usuario se queda sin módulos — nunca se asume un permiso
+  // por defecto. En modo `silencioso` (re-verificación del mismo usuario) no se
+  // muestra "Verificando permisos…" ni se desmonta la pantalla actual, y un error
+  // transitorio de red no borra los permisos que ya tenía.
+  const cargarMisPermisos = React.useCallback(async (silencioso = false) => {
+    if (!silencioso) setCargandoPermisos(true);
     try {
       setMisPermisos(await apiClient.get<MisPermisos>('/api/admin/accesos/me'));
     } catch {
-      setMisPermisos(null);
+      if (!silencioso) setMisPermisos(null);
     } finally {
-      setCargandoPermisos(false);
+      if (!silencioso) setCargandoPermisos(false);
     }
   }, []);
 
@@ -114,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.session?.user) {
         await cargarPerfil(data.session.user.id, data.session.user.email);
         await cargarMisPermisos();
+        usuarioCargadoRef.current = data.session.user.id;
       }
       setCargando(false);
     });
@@ -130,9 +139,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setSession(newSession);
       if (newSession?.user) {
-        await cargarPerfil(newSession.user.id, newSession.user.email);
-        void cargarMisPermisos();
+        const mismoUsuario = usuarioCargadoRef.current === newSession.user.id;
+        usuarioCargadoRef.current = newSession.user.id;
+        if (mismoUsuario) {
+          // Re-verificación en segundo plano (cambio de pestaña, refresh del
+          // token): la pantalla sigue visible mientras tanto.
+          void cargarPerfil(newSession.user.id, newSession.user.email);
+          void cargarMisPermisos(true);
+        } else {
+          await cargarPerfil(newSession.user.id, newSession.user.email);
+          void cargarMisPermisos();
+        }
       } else {
+        usuarioCargadoRef.current = null;
         setPerfil(null);
         setMisPermisos(null);
         setAutorizado(true);
@@ -163,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = React.useCallback(async () => {
     await supabase.auth.signOut();
+    usuarioCargadoRef.current = null;
     setPerfil(null);
     setMisPermisos(null);
     setAutorizado(true);

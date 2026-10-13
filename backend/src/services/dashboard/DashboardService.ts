@@ -28,6 +28,10 @@ export async function obtenerActividadReciente(user: AuthUser, limite?: number) 
   return repo.obtenerActividadReciente(requireOrganizacionId(user), limite);
 }
 
+export async function obtenerUsuariosPorSeccion(user: AuthUser) {
+  return repo.obtenerUsuariosPorSeccion(requireOrganizacionId(user));
+}
+
 export async function obtenerActividadesPorCategoria(user: AuthUser) {
   return repo.obtenerActividadesPorCategoria(requireOrganizacionId(user));
 }

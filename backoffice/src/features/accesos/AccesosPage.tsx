@@ -56,7 +56,8 @@ export function AccesosPage() {
   const [matriz, setMatriz] = useState<Matriz>({});
   const [pendienteCambio, setPendienteCambio] = useState<string | null>(null);
 
-  const modulos = useMemo(() => (modulosQ.data ?? []).filter((m) => m.asignable), [modulosQ.data]);
+  // 'configuracion' se sacó del backoffice: no tiene sentido asignar acceso a una sección que ya no existe.
+  const modulos = useMemo(() => (modulosQ.data ?? []).filter((m) => m.asignable && m.id !== 'configuracion'), [modulosQ.data]);
   const moduloIds = useMemo(() => modulos.map((m) => m.id), [modulos]);
   const usuarios = usuariosQ.data ?? [];
   const seleccionado = usuarios.find((u) => u.id === seleccionadoId) ?? null;

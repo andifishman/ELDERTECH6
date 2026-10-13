@@ -13,4 +13,5 @@ dashboardRouter.get('/activities-today', requirePermission('dashboard', 'ver'), 
 dashboardRouter.get('/residents-recent', requirePermission('dashboard', 'ver'), asyncHandler(controller.getResidentesRecientes));
 dashboardRouter.get('/tutorials-top', requirePermission('dashboard', 'ver'), asyncHandler(controller.getTutorialesMasVistos));
 dashboardRouter.get('/audit-recent', requirePermission('dashboard', 'ver'), asyncHandler(controller.getActividadReciente));
+dashboardRouter.get('/users-by-section', requirePermission('dashboard', 'ver'), asyncHandler(controller.getUsuariosPorSeccion));
 dashboardRouter.get('/activities-by-category', requirePermission('dashboard', 'ver'), asyncHandler(controller.getActividadesPorCategoria));

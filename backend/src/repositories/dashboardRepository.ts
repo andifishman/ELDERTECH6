@@ -172,6 +172,42 @@ export async function obtenerActividadReciente(organizacionId: string, limite = 
   }
 }
 
+/**
+ * Usuarios activos de la app agrupados por sección del geriátrico. Cuenta solo
+ * residentes con cuenta (fila en `perfiles_usuario`) — los mismos que lista la
+ * pantalla Usuarios del backoffice.
+ */
+export async function obtenerUsuariosPorSeccion(organizacionId: string): Promise<{ nombre: string; total: number }[]> {
+  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerUsuariosPorSeccion', organizacionId });
+  try {
+    const [residentesR, perfilesR] = await Promise.all([
+      getSupabaseAdmin().from('residentes').select('id, seccion').eq('organizacion_id', organizacionId).eq('activo', true),
+      getSupabaseAdmin().from('perfiles_usuario').select('residente_id').eq('organizacion_id', organizacionId).not('residente_id', 'is', null),
+    ]);
+    if (residentesR.error) throw new Error(`Error al cargar usuarios por sección: ${residentesR.error.message}`);
+    if (perfilesR.error) throw new Error(`Error al cargar usuarios por sección: ${perfilesR.error.message}`);
+
+    const conCuenta = new Set(((perfilesR.data ?? []) as Array<{ residente_id: string }>).map((p) => p.residente_id));
+    const conteo = new Map<string, number>();
+    for (const r of (residentesR.data ?? []) as Array<{ id: string; seccion: string | null }>) {
+      if (!conCuenta.has(r.id)) continue;
+      const nombre = r.seccion ?? 'Sin sección';
+      conteo.set(nombre, (conteo.get(nombre) ?? 0) + 1);
+    }
+    // Orden natural de las secciones ("1 AC", "1 B", "2 AC"…), "Sin sección" al final.
+    return Array.from(conteo.entries())
+      .map(([nombre, total]) => ({ nombre, total }))
+      .sort((a, b) => {
+        if (a.nombre === 'Sin sección') return 1;
+        if (b.nombre === 'Sin sección') return -1;
+        return a.nombre.localeCompare(b.nombre, 'es', { numeric: true });
+      });
+  } catch (err) {
+    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerUsuariosPorSeccion', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}
+
 export async function obtenerActividadesPorCategoria(organizacionId: string): Promise<{ nombre: string; total: number }[]> {
   logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerActividadesPorCategoria', organizacionId });
   try {

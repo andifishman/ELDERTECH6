@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { BarChartCard } from '@/components/charts/BarChartCard';
-import { DonutChartCard } from '@/components/charts/DonutChartCard';
+import { DonutChartCard, PALETA_SUAVE } from '@/components/charts/DonutChartCard';
 import { LoadingState } from '@/components/common/states';
 import { formatHora, iniciales } from '@/lib/utils';
 import { useRealtime } from '@/hooks/useRealtime';
@@ -24,7 +24,7 @@ import { queryKeys } from '@/lib/queryClient';
 import {
   useActividadReciente,
   useActividadesHoy,
-  useActividadesPorCategoria,
+  useUsuariosPorSeccion,
   useDashboardKpis,
   useResidentesRecientes,
   useTutorialesMasVistos,
@@ -35,7 +35,7 @@ export function DashboardPage() {
   const actividadesHoy = useActividadesHoy();
   const residentes = useResidentesRecientes();
   const tutorialesVistos = useTutorialesMasVistos();
-  const porCategoria = useActividadesPorCategoria();
+  const porSeccion = useUsuariosPorSeccion();
   const reciente = useActividadReciente();
 
   // tiempo real: cambios en actividades/residentes refrescan el dashboard
@@ -90,9 +90,10 @@ export function DashboardPage() {
           enlace="/tutoriales/vistos"
         />
         <DonutChartCard
-          titulo="Actividades por categoría"
-          data={(porCategoria.data ?? []).map((c) => ({ label: c.nombre, valor: c.total }))}
-          isLoading={porCategoria.isLoading}
+          titulo="Usuarios por sección"
+          data={(porSeccion.data ?? []).map((s) => ({ label: s.nombre, valor: s.total }))}
+          isLoading={porSeccion.isLoading}
+          paleta={PALETA_SUAVE}
         />
       </div>
 

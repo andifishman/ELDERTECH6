@@ -61,6 +61,8 @@ export interface Residente {
   fecha_nacimiento: string | null;
   nivel_dificultad: string;
   seccion: string | null;
+  /** Puesto del empleado de Ledor Vador — null para residentes (o si la migración aún no se aplicó). */
+  rol_empleado?: string | null;
   habitacion: string | null;
   dni: string | null;
   telefono: string | null;
@@ -72,7 +74,7 @@ export interface Residente {
   updated_at: string;
 }
 
-export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean };
+export type ResidenteConCuenta = Residente & { tiene_cuenta: boolean; intereses_ids: string[] };
 
 export interface ResidenteBusquedaResumen {
   id: string;
@@ -152,9 +154,13 @@ export async function obtenerNombreCompleto(id: string): Promise<{ nombre: strin
 export async function listarResidentesAdmin(organizacionId: string): Promise<ResidenteConCuenta[]> {
   logger.info('repo:call', { repository: 'residentsRepository', action: 'listarResidentesAdmin', organizacionId });
   try {
-  const [residentesR, perfilesR] = await Promise.allSettled([
+  const [residentesR, perfilesR, interesesR] = await Promise.allSettled([
     getSupabaseAdmin().from('residentes').select('*').eq('organizacion_id', organizacionId).order('apellido', { ascending: true }),
     getSupabaseAdmin().from('perfiles_usuario').select('residente_id').eq('organizacion_id', organizacionId).not('residente_id', 'is', null),
+    getSupabaseAdmin()
+      .from('residente_intereses')
+      .select('residente_id, interes_id, residente:residentes!inner(organizacion_id)')
+      .eq('residente.organizacion_id', organizacionId),
   ]);
 
   if (residentesR.status === 'rejected') throw new Error(`Error al cargar residentes: ${String(residentesR.reason)}`);
@@ -164,7 +170,25 @@ export async function listarResidentesAdmin(organizacionId: string): Promise<Res
     perfilesR.status === 'fulfilled' ? ((perfilesR.value.data ?? []) as { residente_id: string }[]).map((p) => p.residente_id) : [],
   );
 
-  return ((residentesR.value.data ?? []) as Residente[]).map((r) => ({ ...r, tiene_cuenta: verificadosIds.has(r.id) }));
+  // Intereses de cada usuario (para pre-cargarlos al editar). Best-effort: si
+  // la consulta falla, la lista se muestra igual, solo sin intereses.
+  const interesesPorResidente = new Map<string, string[]>();
+  if (interesesR.status === 'fulfilled' && !interesesR.value.error) {
+    for (const fila of (interesesR.value.data ?? []) as Array<{ residente_id: string; interes_id: string }>) {
+      const lista = interesesPorResidente.get(fila.residente_id) ?? [];
+      lista.push(fila.interes_id);
+      interesesPorResidente.set(fila.residente_id, lista);
+    }
+  } else {
+    const motivo = interesesR.status === 'rejected' ? String(interesesR.reason) : interesesR.value.error?.message;
+    logger.warn('repo:warn', { repository: 'residentsRepository', action: 'listarResidentesAdmin', detalle: `No se pudieron cargar los intereses: ${motivo}` });
+  }
+
+  return ((residentesR.value.data ?? []) as Residente[]).map((r) => ({
+    ...r,
+    tiene_cuenta: verificadosIds.has(r.id),
+    intereses_ids: interesesPorResidente.get(r.id) ?? [],
+  }));
 
   } catch (err) {
     logger.error('repo:error', { repository: 'residentsRepository', action: 'listarResidentesAdmin', error: err instanceof Error ? err.message : String(err) });
@@ -179,16 +203,31 @@ export interface ResidenteAdminInput {
   notas?: string | null;
   nombre_completo?: string | null;
   tipo_celular?: TipoCelular;
+  rol_empleado?: string | null;
+  intereses?: string[];
+}
+
+/** ¿El error de Postgres/PostgREST es porque la columna `rol_empleado` todavía no existe? */
+function faltaColumnaRolEmpleado(mensaje: string | undefined): boolean {
+  return !!mensaje && mensaje.includes('rol_empleado');
 }
 
 export async function actualizarResidenteAdmin(id: string, input: ResidenteAdminInput): Promise<void> {
   logger.info('repo:call', { repository: 'residentsRepository', action: 'actualizarResidenteAdmin', id, input });
   try {
-  const { error } = await getSupabaseAdmin()
-    .from('residentes')
-    .update({ ...input, updated_at: new Date().toISOString() })
-    .eq('id', id);
+  const { intereses, ...campos } = input;
+  const cambios = { ...campos, updated_at: new Date().toISOString() };
+  let { error } = await getSupabaseAdmin().from('residentes').update(cambios).eq('id', id);
+  // Si la migración 20261013120000_residentes_rol_empleado todavía no se
+  // aplicó, se guarda todo lo demás igual en vez de fallar la edición entera.
+  if (error && 'rol_empleado' in cambios && faltaColumnaRolEmpleado(error.message)) {
+    logger.warn('repo:warn', { repository: 'residentsRepository', action: 'actualizarResidenteAdmin', detalle: 'Falta la columna residentes.rol_empleado — aplicar la migración 20261013120000. Se guarda sin el rol.' });
+    const { rol_empleado: _omitido, ...sinRol } = cambios;
+    ({ error } = await getSupabaseAdmin().from('residentes').update(sinRol).eq('id', id));
+  }
   if (error) throw new Error(`Error al actualizar residente: ${error.message}`);
+
+  if (intereses !== undefined) await reemplazarIntereses(id, intereses);
 
   } catch (err) {
     logger.error('repo:error', { repository: 'residentsRepository', action: 'actualizarResidenteAdmin', error: err instanceof Error ? err.message : String(err) });
@@ -217,6 +256,71 @@ export async function actualizarTipoCelularDetectado(residenteId: string, plataf
   } catch (err) {
     // Best-effort: nunca debe romper el registro del push token por esto.
     logger.error('repo:error', { repository: 'residentsRepository', action: 'actualizarTipoCelularDetectado', error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+/** Reemplaza los intereses del residente por exactamente `interesesIds`. */
+export async function reemplazarIntereses(residenteId: string, interesesIds: string[]): Promise<void> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'reemplazarIntereses', residenteId, cantidad: interesesIds.length });
+  try {
+    const unicos = [...new Set(interesesIds)];
+    const { error: delError } = await getSupabaseAdmin().from('residente_intereses').delete().eq('residente_id', residenteId);
+    if (delError) throw new Error(`Error al actualizar los intereses: ${delError.message}`);
+    if (unicos.length === 0) return;
+    const { error: insError } = await getSupabaseAdmin()
+      .from('residente_intereses')
+      .insert(unicos.map((interes_id) => ({ residente_id: residenteId, interes_id })));
+    if (insError) throw new Error(`Error al guardar los intereses: ${insError.message}`);
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'reemplazarIntereses', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}
+
+/**
+ * Elimina definitivamente al usuario: la fila de `residentes` (sus datos
+ * dependientes se borran en cascada) y su cuenta de Supabase Auth (que a su
+ * vez borra `perfiles_usuario`). Primero el residente: si algo lo impide, no
+ * se toca la cuenta y no queda nada a medio borrar.
+ */
+export async function eliminarResidenteAdmin(id: string, organizacionId: string): Promise<{ nombre: string } | null> {
+  logger.info('repo:call', { repository: 'residentsRepository', action: 'eliminarResidenteAdmin', id });
+  try {
+    const admin = getSupabaseAdmin();
+    const { data: residente, error: findError } = await admin
+      .from('residentes')
+      .select('id, nombre, apellido')
+      .eq('id', id)
+      .eq('organizacion_id', organizacionId)
+      .maybeSingle();
+    if (findError) throw new Error(`Error al buscar el usuario: ${findError.message}`);
+    if (!residente) return null;
+
+    const { data: perfiles, error: perfilesError } = await admin.from('perfiles_usuario').select('id').eq('residente_id', id);
+    if (perfilesError) throw new Error(`Error al buscar la cuenta del usuario: ${perfilesError.message}`);
+
+    const { error: delError } = await admin.from('residentes').delete().eq('id', id);
+    if (delError) {
+      throw new Error(
+        delError.code === '23503'
+          ? 'No se puede eliminar: el usuario tiene datos asociados que lo impiden. Podés desactivarlo en su lugar.'
+          : `Error al eliminar el usuario: ${delError.message}`,
+      );
+    }
+
+    for (const perfil of (perfiles ?? []) as Array<{ id: string }>) {
+      const { error: authError } = await admin.auth.admin.deleteUser(perfil.id);
+      if (authError) {
+        // El residente ya no existe: la cuenta queda sin residente asociado y no
+        // aparece en ningún listado. Se registra para limpiarla a mano si hace falta.
+        logger.error('repo:error', { repository: 'residentsRepository', action: 'eliminarResidenteAdmin', detalle: `No se pudo borrar la cuenta de auth ${perfil.id}: ${authError.message}` });
+      }
+    }
+
+    return { nombre: `${residente.nombre} ${residente.apellido}` };
+  } catch (err) {
+    logger.error('repo:error', { repository: 'residentsRepository', action: 'eliminarResidenteAdmin', error: err instanceof Error ? err.message : String(err) });
+    throw err;
   }
 }
 
@@ -250,7 +354,7 @@ export async function obtenerResidenteAdmin(id: string): Promise<Residente | nul
 
 export interface ResidenteDetalleRaw {
   mensajes: { id: string; contenido: string; created_at: string }[];
-  intereses: { nombre: string; emoji: string | null }[];
+  intereses: { id: string; nombre: string; emoji: string | null }[];
   tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
   ciudadesClima: string[];
   contactos: Array<Record<string, unknown>>;
@@ -269,7 +373,7 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
       .eq('rol', 'usuario')
       .order('created_at', { ascending: false })
       .limit(20),
-    getSupabaseAdmin().from('residente_intereses').select('interes:intereses(nombre, emoji)').eq('residente_id', id),
+    getSupabaseAdmin().from('residente_intereses').select('interes:intereses(id, nombre, emoji)').eq('residente_id', id),
     getSupabaseAdmin()
       .from('progreso_tutorial')
       .select('tutorial:tutoriales(titulo, thumbnail_url), completado, updated_at')
@@ -300,7 +404,7 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
     mensajes: mensajesR.status === 'fulfilled' ? ((mensajesR.value.data ?? []) as ResidenteDetalleRaw['mensajes']) : [],
     intereses:
       interesesR.status === 'fulfilled'
-        ? (((interesesR.value.data ?? []) as unknown as Array<{ interes?: { nombre: string; emoji: string | null } | null }>)
+        ? (((interesesR.value.data ?? []) as unknown as Array<{ interes?: { id: string; nombre: string; emoji: string | null } | null }>)
             .map((r) => r.interes)
             .filter(Boolean) as ResidenteDetalleRaw['intereses'])
         : [],

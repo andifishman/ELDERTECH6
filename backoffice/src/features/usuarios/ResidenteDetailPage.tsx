@@ -73,6 +73,7 @@ export function ResidenteDetailPage() {
                 {r.seccion ? ` · Sección ${r.seccion}` : ''}
               </span>
             )}
+            {r.rol_empleado && <Badge variant="outline">{r.rol_empleado}</Badge>}
             <Badge variant={r.activo ? 'success' : 'muted'}>{r.activo ? 'Activo' : 'Inactivo'}</Badge>
             <Badge variant={nivel.variant}>{nivel.label}</Badge>
           </div>
