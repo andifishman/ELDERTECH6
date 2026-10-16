@@ -22,7 +22,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Speech from 'expo-speech';
+import { hablar, detenerHabla } from '@/utils/tts';
 import { pedirPermisoMicrofono, iniciarGrabacion as crearGrabacion, finalizarModoGrabacion, type Grabacion } from '@/utils/grabadora';
 import { useAuth } from '@/context/AuthContext';
 import { useAsistenteConfig, getFontScale, getSpeechRate } from '@/context/AsistenteConfigContext';
@@ -172,11 +172,7 @@ export default function ChatAsistenteScreen() {
 
   const leerTexto = useCallback(
     (texto: string) => {
-      Speech.stop();
-      Speech.speak(texto, {
-        language: 'es-AR',
-        rate: getSpeechRate(config.velocidad),
-      });
+      void hablar(texto, { rate: getSpeechRate(config.velocidad), alternar: false });
     },
     [config.velocidad],
   );
@@ -438,7 +434,7 @@ export default function ChatAsistenteScreen() {
       <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => { Speech.stop(); router.back(); }}
+          onPress={() => { void detenerHabla(); router.back(); }}
           accessibilityLabel="Volver"
           accessibilityRole="button"
         >
@@ -453,7 +449,7 @@ export default function ChatAsistenteScreen() {
         {/* Historial */}
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => { Speech.stop(); router.push('/asistente/historial'); }}
+          onPress={() => { void detenerHabla(); router.push('/asistente/historial'); }}
           accessibilityLabel="Ver historial de conversaciones"
           accessibilityRole="button"
         >

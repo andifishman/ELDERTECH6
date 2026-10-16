@@ -31,8 +31,24 @@ const PREFERENCIA_VOCES = ['es-ar', 'es-419', 'es-us', 'es-mx', 'es-es'];
 let avisoVozFaltanteMostrado = false;
 let reintentoProgramado = false;
 
+// Algunos motores (Samsung TTS) informan el idioma con códigos de 3 letras ("spa-MEX", "spa_ARG")
+// en vez de "es-MX": `startsWith('es')` no los reconoce y parecía que no había ninguna voz en
+// español aunque estuviera instalada y activada. También se mira el nombre de la voz.
+const PAIS_ISO3: Record<string, string> = { arg: 'ar', mex: 'mx', usa: 'us', esp: 'es', col: 'co', chl: 'cl', per: 'pe', ury: 'uy' };
+
+function normalizarIdioma(lang: string): string {
+  const [idioma = '', pais = ''] = lang.toLowerCase().replace('_', '-').split('-');
+  const idioma2 = idioma === 'spa' ? 'es' : idioma;
+  const pais2 = PAIS_ISO3[pais] ?? pais;
+  return pais2 ? `${idioma2}-${pais2}` : idioma2;
+}
+
+function esVozEspanola(v: SpeechSynthesisVoice): boolean {
+  return normalizarIdioma(v.lang).startsWith('es') || /espa(ñ|n)ol|spanish/i.test(v.name);
+}
+
 function hayVozEspanola(voces: SpeechSynthesisVoice[]): boolean {
-  return voces.some((v) => v.lang.toLowerCase().startsWith('es'));
+  return voces.some(esVozEspanola);
 }
 
 function mostrarAvisoVozFaltante(): void {
@@ -67,10 +83,10 @@ function avisarSiFaltaVoz(synth: SpeechSynthesis, todasLasVoces: SpeechSynthesis
 function mejorVozEspanol(synth: SpeechSynthesis): SpeechSynthesisVoice | null {
   const todas = synth.getVoices();
   avisarSiFaltaVoz(synth, todas);
-  const voces = todas.filter((v) => v.lang.toLowerCase().startsWith('es'));
+  const voces = todas.filter(esVozEspanola);
   if (voces.length === 0) return null;
   for (const lang of PREFERENCIA_VOCES) {
-    const exacta = voces.find((v) => v.lang.toLowerCase().replace('_', '-') === lang);
+    const exacta = voces.find((v) => normalizarIdioma(v.lang) === lang);
     if (exacta) return exacta;
   }
   return voces[0];
@@ -84,7 +100,9 @@ function instalarSeleccionDeVoz(synth: SpeechSynthesis): void {
       const voz = mejorVozEspanol(synth);
       if (voz) {
         utterance.voice = voz;
-        if (!utterance.lang) utterance.lang = voz.lang;
+        // el idioma tiene que coincidir con el de la voz: en Chrome de Android, un `lang` distinto
+        // (ej. "es-AR" con una voz es-MX) hace que el motor ignore la voz y quede mudo
+        utterance.lang = voz.lang;
       }
     }
     originalSpeak(utterance);

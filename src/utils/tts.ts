@@ -1,112 +1,322 @@
-//utilidad para texto a voz — usa expo-speech con voz en español para adultos mayores
+//utilidad para texto a voz — usa expo-speech con voz en español para adultos mayores.
+//en Android cada marca trae un motor distinto (Google TTS, Samsung TTS, etc.) y no siempre con
+//la voz en español instalada: por eso se elige una voz española disponible y, si no hay ninguna,
+//se le explica al usuario cómo activarla en vez de quedar mudo
 import * as Speech from 'expo-speech';
-import { Alert, Platform } from 'react-native';
+import * as Updates from 'expo-updates';
+import { Alert, AppState, Linking, Platform } from 'react-native';
 
-//guarda el texto que se está leyendo para saber si hay que detener o empezar
-let hablandoId: string | null = null;
+const RATE_DEFAULT = 0.85; // ligeramente más lento para adultos mayores
+const MAX_CHUNK_NATIVO = 1500; // expo-speech tira error si el texto supera ~4000 caracteres
+const MAX_CHUNK_WEB = 300;
+const ESPERA_MIN_MOTOR_MS = 1500; // el motor de Android tarda en inicializar
+const TIMEOUT_VOCES_MS = 4000;
+const TIMEOUT_ARRANQUE_MS = 5000; // si no empieza a hablar en este tiempo, algo anda mal
+const COOLDOWN_AVISO_MS = 20000;
 
-// Motor de TTS y voces instaladas varían por fabricante — un Samsung con
-// "Samsung TTS" como motor por defecto puede no tener la variante exacta
-// "es-AR" (aunque sí tenga español genérico), y entonces Speech.speak()
-// fallaba en silencio: no sonaba nada y no había ningún error visible. Se
-// busca una vez la mejor voz en español realmente instalada en ESTE equipo
-// y se usa su identifier, en vez de asumir que "es-AR" siempre existe.
-//
-// Esto es SOLO nativo (Platform.OS !== 'web' abajo): en web ya existe un
-// mecanismo propio y más completo para lo mismo (src/utils/audioWeb.ts, que
-// parchea window.speechSynthesis directo) — duplicar la selección de voz acá
-// arriesga pisarse con ese parche en vez de complementarlo.
-let vozEsPromise: Promise<string | null> | null = null;
+type Problema = 'sin_motor' | 'sin_voz_es';
+type ResultadoVoz =
+  | { estado: 'ok'; voz: Speech.Voice }
+  | { estado: 'desconocido' } // no se pudieron listar las voces: se intenta hablar igual
+  | { estado: Problema };
 
-async function obtenerVozEs(): Promise<string | null> {
-  if (!vozEsPromise) {
-    vozEsPromise = Speech.getAvailableVoicesAsync()
-      .then((voces) => {
-        const exacta = voces.find((v) => v.language?.toLowerCase() === 'es-ar');
-        if (exacta) return exacta.identifier;
-        const genericaEs = voces.find((v) => v.language?.toLowerCase().startsWith('es'));
-        return genericaEs?.identifier ?? null;
-      })
-      .catch(() => null);
+export interface OpcionesHabla {
+  rate?: number;
+  //true (default): si ya está hablando, corta y no vuelve a hablar. false: corta y habla de nuevo
+  alternar?: boolean;
+}
+
+let inicioMotor: number | null = null;
+let vozCache: Speech.Voice | null = null;
+let cierreActual: (() => void) | null = null;
+let avisoVisible = false;
+let ultimoAvisoMs = 0;
+let pendiente: { texto: string; rate: number } | null = null;
+let escuchandoRetorno = false;
+
+//despierta el motor de voz al abrir la app para que el primer "Escuchar" no llegue en frío
+export function iniciarTTS(): void {
+  if (Platform.OS !== 'android' || inicioMotor !== null) return;
+  inicioMotor = Date.now();
+  Speech.isSpeakingAsync().catch(() => undefined);
+}
+
+//espera una promesa del motor de voz pero no se queda colgado si el motor no responde (devuelve null)
+function conTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p.catch(() => null), esperar(ms).then(() => null)]);
+}
+
+//identifica qué versión del código corre (para el código de diagnóstico del cartel)
+function versionCodigo(): string {
+  const id = Updates.updateId ? Updates.updateId.slice(0, 6) : 'embebido';
+  return `v3-${id}`;
+}
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+//puntaje de una voz: -1 si no es español; más alto = mejor para un residente argentino
+function puntuarVoz(v: Speech.Voice): number {
+  const idioma = v.language.toLowerCase().replace('_', '-');
+  if (!idioma.startsWith('es')) return -1;
+  let p = 10;
+  if (idioma === 'es-ar') p += 8;
+  else if (idioma === 'es-us' || idioma === 'es-mx' || idioma === 'es-419') p += 5;
+  else if (idioma === 'es-es') p += 2;
+  if (!/network/i.test(v.name)) p += 4; // las "network" necesitan internet
+  if (v.quality === Speech.VoiceQuality.Enhanced) p += 1;
+  return p;
+}
+
+async function resolverVoz(): Promise<ResultadoVoz> {
+  if (vozCache) return { estado: 'ok', voz: vozCache };
+
+  if (Platform.OS === 'android') {
+    iniciarTTS();
+    const transcurrido = Date.now() - (inicioMotor ?? Date.now());
+    if (transcurrido < ESPERA_MIN_MOTOR_MS) await esperar(ESPERA_MIN_MOTOR_MS - transcurrido);
   }
-  return vozEsPromise;
-}
 
-let avisoVozFaltanteMostrado = false;
-
-function avisarFalla(mensaje: string): void {
-  if (avisoVozFaltanteMostrado) return;
-  avisoVozFaltanteMostrado = true;
-  Alert.alert('Función de voz no disponible', mensaje);
-}
-
-//lee el texto en voz alta; si ya está hablando lo detiene
-export async function hablar(texto: string): Promise<void> {
-  // TODA la función va en un solo try/catch: antes solo `Speech.speak()` estaba
-  // cubierto, pero `Speech.isSpeakingAsync()` (de acá abajo) puede fallar por
-  // la MISMA causa (el navegador no soporta `speechSynthesis` en absoluto) y
-  // quedaba como una promesa sin manejar, sin ningún aviso — igual de en
-  // silencio que el problema original de la voz faltante, pero sin pasar
-  // siquiera por el diagnóstico de abajo.
+  let voces: Speech.Voice[] | null;
   try {
-    const estaHablando = await Speech.isSpeakingAsync();
+    voces = await Promise.race([
+      Speech.getAvailableVoicesAsync(),
+      esperar(TIMEOUT_VOCES_MS).then(() => null),
+    ]);
+  } catch {
+    // algunos motores (Samsung) fallan al listar voces — no significa que no hablen
+    return { estado: 'desconocido' };
+  }
 
-    if (estaHablando) {
+  if (voces === null) return { estado: 'sin_motor' };
+
+  const mejor = voces
+    .map((v) => ({ v, p: puntuarVoz(v) }))
+    .filter((x) => x.p >= 0)
+    .sort((a, b) => b.p - a.p)[0];
+
+  if (!mejor) return { estado: 'sin_voz_es' };
+  vozCache = mejor.v;
+  return { estado: 'ok', voz: mejor.v };
+}
+
+//corta el texto en trozos por oraciones para no pasar el límite del motor
+function dividirTexto(texto: string): string[] {
+  // en la web Chrome corta las lecturas largas a los ~15s, así que se usan trozos chicos
+  const MAX_CHUNK = Platform.OS === 'web' ? MAX_CHUNK_WEB : MAX_CHUNK_NATIVO;
+  if (texto.length <= MAX_CHUNK) return [texto];
+  const oraciones = texto.match(/[^.!?\n]+[.!?\n]*/g) ?? [texto];
+  const partes: string[] = [];
+  let actual = '';
+  for (const o of oraciones) {
+    if (actual.length + o.length > MAX_CHUNK && actual) {
+      partes.push(actual);
+      actual = '';
+    }
+    if (o.length > MAX_CHUNK) {
+      for (let i = 0; i < o.length; i += MAX_CHUNK) partes.push(o.slice(i, i + MAX_CHUNK));
+    } else {
+      actual += o;
+    }
+  }
+  if (actual.trim()) partes.push(actual);
+  return partes;
+}
+
+//abre la pantalla más directa para instalar/activar la voz según el problema
+async function abrirAjustesDeVoz(problema: Problema): Promise<void> {
+  if (problema === 'sin_motor') {
+    for (const url of [
+      'market://details?id=com.google.android.tts',
+      'https://play.google.com/store/apps/details?id=com.google.android.tts',
+    ]) {
+      try {
+        await Linking.openURL(url);
+        return;
+      } catch {
+        // probar el siguiente
+      }
+    }
+  }
+  for (const accion of [
+    'android.speech.tts.engine.INSTALL_TTS_DATA',
+    'com.android.settings.TTS_SETTINGS',
+  ]) {
+    try {
+      await Linking.sendIntent(accion);
+      return;
+    } catch {
+      // probar el siguiente
+    }
+  }
+  await Linking.openSettings().catch(() => undefined);
+}
+
+//al volver de los ajustes, si ya hay voz en español, lee lo que el usuario había pedido
+function escucharRetornoDeAjustes(): void {
+  if (escuchandoRetorno) return;
+  escuchandoRetorno = true;
+  AppState.addEventListener('change', async (estado) => {
+    if (estado !== 'active' || !pendiente) return;
+    const p = pendiente;
+    pendiente = null;
+    vozCache = null;
+    const r = await resolverVoz();
+    if (r.estado === 'ok' || r.estado === 'desconocido') {
+      void hablar(p.texto, { rate: p.rate, alternar: false });
+    }
+  });
+}
+
+function mostrarAviso(problema: Problema, texto: string, rate: number, detalle: string): void {
+  const ahora = Date.now();
+  if (avisoVisible || ahora - ultimoAvisoMs < COOLDOWN_AVISO_MS) return;
+  avisoVisible = true;
+  ultimoAvisoMs = ahora;
+  escucharRetornoDeAjustes();
+
+  const mensaje =
+    problema === 'sin_motor'
+      ? 'Este celular no tiene instalada la voz que lee los textos en voz alta.\n\nTocá "Activar" y después "Instalar" en la pantalla que se abre. Cuando termine, volvé a ElderTech.'
+      : 'Al celular le falta la voz en español para leer los textos en voz alta.\n\nTocá "Activar", elegí "Español" y descargá la voz. Cuando termine, volvé a ElderTech y se va a escuchar sola.';
+  const mensajeFinal = `${mensaje}
+
+(código: ${detalle})`;
+
+  const cerrar = () => { avisoVisible = false; };
+  Alert.alert(
+    'Activar la voz',
+    mensajeFinal,
+    [
+      { text: 'Ahora no', style: 'cancel', onPress: cerrar },
+      {
+        text: 'Activar',
+        onPress: () => {
+          cerrar();
+          pendiente = { texto, rate };
+          void abrirAjustesDeVoz(problema);
+        },
+      },
+    ],
+    { cancelable: true, onDismiss: cerrar },
+  );
+}
+
+type Intento = 'ok' | 'no_arranca' | 'silencio' | 'error';
+
+//habla las partes y dice cómo terminó: bien, sin arrancar nunca, "terminó" al instante (mudo) o con error
+function leer(partes: string[], voz: Speech.Voice | null, rate: number, android: boolean): Promise<Intento> {
+  const conMedicion = android;
+  return new Promise<Intento>((resolve) => {
+    let inicioMs = 0;
+    let terminado = false;
+    let vigilante: ReturnType<typeof setTimeout> | undefined;
+    let intervalo: ReturnType<typeof setInterval> | undefined;
+    const largo = partes.reduce((n, p) => n + p.length, 0);
+
+    const fin = (resultado: Intento) => {
+      if (terminado) return;
+      terminado = true;
+      if (vigilante) clearTimeout(vigilante);
+      if (intervalo) clearInterval(intervalo);
+      if (cierreActual === cortado) cierreActual = null;
+      resolve(resultado);
+    };
+    //terminó normal; si un texto largo "terminó" en menos de 0,4s, el motor no habló en realidad
+    const terminoNormal = () => fin(conMedicion && inicioMs > 0 && largo > 40 && Date.now() - inicioMs < 400 ? 'silencio' : 'ok');
+    const cortado = () => fin('ok');
+    cierreActual = cortado;
+
+    //red de seguridad: algunos navegadores/motores pierden el evento "terminó" y el botón quedaría pegado
+    const vigilarFin = () => {
+      intervalo = setInterval(async () => {
+        if ((await conTimeout(Speech.isSpeakingAsync(), 2000)) === false) terminoNormal();
+      }, 1000);
+    };
+
+    //si el motor nunca arranca (no hay voz, motor roto) se avisa en vez de quedar mudo
+    vigilante = setTimeout(() => {
+      if (inicioMs > 0) return;
       Speech.stop();
-      hablandoId = null;
+      fin('no_arranca');
+    }, TIMEOUT_ARRANQUE_MS);
+
+    partes.forEach((parte, i) => {
+      Speech.speak(parte, {
+        // en Android "es-AR" no es un locale válido para el módulo nativo; la voz elegida manda
+        language: android ? 'es' : 'es-AR', // en la web audioWeb.ts elige la voz en español
+        voice: voz?.identifier,
+        pitch: 1.0,
+        rate,
+        onStart: i === 0 ? () => { inicioMs = Date.now(); vigilarFin(); } : undefined,
+        onDone: i === partes.length - 1 ? terminoNormal : undefined,
+        onStopped: cortado,
+        onError: () => fin(inicioMs > 0 ? 'ok' : 'error'),
+      });
+    });
+  });
+}
+
+//lee el texto en voz alta; por defecto, si ya está hablando lo detiene.
+//la promesa se resuelve cuando termina (o se corta) la lectura
+export async function hablar(texto: string, opciones: OpcionesHabla = {}): Promise<void> {
+  const { rate = RATE_DEFAULT, alternar = true } = opciones;
+  const limpio = texto.trim();
+  if (!limpio) return;
+  const android = Platform.OS === 'android';
+  let detalle = versionCodigo();
+
+  try {
+    const hablando = await conTimeout(Speech.isSpeakingAsync(), 2000);
+    if (hablando === null) detalle += ' motor-sin-respuesta';
+    if (hablando) {
+      cortarLectura();
+      if (alternar) return;
+    }
+
+    // iOS trae voces en español de fábrica; en la web el navegador no tiene a dónde mandar al usuario
+    const resultado: ResultadoVoz = android ? await resolverVoz() : { estado: 'desconocido' };
+    detalle += ` ${resultado.estado}`;
+
+    if (android && (resultado.estado === 'sin_motor' || resultado.estado === 'sin_voz_es')) {
+      mostrarAviso(resultado.estado, limpio, rate, detalle);
       return;
     }
+    const voz = resultado.estado === 'ok' ? resultado.voz : null;
+    if (voz) detalle += ` ${voz.name}`;
+    const partes = dividirTexto(limpio);
 
-    const voiceId = Platform.OS === 'web' ? null : await obtenerVozEs();
-    if (Platform.OS !== 'web' && !voiceId) {
-      // No hay NINGUNA voz en español instalada en el equipo — avisar en vez
-      // de quedarse en silencio sin explicación, ya que esta función la usan
-      // personas con poca visibilidad que dependen de escuchar el texto.
-      avisarFalla('Este teléfono no tiene instalada una voz en español para leer en voz alta. Se puede instalar desde Ajustes → Accesibilidad → Texto a voz.');
+    let intento = await leer(partes, voz, rate, android);
+    detalle += ` ${intento}`;
+
+    //el motor listó la voz pero no habló: se reintenta con la voz que el motor elija solo
+    if (android && voz && (intento === 'silencio' || intento === 'error')) {
+      vozCache = null;
+      intento = await leer(partes, null, rate, android);
+      detalle += ` reintento:${intento}`;
     }
 
-    hablandoId = texto;
-    await Speech.speak(texto, {
-      language: 'es-AR',
-      voice: voiceId ?? undefined,
-      pitch: 1.0,
-      rate: 0.85, // ligeramente más lento para adultos mayores
-      onDone: () => { hablandoId = null; },
-      onError: (err) => {
-        hablandoId = null;
-        console.warn('[TTS] Error al hablar:', err);
-      },
-      onStopped: () => { hablandoId = null; },
-    });
-  } catch (err) {
-    hablandoId = null;
-    console.warn('[TTS] Falló la lectura en voz alta:', err);
-    avisarFalla('No se pudo leer el texto en voz alta en este dispositivo. Probá cerrar y volver a abrir la aplicación.');
+    if (android && intento !== 'ok') mostrarAviso('sin_voz_es', limpio, rate, detalle);
+  } catch (e) {
+    if (android) {
+      mostrarAviso('sin_voz_es', limpio, rate, `${detalle} excepcion:${e instanceof Error ? e.message : String(e)}`);
+    }
   }
+}
+
+//corta la lectura actual y libera a quien esté esperando que termine
+function cortarLectura(): void {
+  Speech.stop();
+  cierreActual?.();
 }
 
 //detiene la lectura si está activa
 export async function detenerHabla(): Promise<void> {
-  try {
-    const estaHablando = await Speech.isSpeakingAsync();
-    if (estaHablando) {
-      Speech.stop();
-      hablandoId = null;
-    }
-  } catch (err) {
-    console.warn('[TTS] detenerHabla falló:', err);
-  }
+  if (await conTimeout(Speech.isSpeakingAsync(), 2000)) cortarLectura();
 }
 
-// `SpeakButton` llama esto ANTES que `hablar()` — si `Speech.isSpeakingAsync()`
-// falla (ej. sin soporte de `speechSynthesis` en el navegador) sin este
-// try/catch, el error queda sin manejar acá y ni siquiera se llega a `hablar()`
-// (que es donde está el diagnóstico/aviso): el botón no hace nada, en silencio.
 //devuelve true si el sintetizador de voz está activo en este momento
 export async function estaHablando(): Promise<boolean> {
-  try {
-    return await Speech.isSpeakingAsync();
-  } catch {
-    return false;
-  }
+  return (await conTimeout(Speech.isSpeakingAsync(), 2000)) === true;
 }

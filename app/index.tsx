@@ -1,6 +1,6 @@
 //pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
 import { useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
+import { hablar } from '@/utils/tts';
 import {
   Dimensions,
   ScrollView,
@@ -124,8 +124,7 @@ export default function HomeScreen() {
   }
 
   const speak = (text: string) => {
-    Speech.stop();
-    Speech.speak(text, { language: 'es-AR', rate: 0.9 });
+    void hablar(text, { rate: 0.9, alternar: false });
   };
 
   return (

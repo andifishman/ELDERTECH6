@@ -40,7 +40,7 @@ import { apiUrlMisconfigurada, API_URL } from '@/utils/apiUrlGuard';
 import { NowPlayingBar } from '@/components/radio/NowPlayingBar';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { NetworkErrorModal } from '@/components/common/NetworkErrorModal';
-import { detenerHabla } from '@/utils/tts';
+import { detenerHabla, iniciarTTS } from '@/utils/tts';
 import { useNotificationTapHandler } from '@/hooks/useNotificationTapHandler';
 import { useActualizacionAutomatica } from '@/hooks/useActualizacionAutomatica';
 import { instalarAlertWeb, AlertaWebHost } from '@/utils/alertWeb';
@@ -130,6 +130,7 @@ const marcoApp: ViewStyle = Platform.OS === 'web'
 export default function RootLayout() {
   useHideNavigationBar();
   useNotificationTapHandler();
+  useEffect(() => { iniciarTTS(); }, []);
   useStopSpeechOnNavigate();
   useActualizacionAutomatica();
 

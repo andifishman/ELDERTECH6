@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Speech from 'expo-speech';
+import { hablar } from '@/utils/tts';
 import { AppHeader } from '@/components/common/AppHeader';
 import { useAsistenteConfig, getSpeechRate } from '@/context/AsistenteConfigContext';
 import { Colors } from '@/constants/Colors';
@@ -23,10 +23,9 @@ export default function AjustesAsistenteScreen() {
   const { config, setVelocidad, setTamanoTexto, toggleLeerRespuestas } = useAsistenteConfig();
 
   function probarVoz() {
-    Speech.stop();
-    Speech.speak('Esta es la velocidad y el volumen del asistente.', {
-      language: 'es-AR',
+    void hablar('Esta es la velocidad y el volumen del asistente.', {
       rate: getSpeechRate(config.velocidad),
+      alternar: false,
     });
   }
 
