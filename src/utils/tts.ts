@@ -5,6 +5,7 @@
 import * as Speech from 'expo-speech';
 import * as Updates from 'expo-updates';
 import { Alert, AppState, Linking, Platform } from 'react-native';
+import { detenerServidor, hablarConServidor, servidorHablando } from '@/utils/ttsServidor';
 
 const RATE_DEFAULT = 0.85; // ligeramente más lento para adultos mayores
 const MAX_CHUNK_NATIVO = 1500; // expo-speech tira error si el texto supera ~4000 caracteres
@@ -34,8 +35,38 @@ let ultimoAvisoMs = 0;
 let pendiente: { texto: string; rate: number } | null = null;
 let escuchandoRetorno = false;
 
+//web: true si el navegador no tiene ninguna voz (Chrome de Android con Samsung TTS) — ahí se usa la voz del servidor
+let webSinVoces: boolean | null = null;
+
+async function detectarWebSinVoces(): Promise<boolean> {
+  if (webSinVoces !== null) return webSinVoces;
+  const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+  if (!synth) {
+    webSinVoces = true;
+    return true;
+  }
+  if (synth.getVoices().length === 0) {
+    // la lista puede tardar un instante en cargar: se espera el evento antes de decidir
+    await Promise.race([
+      new Promise<void>((res) => synth.addEventListener('voiceschanged', () => res(), { once: true })),
+      esperar(1500),
+    ]);
+  }
+  webSinVoces = synth.getVoices().length === 0;
+  return webSinVoces;
+}
+
+let ultimoAvisoServidorMs = 0;
+function avisarFallaServidor(): void {
+  const ahora = Date.now();
+  if (typeof window === 'undefined' || ahora - ultimoAvisoServidorMs < COOLDOWN_AVISO_MS) return;
+  ultimoAvisoServidorMs = ahora;
+  window.alert('No pudimos reproducir la voz en este momento. Probá de nuevo en unos segundos.');
+}
+
 //despierta el motor de voz al abrir la app para que el primer "Escuchar" no llegue en frío
 export function iniciarTTS(): void {
+  if (Platform.OS === 'web') void detectarWebSinVoces();
   if (Platform.OS !== 'android' || inicioMotor !== null) return;
   inicioMotor = Date.now();
   Speech.isSpeakingAsync().catch(() => undefined);
@@ -267,6 +298,11 @@ export async function hablar(texto: string, opciones: OpcionesHabla = {}): Promi
   const android = Platform.OS === 'android';
   let detalle = versionCodigo();
 
+  if (Platform.OS === 'web') {
+    await hablarEnWeb(limpio, rate, alternar);
+    return;
+  }
+
   try {
     const hablando = await conTimeout(Speech.isSpeakingAsync(), 2000);
     if (hablando === null) detalle += ' motor-sin-respuesta';
@@ -305,18 +341,47 @@ export async function hablar(texto: string, opciones: OpcionesHabla = {}): Promi
   }
 }
 
+//web: voz del navegador si tiene voces; si no, o si no arranca, voz generada por el servidor
+async function hablarEnWeb(texto: string, rate: number, alternar: boolean): Promise<void> {
+  try {
+    if (servidorHablando()) {
+      detenerServidor();
+      if (alternar) return;
+    }
+    if (await conTimeout(Speech.isSpeakingAsync(), 2000)) {
+      cortarLectura();
+      if (alternar) return;
+    }
+
+    const velocidadServidor = Math.min(1, rate + 0.1);
+    if (await detectarWebSinVoces()) {
+      await hablarConServidor(texto, velocidadServidor);
+      return;
+    }
+
+    const intento = await leer(dividirTexto(texto), null, rate, false);
+    if (intento !== 'ok') {
+      webSinVoces = true; // el navegador dice tener voces pero no habla: no insistir
+      await hablarConServidor(texto, velocidadServidor);
+    }
+  } catch {
+    avisarFallaServidor();
+  }
+}
+
 //corta la lectura actual y libera a quien esté esperando que termine
 function cortarLectura(): void {
+  detenerServidor();
   Speech.stop();
   cierreActual?.();
 }
 
 //detiene la lectura si está activa
 export async function detenerHabla(): Promise<void> {
-  if (await conTimeout(Speech.isSpeakingAsync(), 2000)) cortarLectura();
+  if (servidorHablando() || (await conTimeout(Speech.isSpeakingAsync(), 2000))) cortarLectura();
 }
 
 //devuelve true si el sintetizador de voz está activo en este momento
 export async function estaHablando(): Promise<boolean> {
-  return (await conTimeout(Speech.isSpeakingAsync(), 2000)) === true;
+  return servidorHablando() || (await conTimeout(Speech.isSpeakingAsync(), 2000)) === true;
 }

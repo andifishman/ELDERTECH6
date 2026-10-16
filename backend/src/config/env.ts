@@ -34,6 +34,9 @@ export const env = {
   // versión fija (gemini-2.5-flash ya dejó de estar disponible para cuentas
   // nuevas) y el alias sigue apuntando al Flash vigente sin tocar código.
   geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-latest',
+  // Texto a voz del servidor (ver services/tts) — usa la misma GEMINI_API_KEY que el chat.
+  geminiTtsModel: process.env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts',
+  geminiTtsVoice: process.env.GEMINI_TTS_VOICE || 'Kore',
   openAiApiKey: optional('OPENAI_API_KEY'),
 
   openWeatherApiKey: optional('OPENWEATHER_API_KEY'),

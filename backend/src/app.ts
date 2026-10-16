@@ -10,6 +10,7 @@ import { administradoresRouter } from './routes/administradores.routes';
 import { agendaRouter } from './routes/agenda.routes';
 import { agendaCronRouter } from './routes/agendaCron.routes';
 import { assistantRouter } from './routes/assistant.routes';
+import { ttsRouter } from './routes/tts.routes';
 import { assistantAdminRouter } from './routes/assistantAdmin.routes';
 import { auditRouter } from './routes/audit.routes';
 import { catalogsRouter } from './routes/catalogs.routes';
@@ -72,6 +73,7 @@ export function createApp(): Express {
   app.use('/api/agenda', agendaRouter);
   app.use('/api/internal/agenda', agendaCronRouter);
   app.use('/api/assistant', assistantRouter);
+  app.use('/api/tts', ttsRouter);
   app.use('/api/weather', weatherRouter);
   app.use('/api/radio', radioRouter);
   app.use('/api/activities', activitiesRouter);
