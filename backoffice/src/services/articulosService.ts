@@ -86,7 +86,7 @@ export async function eliminarDefinitivamente(id: string, titulo?: string): Prom
 const IMAGEN_LADO_MAX = 1280;
 const IMAGEN_CALIDAD = 0.82;
 
-async function optimizarImagen(archivo: File): Promise<File> {
+export async function optimizarImagen(archivo: File): Promise<File> {
   // GIF animado y SVG no se tocan (el canvas los aplanaría)
   if (!archivo.type.startsWith('image/') || archivo.type === 'image/gif' || archivo.type === 'image/svg+xml') return archivo;
   try {

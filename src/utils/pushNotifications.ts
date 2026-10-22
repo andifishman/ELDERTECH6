@@ -34,6 +34,7 @@ export const PANTALLA_A_RUTA: Record<string, string> = {
   pedidos: '/mas/pedidos',
   hablemos: '/mas/hablemos',
   agenda: '/agenda',
+  novedades: '/novedades',
 };
 
 // Identificador de la acción "✓ Realizado" en las notificaciones de Agenda —
@@ -64,7 +65,7 @@ export async function pedirPermisoYObtenerToken(): Promise<string | null> {
       name: 'General',
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#1B5E3B',
+      lightColor: '#5F3E88',
     });
   }
 

@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
   },
   logoContainer: {
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
     borderRadius: Spacing.radius.xl,

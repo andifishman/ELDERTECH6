@@ -14,6 +14,7 @@ export const PANTALLA_A_RUTA: Record<string, string> = {
   pedidos: '/mas/pedidos',
   hablemos: '/mas/hablemos',
   agenda: '/agenda',
+  novedades: '/novedades',
 };
 
 export const AGENDA_ACCION_MARCAR_REALIZADO = 'marcar-realizado';

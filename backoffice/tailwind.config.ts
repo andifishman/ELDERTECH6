@@ -2,8 +2,8 @@
 // CONFIG: Tailwind CSS
 // DESCRIPCIÓN:
 // Sistema de diseño del backoffice ElderTech.
-// La paleta se basa en los verdes de marca de la app
-// móvil (#1B5E3B / #2E7D32) para que ambos productos
+// La paleta se basa en el violeta de marca de la app
+// móvil (#5F3E88) para que ambos productos
 // se perciban como un mismo sistema.
 // Los colores se exponen como variables CSS (HSL) para
 // soportar theming y el patrón de tokens de shadcn/ui.
@@ -27,20 +27,20 @@ export default {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
-        // Verde de marca ElderTech — color de acción principal
+        // Violeta de marca ElderTech — color de acción principal
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
-          50: '#ECFDF3',
-          100: '#D1FADF',
-          200: '#A6F4C5',
-          300: '#6CE9A6',
-          400: '#32D583',
-          500: '#2E7D32', // verde medio (botones)
-          600: '#1B5E3B', // verde oscuro (sidebar/header)
-          700: '#15512F',
-          800: '#103D24',
-          900: '#0B2A19',
+          50: '#F2EEF8',
+          100: '#E0D7EE',
+          200: '#C3B2DD',
+          300: '#A189C8',
+          400: '#8264B0',
+          500: '#6E4D9C', // violeta medio (botones)
+          600: '#5F3E88', // violeta de marca (sidebar/header)
+          700: '#4F3372',
+          800: '#3F2960',
+          900: '#2C1D44',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',

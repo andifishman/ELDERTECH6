@@ -69,7 +69,7 @@ export function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard etiqueta="Residentes activos" valor={kpis.data?.residentesActivos ?? 0} icono={Users} acento="green" cargando={kpis.isLoading} />
+        <KpiCard etiqueta="Residentes activos" valor={kpis.data?.residentesActivos ?? 0} icono={Users} acento="primary" cargando={kpis.isLoading} />
         <KpiCard etiqueta="Actividades hoy" valor={kpis.data?.actividadesHoy ?? 0} icono={CalendarDays} acento="red" cargando={kpis.isLoading} />
         <KpiCard etiqueta="Tutoriales publicados" valor={kpis.data?.tutorialesPublicados ?? 0} icono={GraduationCap} acento="purple" cargando={kpis.isLoading} />
         <KpiCard etiqueta="Consultas hoy" valor={kpis.data?.consultasAsistente ?? 0} icono={MessageSquare} acento="blue" cargando={kpis.isLoading} />

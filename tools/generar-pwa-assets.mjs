@@ -5,16 +5,18 @@
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 
-const FONDO = '#1B5E3B'; // Colors.brand.greenDark
+const FONDO = '#5F3E88'; // Colors.brand.primary
 const LOGO = 'assets/images/logo-puente.png';
 mkdirSync('public/icons', { recursive: true });
 mkdirSync('public/splash', { recursive: true });
 
-/** Logo centrado sobre el verde de marca. `ancho` = fracción del lado que ocupa el logo. */
-async function lienzo(ancho, alto, fraccion) {
+const TRANSPARENTE = { r: 0, g: 0, b: 0, alpha: 0 };
+
+/** Logo centrado sobre el violeta de marca (o sobre `fondo`). `fraccion` = parte del lado que ocupa el logo. */
+async function lienzo(ancho, alto, fraccion, fondo = FONDO) {
   const logoAncho = Math.round(Math.min(ancho, alto) * fraccion);
   const logo = await sharp(LOGO).resize({ width: logoAncho }).png().toBuffer();
-  return sharp({ create: { width: ancho, height: alto, channels: 4, background: FONDO } })
+  return sharp({ create: { width: ancho, height: alto, channels: 4, background: fondo } })
     .composite([{ input: logo, gravity: 'centre' }])
     .png();
 }
@@ -23,7 +25,9 @@ async function lienzo(ancho, alto, fraccion) {
 for (const lado of [192, 512]) await (await lienzo(lado, lado, 0.78)).toFile(`public/icons/icon-${lado}.png`);
 await (await lienzo(512, 512, 0.56)).toFile('public/icons/icon-maskable-512.png');
 await (await lienzo(180, 180, 0.78)).toFile('public/icons/apple-touch-icon.png'); // iOS ignora el manifest para este
-await (await lienzo(48, 48, 0.9)).toFile('public/icons/favicon-48.png');
+// Favicons de la pestaña del navegador: solo el logo, sin fondo.
+await (await lienzo(48, 48, 1, TRANSPARENTE)).toFile('public/icons/favicon-48.png');
+await (await lienzo(192, 192, 1, TRANSPARENTE)).toFile('public/icons/favicon-192.png');
 
 // Splash de iOS (apple-touch-startup-image) — iOS exige una imagen por resolución exacta.
 // [ancho CSS, alto CSS, pixel ratio]

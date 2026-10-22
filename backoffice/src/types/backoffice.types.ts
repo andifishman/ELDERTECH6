@@ -105,7 +105,8 @@ export type ModuloId =
   | 'administradores'
   | 'accesos'
   | 'grupos'
-  | 'juegos';
+  | 'juegos'
+  | 'novedades';
 
 export type AccionModulo = 'ver' | 'crear' | 'editar' | 'eliminar';
 

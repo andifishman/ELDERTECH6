@@ -14,7 +14,6 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { AvisosWebCard } from '@/pwa/AvisosWebCard';
-import { CerrarSesionWeb } from '@/pwa/CerrarSesionWeb';
 
 interface OpcionMenu {
   id: string;
@@ -126,7 +125,6 @@ export default function MasScreen() {
           </View>
         ))}
 
-        <CerrarSesionWeb />
       </ScrollView>
 
       {/* Botón Volver */}
@@ -222,9 +220,9 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 20,
     borderRadius: 14,
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     elevation: 2,
-    shadowColor: Colors.brand.greenDark,
+    shadowColor: Colors.brand.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
@@ -277,7 +275,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   volverButton: {
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     marginHorizontal: Spacing.screen.horizontal,
     marginBottom: Spacing.xxl,
     borderRadius: Spacing.radius.xl,

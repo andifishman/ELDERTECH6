@@ -9,8 +9,8 @@ export const Colors = {
   border:        AppColors.ui.border,
   shadow:        '#000000',
 
-  primary:       AppColors.brand.greenDark,
-  primaryDark:   '#0A3D20',
+  primary:       AppColors.brand.primary,
+  primaryDark:   '#3F2960',
 
   danger:        AppColors.brand.red,
   dangerLight:   '#FFEBEE',

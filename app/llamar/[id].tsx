@@ -279,7 +279,7 @@ export default function ContactoDetalleScreen() {
               <Text style={styles.modalBtnTexto}>Tomar foto</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalBtn, { backgroundColor: Colors.brand.greenDark }]}
+              style={[styles.modalBtn, { backgroundColor: Colors.brand.primary }]}
               onPress={async () => {
                 setShowFotoModal(false);
                 const uri = await pickImage();

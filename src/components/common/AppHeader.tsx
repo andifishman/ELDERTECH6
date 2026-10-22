@@ -38,7 +38,7 @@ export function AppHeader({
   mostrarVolver = false,
   mostrarHablar = true,
   textoHablar,
-  backgroundColor = Colors.brand.greenDark,
+  backgroundColor = Colors.brand.primary,
   onVolver,
   tituloGrande = false,
 }: AppHeaderProps) {

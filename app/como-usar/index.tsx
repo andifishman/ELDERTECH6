@@ -29,7 +29,7 @@ export default function ComoUsarScreen() {
         titulo="¿Cómo usar?"
         subtitulo="Guía simple de toda la aplicación"
         mostrarVolver
-        backgroundColor="#4CAF50"
+        backgroundColor={Colors.brand.primary}
         textoHablar="Cómo usar ElderTech. Tocá el botón de la parte que querés aprender a usar."
       />
 

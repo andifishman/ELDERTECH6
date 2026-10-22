@@ -9,7 +9,7 @@ interface LoadingStateProps {
   color?: string;
 }
 
-export function LoadingState({ mensaje = 'Cargando...', color = Colors.brand.greenDark }: LoadingStateProps) {
+export function LoadingState({ mensaje = 'Cargando...', color = Colors.brand.primary }: LoadingStateProps) {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color={color} />

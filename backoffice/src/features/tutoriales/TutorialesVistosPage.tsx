@@ -68,7 +68,7 @@ export function TutorialesVistosPage() {
               etiqueta={masVisto ? `Más visto: ${truncar(masVisto.titulo, 40)}` : 'Más visto'}
               valor={masVisto ? masVisto.vistas : '—'}
               icono={TrendingUp}
-              acento="green"
+              acento="primary"
             />
             <KpiCard etiqueta="Tutoriales sin ninguna vista" valor={sinVistas} icono={EyeOff} acento="amber" />
           </div>

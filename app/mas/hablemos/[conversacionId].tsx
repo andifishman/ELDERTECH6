@@ -513,7 +513,7 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
               <Ionicons
                 name={reproduciendo ? 'pause' : 'volume-medium'}
                 size={20}
-                color={reproduciendo ? Colors.speak.active : Colors.brand.greenDark}
+                color={reproduciendo ? Colors.speak.active : Colors.brand.primary}
               />
               <Text style={[styles.audioMensajeBtnTexto, reproduciendo && styles.audioMensajeBtnTextoActivo]}>
                 {reproduciendo ? 'Pausar' : 'Escuchar'}
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9',
   },
   audioMensajeBtnActivo: { backgroundColor: Colors.speak.activeBg },
-  audioMensajeBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.greenDark },
+  audioMensajeBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
   audioMensajeBtnTextoActivo: { color: Colors.speak.active },
 
   vacioContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, paddingHorizontal: Spacing.xxxl },
@@ -826,7 +826,7 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: Spacing.touch.comfortable,
   },
-  modalBtnGaleria: { backgroundColor: Colors.brand.greenDark },
+  modalBtnGaleria: { backgroundColor: Colors.brand.primary },
   modalBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   modalBtnCancelar: {
     paddingVertical: Spacing.md,

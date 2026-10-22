@@ -28,7 +28,7 @@ Backoffice (Vite)  ──┘      + Supabase Auth (login/sesión)
 | Texto grande (Accesibilidad) | parche de `Text` | `escalaTexto.ts` rama web (el parche nativo **crashea** en web) |
 | Pantalla ancha | — | columna de 600 px centrada (`marcoWeb.ts`), mismo diseño y botones |
 | Actualizaciones | expo-updates (OTA) | Service Worker — se aplica sola en un momento seguro, sin avisos |
-| Cerrar sesión | no existe (celular personal) | botón en Más (equipos compartidos) |
+| Cerrar sesión | no existe (celular personal) | tampoco existe — se sacó a pedido, para que los residentes no puedan desloguearse |
 
 La lógica, la sesión (Supabase Auth: `localStorage` en web, AsyncStorage en nativo) y **los permisos (validados en el backend)** son los mismos.
 

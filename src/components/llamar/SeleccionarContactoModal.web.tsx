@@ -118,7 +118,7 @@ export function SeleccionarContactoModal({ visible, onClose, onSeleccionar }: Se
           <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
             {puedeElegirDeContactos && (
               <TouchableOpacity style={styles.btnSecundario} onPress={elegirDeContactos} accessibilityRole="button">
-                <Ionicons name="people" size={24} color={Colors.brand.greenDark} />
+                <Ionicons name="people" size={24} color={Colors.brand.primary} />
                 <Text style={styles.btnSecundarioTexto}>Elegir de mis contactos</Text>
               </TouchableOpacity>
             )}
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   error: { fontSize: Typography.size.md, color: '#B3261E', marginTop: Spacing.md, lineHeight: 24 },
   btnGuardar: {
     marginTop: Spacing.xl,
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     borderRadius: Spacing.radius.lg,
     minHeight: Spacing.touch.comfortable,
     alignItems: 'center',
@@ -213,8 +213,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     borderRadius: Spacing.radius.lg,
     borderWidth: 2,
-    borderColor: Colors.brand.greenDark,
+    borderColor: Colors.brand.primary,
     minHeight: Spacing.touch.comfortable,
   },
-  btnSecundarioTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.brand.greenDark },
+  btnSecundarioTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.semibold, color: Colors.brand.primary },
 });

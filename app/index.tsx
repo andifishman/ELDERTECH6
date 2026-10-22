@@ -1,5 +1,6 @@
 //pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/Colors';
 import { hablar } from '@/utils/tts';
 import {
   Dimensions,
@@ -10,12 +11,25 @@ import {
   View,
 } from 'react-native';
 import { usePrefetchHome } from '@/hooks/usePrefetchHome';
+import { useNovedadesSinLeer } from '@/hooks/useNovedades';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
 //datos de cada botón del menú: ícono, texto, color y audio de descripción
-const menuItems = [
+interface MenuItem {
+  id: string;
+  route: string;
+  icon: string;
+  label: string;
+  subtitle: string;
+  color: string;
+  iconBg: string;
+  size: 'large' | 'medium';
+  audio: string;
+}
+
+const menuItems: MenuItem[] = [
   {
     id: 'horarios',
     route: '/horarios',
@@ -44,8 +58,8 @@ const menuItems = [
     icon: '📚',
     label: 'Tutoriales',
     subtitle: 'Aprendé con videos',
-    color: '#AB47BC',
-    iconBg: '#CE93D8',
+    color: '#0097A7',
+    iconBg: '#80DEEA',
     size: 'medium',
     audio: 'Tutoriales. Encontrás guías y videos para aprender a usar el celular paso a paso.',
   },
@@ -77,8 +91,8 @@ const menuItems = [
     icon: '💬',
     label: 'Hablemos',
     subtitle: 'Mandale mensajes a otros residentes',
-    color: '#00897B',
-    iconBg: '#4DB6AC',
+    color: '#5F3E88',
+    iconBg: '#B9A5D6',
     size: 'medium',
     audio: 'Hablemos. Mandá mensajes de texto o de voz a otros residentes.',
   },
@@ -109,6 +123,63 @@ function getFechaHoy() {
   return `${diaSemana} ${diaMes} de ${mes}`;
 }
 
+//parlante al lado del ícono de cada tarjeta — lee en voz alta de qué se trata la sección
+function BotonParlante({ item, onPress }: { item: MenuItem; onPress: (texto: string) => void }) {
+  return (
+    <TouchableOpacity
+      style={styles.parlanteBtn}
+      onPress={() => onPress(item.audio)}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Escuchar qué es ${item.label}`}
+      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+    >
+      <Text style={styles.parlanteIcon}>🔊</Text>
+    </TouchableOpacity>
+  );
+}
+
+//botón "Novedades" arriba de la fecha — abre las noticias de la residencia y avisa cuántas no se leyeron
+function BotonNovedades({ onPress, onEscuchar }: { onPress: () => void; onEscuchar: (texto: string) => void }) {
+  const sinLeer = useNovedadesSinLeer();
+  const detalle = sinLeer === 0 ? 'Sin novedades nuevas' : sinLeer === 1 ? '1 novedad nueva' : `${sinLeer} novedades nuevas`;
+  const audio = `Novedades. Acá te enterás de las noticias de la residencia. ${sinLeer === 0 ? 'No tenés novedades nuevas.' : `Tenés ${detalle}.`}`;
+
+  return (
+    <TouchableOpacity
+      style={styles.novedadesCard}
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={`Novedades. ${detalle}`}
+    >
+      <View style={styles.novedadesIcono}>
+        <Text style={styles.mediumCardIcon}>📰</Text>
+      </View>
+      <View style={styles.novedadesTextos}>
+        <Text style={styles.novedadesLabel}>Novedades</Text>
+        {sinLeer > 0 ? (
+          <View style={styles.novedadesBadge}>
+            <Text style={styles.novedadesBadgeTexto}>{detalle}</Text>
+          </View>
+        ) : (
+          <Text style={styles.novedadesDetalle}>{detalle}</Text>
+        )}
+      </View>
+      <TouchableOpacity
+        style={[styles.parlanteBtn, styles.novedadesParlante]}
+        onPress={() => onEscuchar(audio)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Escuchar qué es Novedades"
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      >
+        <Text style={styles.parlanteIcon}>🔊</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -118,7 +189,7 @@ export default function HomeScreen() {
   // Tarjetas medianas en filas de a 2 — genérico así agregar/sacar una no
   // rompe el layout (la última fila puede quedar con una sola, ocupa el ancho entero).
   const mediumItems = menuItems.slice(1);
-  const mediumRows: (typeof menuItems)[] = [];
+  const mediumRows: MenuItem[][] = [];
   for (let i = 0; i < mediumItems.length; i += 2) {
     mediumRows.push(mediumItems.slice(i, i + 2));
   }
@@ -155,6 +226,9 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
       >
+        {/* Novedades de la residencia */}
+        <BotonNovedades onPress={() => router.push('/novedades' as any)} onEscuchar={speak} />
+
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcome} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Hoy es {fecha}</Text>
@@ -170,15 +244,9 @@ export default function HomeScreen() {
             <View style={[styles.iconCircle, { backgroundColor: menuItems[0].iconBg }]}>
               <Text style={styles.largeCardIcon}>{menuItems[0].icon}</Text>
             </View>
+            <BotonParlante item={menuItems[0]} onPress={speak} />
             <Text style={styles.largeCardLabel}>{menuItems[0].label}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.audioBtn}
-            onPress={() => speak(menuItems[0].audio)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
-          </TouchableOpacity>
         </TouchableOpacity>
 
         {/* Medium Cards */}
@@ -191,19 +259,15 @@ export default function HomeScreen() {
                 onPress={() => router.push(item.route as any)}
                 activeOpacity={0.8}
               >
-                <View style={styles.mediumCardInner}>
+                <View style={styles.iconRow}>
                   <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
                     <Text style={styles.mediumCardIcon}>{item.icon}</Text>
                   </View>
+                  <BotonParlante item={item} onPress={speak} />
+                </View>
+                <View style={styles.mediumCardLabelZona}>
                   <Text style={styles.mediumCardLabel}>{item.label}</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.audioBtn}
-                  onPress={() => speak(item.audio)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
-                </TouchableOpacity>
               </TouchableOpacity>
             ))}
             {/* Fila incompleta (ej. mientras solo hay 1 tarjeta nueva) — placeholder
@@ -223,7 +287,7 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.brand.primary,
     paddingBottom: 8,
     paddingHorizontal: 16,
   },
@@ -234,9 +298,8 @@ const styles = StyleSheet.create({
     minHeight: 52,
     gap: 10,
   },
-  // Botón "¿Cómo usar?" — mismo estilo cuadrado que los botones "Escuchar"
-  // de las tarjetas (fondo blanco casi sólido, esquinas poco redondeadas),
-  // así se reconoce como el mismo tipo de botón en toda la Home.
+  // Botón "¿Cómo usar?" — fondo blanco casi sólido como los parlantes de las
+  // tarjetas, así se reconoce como un botón en toda la Home.
   comoUsarBtn: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 14,
@@ -248,7 +311,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   comoUsarBtnTexto: {
-    color: '#2E7D32',
+    color: Colors.brand.primary,
     fontWeight: 'bold',
     fontSize: 20,
   },
@@ -278,8 +341,63 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
   },
+  // Ícono de la sección a la izquierda y parlante contra el borde derecho — los dos
+  // quedan a la misma distancia de su borde (el padding de la tarjeta)
+  iconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  // Parlante "Escuchar" — mismo tamaño que el círculo del ícono, fondo blanco como el viejo botón
+  parlanteBtn: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  parlanteIcon: { fontSize: 28 },
+
+  // Botón Novedades — blanco con borde violeta, para que se distinga de las tarjetas de secciones
+  novedadesCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    borderWidth: 3,
+    borderColor: Colors.brand.primary,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  novedadesIcono: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E9E2F2',
+  },
+  novedadesTextos: { flex: 1, gap: 4 },
+  novedadesLabel: { fontSize: 29, fontWeight: 'bold', color: Colors.brand.primary },
+  novedadesDetalle: { fontSize: 17, color: '#212121' },
+  novedadesBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.hablemos.noLeidosBadge,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+  },
+  novedadesBadgeTexto: { fontSize: 17, fontWeight: 'bold', color: '#FFFFFF' },
+  // El parlante blanco no se vería sobre la tarjeta blanca — acá va sobre lila
+  novedadesParlante: { backgroundColor: '#E9E2F2' },
 
   // Large Card (Horarios)
   largeCard: {
@@ -289,30 +407,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 5,
+    // 30% más alta que su contenido (58 de ícono + 2×16 de padding = 90), contenido centrado
+    minHeight: 117,
     padding: 16,
-    paddingBottom: 14,
     flexDirection: 'column',
+    justifyContent: 'center',
   },
   largeCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    marginBottom: 14,
   },
   largeCardIcon: { fontSize: 30 },
   largeCardLabel: { fontSize: 36, fontWeight: 'bold', color: '#FFFFFF' },
-
-  // Botón Escuchar — rectangular redondeado, fondo blanco, texto azul
-  audioBtn: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  audioBtnText: { fontSize: 16, fontWeight: '700', color: '#3D5AFE' },
 
   // Medium Cards
   mediumRow: {
@@ -328,20 +435,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 5,
-    minHeight: 210,
+    minHeight: 165,
     padding: 16,
-    paddingBottom: 14,
+    paddingBottom: 0,
     flexDirection: 'column',
-    justifyContent: 'space-between',
+  },
+  // Ocupa todo el alto debajo del ícono, hasta el borde inferior de la tarjeta, y centra
+  // el nombre ahí — queda a la misma distancia del ícono que del borde de abajo.
+  mediumCardLabelZona: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 10,
   },
   mediumCardPlaceholder: {
     flex: 1,
   },
-  mediumCardInner: {
-    flex: 1,
-    marginBottom: 12,
-  },
   mediumCardIcon: { fontSize: 26 },
-  mediumCardLabel: { fontSize: 29, fontWeight: 'bold', color: '#FFFFFF', marginTop: 4 },
+  mediumCardLabel: { fontSize: 29, fontWeight: 'bold', color: '#FFFFFF' },
 
 });

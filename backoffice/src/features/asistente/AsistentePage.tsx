@@ -78,7 +78,7 @@ export function AsistentePage() {
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <KpiCard etiqueta="Consultas totales" valor={stats.data?.totalConsultas ?? 0} icono={MessageSquare} acento="blue" cargando={stats.isLoading} />
-        <KpiCard etiqueta="Consultas hoy" valor={stats.data?.sesionesHoy ?? 0} icono={CalendarDays} acento="green" cargando={stats.isLoading} />
+        <KpiCard etiqueta="Consultas hoy" valor={stats.data?.sesionesHoy ?? 0} icono={CalendarDays} acento="primary" cargando={stats.isLoading} />
       </div>
 
       {/* Tabs */}

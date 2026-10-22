@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.brand.primary,
   },
   indicadorPulso: {
     position: 'absolute',

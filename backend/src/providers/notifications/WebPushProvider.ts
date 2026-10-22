@@ -35,6 +35,7 @@ const PANTALLA_A_RUTA: Record<string, string> = {
   pedidos: '/mas/pedidos',
   hablemos: '/mas/hablemos',
   agenda: '/agenda',
+  novedades: '/novedades',
 };
 
 /** Ruta de la app a abrir al tocar la notificación, a partir de los mismos `data` que usa la app nativa. */

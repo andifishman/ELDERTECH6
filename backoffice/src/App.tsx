@@ -35,6 +35,8 @@ const PedidoDetailPage = lazy(() => import('@/features/pedidos/PedidoDetailPage'
 const AccesosPage = lazy(() => import('@/features/accesos/AccesosPage').then((m) => ({ default: m.AccesosPage })));
 const GruposPage = lazy(() => import('@/features/grupos/GruposPage').then((m) => ({ default: m.GruposPage })));
 const GrupoFormPage = lazy(() => import('@/features/grupos/GrupoFormPage').then((m) => ({ default: m.GrupoFormPage })));
+const NovedadesPage = lazy(() => import('@/features/novedades/NovedadesPage').then((m) => ({ default: m.NovedadesPage })));
+const NovedadFormPage = lazy(() => import('@/features/novedades/NovedadFormPage').then((m) => ({ default: m.NovedadFormPage })));
 const GrupoDetailPage = lazy(() => import('@/features/grupos/GrupoDetailPage').then((m) => ({ default: m.GrupoDetailPage })));
 const NotificacionesPage = lazy(() => import('@/features/notificaciones/NotificacionesPage').then((m) => ({ default: m.NotificacionesPage })));
 const NotificacionFormPage = lazy(() => import('@/features/notificaciones/NotificacionFormPage').then((m) => ({ default: m.NotificacionFormPage })));
@@ -70,6 +72,9 @@ const router = createBrowserRouter([
           { path: '/accesos', element: <RequireModulo modulo="accesos"><AccesosPage /></RequireModulo>, handle: { titulo: 'Accesos', subtitulo: 'Permisos de cada usuario por módulo' } },
           { path: '/pedidos', element: <RequireModulo modulo="pedidos"><PedidosPage /></RequireModulo>, handle: { titulo: 'Pedidos y Sugerencias' } },
           { path: '/pedidos/:id', element: <RequireModulo modulo="pedidos"><PedidoDetailPage /></RequireModulo>, handle: { titulo: 'Detalle de solicitud' } },
+          { path: '/novedades', element: <RequireModulo modulo="novedades"><NovedadesPage /></RequireModulo>, handle: { titulo: 'Novedades' } },
+          { path: '/novedades/nueva', element: <RequireModulo modulo="novedades" accion="crear"><NovedadFormPage /></RequireModulo>, handle: { titulo: 'Nueva novedad' } },
+          { path: '/novedades/:id/editar', element: <RequireModulo modulo="novedades" accion="editar"><NovedadFormPage /></RequireModulo>, handle: { titulo: 'Editar novedad' } },
           { path: '/notificaciones', element: <RequireModulo modulo="notificaciones"><NotificacionesPage /></RequireModulo>, handle: { titulo: 'Notificaciones' } },
           { path: '/notificaciones/nueva', element: <RequireModulo modulo="notificaciones" accion="crear"><NotificacionFormPage /></RequireModulo>, handle: { titulo: 'Nueva notificación' } },
           { path: '/notificaciones/:id', element: <RequireModulo modulo="notificaciones"><NotificacionDetailPage /></RequireModulo>, handle: { titulo: 'Detalle de notificación' } },

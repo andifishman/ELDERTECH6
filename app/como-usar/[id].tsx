@@ -54,7 +54,7 @@ export default function ComoUsarDetalleScreen() {
   if (!seccion) {
     return (
       <View style={styles.root}>
-        <AppHeader titulo="¿Cómo usar?" mostrarVolver backgroundColor="#4CAF50" />
+        <AppHeader titulo="¿Cómo usar?" mostrarVolver backgroundColor={Colors.brand.primary} />
         <View style={styles.noEncontrado}>
           <Text style={styles.noEncontradoTexto}>No se encontró esta sección de la guía.</Text>
         </View>

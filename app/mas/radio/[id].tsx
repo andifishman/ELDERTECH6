@@ -105,7 +105,7 @@ export default function RadioDetalleScreen() {
   if (!data) {
     return (
       <View style={[styles.root, styles.centrado]}>
-        <ActivityIndicator size="large" color={Colors.brand.greenDark} />
+        <ActivityIndicator size="large" color={Colors.brand.primary} />
         <Text style={styles.cargandoTexto}>Cargando...</Text>
       </View>
     );
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
 
   // ── Header
   header: {
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.screen.horizontal,
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.sm,
     borderWidth: 3,
-    borderColor: Colors.brand.greenDark,
+    borderColor: Colors.brand.primary,
   },
   emojiGrande: {
     fontSize: 64,
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   volverBtn: {
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     borderRadius: Spacing.radius.full,
     paddingHorizontal: Spacing.xxl,
     paddingVertical: Spacing.md,
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
