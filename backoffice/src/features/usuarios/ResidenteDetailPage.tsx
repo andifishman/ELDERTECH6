@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users, Gamepad2, Smartphone, Lightbulb, CalendarCheck, Check } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users, Gamepad2, Smartphone, Lightbulb, CalendarCheck, Check, Pencil } from 'lucide-react';
 import { formatDistanceToNow, format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,8 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingState, ErrorState } from '@/components/common/states';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { iniciales } from '@/lib/utils';
-import { useResidenteDetalle } from './useResidentes';
+import { usePermisos } from '@/hooks/usePermisos';
+import { useCatalogos } from '@/features/horarios/useActividades';
+import { SelectorIntereses } from './SelectorIntereses';
+import { useActualizarResidente, useResidenteDetalle } from './useResidentes';
 
 const NIVEL_LABEL: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
   independiente: { label: 'Independiente', variant: 'success' },
@@ -66,6 +70,11 @@ export function ResidenteDetailPage() {
   const [verTodosMensajes, setVerTodosMensajes] = useState(false);
   const [verTodasSugerencias, setVerTodasSugerencias] = useState(false);
   const [verTodaAgenda, setVerTodaAgenda] = useState(false);
+  const permisos = usePermisos('usuarios');
+  const catalogos = useCatalogos();
+  const actualizar = useActualizarResidente();
+  const [editandoIntereses, setEditandoIntereses] = useState(false);
+  const [interesesElegidos, setInteresesElegidos] = useState<string[]>([]);
 
   if (isLoading) return <LoadingState mensaje="Cargando perfil del residente…" />;
   if (isError || !data) return <ErrorState onReintentar={() => void refetch()} />;
@@ -161,6 +170,19 @@ export function ResidenteDetailPage() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
               <Heart className="h-4 w-4" /> Intereses
+              {permisos.puedeEditar && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto h-7 gap-1 normal-case"
+                  onClick={() => {
+                    setInteresesElegidos(intereses.map((i) => i.id));
+                    setEditandoIntereses(true);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Editar
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -513,6 +535,35 @@ export function ResidenteDetailPage() {
         </Card>
 
       </div>
+    
+      <Dialog open={editandoIntereses} onOpenChange={setEditandoIntereses}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Intereses de {r.nombre} {r.apellido}</DialogTitle>
+          </DialogHeader>
+          <SelectorIntereses
+            intereses={catalogos.data?.intereses ?? []}
+            seleccionados={interesesElegidos}
+            onCambiar={setInteresesElegidos}
+            cargando={catalogos.isLoading}
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditandoIntereses(false)}>Cancelar</Button>
+            <Button
+              type="button"
+              disabled={actualizar.isPending}
+              onClick={() =>
+                actualizar.mutate(
+                  { id: r.id, input: { nombre: r.nombre, apellido: r.apellido, intereses: interesesElegidos } },
+                  { onSuccess: () => setEditandoIntereses(false) },
+                )
+              }
+            >
+              {actualizar.isPending ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

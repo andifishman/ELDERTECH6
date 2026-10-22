@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, Trash2, Check } from 'lucide-react';
+import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -33,10 +33,11 @@ import {
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { cn, iniciales } from '@/lib/utils';
+import { iniciales } from '@/lib/utils';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermisos } from '@/hooks/usePermisos';
 import { useCatalogos } from '@/features/horarios/useActividades';
+import { SelectorIntereses } from './SelectorIntereses';
 import {
   useActualizarResidente,
   useCrearUsuario,
@@ -47,7 +48,7 @@ import {
 } from './useResidentes';
 import { SECCIONES, SECCION_EMPLEADO } from '@/types/database.types';
 import { coincideBusqueda } from '@/lib/textSearch';
-import type { Interes, SeccionResidente } from '@/types/database.types';
+import type { SeccionResidente } from '@/types/database.types';
 import type { ResidenteConCuenta } from '@/services/residentesService';
 
 const TIPO_CELULAR_LABEL: Record<string, string> = {
@@ -69,50 +70,6 @@ interface Campos {
 const CAMPOS_VACIOS: Campos = {
   nombre: '', apellido: '', nombreCompleto: '', username: '', dni: '', seccion: '', rolEmpleado: '',
 };
-
-/** Selector de intereses: chips que se prenden/apagan con un clic. */
-function SelectorIntereses({
-  intereses,
-  seleccionados,
-  onCambiar,
-  cargando,
-}: {
-  intereses: Interes[];
-  seleccionados: string[];
-  onCambiar: (ids: string[]) => void;
-  cargando: boolean;
-}) {
-  if (cargando) return <p className="text-sm text-muted-foreground">Cargando intereses…</p>;
-  if (intereses.length === 0) return <p className="text-sm text-muted-foreground">No hay intereses cargados.</p>;
-
-  const alternar = (id: string) =>
-    onCambiar(seleccionados.includes(id) ? seleccionados.filter((x) => x !== id) : [...seleccionados, id]);
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {intereses.map((i) => {
-        const activo = seleccionados.includes(i.id);
-        return (
-          <button
-            key={i.id}
-            type="button"
-            onClick={() => alternar(i.id)}
-            aria-pressed={activo}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
-              activo
-                ? 'border-primary bg-primary/10 font-medium text-primary'
-                : 'border-input bg-background text-muted-foreground hover:border-ring hover:text-foreground',
-            )}
-          >
-            {activo ? <Check className="h-3.5 w-3.5" /> : i.emoji && <span aria-hidden>{i.emoji}</span>}
-            {i.nombre}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function UsuariosPage() {
   const navigate = useNavigate();
