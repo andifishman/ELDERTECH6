@@ -21,6 +21,7 @@ import { gamesRouter } from './routes/games.routes';
 import { gruposRouter } from './routes/grupos.routes';
 import { hablemosRouter } from './routes/hablemos.routes';
 import { notificationsRouter } from './routes/notifications.routes';
+import { novedadesAdminRouter, novedadesRouter } from './routes/novedades.routes';
 import { notificationsAdminRouter } from './routes/notificationsAdmin.routes';
 import { notificationsCronRouter } from './routes/notificationsCron.routes';
 import { profileRouter } from './routes/profile.routes';
@@ -99,6 +100,8 @@ export function createApp(): Express {
   app.use('/api/admin/notifications', notificationsAdminRouter);
   app.use('/api/internal/notifications', notificationsCronRouter);
   app.use('/api/games', gamesRouter);
+  app.use('/api/novedades', novedadesRouter);
+  app.use('/api/admin/novedades', novedadesAdminRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

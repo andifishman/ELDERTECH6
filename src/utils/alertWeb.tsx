@@ -136,7 +136,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   botonUnico: { alignSelf: 'stretch' },
-  botonPrimario: { backgroundColor: Colors.brand.greenDark },
+  botonPrimario: { backgroundColor: Colors.brand.primary },
   botonSecundario: { backgroundColor: Colors.ui.border },
   botonDestructivo: { backgroundColor: '#B3261E' },
   botonTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: '#FFFFFF' },

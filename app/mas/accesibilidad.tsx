@@ -183,10 +183,10 @@ export default function AccesibilidadScreen() {
             accessibilityLabel="Buscar actualización"
           >
             {buscando ? (
-              <ActivityIndicator color={Colors.brand.greenDark} />
+              <ActivityIndicator color={Colors.brand.primary} />
             ) : (
               <>
-                <Ionicons name="cloud-download-outline" size={22} color={Colors.brand.greenDark} />
+                <Ionicons name="cloud-download-outline" size={22} color={Colors.brand.primary} />
                 <Text style={styles.buscarUpdateBtnTexto}>Buscar actualización</Text>
               </>
             )}
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.ui.background },
 
   header: {
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.screen.horizontal,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
   },
   opcionEtiquetaActiva: {
-    color: Colors.brand.greenDark,
+    color: Colors.brand.primary,
   },
   opcionDesc: {
     fontSize: Typography.size.sm,
@@ -288,12 +288,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  radioActivo: { borderColor: Colors.brand.greenDark },
+  radioActivo: { borderColor: Colors.brand.primary },
   radioPunto: {
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
   },
 
   preview: {
@@ -332,5 +332,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     minHeight: 56,
   },
-  buscarUpdateBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.greenDark },
+  buscarUpdateBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
 });

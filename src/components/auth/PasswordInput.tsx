@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   inputRowFocused: {
-    borderColor: Colors.brand.greenDark,
+    borderColor: Colors.brand.primary,
     borderWidth: 2,
   },
   inputRowError: {

@@ -104,7 +104,8 @@ export type ModuloId =
   | 'configuracion'
   | 'administradores'
   | 'accesos'
-  | 'grupos';
+  | 'grupos'
+  | 'novedades';
 
 export type AccionModulo = 'ver' | 'crear' | 'editar' | 'eliminar';
 

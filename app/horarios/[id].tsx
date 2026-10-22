@@ -97,7 +97,7 @@ export default function ActividadDetalleScreen() {
         titulo="Horarios del Día"
         mostrarVolver
         textoHablar={textoHablar}
-        backgroundColor={Colors.brand.greenDark}
+        backgroundColor={Colors.brand.primary}
       />
 
       <ScrollView
@@ -158,7 +158,7 @@ export default function ActividadDetalleScreen() {
                   <Text style={styles.agendaOpcionBtnTextoPrimario}>Todo el mes</Text>
                 </TouchableOpacity>
               </View>
-              {crearRecordatorio.isPending && <ActivityIndicator color={Colors.brand.greenDark} style={{ marginTop: Spacing.sm }} />}
+              {crearRecordatorio.isPending && <ActivityIndicator color={Colors.brand.primary} style={{ marginTop: Spacing.sm }} />}
             </View>
           )}
         </View>
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.sm,
     minHeight: Spacing.touch.comfortable,
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     borderRadius: Spacing.radius.lg,
   },
   agendaBtnTexto: {
@@ -392,15 +392,15 @@ const styles = StyleSheet.create({
   agendaOpcionBtnSecundario: {
     backgroundColor: Colors.ui.background,
     borderWidth: 1.5,
-    borderColor: Colors.brand.greenDark,
+    borderColor: Colors.brand.primary,
   },
   agendaOpcionBtnPrimario: {
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
   },
   agendaOpcionBtnTextoSecundario: {
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
-    color: Colors.brand.greenDark,
+    color: Colors.brand.primary,
   },
   agendaOpcionBtnTextoPrimario: {
     fontSize: Typography.size.md,

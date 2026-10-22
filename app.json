@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/images/logo-puente.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1B5E3B"
+      "backgroundColor": "#5F3E88"
     },
     "ios": {
       "supportsTablet": false,
@@ -30,7 +30,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo-puente.png",
-        "backgroundColor": "#1B5E3B"
+        "backgroundColor": "#5F3E88"
       },
       "package": "com.eldertech.app",
       "googleServicesFile": "./android/app/google-services.json",
@@ -50,8 +50,8 @@
       "shortName": "ElderTech",
       "lang": "es-AR",
       "description": "ElderTech — la app para residentes: horarios, llamadas, radio, asistente y más, con botones grandes y fáciles de usar.",
-      "themeColor": "#1B5E3B",
-      "backgroundColor": "#1B5E3B"
+      "themeColor": "#5F3E88",
+      "backgroundColor": "#5F3E88"
     },
     "plugins": [
       "expo-router",
@@ -79,7 +79,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/logo-puente.png",
-          "color": "#1B5E3B"
+          "color": "#5F3E88"
         }
       ]
     ],

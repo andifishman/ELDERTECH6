@@ -42,7 +42,7 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
         <Ionicons
           name={activo ? 'volume-high' : 'volume-medium'}
           size={22}
-          color={activo ? Colors.speak.active : '#1B5E3B'}
+          color={activo ? Colors.speak.active : Colors.brand.primary}
         />
         <Text style={[styles.escucharLabel, activo && styles.escucharLabelActivo]}>
           {label}
@@ -63,7 +63,7 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
         <Ionicons
           name={activo ? 'volume-high' : 'volume-medium-outline'}
           size={16}
-          color={activo ? Colors.speak.active : Colors.brand.greenDark}
+          color={activo ? Colors.speak.active : Colors.brand.primary}
         />
         <Text style={[styles.chipLabel, activo && styles.chipLabelActivo]}>
           {label}
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     ...Typography.styles.speakLabel,
-    color: Colors.brand.greenDark,
+    color: Colors.brand.primary,
   },
   chipLabelActivo: {
     color: Colors.speak.active,
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   escucharLabel: {
     fontSize: 16,
     fontWeight: Typography.weight.bold,
-    color: '#1B5E3B',
+    color: Colors.brand.primary,
   },
   escucharLabelActivo: {
     color: Colors.speak.active,

@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
   },
   inputFocused: {
-    borderColor: Colors.brand.greenDark,
+    borderColor: Colors.brand.primary,
     borderWidth: 2,
   },
   inputError: {

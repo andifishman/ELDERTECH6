@@ -86,7 +86,7 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.brand.greenDark }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.brand.primary }}>
         <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
     );
@@ -168,6 +168,8 @@ export default function RootLayout() {
                       <Stack.Screen name="agenda/index" />
                       <Stack.Screen name="agenda/nuevo" />
                       <Stack.Screen name="agenda/[id]" />
+                      <Stack.Screen name="novedades/index" />
+                      <Stack.Screen name="novedades/[id]" />
                       <Stack.Screen name="mas/index" />
                       <Stack.Screen name="mas/clima" />
                       <Stack.Screen name="mas/hablemos/index" />

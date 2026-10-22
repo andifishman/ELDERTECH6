@@ -3,7 +3,7 @@
 export const Colors = {
   // Marca principal
   brand: {
-    greenDark: '#1B5E3B',   // Header, AppBar — verde oscuro principal
+    primary: '#5F3E88',     // Header, AppBar, botones principales — violeta de marca
     greenMedium: '#2E7D32', // Botón Llamar
     red: '#D32F2F',         // Botón Horarios, header Horarios
     purple: '#6A1B9A',      // Botón Artículos
@@ -29,8 +29,8 @@ export const Colors = {
   // Pantalla Radio
   radio: {
     playButton: '#2E7D32',
-    playButtonActive: '#1B5E3B',
-    nowPlayingBg: '#1B5E3B',
+    playButtonActive: '#5F3E88',
+    nowPlayingBg: '#5F3E88',
   },
 
   // Módulo Tutoriales — acentos sobre el violeta de brand.purple
@@ -61,8 +61,8 @@ export const Colors = {
 
   // Módulo Hablemos — mensajería entre residentes
   hablemos: {
-    accent: '#00897B',        // Teal — header y acentos, no colisiona con ningún brand color existente
-    accentDark: '#00695C',
+    accent: '#5F3E88',        // Violeta de marca — header y acentos (misma tarjeta que en la Home)
+    accentDark: '#5F3E88',
     burbujaPropia: '#DCF8C6', // Verde clarito estilo WhatsApp — referencia visual reconocible
     burbujaAjena: '#FFFFFF',
     noLeidosBadge: '#D32F2F',

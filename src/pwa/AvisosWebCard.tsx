@@ -63,7 +63,7 @@ const estilos = StyleSheet.create({
   boton: {
     minHeight: Spacing.touch.comfortable,
     borderRadius: Spacing.radius.lg,
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.sm,

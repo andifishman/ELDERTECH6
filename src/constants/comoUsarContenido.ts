@@ -3,6 +3,10 @@
 // solo de mostrarlo (acordeón) y este archivo sea fácil de revisar y
 // actualizar sin tocar código de UI.
 //
+// El orden y los colores de SECCIONES_GUIA tienen que coincidir con los de
+// las tarjetas de la Home (app/index.tsx) — si se reordena o se cambia el
+// color de una tarjeta allá, actualizarlo acá también.
+//
 // Si se agrega o cambia una función real de la app, actualizar acá también
 // — esta guía tiene que reflejar lo que el residente puede tocar hoy, nunca
 // una función que todavía no existe.
@@ -30,17 +34,18 @@ export const INTRO_GENERAL: SeccionGuia = {
   emoji: '🏠',
   titulo: 'La pantalla principal',
   tituloBoton: 'Inicio',
-  color: '#4CAF50',
+  color: '#5F3E88',
   intro:
     'La pantalla principal es lo primero que ves al abrir ElderTech. Desde ahí entrás a todas las demás secciones de la aplicación.',
   pasos: [
     'Arriba de todo dice "ElderTech" y, al lado, este mismo botón "¿Cómo usar?" que te trajo hasta esta guía.',
-    'Debajo aparece la fecha de hoy y, si tenés una actividad pronto, un aviso con el horario.',
-    'Más abajo hay botones grandes de colores: Horarios, Llamar, Tutoriales, Asistente, Más, Hablemos y Agenda. Tocá cualquiera para entrar a esa parte de la aplicación.',
-    'Muchos botones tienen debajo uno que dice "🔊 Escuchar" — tocalo para que el celular te lea en voz alta de qué se trata, sin necesidad de leer la pantalla.',
+    'Debajo está el botón "Novedades", con las noticias de la residencia que publica el personal. Si hay alguna que todavía no leíste, dice cuántas son nuevas en rojo.',
+    'Más abajo aparece la fecha de hoy.',
+    'Más abajo hay botones grandes de colores: Horarios, Llamar, Tutoriales, Asistente, Agenda, Hablemos y Más. Tocá cualquiera para entrar a esa parte de la aplicación.',
+    'Cada botón tiene, al lado de su dibujo, un parlante 🔊 — tocalo para que el celular te lea en voz alta de qué se trata, sin necesidad de leer la pantalla.',
     'Adentro de cualquier sección vas a encontrar, arriba a la izquierda, una flecha "←" — tocala cuando quieras volver a la pantalla anterior.',
   ],
-  tip: 'Podés tocar el botón 🔊 Escuchar todas las veces que quieras: no gasta nada y repite la explicación las veces que necesites.',
+  tip: 'Podés tocar el parlante 🔊 todas las veces que quieras: no gasta nada y repite la explicación las veces que necesites.',
 };
 
 export const SECCIONES_GUIA: SeccionGuia[] = [
@@ -80,10 +85,10 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     id: 'tutoriales',
     emoji: '📚',
     titulo: 'Tutoriales',
-    color: '#AB47BC',
+    color: '#0097A7',
     intro: 'Tutoriales tiene guías paso a paso y videos para aprender a usar el celular.',
     pasos: [
-      'Desde la pantalla principal, tocá el botón violeta "Tutoriales".',
+      'Desde la pantalla principal, tocá el botón celeste "Tutoriales".',
       'Arriba vas a ver categorías, como "WhatsApp" o "Fotos": tocá una para ver solo esos tutoriales, o dejá "Todo" para verlos todos juntos.',
       'Debajo hay un buscador: escribí una palabra para encontrar un tutorial más rápido.',
       'Tocá la estrella de arriba a la derecha para ver solamente los tutoriales que marcaste como favoritos.',
@@ -109,21 +114,6 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     ],
   },
   {
-    id: 'hablemos',
-    emoji: '💬',
-    titulo: 'Hablemos',
-    color: '#00897B',
-    intro: 'Hablemos te permite mandar mensajes de texto o de voz a otros residentes de la casa.',
-    pasos: [
-      'Desde la pantalla principal, tocá el botón "Hablemos".',
-      'Vas a ver la lista de tus conversaciones, con la más reciente arriba de todo.',
-      'Para empezar una conversación nueva, tocá el botón "Nueva conversación" de abajo, buscá a la persona por su nombre y tocá el botón "Escribir" al lado de su nombre.',
-      'Adentro de una conversación, tocá el botón grande "Escribir mensaje" para abrir una pantalla con letra grande donde escribís tu texto, y después tocá "Enviar".',
-      'Si preferís no escribir, tocá el botón del micrófono para grabar un mensaje de voz. Al terminar de hablar podés elegir "Borrar" o "Enviar".',
-      'Los mensajes de voz que te manden a vos tienen un botón "Escuchar" para reproducirlos cuando quieras.',
-    ],
-  },
-  {
     id: 'agenda',
     emoji: '🗒️',
     titulo: 'Agenda',
@@ -138,6 +128,21 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
       'Ahí podés marcarlo como "Realizado" cuando ya lo hiciste, o eliminarlo si ya no lo necesitás.',
     ],
     tip: 'Un recordatorio que pasó su hora sin marcarse como "Realizado" aparece señalado como "Finalizado" — no significa que haya un error.',
+  },
+  {
+    id: 'hablemos',
+    emoji: '💬',
+    titulo: 'Hablemos',
+    color: '#5F3E88',
+    intro: 'Hablemos te permite mandar mensajes de texto o de voz a otros residentes de la casa.',
+    pasos: [
+      'Desde la pantalla principal, tocá el botón violeta "Hablemos".',
+      'Vas a ver la lista de tus conversaciones, con la más reciente arriba de todo.',
+      'Para empezar una conversación nueva, tocá el botón "Nueva conversación" de abajo, buscá a la persona por su nombre y tocá el botón "Escribir" al lado de su nombre.',
+      'Adentro de una conversación, tocá el botón grande "Escribir mensaje" para abrir una pantalla con letra grande donde escribís tu texto, y después tocá "Enviar".',
+      'Si preferís no escribir, tocá el botón del micrófono para grabar un mensaje de voz. Al terminar de hablar podés elegir "Borrar" o "Enviar".',
+      'Los mensajes de voz que te manden a vos tienen un botón "Escuchar" para reproducirlos cuando quieras.',
+    ],
   },
   {
     id: 'mas',

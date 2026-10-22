@@ -51,7 +51,7 @@ export function LoadingButton({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'outline' ? Colors.brand.greenDark : Colors.text.onDark}
+          color={variant === 'outline' ? Colors.brand.primary : Colors.text.onDark}
           size={24}
         />
       ) : (
@@ -78,12 +78,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xxxl,
   },
   primary: {
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: Colors.brand.greenDark,
+    borderColor: Colors.brand.primary,
   },
   disabled: {
     opacity: 0.55,
@@ -97,6 +97,6 @@ const styles = StyleSheet.create({
     color: Colors.text.onDark,
   },
   textOutline: {
-    color: Colors.brand.greenDark,
+    color: Colors.brand.primary,
   },
 });

@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/states';
 import { PieChart as PieIcon } from 'lucide-react';
 
-const PALETA = ['#1B5E3B', '#2E7D32', '#43A047', '#66BB6A', '#0D47A1', '#6A1B9A', '#E65100', '#FF8F00'];
+const PALETA = ['#5F3E88', '#A189C8', '#0D47A1', '#2E7D32', '#E65100', '#FF8F00', '#D32F2F', '#00838F'];
 
 /**
  * Paleta suave: tonos apagados (salvia, azul pizarra, arena, lavanda…) que se

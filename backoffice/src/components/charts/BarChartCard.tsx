@@ -21,7 +21,7 @@ interface BarChartCardProps {
   enlace?: string;
 }
 
-export function BarChartCard({ titulo, data, color = '#1B5E3B', isLoading, enlace }: BarChartCardProps) {
+export function BarChartCard({ titulo, data, color = '#5F3E88', isLoading, enlace }: BarChartCardProps) {
   const navigate = useNavigate();
 
   return (

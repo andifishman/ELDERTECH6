@@ -317,8 +317,8 @@ const styles = StyleSheet.create({
     minHeight: 40,
   },
   idiomaChipActiva: {
-    backgroundColor: Colors.brand.greenDark,
-    borderColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
+    borderColor: Colors.brand.primary,
   },
   idiomaEmoji: { fontSize: 14 },
   idiomaLabel: {
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     paddingHorizontal: Spacing.xxl,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.brand.greenDark,
+    backgroundColor: Colors.brand.primary,
     borderRadius: Spacing.radius.full,
     minHeight: 48,
     justifyContent: 'center',
