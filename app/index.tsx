@@ -1,5 +1,6 @@
 //pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
 import { useRouter } from 'expo-router';
+import { ICONO_ESCUCHAR } from '@/constants/iconos';
 import { hablar } from '@/utils/tts';
 import {
   Dimensions,
@@ -176,8 +177,10 @@ export default function HomeScreen() {
             style={styles.audioBtn}
             onPress={() => speak(menuItems[0].audio)}
             activeOpacity={0.7}
+            accessibilityLabel={`Escuchar: ${menuItems[0].label}`}
+            accessibilityRole="button"
           >
-            <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
+            <Text style={styles.audioBtnText}>{ICONO_ESCUCHAR}</Text>
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -201,8 +204,10 @@ export default function HomeScreen() {
                   style={styles.audioBtn}
                   onPress={() => speak(item.audio)}
                   activeOpacity={0.7}
+                  accessibilityLabel={`Escuchar: ${item.label}`}
+                  accessibilityRole="button"
                 >
-                  <Text style={styles.audioBtnText}>🔊  Escuchar</Text>
+                  <Text style={styles.audioBtnText}>{ICONO_ESCUCHAR}</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
@@ -306,13 +311,14 @@ const styles = StyleSheet.create({
   audioBtn: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 14,
-    paddingVertical: 11,
+    minHeight: 56,
+    paddingVertical: 6,
     paddingHorizontal: 16,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  audioBtnText: { fontSize: 16, fontWeight: '700', color: '#3D5AFE' },
+  audioBtnText: { fontSize: 32, lineHeight: 40 },
 
   // Medium Cards
   mediumRow: {

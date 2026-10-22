@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ICONO_ESCUCHAR } from '@/constants/iconos';
 import {
   View,
   Text,
@@ -175,8 +176,7 @@ export default function ActividadDetalleScreen() {
                 accessibilityLabel="Escuchar ubicación"
                 accessibilityRole="button"
               >
-                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
-                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
+                <Text style={styles.escucharBtnTexto}>{ICONO_ESCUCHAR}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.sectionCard}>
@@ -200,8 +200,7 @@ export default function ActividadDetalleScreen() {
                 accessibilityLabel="Escuchar descripción"
                 accessibilityRole="button"
               >
-                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
-                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
+                <Text style={styles.escucharBtnTexto}>{ICONO_ESCUCHAR}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.descripcionTexto}>{actividad.descripcion}</Text>
@@ -222,8 +221,7 @@ export default function ActividadDetalleScreen() {
                 accessibilityLabel="Escuchar responsable"
                 accessibilityRole="button"
               >
-                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
-                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
+                <Text style={styles.escucharBtnTexto}>{ICONO_ESCUCHAR}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.sectionSubText}>Instructor ElderTech</Text>
@@ -347,15 +345,17 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: Colors.ui.background,
     borderRadius: 12,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    minWidth: 64,
+    minHeight: 56,
+    paddingVertical: 6,
     paddingHorizontal: 18,
     borderWidth: 1,
     borderColor: Colors.ui.border,
   },
   escucharBtnTexto: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.bold,
-    color: '#3D5AFE',
+    fontSize: 30,
+    lineHeight: 38,
   },
 
   // "Agregar a mi agenda" — botón grande de un solo toque; al tocarlo se

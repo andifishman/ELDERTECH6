@@ -17,13 +17,33 @@ export class ApiError extends Error {
   }
 }
 
-async function authHeader(): Promise<Record<string, string>> {
+/** Margen (segundos) antes del vencimiento a partir del cual el token se renueva de antemano. */
+const MARGEN_RENOVACION_S = 60;
+
+/**
+ * Devuelve un access_token vigente. Supabase renueva solo con un timer, pero
+ * ese timer se pausa con la app/pestaña en segundo plano o el celular
+ * bloqueado — al volver, getSession() puede devolver un token ya vencido (el
+ * token dura ~1 h). Por eso, si venció o está por vencer, se renueva acá.
+ */
+async function tokenVigente(forzarRenovacion = false): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  const session = data.session;
+  if (!session) return null;
+  const venceEn = (session.expires_at ?? 0) - Math.floor(Date.now() / 1000);
+  if (forzarRenovacion || venceEn < MARGEN_RENOVACION_S) {
+    const { data: renovada, error } = await supabase.auth.refreshSession();
+    if (!error && renovada.session) return renovada.session.access_token;
+  }
+  return session.access_token;
+}
+
+async function authHeader(forzarRenovacion = false): Promise<Record<string, string>> {
+  const token = await tokenVigente(forzarRenovacion);
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, yaReintentado = false): Promise<T> {
   if (!API_URL) {
     throw new Error(
       'Falta EXPO_PUBLIC_API_URL. Copiá .env.example a .env y completá la URL del backend (después reiniciá expo start).',
@@ -55,6 +75,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       throw new Error(MENSAJE_ERROR_DE_RED);
     }
     throw err;
+  }
+
+  // 401 = token vencido/rechazado: se renueva la sesión y se reintenta UNA vez
+  // (el body de un POST es un string, así que se puede reenviar tal cual).
+  if (res.status === 401 && !yaReintentado && (await authHeader(true)).Authorization) {
+    return request<T>(path, { ...init, headers: { ...init.headers, ...(await authHeader()) } }, true);
   }
 
   if (!res.ok) {

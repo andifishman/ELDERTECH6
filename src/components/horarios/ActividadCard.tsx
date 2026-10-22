@@ -11,6 +11,7 @@
  */
 
 import React from 'react';
+import { ICONO_ESCUCHAR } from '@/constants/iconos';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
@@ -95,8 +96,7 @@ export function ActividadCard({ actividad, onPress, recomendada = false }: Activ
           accessibilityLabel={`Escuchar descripción de ${actividad.nombre}`}
           accessibilityRole="button"
         >
-          <Ionicons name="volume-medium-outline" size={22} color={colorBadge} />
-          <Text style={[styles.btnTexto, { color: colorBadge }]}>Escuchar</Text>
+          <Text style={styles.btnEmoji}>{ICONO_ESCUCHAR}</Text>
         </TouchableOpacity>
 
       </View>
@@ -187,6 +187,10 @@ const styles = StyleSheet.create({
   btnTexto: {
     fontSize: Typography.size.md,
     fontWeight: Typography.weight.bold,
+  },
+  btnEmoji: {
+    fontSize: 30,
+    lineHeight: 38,
   },
 
   cardRecomendada: {

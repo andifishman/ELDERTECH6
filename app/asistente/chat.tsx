@@ -20,6 +20,7 @@ import {
   Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ICONO_ESCUCHAR } from '@/constants/iconos';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { hablar, detenerHabla } from '@/utils/tts';
@@ -669,10 +670,7 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                         accessibilityRole="button"
                         activeOpacity={0.75}
                       >
-                        <Ionicons name="volume-medium" size={iconSize} color={Colors.brand.blueDark} />
-                        <Text style={[styles.accionTexto, styles.accionTextoEscuchar, { fontSize: accionFontSize }]}>
-                          Escuchar
-                        </Text>
+                        <Text style={styles.accionEmojiEscuchar}>{ICONO_ESCUCHAR}</Text>
                       </TouchableOpacity>
 
                       {/* Guardar como favorito */}
@@ -911,8 +909,9 @@ const styles = StyleSheet.create({
   accionTexto: {
     fontWeight: Typography.weight.bold,
   },
-  accionTextoEscuchar: {
-    color: Colors.brand.blueDark,
+  accionEmojiEscuchar: {
+    fontSize: 32,
+    lineHeight: 40,
   },
   accionTextoGuardar: {
     color: Colors.text.secondary,

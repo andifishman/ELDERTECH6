@@ -6,6 +6,7 @@ import { hablar, estaHablando } from '@/utils/tts';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
+import { ICONO_ESCUCHAR } from '@/constants/iconos';
 
 type Variante = 'onLight' | 'onDark' | 'chip' | 'escuchar';
 
@@ -39,14 +40,7 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
         accessibilityRole="button"
         hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
       >
-        <Ionicons
-          name={activo ? 'volume-high' : 'volume-medium'}
-          size={22}
-          color={activo ? Colors.speak.active : '#1B5E3B'}
-        />
-        <Text style={[styles.escucharLabel, activo && styles.escucharLabelActivo]}>
-          {label}
-        </Text>
+        <Text style={styles.escucharEmoji}>{ICONO_ESCUCHAR}</Text>
       </TouchableOpacity>
     );
   }
@@ -60,14 +54,7 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
         accessibilityRole="button"
         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
       >
-        <Ionicons
-          name={activo ? 'volume-high' : 'volume-medium-outline'}
-          size={16}
-          color={activo ? Colors.speak.active : Colors.brand.greenDark}
-        />
-        <Text style={[styles.chipLabel, activo && styles.chipLabelActivo]}>
-          {label}
-        </Text>
+        <Text style={styles.chipEmoji}>{ICONO_ESCUCHAR}</Text>
       </TouchableOpacity>
     );
   }
@@ -120,14 +107,7 @@ export function SpeakRow({ texto, onDark = false }: SpeakRowProps) {
       accessibilityLabel={`Escuchar: ${texto}`}
       accessibilityRole="button"
     >
-      <Text style={[styles.rowLabel, { color: onDark ? Colors.text.onDark : Colors.speak.idle }]}>
-        Escuchar
-      </Text>
-      <Ionicons
-        name={activo ? 'volume-high' : 'volume-medium-outline'}
-        size={14}
-        color={onDark ? Colors.text.onDark : Colors.speak.idle}
-      />
+      <Text style={styles.rowEmoji}>{ICONO_ESCUCHAR}</Text>
     </TouchableOpacity>
   );
 }
@@ -175,8 +155,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    minHeight: 52,
     borderRadius: Spacing.radius.full,
     alignSelf: 'flex-start',
   },
@@ -198,15 +179,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 6,
     borderRadius: 14,
     backgroundColor: '#E8F5E9',
     elevation: 0,
-    minHeight: Spacing.touch.min,
+    minHeight: 56,
   },
   escucharBtnActivo: {
     backgroundColor: Colors.speak.activeBg,
   },
+  escucharEmoji: { fontSize: 32, lineHeight: 40 },
+  chipEmoji: { fontSize: 26, lineHeight: 32 },
+  rowEmoji: { fontSize: 28, lineHeight: 34 },
   escucharLabel: {
     fontSize: 16,
     fontWeight: Typography.weight.bold,
