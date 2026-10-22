@@ -3,7 +3,6 @@
 //  · Pasos: cabecera de progreso + paso (foto grande, instrucción, tip) + nav + pantalla "¡Muy bien!"
 // Todo tutorial (video o guía) tiene pasos: el video es la explicación, los pasos el detalle.
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ICONO_ESCUCHAR } from '@/constants/iconos';
 import {
   View,
   Text,
@@ -437,7 +436,8 @@ export default function TutorialDetalleScreen() {
               accessibilityLabel="Escuchar este paso"
               accessibilityRole="button"
             >
-              <Text style={styles.escucharTexto}>{ICONO_ESCUCHAR}</Text>
+              <Ionicons name="volume-medium" size={22} color={Colors.brand.purple} />
+              <Text style={styles.escucharTexto}>Escuchar este paso</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -847,8 +847,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   escucharTexto: {
-    fontSize: 34,
-    lineHeight: 44,
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.brand.purple,
   },
 
   // ── Pantalla de fin ──

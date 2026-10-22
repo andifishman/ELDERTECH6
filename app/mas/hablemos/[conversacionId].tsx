@@ -1,6 +1,5 @@
 // Hablemos — pantalla de chat 1:1
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ICONO_ESCUCHAR } from '@/constants/iconos';
 import {
   View,
   Text,
@@ -511,7 +510,14 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
               accessibilityLabel={reproduciendo ? 'Pausar mensaje de voz' : 'Escuchar mensaje de voz'}
               activeOpacity={0.75}
             >
-              <Text style={styles.audioMensajeEmoji}>{reproduciendo ? '⏸️' : ICONO_ESCUCHAR}</Text>
+              <Ionicons
+                name={reproduciendo ? 'pause' : 'volume-medium'}
+                size={20}
+                color={reproduciendo ? Colors.speak.active : Colors.brand.greenDark}
+              />
+              <Text style={[styles.audioMensajeBtnTexto, reproduciendo && styles.audioMensajeBtnTextoActivo]}>
+                {reproduciendo ? 'Pausar' : 'Escuchar'}
+              </Text>
             </TouchableOpacity>
             <HoraEstado mensaje={mensaje} esPropio={esPropio} />
           </View>
@@ -683,7 +689,6 @@ const styles = StyleSheet.create({
   audioMensajeBtnActivo: { backgroundColor: Colors.speak.activeBg },
   audioMensajeBtnTexto: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.greenDark },
   audioMensajeBtnTextoActivo: { color: Colors.speak.active },
-  audioMensajeEmoji: { fontSize: 30, lineHeight: 38 },
 
   vacioContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md, paddingHorizontal: Spacing.xxxl },
   vacioEmoji: { fontSize: 56 },
