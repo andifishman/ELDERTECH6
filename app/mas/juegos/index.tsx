@@ -23,6 +23,13 @@ const JUEGOS: {
     color: '#D81B60',
   },
   {
+    id: 'palabras',
+    emoji: '🔠',
+    titulo: 'Palabras',
+    descripcion: 'Armá palabras con las letras del círculo',
+    color: '#5E35B1',
+  },
+  {
     id: 'bloques',
     icono: 'apps',
     titulo: 'Bloques ElderTech',
@@ -87,7 +94,7 @@ export default function JuegosScreen() {
         titulo="Juegos"
         subtitulo="Elegí un juego para jugar"
         mostrarVolver
-        textoHablar="Juegos. Jardín ElderTech, Bloques ElderTech, Ahorcado, Memotest, Simon, Conexiones, Laberinto, Sopa de Letras y Une los Puntos."
+        textoHablar="Juegos. Jardín ElderTech, Palabras, Bloques ElderTech, Ahorcado, Memotest, Simon, Conexiones, Laberinto, Sopa de Letras y Une los Puntos."
       />
 
       <ScrollView

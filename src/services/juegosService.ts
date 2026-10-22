@@ -3,7 +3,7 @@
 // puntaje en los juegos de puntaje). Habla con el backend propio.
 import { apiClient, ApiError } from './apiClient';
 
-export type Juego = 'ahorcado' | 'memotest' | 'simon' | 'conexiones' | 'laberinto' | 'sopa' | 'puntos' | 'jardin' | 'bloques';
+export type Juego = 'ahorcado' | 'memotest' | 'simon' | 'conexiones' | 'laberinto' | 'sopa' | 'puntos' | 'jardin' | 'bloques' | 'palabras';
 
 export interface EstadisticasPuntaje {
   mejorPuntaje: number | null;
@@ -60,4 +60,24 @@ export async function obtenerProgresoNivelesJardin(): Promise<ProgresoNivelJardi
 /** Registra el resultado de un nivel de Jardín completado (el backend solo guarda el mejor intento). */
 export async function completarNivelJardin(nivel: number, estrellas: number, movimientosUsados: number): Promise<ProgresoNivelJardin> {
   return apiClient.post<ProgresoNivelJardin>(`/api/games/jardin/niveles/${nivel}/completar`, { estrellas, movimientosUsados });
+}
+
+export interface ProgresoPalabras {
+  /** Niveles ya completados — el siguiente a jugar es el mayor + 1. */
+  nivelesCompletados: number[];
+  pistas: number;
+}
+
+export async function obtenerProgresoPalabras(): Promise<ProgresoPalabras> {
+  return apiClient.get<ProgresoPalabras>('/api/games/palabras/progreso');
+}
+
+/** Marca un nivel como completado. Las pistas de premio solo se dan la primera vez (`nuevo`). */
+export async function completarNivelPalabras(nivel: number, pistasUsadas: number): Promise<ProgresoPalabras & { nuevo: boolean }> {
+  return apiClient.post<ProgresoPalabras & { nuevo: boolean }>(`/api/games/palabras/niveles/${nivel}/completar`, { pistasUsadas });
+}
+
+/** Gasta una pista del saldo del residente; devuelve cuántas le quedan. */
+export async function usarPistaPalabras(): Promise<{ pistas: number }> {
+  return apiClient.post<{ pistas: number }>('/api/games/palabras/pista');
 }

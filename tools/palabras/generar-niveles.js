@@ -69,7 +69,9 @@ const EXCLUIDAS = new Set(
   (
     'ali ana dora rene lola alan adan dan carlo lisa nasa rusia brasil paris miss rae ceo uci tac set tao gin oia cai nao cao gil ' +
     'rie rien naci mori sis ica oid dom pis ano anos anal ace ari cap dea ire ide aca tic ron sed les ido des lei eso ese esa ' +
-    'abc pan pon ate ata ato fin fan bon ron hum eh ah oh ay uf ufa ole ola oso osa iba ibas'
+    'abc pan pon ate ata ato fin fan bon ron hum eh ah oh ay uf ufa ole ola oso osa iba ibas ' +
+    'arre reid her che cha chan cho epa grand tomad parad anti ami tate too ring cate ben non tus pos seo apos edi mani milan roma ' +
+    'corea rob ves vos dean gen vil rab nao tia ' 
   ).split(' '),
 );
 // Conjugaciones poco naturales (vosotros, futuro, subjuntivo…) — válidas como "extra" pero no como palabra de la grilla.
