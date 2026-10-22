@@ -3,7 +3,7 @@ import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/gamesRepository';
 import { StatusCodes } from 'http-status-codes';
 
-export type { ConteoPorJuego } from '../../repositories/gamesRepository';
+export type { ConteoPorJuego, ResumenJuego } from '../../repositories/gamesRepository';
 export type { EstadisticasPuntaje } from '../../repositories/gamesRepository';
 export type { TopPuntaje } from '../../repositories/gamesRepository';
 
@@ -16,6 +16,11 @@ export async function registrarPartida(
   if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
   if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
   await repo.registrarPartida(user.residenteId, user.organizacionId, juego, resultado, puntos);
+}
+
+/** Resumen por juego de un residente (partidas, ganadas/perdidas, mejor puntaje) — ficha del usuario en el backoffice. */
+export async function resumenPorJuego(residenteId: string): Promise<repo.ResumenJuego[]> {
+  return repo.resumenPorJuego(residenteId);
 }
 
 /** Conteo de partidas por juego de un residente — usado por ResidentsAdminService en el detalle del residente. */

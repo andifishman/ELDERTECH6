@@ -129,3 +129,42 @@ export async function contarPartidasPorJuego(residenteId: string): Promise<Conte
     throw err;
   }
 }
+
+export interface ResumenJuego {
+  juego: Juego;
+  partidas: number;
+  ganadas: number;
+  perdidas: number;
+  /** Mejor puntaje — solo los juegos de puntaje (Jardín, Bloques, etc.) lo tienen. */
+  mejorPuntaje: number | null;
+  ultimaPartida: string | null;
+}
+
+/** Resumen por juego de un residente (partidas, ganadas/perdidas, mejor puntaje, última vez) — ficha del usuario en el backoffice. */
+export async function resumenPorJuego(residenteId: string): Promise<ResumenJuego[]> {
+  logger.info('repo:call', { repository: 'gamesRepository', action: 'resumenPorJuego', residenteId });
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from('partidas_juegos')
+      .select('juego, resultado, puntos, created_at')
+      .eq('residente_id', residenteId);
+    if (error) throw new Error(`Error al cargar las partidas: ${error.message}`);
+
+    const resumen = new Map<string, ResumenJuego>(
+      JUEGOS.map((juego) => [juego, { juego, partidas: 0, ganadas: 0, perdidas: 0, mejorPuntaje: null, ultimaPartida: null }]),
+    );
+    for (const fila of (data ?? []) as Array<{ juego: string; resultado: string | null; puntos: number | null; created_at: string }>) {
+      const r = resumen.get(fila.juego);
+      if (!r) continue;
+      r.partidas += 1;
+      if (fila.resultado === 'ganado') r.ganadas += 1;
+      if (fila.resultado === 'perdido') r.perdidas += 1;
+      if (fila.puntos !== null && (r.mejorPuntaje === null || fila.puntos > r.mejorPuntaje)) r.mejorPuntaje = fila.puntos;
+      if (!r.ultimaPartida || fila.created_at > r.ultimaPartida) r.ultimaPartida = fila.created_at;
+    }
+    return [...resumen.values()];
+  } catch (err) {
+    logger.error('repo:error', { repository: 'gamesRepository', action: 'resumenPorJuego', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}

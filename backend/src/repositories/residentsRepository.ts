@@ -355,7 +355,13 @@ export async function obtenerResidenteAdmin(id: string): Promise<Residente | nul
 export interface ResidenteDetalleRaw {
   mensajes: { id: string; contenido: string; created_at: string }[];
   intereses: { id: string; nombre: string; emoji: string | null }[];
-  tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
+  /** Todo tutorial que el residente abrió (completado o no), el más reciente primero. */
+  tutoriales: { titulo: string; thumbnail_url: string | null; completado: boolean; favorito: boolean; ultima_vista: string | null }[];
+  sugerencias: { id: string; tipo: string; titulo: string; estado: string; created_at: string }[];
+  agenda: { id: string; titulo: string; fecha: string; hora: string; estado: string }[];
+  /** Avance en los modos de niveles (Jardín y Palabras): cuántos niveles completó y cuántas estrellas juntó. */
+  progresoNiveles: { jardin: { niveles: number; estrellas: number }; palabras: { niveles: number; nivelMaximo: number } };
+  hablemosMensajesEnviados: number;
   ciudadesClima: string[];
   contactos: Array<Record<string, unknown>>;
   /** Modelo real del último dispositivo que registró un token de push — ej. "samsung SM-A356E" o "iPhone 13". null si nunca abrió la app. */
@@ -365,7 +371,7 @@ export interface ResidenteDetalleRaw {
 export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteDetalleRaw> {
   logger.info('repo:call', { repository: 'residentsRepository', action: 'obtenerResidenteDetalleRaw', id });
   try {
-  const [mensajesR, interesesR, tutorialesR, climaR, contactosR, dispositivoR] = await Promise.allSettled([
+  const [mensajesR, interesesR, tutorialesR, climaR, contactosR, dispositivoR, sugerenciasR, agendaR, jardinR, palabrasR, hablemosR] = await Promise.allSettled([
     getSupabaseAdmin()
       .from('mensajes_asistente')
       .select('id, contenido, created_at')
@@ -376,11 +382,10 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
     getSupabaseAdmin().from('residente_intereses').select('interes:intereses(id, nombre, emoji)').eq('residente_id', id),
     getSupabaseAdmin()
       .from('progreso_tutorial')
-      .select('tutorial:tutoriales(titulo, thumbnail_url), completado, updated_at')
+      .select('tutorial:tutoriales(titulo, thumbnail_url), completado, favorito, ultima_vista, updated_at')
       .eq('residente_id', id)
-      .eq('completado', true)
       .order('updated_at', { ascending: false })
-      .limit(10),
+      .limit(100),
     getSupabaseAdmin().from('residente_ciudades_familiares').select('ciudad:ciudades_familiares(nombre, pais_codigo)').eq('residente_id', id),
     getSupabaseAdmin()
       .from('contactos')
@@ -398,7 +403,27 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
       .order('last_seen_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    getSupabaseAdmin()
+      .from('pedidos_sugerencias')
+      .select('id, tipo, titulo, estado, created_at')
+      .eq('residente_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    getSupabaseAdmin()
+      .from('agenda_recordatorios')
+      .select('id, titulo, fecha, hora, estado')
+      .eq('residente_id', id)
+      .order('fecha', { ascending: false })
+      .order('hora', { ascending: false })
+      .limit(50),
+    getSupabaseAdmin().from('jardin_niveles_progreso').select('nivel, estrellas').eq('residente_id', id),
+    getSupabaseAdmin().from('palabras_niveles_progreso').select('nivel').eq('residente_id', id),
+    getSupabaseAdmin().from('mensajes_hablemos').select('id', { count: 'exact', head: true }).eq('remitente_id', id),
   ]);
+
+  const filas = <T>(r: PromiseSettledResult<{ data: unknown }>): T[] => (r.status === 'fulfilled' ? ((r.value.data ?? []) as T[]) : []);
+  const jardin = filas<{ nivel: number; estrellas: number }>(jardinR);
+  const palabras = filas<{ nivel: number }>(palabrasR);
 
   return {
     mensajes: mensajesR.status === 'fulfilled' ? ((mensajesR.value.data ?? []) as ResidenteDetalleRaw['mensajes']) : [],
@@ -408,12 +433,31 @@ export async function obtenerResidenteDetalleRaw(id: string): Promise<ResidenteD
             .map((r) => r.interes)
             .filter(Boolean) as ResidenteDetalleRaw['intereses'])
         : [],
-    tutorialesCompletados:
+    tutoriales:
       tutorialesR.status === 'fulfilled'
-        ? ((tutorialesR.value.data ?? []) as unknown as Array<{ tutorial?: { titulo?: string; thumbnail_url?: string | null }; updated_at: string }>)
-            .map((r) => ({ titulo: r.tutorial?.titulo ?? '', thumbnail_url: r.tutorial?.thumbnail_url ?? null, completado_at: r.updated_at }))
+        ? ((tutorialesR.value.data ?? []) as unknown as Array<{
+            tutorial?: { titulo?: string; thumbnail_url?: string | null };
+            completado: boolean;
+            favorito: boolean;
+            ultima_vista: string | null;
+            updated_at: string;
+          }>)
+            .map((r) => ({
+              titulo: r.tutorial?.titulo ?? '',
+              thumbnail_url: r.tutorial?.thumbnail_url ?? null,
+              completado: r.completado,
+              favorito: r.favorito,
+              ultima_vista: r.ultima_vista ?? r.updated_at,
+            }))
             .filter((r) => r.titulo)
         : [],
+    sugerencias: filas<ResidenteDetalleRaw['sugerencias'][number]>(sugerenciasR),
+    agenda: filas<ResidenteDetalleRaw['agenda'][number]>(agendaR),
+    progresoNiveles: {
+      jardin: { niveles: jardin.length, estrellas: jardin.reduce((suma, f) => suma + f.estrellas, 0) },
+      palabras: { niveles: palabras.length, nivelMaximo: palabras.reduce((max, f) => Math.max(max, f.nivel), 0) },
+    },
+    hablemosMensajesEnviados: hablemosR.status === 'fulfilled' ? (hablemosR.value.count ?? 0) : 0,
     ciudadesClima:
       climaR.status === 'fulfilled'
         ? (((climaR.value.data ?? []) as unknown as Array<{ ciudad?: { nombre?: string; pais_codigo?: string } }>)

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users, Gamepad2, Smartphone } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, MapPin, Phone, Calendar, MessageSquare, BookOpen, CloudSun, Heart, StickyNote, Star, Wifi, WifiOff, Users, Gamepad2, Smartphone, Lightbulb, CalendarCheck, Check } from 'lucide-react';
 import { formatDistanceToNow, format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,6 +33,28 @@ const JUEGOS_INFO: Record<string, { emoji: string; titulo: string }> = {
   puntos: { emoji: '🔵', titulo: 'Une los Puntos' },
   jardin: { emoji: '🌸', titulo: 'Jardín ElderTech' },
   bloques: { emoji: '🧱', titulo: 'Bloques ElderTech' },
+  palabras: { emoji: '🔠', titulo: 'Palabras' },
+};
+
+const TIPO_PEDIDO_LABEL: Record<string, string> = {
+  pedido: 'Pedido',
+  comentario: 'Comentario',
+  sugerencia: 'Sugerencia',
+  actividad_propuesta: 'Actividad propuesta',
+  recomendacion_pelicula: 'Recomendación de película',
+};
+
+const ESTADO_PEDIDO: Record<string, { label: string; variant: 'warning' | 'info' | 'success' }> = {
+  pendiente: { label: 'Pendiente', variant: 'warning' },
+  en_proceso: { label: 'En proceso', variant: 'info' },
+  resuelta: { label: 'Resuelta', variant: 'success' },
+};
+
+const ESTADO_AGENDA: Record<string, { label: string; variant: 'warning' | 'info' | 'success' | 'muted' }> = {
+  pendiente: { label: 'Pendiente', variant: 'warning' },
+  realizado: { label: 'Realizado', variant: 'success' },
+  vencido: { label: 'Vencido', variant: 'muted' },
+  cancelado: { label: 'Cancelado', variant: 'muted' },
 };
 
 export function ResidenteDetailPage() {
@@ -42,12 +64,15 @@ export function ResidenteDetailPage() {
   const [verTodosTutoriales, setVerTodosTutoriales] = useState(false);
   const [verTodosContactos, setVerTodosContactos] = useState(false);
   const [verTodosMensajes, setVerTodosMensajes] = useState(false);
+  const [verTodasSugerencias, setVerTodasSugerencias] = useState(false);
+  const [verTodaAgenda, setVerTodaAgenda] = useState(false);
 
   if (isLoading) return <LoadingState mensaje="Cargando perfil del residente…" />;
   if (isError || !data) return <ErrorState onReintentar={() => void refetch()} />;
 
-  const { residente: r, mensajes, intereses, tutorialesCompletados, ciudadesClima, contactos, partidasPorJuego, dispositivoDetectado } = data;
-  const totalPartidas = partidasPorJuego.reduce((sum, p) => sum + p.cantidad, 0);
+  const { residente: r, mensajes, intereses, tutoriales, sugerencias, agenda, progresoNiveles, hablemosMensajesEnviados, ciudadesClima, contactos, juegos, dispositivoDetectado } = data;
+  const totalPartidas = juegos.reduce((sum, j) => sum + j.partidas, 0);
+  const tutorialesCompletados = tutoriales.filter((t) => t.completado);
   const edad = r.fecha_nacimiento ? differenceInYears(new Date(), new Date(r.fecha_nacimiento)) : null;
   const nivel = NIVEL_LABEL[r.nivel_dificultad] ?? NIVEL_LABEL['independiente'];
 
@@ -203,23 +228,49 @@ export function ResidenteDetailPage() {
           {totalPartidas === 0 ? (
             <p className="text-sm text-muted-foreground">Todavía no jugó ningún juego.</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {partidasPorJuego.map(({ juego, cantidad }) => {
-                const info = JUEGOS_INFO[juego] ?? { emoji: '🎲', titulo: juego };
-                return (
-                  <div
-                    key={juego}
-                    className="flex flex-col items-center gap-1 rounded-lg border border-border bg-muted/30 px-3 py-3 text-center"
-                  >
-                    <span className="text-2xl">{info.emoji}</span>
-                    <span className="text-xs font-medium text-foreground">{info.titulo}</span>
-                    <span className="text-lg font-bold text-primary">{cantidad}</span>
-                    <span className="text-[11px] text-muted-foreground">{cantidad === 1 ? 'partida' : 'partidas'}</span>
-                  </div>
-                );
-              })}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="py-2 pr-3 font-medium">Juego</th>
+                    <th className="px-3 py-2 text-right font-medium">Veces jugado</th>
+                    <th className="px-3 py-2 text-right font-medium">Ganó / Perdió</th>
+                    <th className="px-3 py-2 text-right font-medium">Mejor puntaje</th>
+                    <th className="py-2 pl-3 text-right font-medium">Última vez</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {juegos.filter((j) => j.partidas > 0).sort((a, b) => b.partidas - a.partidas).map((j) => {
+                    const info = JUEGOS_INFO[j.juego] ?? { emoji: '🎲', titulo: j.juego };
+                    return (
+                      <tr key={j.juego} className="border-b border-border/60 last:border-0">
+                        <td className="py-2 pr-3 font-medium">{info.emoji} {info.titulo}</td>
+                        <td className="px-3 py-2 text-right font-bold text-primary">{j.partidas}</td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {j.ganadas + j.perdidas > 0 ? `${j.ganadas} / ${j.perdidas}` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right">{j.mejorPuntaje !== null ? j.mejorPuntaje.toLocaleString('es-AR') : '—'}</td>
+                        <td className="py-2 pl-3 text-right text-xs text-muted-foreground">
+                          {j.ultimaPartida ? formatDistanceToNow(new Date(j.ultimaPartida), { addSuffix: true, locale: es }) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
+          {(progresoNiveles.jardin.niveles > 0 || progresoNiveles.palabras.niveles > 0) && (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3 text-sm">
+              {progresoNiveles.jardin.niveles > 0 && (
+                <Badge variant="outline">🌸 Jardín: {progresoNiveles.jardin.niveles} niveles · {progresoNiveles.jardin.estrellas} ⭐</Badge>
+              )}
+              {progresoNiveles.palabras.niveles > 0 && (
+                <Badge variant="outline">🔠 Palabras: {progresoNiveles.palabras.niveles} niveles (hasta el {progresoNiveles.palabras.nivelMaximo})</Badge>
+              )}
+            </div>
+          )}
+          <Link to="/juegos" className="mt-3 inline-block text-xs font-medium text-primary hover:underline">Ver ranking de todos los juegos →</Link>
         </CardContent>
       </Card>
 
@@ -228,23 +279,25 @@ export function ResidenteDetailPage() {
         {/* Columna izquierda: Tutoriales + Contactos */}
         <div className="flex flex-col gap-4">
 
-          {/* Tutoriales completados */}
+          {/* Tutoriales vistos */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
-                <BookOpen className="h-4 w-4" /> Tutoriales completados
-                {tutorialesCompletados.length > 0 && (
-                  <Badge variant="outline" className="ml-auto normal-case">{tutorialesCompletados.length}</Badge>
+                <BookOpen className="h-4 w-4" /> Tutoriales vistos
+                {tutoriales.length > 0 && (
+                  <Badge variant="outline" className="ml-auto normal-case">
+                    {tutorialesCompletados.length} completados de {tutoriales.length}
+                  </Badge>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {tutorialesCompletados.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sin tutoriales completados aún.</p>
+              {tutoriales.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Todavía no abrió ningún tutorial.</p>
               ) : (
                 <>
                   <ul className="space-y-2">
-                    {(verTodosTutoriales ? tutorialesCompletados : tutorialesCompletados.slice(0, 3)).map((t, idx) => (
+                    {(verTodosTutoriales ? tutoriales : tutoriales.slice(0, 3)).map((t, idx) => (
                       <li key={idx} className="flex items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 overflow-hidden">
                           {t.thumbnail_url
@@ -253,23 +306,104 @@ export function ResidenteDetailPage() {
                           }
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{t.titulo}</p>
-                          {t.completado_at && (
+                          <p className="truncate text-sm font-medium">{t.titulo}{t.favorito && <span className="ml-1.5 text-yellow-400">★</span>}</p>
+                          {t.ultima_vista && (
                             <p className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(t.completado_at), { addSuffix: true, locale: es })}
+                              {formatDistanceToNow(new Date(t.ultima_vista), { addSuffix: true, locale: es })}
                             </p>
                           )}
                         </div>
+                        {t.completado
+                          ? <Badge variant="success" className="gap-1"><Check className="h-3 w-3" />Completo</Badge>
+                          : <Badge variant="muted">En curso</Badge>}
                       </li>
                     ))}
                   </ul>
-                  {tutorialesCompletados.length > 3 && (
+                  {tutoriales.length > 3 && (
                     <button
                       type="button"
                       onClick={() => setVerTodosTutoriales((v) => !v)}
                       className="mt-3 text-xs font-medium text-primary hover:underline"
                     >
-                      {verTodosTutoriales ? 'Ver menos' : `Ver todos (${tutorialesCompletados.length})`}
+                      {verTodosTutoriales ? 'Ver menos' : `Ver todos (${tutoriales.length})`}
+                    </button>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Sugerencias enviadas */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+                <Lightbulb className="h-4 w-4" /> Sugerencias enviadas
+                {sugerencias.length > 0 && <Badge variant="outline" className="ml-auto normal-case">{sugerencias.length}</Badge>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sugerencias.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No envió sugerencias ni pedidos.</p>
+              ) : (
+                <>
+                  <ul className="divide-y divide-border">
+                    {(verTodasSugerencias ? sugerencias : sugerencias.slice(0, 4)).map((p) => {
+                      const estado = ESTADO_PEDIDO[p.estado] ?? { label: p.estado, variant: 'muted' as const };
+                      return (
+                        <li key={p.id} className="flex items-center gap-3 py-2.5">
+                          <div className="min-w-0 flex-1">
+                            <Link to={`/pedidos/${p.id}`} className="block truncate text-sm font-medium hover:underline">{p.titulo}</Link>
+                            <p className="text-xs text-muted-foreground">
+                              {TIPO_PEDIDO_LABEL[p.tipo] ?? p.tipo} · {formatDistanceToNow(new Date(p.created_at), { addSuffix: true, locale: es })}
+                            </p>
+                          </div>
+                          <Badge variant={estado.variant}>{estado.label}</Badge>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {sugerencias.length > 4 && (
+                    <button type="button" onClick={() => setVerTodasSugerencias((v) => !v)} className="mt-3 text-xs font-medium text-primary hover:underline">
+                      {verTodasSugerencias ? 'Ver menos' : `Ver todas (${sugerencias.length})`}
+                    </button>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Agenda */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+                <CalendarCheck className="h-4 w-4" /> Agenda
+                {agenda.length > 0 && <Badge variant="outline" className="ml-auto normal-case">{agenda.length} recordatorios</Badge>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {agenda.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No cargó recordatorios en su agenda.</p>
+              ) : (
+                <>
+                  <ul className="divide-y divide-border">
+                    {(verTodaAgenda ? agenda : agenda.slice(0, 4)).map((a) => {
+                      const estado = ESTADO_AGENDA[a.estado] ?? { label: a.estado, variant: 'muted' as const };
+                      return (
+                        <li key={a.id} className="flex items-center gap-3 py-2.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{a.titulo}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(a.fecha + 'T00:00:00'), "d MMM yyyy", { locale: es })} · {a.hora.slice(0, 5)} hs
+                            </p>
+                          </div>
+                          <Badge variant={estado.variant}>{estado.label}</Badge>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {agenda.length > 4 && (
+                    <button type="button" onClick={() => setVerTodaAgenda((v) => !v)} className="mt-3 text-xs font-medium text-primary hover:underline">
+                      {verTodaAgenda ? 'Ver menos' : `Ver toda la agenda (${agenda.length})`}
                     </button>
                   )}
                 </>
@@ -341,8 +475,11 @@ export function ResidenteDetailPage() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
               <MessageSquare className="h-4 w-4" /> Actividad en el asistente
+              {hablemosMensajesEnviados > 0 && (
+                <Badge variant="outline" className="ml-auto normal-case">{hablemosMensajesEnviados} mensajes en Hablemos</Badge>
+              )}
               {mensajes.length > 0 && (
-                <Badge variant="outline" className="ml-auto normal-case">{mensajes.length}</Badge>
+                <Badge variant="outline" className={hablemosMensajesEnviados > 0 ? 'normal-case' : 'ml-auto normal-case'}>{mensajes.length}</Badge>
               )}
             </CardTitle>
           </CardHeader>

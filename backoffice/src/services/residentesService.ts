@@ -53,19 +53,27 @@ export async function resetearPassword(residenteId: string, dni: string): Promis
   await apiClient.post<void>(`/api/admin/residents/${residenteId}/reset-password`, { dni });
 }
 
-export interface ConteoPorJuego {
+export interface ResumenJuego {
   juego: string;
-  cantidad: number;
+  partidas: number;
+  ganadas: number;
+  perdidas: number;
+  mejorPuntaje: number | null;
+  ultimaPartida: string | null;
 }
 
 export interface ResidenteDetalle {
   residente: Residente;
   mensajes: { id: string; contenido: string; created_at: string }[];
   intereses: { id: string; nombre: string; emoji: string | null }[];
-  tutorialesCompletados: { titulo: string; thumbnail_url: string | null; completado_at: string | null }[];
+  tutoriales: { titulo: string; thumbnail_url: string | null; completado: boolean; favorito: boolean; ultima_vista: string | null }[];
+  sugerencias: { id: string; tipo: string; titulo: string; estado: string; created_at: string }[];
+  agenda: { id: string; titulo: string; fecha: string; hora: string; estado: string }[];
+  progresoNiveles: { jardin: { niveles: number; estrellas: number }; palabras: { niveles: number; nivelMaximo: number } };
+  hablemosMensajesEnviados: number;
   ciudadesClima: string[];
   contactos: ContactoResumen[];
-  partidasPorJuego: ConteoPorJuego[];
+  juegos: ResumenJuego[];
   dispositivoDetectado: { modelo: string | null; plataforma: string; ultimaConexion: string } | null;
 }
 

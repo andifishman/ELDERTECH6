@@ -3,7 +3,7 @@ import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/residentsRepository';
 import * as auditService from '../audit/AuditService';
 import * as gamesService from '../games/GamesService';
-import type { ConteoPorJuego } from '../games/GamesService';
+import type { ResumenJuego } from '../games/GamesService';
 import { StatusCodes } from 'http-status-codes';
 
 /** Porteo de `backoffice/src/services/residentesService.ts` — operaciones admin-only (backoffice). */
@@ -92,14 +92,14 @@ export async function resetearPassword(user: AuthUser, callerToken: string, resi
 
 export interface ResidenteDetalle extends repo.ResidenteDetalleRaw {
   residente: repo.Residente;
-  partidasPorJuego: ConteoPorJuego[];
+  juegos: ResumenJuego[];
 }
 
 export async function obtenerDetalle(id: string): Promise<ResidenteDetalle> {
   const residente = await repo.obtenerResidenteAdmin(id);
   if (!residente) throw new HttpError(StatusCodes.NOT_FOUND, 'Residente no encontrado.');
-  const [raw, partidasPorJuego] = await Promise.all([repo.obtenerResidenteDetalleRaw(id), gamesService.contarPartidasPorJuego(id)]);
-  return { residente, ...raw, partidasPorJuego };
+  const [raw, juegos] = await Promise.all([repo.obtenerResidenteDetalleRaw(id), gamesService.resumenPorJuego(id)]);
+  return { residente, ...raw, juegos };
 }
 
 export async function eliminar(user: AuthUser, id: string): Promise<void> {
