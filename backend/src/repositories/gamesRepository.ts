@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { logger } from '../logging/logger';
 
-export const JUEGOS = ['ahorcado', 'memotest', 'simon', 'conexiones', 'laberinto', 'sopa', 'puntos', 'jardin', 'bloques'] as const;
+export const JUEGOS = ['ahorcado', 'memotest', 'simon', 'conexiones', 'laberinto', 'sopa', 'puntos', 'jardin', 'bloques', 'palabras'] as const;
 export type Juego = (typeof JUEGOS)[number];
 export type ResultadoPartida = 'ganado' | 'perdido';
 
@@ -165,6 +165,74 @@ export async function resumenPorJuego(residenteId: string): Promise<ResumenJuego
     return [...resumen.values()];
   } catch (err) {
     logger.error('repo:error', { repository: 'gamesRepository', action: 'resumenPorJuego', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}
+
+export interface FilaRankingJuego {
+  residenteId: string;
+  nombre: string;
+  partidas: number;
+  ganadas: number;
+  perdidas: number;
+  mejorPuntaje: number | null;
+  puntosTotal: number;
+  ultimaPartida: string | null;
+}
+
+/** Ranking de un juego en la organización — lo agrega Postgres (función ranking_juego). */
+export async function rankingJuego(organizacionId: string, juego: Juego, desde: string | null, limite: number): Promise<FilaRankingJuego[]> {
+  logger.info('repo:call', { repository: 'gamesRepository', action: 'rankingJuego', organizacionId, juego, desde });
+  try {
+    const { data, error } = await getSupabaseAdmin().rpc('ranking_juego', { p_org: organizacionId, p_juego: juego, p_desde: desde, p_limite: limite });
+    if (error) throw new Error(`Error al cargar el ranking: ${error.message}`);
+    type Fila = { residente_id: string; nombre: string; partidas: number; ganadas: number; perdidas: number; mejor_puntaje: number | null; puntos_total: number; ultima_partida: string | null };
+    return ((data ?? []) as Fila[]).map((f) => ({
+      residenteId: f.residente_id,
+      nombre: f.nombre,
+      partidas: Number(f.partidas),
+      ganadas: Number(f.ganadas),
+      perdidas: Number(f.perdidas),
+      mejorPuntaje: f.mejor_puntaje,
+      puntosTotal: Number(f.puntos_total),
+      ultimaPartida: f.ultima_partida,
+    }));
+  } catch (err) {
+    logger.error('repo:error', { repository: 'gamesRepository', action: 'rankingJuego', error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
+}
+
+export interface FilaResumenJuego {
+  juego: Juego;
+  partidas: number;
+  jugadores: number;
+  ganadas: number;
+  mejorPuntaje: number | null;
+  ultimaPartida: string | null;
+}
+
+/** Totales por juego de toda la organización (función resumen_juegos). Incluye juegos sin partidas, en 0. */
+export async function resumenJuegos(organizacionId: string, desde: string | null): Promise<FilaResumenJuego[]> {
+  logger.info('repo:call', { repository: 'gamesRepository', action: 'resumenJuegos', organizacionId, desde });
+  try {
+    const { data, error } = await getSupabaseAdmin().rpc('resumen_juegos', { p_org: organizacionId, p_desde: desde });
+    if (error) throw new Error(`Error al cargar el resumen de juegos: ${error.message}`);
+    type Fila = { juego: string; partidas: number; jugadores: number; ganadas: number; mejor_puntaje: number | null; ultima_partida: string | null };
+    const porJuego = new Map(((data ?? []) as Fila[]).map((f) => [f.juego, f]));
+    return JUEGOS.map((juego) => {
+      const f = porJuego.get(juego);
+      return {
+        juego,
+        partidas: f ? Number(f.partidas) : 0,
+        jugadores: f ? Number(f.jugadores) : 0,
+        ganadas: f ? Number(f.ganadas) : 0,
+        mejorPuntaje: f?.mejor_puntaje ?? null,
+        ultimaPartida: f?.ultima_partida ?? null,
+      };
+    });
+  } catch (err) {
+    logger.error('repo:error', { repository: 'gamesRepository', action: 'resumenJuegos', error: err instanceof Error ? err.message : String(err) });
     throw err;
   }
 }
