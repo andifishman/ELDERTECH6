@@ -15,8 +15,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { BarChartCard } from '@/components/charts/BarChartCard';
-import { DonutChartCard, PALETA_SUAVE } from '@/components/charts/DonutChartCard';
 import { LoadingState } from '@/components/common/states';
 import { formatHora, iniciales } from '@/lib/utils';
 import { useRealtime } from '@/hooks/useRealtime';
@@ -24,18 +22,14 @@ import { queryKeys } from '@/lib/queryClient';
 import {
   useActividadReciente,
   useActividadesHoy,
-  useUsuariosPorSeccion,
   useDashboardKpis,
   useResidentesRecientes,
-  useTutorialesMasVistos,
 } from './useDashboard';
 
 export function DashboardPage() {
   const kpis = useDashboardKpis();
   const actividadesHoy = useActividadesHoy();
   const residentes = useResidentesRecientes();
-  const tutorialesVistos = useTutorialesMasVistos();
-  const porSeccion = useUsuariosPorSeccion();
   const reciente = useActividadReciente();
 
   // tiempo real: cambios en actividades/residentes refrescan el dashboard
@@ -79,22 +73,6 @@ export function DashboardPage() {
         <KpiCard etiqueta="Actividades hoy" valor={kpis.data?.actividadesHoy ?? 0} icono={CalendarDays} acento="red" cargando={kpis.isLoading} />
         <KpiCard etiqueta="Tutoriales publicados" valor={kpis.data?.tutorialesPublicados ?? 0} icono={GraduationCap} acento="purple" cargando={kpis.isLoading} />
         <KpiCard etiqueta="Consultas hoy" valor={kpis.data?.consultasAsistente ?? 0} icono={MessageSquare} acento="blue" cargando={kpis.isLoading} />
-      </div>
-
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BarChartCard
-          titulo="Tutoriales más vistos"
-          data={(tutorialesVistos.data ?? []).map((t) => ({ label: t.titulo, valor: t.vistas }))}
-          isLoading={tutorialesVistos.isLoading}
-          enlace="/tutoriales/vistos"
-        />
-        <DonutChartCard
-          titulo="Usuarios por sección"
-          data={(porSeccion.data ?? []).map((s) => ({ label: s.nombre, valor: s.total }))}
-          isLoading={porSeccion.isLoading}
-          paleta={PALETA_SUAVE}
-        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
