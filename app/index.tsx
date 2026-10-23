@@ -4,6 +4,7 @@ import { Colors } from '@/constants/Colors';
 import { hablar } from '@/utils/tts';
 import {
   Dimensions,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -154,7 +155,12 @@ function BotonNovedades({ onPress, onEscuchar }: { onPress: () => void; onEscuch
       accessibilityLabel={`Novedades. ${detalle}`}
     >
       <View style={styles.novedadesIcono}>
-        <Text style={styles.mediumCardIcon}>📰</Text>
+        <Image
+          source={require('../assets/images/logo-novedades.png')}
+          style={styles.novedadesLogo}
+          resizeMode="contain"
+          accessibilityElementsHidden
+        />
       </View>
       <View style={styles.novedadesTextos}>
         <Text style={styles.novedadesLabel}>Novedades</Text>
@@ -383,8 +389,9 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E9E2F2',
+    backgroundColor: '#FFFFFF',
   },
+  novedadesLogo: { width: 56, height: 56 },
   novedadesTextos: { flex: 1, gap: 4 },
   novedadesLabel: { fontSize: 29, fontWeight: 'bold', color: Colors.brand.primary },
   novedadesDetalle: { fontSize: 17, color: '#212121' },
