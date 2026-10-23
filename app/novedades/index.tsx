@@ -1,7 +1,7 @@
 // Novedades — lista de noticias de la residencia que publica el personal desde
 // el backoffice. Cada tarjeta muestra la foto (si tiene), el título, la fecha y
 // hora del evento (con cartel "¡HOY!" si es hoy) y un cartel "Nueva" hasta que el residente la abre.
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,13 +15,18 @@ import type { Novedad } from '@/services/novedadesService';
 import { CATEGORIAS_NOVEDAD, eventoEsHoy, fechaDeEvento } from '@/utils/novedades';
 
 const LINEA_RESUMEN = 26;
-const COLOR_VER_MAS = '#3B9AE1';
+
+/** Fijadas primero; después por fecha del evento, de la más cercana a la más lejana (sin fecha, al final). */
+function ordenarNovedades(lista: Novedad[]): Novedad[] {
+  const t = (n: Novedad) => (n.fecha_evento ? new Date(n.fecha_evento).getTime() : Number.POSITIVE_INFINITY);
+  return [...lista].sort((a, b) => Number(!!b.fijada) - Number(!!a.fijada) || t(a) - t(b));
+}
 
 export default function NovedadesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data, isLoading, isError, isFetching, refetch } = useNovedades();
-  const novedades = data ?? [];
+  const novedades = useMemo(() => ordenarNovedades(data ?? []), [data]);
   const sinLeer = novedades.filter((n) => !n.leida).length;
 
   const textoHablar =
@@ -33,7 +38,7 @@ export default function NovedadesScreen() {
 
   return (
     <View style={styles.root}>
-      <AppHeader titulo="Novedades" subtitulo="Noticias de la residencia" mostrarVolver textoHablar={textoHablar} />
+      <AppHeader titulo="Novedades" mostrarVolver textoHablar={textoHablar} />
 
       {isLoading ? (
         <LoadingState mensaje="Cargando novedades..." />
@@ -174,7 +179,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     minHeight: 48,
     justifyContent: 'center',
-    backgroundColor: COLOR_VER_MAS,
+    backgroundColor: Colors.brand.primary,
     borderRadius: Spacing.radius.md,
     paddingHorizontal: Spacing.xl,
     marginVertical: Spacing.xs,
