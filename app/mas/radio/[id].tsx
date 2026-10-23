@@ -28,7 +28,6 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { RadioStation } from '@/types/radio.types';
-import { IconoParlante } from '@/components/common/IconoParlante';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -167,7 +166,7 @@ export default function RadioDetalleScreen() {
           accessibilityLabel="Escuchar descripción de la radio"
           accessibilityRole="button"
         >
-          <IconoParlante size={26} />
+          <Ionicons name="volume-high" size={26} color={Colors.text.onDark} />
         </TouchableOpacity>
       </View>
 

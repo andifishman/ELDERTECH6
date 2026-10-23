@@ -32,7 +32,6 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { formatearDuracion } from '@/services/tutorialesService';
 import { hablar } from '@/utils/tts';
-import { IconoParlante } from '@/components/common/IconoParlante';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const VIDEO_W = SCREEN_W - Spacing.screen.horizontal * 2;
@@ -281,7 +280,7 @@ export default function TutorialDetalleScreen() {
                   accessibilityRole="button"
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <IconoParlante size={22} />
+                  <Ionicons name="volume-medium-outline" size={22} color={Colors.brand.purple} />
                 </TouchableOpacity>
               </View>
               {aprenderas.map((item, i) => (
@@ -437,7 +436,8 @@ export default function TutorialDetalleScreen() {
               accessibilityLabel="Escuchar este paso"
               accessibilityRole="button"
             >
-              <IconoParlante size={28} />
+              <Ionicons name="volume-medium" size={22} color={Colors.brand.purple} />
+              <Text style={styles.escucharTexto}>Escuchar este paso</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -837,13 +837,19 @@ const styles = StyleSheet.create({
   },
 
   escucharBtn: {
-    alignSelf: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.sm,
     backgroundColor: Colors.tutoriales.soft,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    borderRadius: Spacing.radius.lg,
+    minHeight: Spacing.touch.comfortable,
+    paddingVertical: Spacing.md,
+  },
+  escucharTexto: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.bold,
+    color: Colors.brand.purple,
   },
 
   // ── Pantalla de fin ──

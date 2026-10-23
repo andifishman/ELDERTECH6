@@ -8,7 +8,6 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { hablar } from '@/utils/tts';
-import { IconoParlante } from '@/components/common/IconoParlante';
 
 interface AppHeaderProps {
   titulo: string;
@@ -116,7 +115,7 @@ export function AppHeader({
               accessibilityRole="button"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <IconoParlante size={26} />
+              <Ionicons name="volume-high" size={26} color={Colors.text.onDark} />
             </TouchableOpacity>
           )}
         </View>

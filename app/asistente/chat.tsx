@@ -32,7 +32,6 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import type { MensajeLocal, MensajeContexto } from '@/types/asistente.types';
-import { IconoParlante } from '@/components/common/IconoParlante';
 
 // ID temporal para mensajes locales mientras cargan
 let tempId = 0;
@@ -670,7 +669,10 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                         accessibilityRole="button"
                         activeOpacity={0.75}
                       >
-                        <IconoParlante size={iconSize} />
+                        <Ionicons name="volume-medium" size={iconSize} color={Colors.brand.blueDark} />
+                        <Text style={[styles.accionTexto, styles.accionTextoEscuchar, { fontSize: accionFontSize }]}>
+                          Escuchar
+                        </Text>
                       </TouchableOpacity>
 
                       {/* Guardar como favorito */}
@@ -892,8 +894,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   accionBtnEscuchar: {
-    flex: 0,
-    width: 64,
     backgroundColor: '#E3F2FD',
     borderWidth: 1.5,
     borderColor: '#90CAF9',

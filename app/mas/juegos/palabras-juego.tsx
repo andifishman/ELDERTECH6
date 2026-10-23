@@ -7,7 +7,6 @@
 //   · Los acentos no cuentan (se escribe CANCION, no CANCIÓN).
 import { FondoPalabras } from '@/components/palabras/FondoPalabras';
 import { Confeti } from '@/components/palabras/Confeti';
-import { IconoParlante } from '@/components/common/IconoParlante';
 import { mundoDeNivel } from '@/constants/mundosPalabras';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -682,9 +681,8 @@ export default function PalabrasJuegoScreen() {
                 )
               }
               accessibilityRole="button"
-              accessibilityLabel="Escuchar cómo se juega"
             >
-              <IconoParlante size={28} />
+              <Text style={styles.modalEscucharTexto}>Escuchar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -762,7 +760,8 @@ const styles = StyleSheet.create({
   negrita: { fontWeight: '800' },
   modalBtn: { minHeight: 60, borderRadius: 18, backgroundColor: '#2E7D32', alignItems: 'center', justifyContent: 'center' },
   modalBtnTexto: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
-  modalEscuchar: { alignSelf: 'center', width: 60, height: 60, borderRadius: 30, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' },
+  modalEscuchar: { minHeight: 52, borderRadius: 16, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' },
+  modalEscucharTexto: { fontSize: 18, fontWeight: '700', color: '#1B5E3B' },
   modalSecundario: { minHeight: 52, alignItems: 'center', justifyContent: 'center' },
   modalSecundarioTexto: { fontSize: 18, fontWeight: '700', color: '#5E35B1' },
   modalReintentar: { minHeight: 52, borderRadius: 14, backgroundColor: '#FDECEA', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },

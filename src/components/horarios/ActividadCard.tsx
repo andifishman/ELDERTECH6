@@ -19,7 +19,6 @@ import { Spacing } from '@/constants/Spacing';
 import { hablar } from '@/utils/tts';
 import { formatHora, esMañana } from '@/utils/dateUtils';
 import type { ActividadCompleta } from '@/types/database.types';
-import { IconoParlante } from '@/components/common/IconoParlante';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = Math.min(1, SCREEN_WIDTH / 390);
@@ -96,7 +95,8 @@ export function ActividadCard({ actividad, onPress, recomendada = false }: Activ
           accessibilityLabel={`Escuchar descripción de ${actividad.nombre}`}
           accessibilityRole="button"
         >
-          <IconoParlante size={26} />
+          <Ionicons name="volume-medium-outline" size={22} color={colorBadge} />
+          <Text style={[styles.btnTexto, { color: colorBadge }]}>Escuchar</Text>
         </TouchableOpacity>
 
       </View>
@@ -180,9 +180,6 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   btnEscuchar: {
-    flex: 0,
-    width: 60,
-    paddingHorizontal: 0,
     backgroundColor: Colors.ui.background,
     borderWidth: 1.5,
     borderColor: Colors.ui.border,

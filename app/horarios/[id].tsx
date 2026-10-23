@@ -19,7 +19,6 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { formatHora, esMañana, parseHora } from '@/utils/dateUtils';
-import { IconoParlante } from '@/components/common/IconoParlante';
 
 export default function ActividadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -176,7 +175,8 @@ export default function ActividadDetalleScreen() {
                 accessibilityLabel="Escuchar ubicación"
                 accessibilityRole="button"
               >
-                <IconoParlante size={18} />
+                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
+                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.sectionCard}>
@@ -200,7 +200,8 @@ export default function ActividadDetalleScreen() {
                 accessibilityLabel="Escuchar descripción"
                 accessibilityRole="button"
               >
-                <IconoParlante size={18} />
+                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
+                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.descripcionTexto}>{actividad.descripcion}</Text>
@@ -221,7 +222,8 @@ export default function ActividadDetalleScreen() {
                 accessibilityLabel="Escuchar responsable"
                 accessibilityRole="button"
               >
-                <IconoParlante size={18} />
+                <Ionicons name="volume-medium-outline" size={18} color="#3D5AFE" />
+                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.sectionSubText}>Instructor ElderTech</Text>
@@ -340,12 +342,13 @@ const styles = StyleSheet.create({
 
   // Botón Escuchar — rectangular redondeado, fondo gris claro, texto azul
   escucharBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    gap: 8,
     backgroundColor: Colors.ui.background,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     borderWidth: 1,
     borderColor: Colors.ui.border,
   },

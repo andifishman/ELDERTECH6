@@ -44,7 +44,6 @@ import { useGameSounds } from '@/hooks/useGameSounds';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { registrarPartida, obtenerEstadisticasPuntaje, completarNivelJardin } from '@/services/juegosService';
 import { obtenerNivelJardin, calcularEstrellasJardin, TOTAL_NIVELES_JARDIN } from '@/constants/nivelesJardin';
-import { IconoParlante } from '@/components/common/IconoParlante';
 
 const FILAS = 6;
 const COLUMNAS = 6;
@@ -888,7 +887,7 @@ export default function JardinScreen() {
             onPress={toggleSonido}
             accessibilityLabel={sonidoActivado ? 'Silenciar sonido' : 'Activar sonido'}
           >
-            <IconoParlante size={20} apagado={!sonidoActivado} />
+            <Ionicons name={sonidoActivado ? 'volume-high-outline' : 'volume-mute-outline'} size={20} color={Colors.primary} />
             <Text style={styles.helpBtnText}>{sonidoActivado ? 'Sonido activado' : 'Sonido apagado'}</Text>
           </TouchableOpacity>
         </View>
