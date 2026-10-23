@@ -11,7 +11,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useMarcarNovedadLeida, useNovedades } from '@/hooks/useNovedades';
-import { CATEGORIAS_NOVEDAD, fechaDeEvento, fechaDePublicacion } from '@/utils/novedades';
+import { CATEGORIAS_NOVEDAD, eventoEsHoy, fechaDeEvento } from '@/utils/novedades';
 
 export default function NovedadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -58,8 +58,16 @@ export default function NovedadDetalleScreen() {
             </Text>
           ) : null}
           <Text style={styles.titulo}>{novedad.titulo}</Text>
-          {novedad.fecha_evento ? <Text style={styles.fechaEvento}>🗓️ {fechaDeEvento(novedad.fecha_evento)}</Text> : null}
-          <Text style={styles.fecha}>{fechaDePublicacion(novedad.publicar_en ?? novedad.created_at)}</Text>
+          {novedad.fecha_evento ? (
+            <View style={styles.fechaFila}>
+              <Text style={styles.fechaEvento}>🗓️ {fechaDeEvento(novedad.fecha_evento)}</Text>
+              {eventoEsHoy(novedad.fecha_evento) && (
+                <View style={styles.cartelHoy}>
+                  <Text style={styles.cartelHoyTexto}>¡HOY!</Text>
+                </View>
+              )}
+            </View>
+          ) : null}
           <Text style={styles.texto}>{novedad.texto}</Text>
         </View>
       </ScrollView>
@@ -73,8 +81,10 @@ const styles = StyleSheet.create({
   foto: { width: '100%', aspectRatio: 4 / 3, backgroundColor: Colors.ui.border },
   cuerpo: { padding: Spacing.xl, gap: Spacing.sm },
   categoria: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
-  fechaEvento: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
+  fechaFila: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm },
+  fechaEvento: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
+  cartelHoy: { backgroundColor: Colors.brand.red, borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.md, paddingVertical: 2 },
+  cartelHoyTexto: { color: Colors.text.onDark, fontSize: Typography.size.md, fontWeight: Typography.weight.bold },
   titulo: { fontSize: Typography.size.xxl, fontWeight: Typography.weight.bold, color: Colors.text.primary, lineHeight: 40 },
-  fecha: { fontSize: Typography.size.md, color: Colors.text.hint },
   texto: { fontSize: Typography.size.lg, color: Colors.text.primary, lineHeight: 32, marginTop: Spacing.sm },
 });

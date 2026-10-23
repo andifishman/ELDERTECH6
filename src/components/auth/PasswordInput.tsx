@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     color: Colors.text.primary,
     height: '100%',
+    outlineWidth: 0, // web: saca el contorno azul por defecto del navegador
   },
   eyeButton: {
     paddingLeft: Spacing.sm,

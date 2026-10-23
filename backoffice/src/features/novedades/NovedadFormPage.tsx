@@ -87,7 +87,6 @@ export function NovedadFormPage() {
   const [programar, setProgramar] = useState(false);
   const [programadaPara, setProgramadaPara] = useState('');
   const [duracionDias, setDuracionDias] = useState(30);
-  const [conEvento, setConEvento] = useState(false);
   const [fechaEvento, setFechaEvento] = useState('');
   const [visibleHasta, setVisibleHasta] = useState('');
   const inputFoto = useRef<HTMLInputElement>(null);
@@ -112,7 +111,6 @@ export function NovedadFormPage() {
     setGrupoIds(n.grupo_ids ?? []);
     setCategoria(n.categoria);
     setFijada(n.fijada);
-    setConEvento(!!n.fecha_evento && !duplicarDe);
     setFechaEvento(!duplicarDe ? aInputFechaHora(n.fecha_evento) : '');
     if (editando) {
       setVisibleHasta(aInputFecha(n.visible_hasta));
@@ -139,13 +137,13 @@ export function NovedadFormPage() {
   const faltaDestino = !paraTodos && grupoIds.length === 0;
   const faltaFechaProgramada = eligeCuando && programar && !programadaPara;
   const programadaEnElPasado = eligeCuando && programar && !!programadaPara && new Date(programadaPara).getTime() <= Date.now();
-  const faltaFechaEvento = conEvento && !fechaEvento;
-  const textosListos = !!titulo.trim() && !!texto.trim() && !subiendoFoto;
+  const faltaFechaEvento = !fechaEvento;
+  const textosListos = !!titulo.trim() && !!texto.trim() && !faltaFechaEvento && !subiendoFoto;
   const puedePublicar = textosListos && (editando || !faltaDestino) && !faltaFechaProgramada && !programadaEnElPasado && !faltaFechaEvento;
   const guardando = publicar.isPending || editar.isPending || publicarBorrador.isPending;
 
   const publicarEnIso = eligeCuando && programar && programadaPara ? aIso(programadaPara) : null;
-  const fechaEventoIso = conEvento && fechaEvento ? aIso(fechaEvento) : null;
+  const fechaEventoIso = aIso(fechaEvento);
 
   const volver = () => navigate('/novedades');
 
@@ -339,19 +337,14 @@ export function NovedadFormPage() {
 
               {/* Evento */}
               <div className="space-y-2">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <Label htmlFor="conEvento" className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Es de un evento con fecha</Label>
-                    <p className="text-sm text-muted-foreground">Se muestra el día y la hora destacados en la tarjeta (ej: fiesta, charla, visita).</p>
-                  </div>
-                  <Switch id="conEvento" checked={conEvento} onCheckedChange={setConEvento} />
+                <div>
+                  <Label htmlFor="fechaEvento" className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Fecha y hora del evento <span className="text-destructive">*</span></Label>
+                  <p className="text-sm text-muted-foreground">Es obligatoria. Se muestra el día y la hora destacados en la tarjeta, y si es hoy lleva un cartel "¡HOY!".</p>
                 </div>
-                {conEvento && (
-                  <div className="max-w-xs">
-                    <Input type="datetime-local" value={fechaEvento} onChange={(e) => setFechaEvento(e.target.value)} aria-label="Fecha y hora del evento" />
-                    {faltaFechaEvento && <p className="mt-1 text-sm text-destructive">Elegí el día y la hora del evento.</p>}
-                  </div>
-                )}
+                <div className="max-w-xs">
+                  <Input id="fechaEvento" type="datetime-local" value={fechaEvento} onChange={(e) => setFechaEvento(e.target.value)} aria-label="Fecha y hora del evento" />
+                  {faltaFechaEvento && <p className="mt-1 text-sm text-destructive">Elegí el día y la hora del evento.</p>}
+                </div>
               </div>
 
               {/* Fijar */}
@@ -470,9 +463,8 @@ export function NovedadFormPage() {
                 )}
               </div>
               <p className="text-xl font-bold leading-snug">{titulo.trim() || 'Título de la novedad'}</p>
-              {conEvento && fechaEvento && <p className="font-semibold text-primary-700">🗓️ {fechaHoraLarga(fechaEvento)}</p>}
-              <p className="line-clamp-3 text-base leading-relaxed text-foreground/80">{texto.trim() || 'Acá se va a ver el texto de la novedad.'}</p>
-              <p className="pt-1 text-xs text-muted-foreground">Publicada hoy</p>
+              {fechaEvento && <p className="text-xl font-bold text-primary-700">🗓️ {fechaHoraLarga(fechaEvento)}</p>}
+              <p className="line-clamp-2 text-base leading-relaxed text-foreground/80">{texto.trim() || 'Acá se va a ver el texto de la novedad.'}</p>
             </div>
           </div>
         </aside>

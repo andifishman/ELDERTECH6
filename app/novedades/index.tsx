@@ -1,7 +1,7 @@
 // Novedades — lista de noticias de la residencia que publica el personal desde
-// el backoffice. Cada tarjeta muestra la foto (si tiene), el título, cuándo se
-// publicó y un cartel "Nueva" hasta que el residente la abre.
-import React from 'react';
+// el backoffice. Cada tarjeta muestra la foto (si tiene), el título, la fecha y
+// hora del evento (con cartel "¡HOY!" si es hoy) y un cartel "Nueva" hasta que el residente la abre.
+import React, { useState } from 'react';
 import { FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +12,10 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useNovedades } from '@/hooks/useNovedades';
 import type { Novedad } from '@/services/novedadesService';
-import { CATEGORIAS_NOVEDAD, fechaDeEvento, fechaDePublicacion } from '@/utils/novedades';
+import { CATEGORIAS_NOVEDAD, eventoEsHoy, fechaDeEvento } from '@/utils/novedades';
+
+const LINEA_RESUMEN = 26;
+const COLOR_VER_MAS = '#3B9AE1';
 
 export default function NovedadesScreen() {
   const router = useRouter();
@@ -68,6 +71,7 @@ export default function NovedadesScreen() {
 function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () => void }) {
   // Con un backend que todavía no manda los campos nuevos, se ve como una novedad común.
   const categoria = novedad.categoria ?? 'general';
+  const [cortado, setCortado] = useState(false);
   return (
     <TouchableOpacity
       style={[styles.tarjeta, !novedad.leida && styles.tarjetaNueva]}
@@ -98,11 +102,41 @@ function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () =>
           )}
         </View>
         <Text style={styles.titulo}>{novedad.titulo}</Text>
-        {novedad.fecha_evento ? <Text style={styles.fechaEvento}>🗓️ {fechaDeEvento(novedad.fecha_evento)}</Text> : null}
-        <Text style={styles.resumen} numberOfLines={2}>
-          {novedad.texto}
-        </Text>
-        <Text style={styles.fecha}>{fechaDePublicacion(novedad.publicar_en ?? novedad.created_at)}</Text>
+        {novedad.fecha_evento ? (
+          <View style={styles.fechaFila}>
+            <Text style={styles.fechaEvento}>🗓️ {fechaDeEvento(novedad.fecha_evento)}</Text>
+            {eventoEsHoy(novedad.fecha_evento) && (
+              <View style={styles.cartelHoy}>
+                <Text style={styles.cartelHoyTexto}>¡HOY!</Text>
+              </View>
+            )}
+          </View>
+        ) : null}
+        {/* El botón "Ver más" va entre la fecha y la descripción, y solo si el texto pasa de 2 renglones */}
+        {cortado && (
+          <TouchableOpacity
+            style={styles.verMas}
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Ver más de ${novedad.titulo}`}
+          >
+            <Text style={styles.verMasTexto}>Ver más</Text>
+          </TouchableOpacity>
+        )}
+        <View>
+          <Text style={styles.resumen} numberOfLines={2}>
+            {novedad.texto}
+          </Text>
+          {/* Copia invisible sin límite de renglones, solo para medir si el texto completo no entra en 2 */}
+          <Text
+            style={[styles.resumen, styles.medidor]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            onLayout={(e) => setCortado(e.nativeEvent.layout.height > LINEA_RESUMEN * 2 + 1)}
+          >
+            {novedad.texto}
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -132,11 +166,24 @@ const styles = StyleSheet.create({
   cartelFijadaTexto: { color: '#7A5200', fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
   cartelCategoria: { backgroundColor: '#E9E2F2', borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.md, paddingVertical: 2 },
   cartelCategoriaTexto: { color: Colors.brand.primary, fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
-  fechaEvento: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
+  fechaFila: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm },
+  fechaEvento: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
+  cartelHoy: { backgroundColor: Colors.brand.red, borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.md, paddingVertical: 2 },
+  cartelHoyTexto: { color: Colors.text.onDark, fontSize: Typography.size.md, fontWeight: Typography.weight.bold },
+  verMas: {
+    alignSelf: 'flex-start',
+    minHeight: 48,
+    justifyContent: 'center',
+    backgroundColor: COLOR_VER_MAS,
+    borderRadius: Spacing.radius.md,
+    paddingHorizontal: Spacing.xl,
+    marginVertical: Spacing.xs,
+  },
+  verMasTexto: { color: '#FFFFFF', fontSize: Typography.size.md, fontWeight: Typography.weight.bold },
+  medidor: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
   cartelNuevaTexto: { color: Colors.text.onDark, fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
   titulo: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.text.primary },
-  resumen: { fontSize: Typography.size.md, color: Colors.text.primary, lineHeight: 26 },
-  fecha: { fontSize: Typography.size.sm, color: Colors.text.hint, marginTop: Spacing.xs },
+  resumen: { fontSize: Typography.size.md, color: Colors.text.primary, lineHeight: LINEA_RESUMEN },
   vacio: { alignItems: 'center', gap: Spacing.sm, paddingTop: Spacing.section, paddingHorizontal: Spacing.xl },
   vacioEmoji: { fontSize: 56 },
   vacioTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.primary, textAlign: 'center' },

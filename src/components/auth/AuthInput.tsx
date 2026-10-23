@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     fontSize: Typography.size.md,
     color: Colors.text.primary,
+    outlineWidth: 0, // web: saca el contorno azul por defecto del navegador
   },
   inputFocused: {
     borderColor: Colors.brand.primary,

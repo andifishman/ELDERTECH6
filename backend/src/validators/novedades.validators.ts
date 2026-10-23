@@ -15,7 +15,8 @@ export const publicarNovedadSchema = z.object({
   publicarEn: fechaIso.nullable().optional(),
   /** Cuántos días se muestra desde que se publica */
   duracionDias: z.number().int().min(1).max(365).optional().default(30),
-  fechaEvento: fechaIso.nullable().optional(),
+  /** Día y hora del evento — obligatoria */
+  fechaEvento: fechaIso,
   /** Guardarla sin publicar */
   borrador: z.boolean().optional().default(false),
 });
@@ -26,7 +27,7 @@ export const actualizarNovedadSchema = z.object({
   imagenUrl: z.string().url().nullable().optional(),
   categoria: z.enum(CATEGORIAS_NOVEDAD).optional(),
   fijada: z.boolean().optional(),
-  fechaEvento: fechaIso.nullable().optional(),
+  fechaEvento: fechaIso.optional(),
   publicarEn: fechaIso.optional(),
   visibleHasta: fechaIso.optional(),
 });

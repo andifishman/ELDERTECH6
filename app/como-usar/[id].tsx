@@ -147,6 +147,12 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     alignItems: 'flex-start',
     marginBottom: Spacing.md,
+    // Cada paso va en su propio cuadro clarito para que se lean separados
+    backgroundColor: Colors.ui.surface,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
+    borderRadius: Spacing.radius.md,
+    padding: Spacing.md,
   },
   pasoNumero: {
     width: 32,
