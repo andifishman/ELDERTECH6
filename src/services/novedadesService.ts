@@ -2,6 +2,8 @@
 // desde el backoffice. Habla con el backend propio, nunca con Supabase directo.
 import { apiClient } from './apiClient';
 
+export type CategoriaNovedad = 'general' | 'evento' | 'salud' | 'comida' | 'cumpleanos' | 'visita' | 'aviso';
+
 export interface Novedad {
   id: string;
   titulo: string;
@@ -9,11 +11,18 @@ export interface Novedad {
   imagen_url: string | null;
   visible_hasta: string;
   created_at: string;
+  /** Cuándo se publicó (o empezó a verse, si estaba programada) */
+  publicar_en: string;
+  /** Las fijadas van primero en la lista */
+  fijada: boolean;
+  categoria: CategoriaNovedad;
+  /** Si es de un evento, cuándo es */
+  fecha_evento: string | null;
   /** true si este residente ya la abrió — las no leídas muestran el cartel "Nueva" */
   leida: boolean;
 }
 
-/** Novedades vigentes para este residente, de la más nueva a la más vieja. */
+/** Novedades vigentes para este residente, las fijadas primero y después de la más nueva a la más vieja. */
 export async function listarNovedades(): Promise<Novedad[]> {
   return apiClient.get<Novedad[]>('/api/novedades');
 }

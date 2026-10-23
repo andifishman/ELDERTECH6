@@ -4,7 +4,7 @@ import * as repo from '../../repositories/palabrasRepository';
 import * as gamesRepo from '../../repositories/gamesRepository';
 import { StatusCodes } from 'http-status-codes';
 
-export const TOTAL_NIVELES_PALABRAS = 150;
+export const TOTAL_NIVELES_PALABRAS = 300;
 /** Pistas que se ganan al completar un nivel por primera vez. */
 export const PISTAS_POR_NIVEL = 3;
 

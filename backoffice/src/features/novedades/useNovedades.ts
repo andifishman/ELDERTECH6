@@ -18,10 +18,13 @@ export function usePublicarNovedad() {
   return useMutation({
     mutationFn: service.publicarNovedad,
     onSuccess: (_data, vars) => {
-      notify.success(vars.notificar ? 'Novedad publicada y aviso enviado' : 'Novedad publicada');
+      const programada = !!vars.publicarEn && new Date(vars.publicarEn).getTime() > Date.now();
+      if (vars.borrador) notify.success('Borrador guardado');
+      else if (programada) notify.success('Novedad programada', vars.notificar ? 'El aviso se manda a la misma hora.' : undefined);
+      else notify.success(vars.notificar ? 'Novedad publicada y aviso enviado' : 'Novedad publicada');
       void qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
-    onError: (err: Error) => notify.error('No se pudo publicar la novedad', err.message),
+    onError: (err: Error) => notify.error('No se pudo guardar la novedad', err.message),
   });
 }
 
@@ -30,11 +33,34 @@ export function useEditarNovedad() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: service.EditarNovedadInput }) => service.editarNovedad(id, input),
     onSuccess: (_data, vars) => {
-      notify.success('Novedad actualizada');
       void qc.invalidateQueries({ queryKey: KEY_LISTA });
       void qc.invalidateQueries({ queryKey: KEY_DETALLE(vars.id) });
     },
     onError: (err: Error) => notify.error('No se pudo actualizar la novedad', err.message),
+  });
+}
+
+export function usePublicarBorrador() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string; notificar: boolean; publicarEn?: string | null; duracionDias?: number }) => service.publicarBorrador(id, input),
+    onSuccess: (_data, vars) => {
+      notify.success(vars.notificar ? 'Novedad publicada y aviso enviado' : 'Novedad publicada');
+      void qc.invalidateQueries({ queryKey: KEY_LISTA });
+    },
+    onError: (err: Error) => notify.error('No se pudo publicar la novedad', err.message),
+  });
+}
+
+export function useReenviarAviso() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: service.reenviarAviso,
+    onSuccess: () => {
+      notify.success('Aviso enviado de nuevo');
+      void qc.invalidateQueries({ queryKey: KEY_LISTA });
+    },
+    onError: (err: Error) => notify.error('No se pudo reenviar el aviso', err.message),
   });
 }
 

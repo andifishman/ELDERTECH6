@@ -7,8 +7,8 @@ import * as notificationsAdminService from '../notifications/NotificationsAdminS
 import { logger } from '../../logging/logger';
 import { requireResidenteContext } from '../../utils/validators';
 
-/** Cuánto tiempo se muestra una novedad en la app desde que se publica. */
-const MESES_VISIBLE = 1;
+/** Cuántos días se muestra una novedad desde que se publica, si no se elige otra duración. */
+const DIAS_VISIBLE_POR_DEFECTO = 30;
 /** Largo máximo del texto que se manda en el aviso al celular — el resto se lee al abrir la novedad. */
 const LARGO_AVISO = 140;
 
@@ -17,10 +17,16 @@ function requireOrganizacionId(user: AuthUser): string {
   return user.organizacionId;
 }
 
-function calcularVisibleHasta(desde: Date): string {
-  const hasta = new Date(desde);
-  hasta.setMonth(hasta.getMonth() + MESES_VISIBLE);
-  return hasta.toISOString();
+function sumarDias(desde: Date, dias: number): string {
+  return new Date(desde.getTime() + dias * 86_400_000).toISOString();
+}
+
+/** La fecha de publicación pedida, o "ahora" si no se pidió ninguna. Una fecha ya pasada también cuenta como ahora. */
+function resolverPublicarEn(publicarEn: string | null | undefined): Date {
+  const ahora = new Date();
+  if (!publicarEn) return ahora;
+  const fecha = new Date(publicarEn);
+  return fecha.getTime() > ahora.getTime() + 60_000 ? fecha : ahora;
 }
 
 function resumirParaAviso(texto: string): string {
@@ -44,49 +50,39 @@ export interface PublicarNovedadInput {
   /** Vacío = para todos los residentes */
   grupoIds: string[];
   notificar: boolean;
+  categoria?: repo.CategoriaNovedad;
+  fijada?: boolean;
+  /** null/ausente = ahora; a futuro = queda programada */
+  publicarEn?: string | null;
+  duracionDias?: number;
+  fechaEvento?: string | null;
+  /** Guardarla sin publicar */
+  borrador?: boolean;
 }
 
 /**
- * Publica la novedad y, si se pidió, manda el aviso al celular reutilizando
- * el módulo de notificaciones (mismo envío, estadísticas y logs). Si el aviso
- * falla, la novedad queda publicada igual — se ve en la app aunque no llegue el push.
+ * Manda el aviso al celular reutilizando el módulo de notificaciones (mismo envío,
+ * estadísticas y logs). Si la novedad está programada a futuro, el aviso queda
+ * programado para el mismo momento. Si falla, la novedad queda igual — se ve en la
+ * app aunque no llegue el push.
  */
-export async function publicar(user: AuthUser, input: PublicarNovedadInput): Promise<repo.Novedad> {
-  const organizacionId = requireOrganizacionId(user);
-  const grupoIds = input.grupoIds.length > 0 ? input.grupoIds : null;
-
-  const novedad = await repo.crear(organizacionId, user.supabaseUserId, {
-    titulo: input.titulo,
-    texto: input.texto,
-    imagenUrl: input.imagenUrl,
-    grupoIds,
-    visibleHasta: calcularVisibleHasta(new Date()),
-  });
-
-  await auditService.registrarAuditoria(user, {
-    accion: 'publicar',
-    tabla: 'novedades',
-    registroId: novedad.id,
-    descripcion: `Publicó la novedad "${input.titulo}"${grupoIds ? ` para ${grupoIds.length} grupo(s)` : ' para todos'}`,
-    datosNuevos: { titulo: input.titulo, grupoIds, notificar: input.notificar },
-  });
-
-  if (!input.notificar) return novedad;
-
+async function enviarAviso(user: AuthUser, novedad: repo.Novedad): Promise<repo.Novedad> {
+  const programada = new Date(novedad.publicar_en).getTime() > Date.now();
   try {
     const notificacion = await notificationsAdminService.crear(
       user,
       {
-        titulo: `Novedad: ${input.titulo}`,
-        mensaje: resumirParaAviso(input.texto),
-        imagen_url: input.imagenUrl,
+        titulo: `Novedad: ${novedad.titulo}`,
+        mensaje: resumirParaAviso(novedad.texto),
+        imagen_url: novedad.imagen_url,
         tipo: 'informacion',
-        destino_tipo: grupoIds ? 'grupo' : 'todos',
-        destino_filtro: grupoIds ? { grupo_ids: grupoIds } : null,
-        programacion_tipo: 'instantanea',
+        destino_tipo: novedad.grupo_ids ? 'grupo' : 'todos',
+        destino_filtro: novedad.grupo_ids ? { grupo_ids: novedad.grupo_ids } : null,
+        programacion_tipo: programada ? 'programada' : 'instantanea',
+        programada_para: programada ? novedad.publicar_en : null,
         pantalla_destino: 'novedades',
       },
-      'enviar',
+      programada ? 'programar' : 'enviar',
     );
     await repo.vincularNotificacion(novedad.id, notificacion.id);
     return { ...novedad, notificacion_id: notificacion.id };
@@ -99,6 +95,82 @@ export async function publicar(user: AuthUser, input: PublicarNovedadInput): Pro
   }
 }
 
+/**
+ * Publica la novedad (ahora o programada a una fecha y hora), o la guarda como
+ * borrador. Con aviso, manda la notificación al celular.
+ */
+export async function publicar(user: AuthUser, input: PublicarNovedadInput): Promise<repo.Novedad> {
+  const organizacionId = requireOrganizacionId(user);
+  const grupoIds = input.grupoIds.length > 0 ? input.grupoIds : null;
+  const publicarEn = resolverPublicarEn(input.publicarEn);
+  const esBorrador = input.borrador ?? false;
+
+  const novedad = await repo.crear(organizacionId, user.supabaseUserId, {
+    titulo: input.titulo,
+    texto: input.texto,
+    imagenUrl: input.imagenUrl,
+    grupoIds,
+    visibleHasta: sumarDias(publicarEn, input.duracionDias ?? DIAS_VISIBLE_POR_DEFECTO),
+    publicarEn: publicarEn.toISOString(),
+    esBorrador,
+    fijada: input.fijada ?? false,
+    categoria: input.categoria ?? 'general',
+    fechaEvento: input.fechaEvento ?? null,
+  });
+
+  const programada = !esBorrador && publicarEn.getTime() > Date.now();
+  await auditService.registrarAuditoria(user, {
+    accion: esBorrador ? 'crear' : 'publicar',
+    tabla: 'novedades',
+    registroId: novedad.id,
+    descripcion: `${esBorrador ? 'Guardó como borrador' : programada ? 'Programó' : 'Publicó'} la novedad "${input.titulo}"${grupoIds ? ` para ${grupoIds.length} grupo(s)` : ' para todos'}`,
+    datosNuevos: { titulo: input.titulo, grupoIds, notificar: input.notificar, publicarEn: novedad.publicar_en, categoria: novedad.categoria },
+  });
+
+  if (esBorrador || !input.notificar) return novedad;
+  return enviarAviso(user, novedad);
+}
+
+export interface PublicarBorradorInput {
+  notificar: boolean;
+  publicarEn?: string | null;
+  duracionDias?: number;
+}
+
+/** Pasa un borrador a publicada (ahora o programada), con o sin aviso. */
+export async function publicarBorrador(user: AuthUser, id: string, input: PublicarBorradorInput): Promise<repo.Novedad> {
+  const actual = await obtenerAdmin(id);
+  if (!actual.es_borrador) throw new HttpError(StatusCodes.BAD_REQUEST, 'Esta novedad ya está publicada.');
+  const publicarEn = resolverPublicarEn(input.publicarEn);
+  const publicada = await repo.actualizar(id, {
+    esBorrador: false,
+    publicarEn: publicarEn.toISOString(),
+    visibleHasta: sumarDias(publicarEn, input.duracionDias ?? DIAS_VISIBLE_POR_DEFECTO),
+  });
+  await auditService.registrarAuditoria(user, {
+    accion: 'publicar',
+    tabla: 'novedades',
+    registroId: id,
+    descripcion: `Publicó el borrador "${actual.titulo}"`,
+    datosNuevos: { publicarEn: publicada.publicar_en, notificar: input.notificar },
+  });
+  return input.notificar ? enviarAviso(user, publicada) : publicada;
+}
+
+/** Vuelve a mandar el aviso al celular de una novedad que ya está publicada. */
+export async function reenviarAviso(user: AuthUser, id: string): Promise<repo.Novedad> {
+  const actual = await obtenerAdmin(id);
+  if (actual.es_borrador) throw new HttpError(StatusCodes.BAD_REQUEST, 'Primero hay que publicar la novedad.');
+  if (new Date(actual.visible_hasta).getTime() <= Date.now()) throw new HttpError(StatusCodes.BAD_REQUEST, 'La novedad ya venció.');
+  await auditService.registrarAuditoria(user, {
+    accion: 'editar',
+    tabla: 'novedades',
+    registroId: id,
+    descripcion: `Reenvió el aviso de la novedad "${actual.titulo}"`,
+  });
+  return enviarAviso(user, actual);
+}
+
 export async function actualizar(user: AuthUser, id: string, cambios: repo.ActualizarNovedadInput): Promise<repo.Novedad> {
   const actual = await obtenerAdmin(id);
   const actualizada = await repo.actualizar(id, cambios);
@@ -107,7 +179,7 @@ export async function actualizar(user: AuthUser, id: string, cambios: repo.Actua
     tabla: 'novedades',
     registroId: id,
     descripcion: `Editó la novedad "${actual.titulo}"`,
-    datosPrevios: { titulo: actual.titulo, texto: actual.texto, imagenUrl: actual.imagen_url },
+    datosPrevios: { titulo: actual.titulo, texto: actual.texto, imagenUrl: actual.imagen_url, fijada: actual.fijada, categoria: actual.categoria, visibleHasta: actual.visible_hasta },
     datosNuevos: { ...cambios },
   });
   return actualizada;

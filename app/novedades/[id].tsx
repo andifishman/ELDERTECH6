@@ -11,7 +11,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useMarcarNovedadLeida, useNovedades } from '@/hooks/useNovedades';
-import { fechaDePublicacion } from '@/utils/novedades';
+import { CATEGORIAS_NOVEDAD, fechaDeEvento, fechaDePublicacion } from '@/utils/novedades';
 
 export default function NovedadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -50,8 +50,16 @@ export default function NovedadDetalleScreen() {
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Spacing.xxxl }]}>
         {novedad.imagen_url ? <Image source={{ uri: novedad.imagen_url }} style={styles.foto} resizeMode="cover" /> : null}
         <View style={styles.cuerpo}>
+          {(novedad.categoria ?? 'general') !== 'general' || novedad.fijada ? (
+            <Text style={styles.categoria}>
+              {novedad.fijada ? '📌 Importante' : ''}
+              {novedad.fijada && (novedad.categoria ?? 'general') !== 'general' ? '  ·  ' : ''}
+              {(novedad.categoria ?? 'general') !== 'general' ? `${CATEGORIAS_NOVEDAD[novedad.categoria].emoji} ${CATEGORIAS_NOVEDAD[novedad.categoria].nombre}` : ''}
+            </Text>
+          ) : null}
           <Text style={styles.titulo}>{novedad.titulo}</Text>
-          <Text style={styles.fecha}>{fechaDePublicacion(novedad.created_at)}</Text>
+          {novedad.fecha_evento ? <Text style={styles.fechaEvento}>🗓️ {fechaDeEvento(novedad.fecha_evento)}</Text> : null}
+          <Text style={styles.fecha}>{fechaDePublicacion(novedad.publicar_en ?? novedad.created_at)}</Text>
           <Text style={styles.texto}>{novedad.texto}</Text>
         </View>
       </ScrollView>
@@ -64,6 +72,8 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1 },
   foto: { width: '100%', aspectRatio: 4 / 3, backgroundColor: Colors.ui.border },
   cuerpo: { padding: Spacing.xl, gap: Spacing.sm },
+  categoria: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
+  fechaEvento: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
   titulo: { fontSize: Typography.size.xxl, fontWeight: Typography.weight.bold, color: Colors.text.primary, lineHeight: 40 },
   fecha: { fontSize: Typography.size.md, color: Colors.text.hint },
   texto: { fontSize: Typography.size.lg, color: Colors.text.primary, lineHeight: 32, marginTop: Spacing.sm },

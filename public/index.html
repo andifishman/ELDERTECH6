@@ -39,8 +39,8 @@
     <style id="expo-reset">
       :root { --app-height: 100dvh; --app-top: 0px; color-scheme: light; }
       html, body { height: 100%; }
-      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background-color: #5F3E88; }
-      body { margin: 0; overflow: hidden; background-color: #3F2960; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background-color: #F5F5F5; }
+      body { margin: 0; overflow: hidden; background-color: #F5F5F5; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
       /* #root fijo y del alto del viewport VISIBLE: evita el "rebote" de la página entera en iOS
          y hace que el teclado virtual achique la pantalla en vez de taparla (ver script de abajo). */
       #root { position: fixed; left: 0; right: 0; top: var(--app-top); height: var(--app-height); display: flex; overflow: hidden; }
@@ -58,7 +58,10 @@
         var root = document.documentElement;
         function actualizar() {
           var vv = window.visualViewport;
-          root.style.setProperty('--app-height', (vv ? vv.height : window.innerHeight) + 'px');
+          // Con zoom de pellizco (accesibilidad) el visual viewport se achica pero no hay teclado: ahí la app
+          // sigue ocupando toda la ventana, si no quedaba una franja debajo.
+          var zoom = vv && vv.scale > 1.01;
+          root.style.setProperty('--app-height', (vv && !zoom ? vv.height : window.innerHeight) + 'px');
           root.style.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');
         }
         actualizar();

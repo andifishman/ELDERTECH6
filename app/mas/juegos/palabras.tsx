@@ -1,4 +1,4 @@
-// Palabras — mapa de niveles: botón grande "Continuar", Top 3 y los 150 niveles agrupados por "mundo".
+// Palabras — mapa de niveles: botón grande "Continuar", Top 3 y los 300 niveles agrupados por "mundo".
 // Tres niveles por fila y bien grandes, para que sea fácil tocarlos. El nivel 1 está libre; cada nivel
 // se desbloquea al completar el anterior. Los completados se pueden volver a jugar (sin pistas de premio).
 import { FondoPalabras } from '@/components/palabras/FondoPalabras';

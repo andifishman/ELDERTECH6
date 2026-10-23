@@ -177,7 +177,6 @@ export default function ActividadDetalleScreen() {
                 accessibilityRole="button"
               >
                 <IconoParlante size={18} />
-                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.sectionCard}>
@@ -202,7 +201,6 @@ export default function ActividadDetalleScreen() {
                 accessibilityRole="button"
               >
                 <IconoParlante size={18} />
-                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.descripcionTexto}>{actividad.descripcion}</Text>
@@ -224,7 +222,6 @@ export default function ActividadDetalleScreen() {
                 accessibilityRole="button"
               >
                 <IconoParlante size={18} />
-                <Text style={styles.escucharBtnTexto}>Escuchar</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.sectionSubText}>Instructor ElderTech</Text>
@@ -343,13 +340,12 @@ const styles = StyleSheet.create({
 
   // Botón Escuchar — rectangular redondeado, fondo gris claro, texto azul
   escucharBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: Colors.ui.background,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
     borderWidth: 1,
     borderColor: Colors.ui.border,
   },

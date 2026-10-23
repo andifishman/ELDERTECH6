@@ -11,25 +11,12 @@
 //    una PC en inglés, `lang = 'es-AR'` sin una voz instalada para ese idioma lee
 //    el texto con acento inglés. Se envuelve `speechSynthesis.speak` para asignar
 //    la mejor voz en español disponible (es-AR → es-419 → es-US/MX → cualquier es-*).
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 const PREFERENCIA_VOCES = ['es-ar', 'es-419', 'es-us', 'es-mx', 'es-es'];
 
-// Si el navegador/sistema no tiene NINGUNA voz en español (pasa en algunos
-// Android con Chrome, ej. sin el paquete de voz instalado), antes quedaba en
-// silencio total sin ninguna pista — justo el mismo bug que había del lado
-// nativo. Se avisa una sola vez por sesión en vez de fallar sin explicación,
-// ya que esto lo usan personas con poca visibilidad que dependen de
-// escuchar el texto.
-//
-// `getVoices()` en Chrome carga la lista de forma asíncrona — puede devolver
-// [] un instante mientras todavía no cargó, no porque falte la voz de
-// verdad. Por eso la primera vez que da vacío NO se avisa todavía: se espera
-// al evento `voiceschanged` (o, si nunca llega, un timeout corto) y se
-// reintenta una sola vez antes de decidir que realmente no hay voz — así se
-// cubre tanto "está cargando" como "esto no va a cargar nunca".
-let avisoVozFaltanteMostrado = false;
-let reintentoProgramado = false;
+// Si no hay ninguna voz en español, `speak` sigue con la voz por defecto del navegador. Antes se
+// mostraba un cartel "Función de voz no disponible" en cada recarga: se sacó a pedido (molestaba más de lo que ayudaba).
 
 // Algunos motores (Samsung TTS) informan el idioma con códigos de 3 letras ("spa-MEX", "spa_ARG")
 // en vez de "es-MX": `startsWith('es')` no los reconoce y parecía que no había ninguna voz en
@@ -47,42 +34,8 @@ function esVozEspanola(v: SpeechSynthesisVoice): boolean {
   return normalizarIdioma(v.lang).startsWith('es') || /espa(ñ|n)ol|spanish/i.test(v.name);
 }
 
-function hayVozEspanola(voces: SpeechSynthesisVoice[]): boolean {
-  return voces.some(esVozEspanola);
-}
-
-function mostrarAvisoVozFaltante(): void {
-  if (avisoVozFaltanteMostrado) return;
-  avisoVozFaltanteMostrado = true;
-  Alert.alert(
-    'Función de voz no disponible',
-    'Este navegador no tiene instalada una voz en español para leer en voz alta. Se puede instalar desde Ajustes del teléfono → Accesibilidad → Texto a voz.',
-  );
-}
-
-function avisarSiFaltaVoz(synth: SpeechSynthesis, todasLasVoces: SpeechSynthesisVoice[]): void {
-  if (avisoVozFaltanteMostrado) return;
-  if (hayVozEspanola(todasLasVoces)) return;
-  if (todasLasVoces.length > 0) {
-    // Ya cargó la lista y no hay ninguna voz en español: es definitivo.
-    mostrarAvisoVozFaltante();
-    return;
-  }
-  // Lista todavía vacía — puede ser que esté cargando. Reintentar una sola
-  // vez (evento voiceschanged, o 1.5s si ese evento nunca llega) antes de
-  // avisar, para no mostrar un falso aviso apenas arranca la página.
-  if (reintentoProgramado) return;
-  reintentoProgramado = true;
-  const reintentar = () => {
-    if (!hayVozEspanola(synth.getVoices())) mostrarAvisoVozFaltante();
-  };
-  synth.addEventListener('voiceschanged', reintentar, { once: true });
-  setTimeout(reintentar, 1500);
-}
-
 function mejorVozEspanol(synth: SpeechSynthesis): SpeechSynthesisVoice | null {
   const todas = synth.getVoices();
-  avisarSiFaltaVoz(synth, todas);
   const voces = todas.filter(esVozEspanola);
   if (voces.length === 0) return null;
   for (const lang of PREFERENCIA_VOCES) {

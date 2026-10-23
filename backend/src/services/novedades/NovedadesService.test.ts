@@ -34,7 +34,8 @@ const residente: AuthUser = { ...staff, supabaseUserId: 'user-r1', residenteId: 
 
 const novedad: repo.Novedad = {
   id: 'nov-1', organizacion_id: 'org-1', titulo: 'Fiesta de la primavera', texto: 'El sábado festejamos en el salón.',
-  imagen_url: null, grupo_ids: null, visible_hasta: '', notificacion_id: null, creado_por: 'staff-1', created_at: '', updated_at: '',
+  imagen_url: null, grupo_ids: null, visible_hasta: '', publicar_en: '', es_borrador: false, fijada: false, categoria: 'general', fecha_evento: null,
+  notificacion_id: null, creado_por: 'staff-1', created_at: '', updated_at: '',
 };
 
 beforeEach(() => {
@@ -43,19 +44,41 @@ beforeEach(() => {
 });
 
 describe('publicar', () => {
-  it('sin grupos la publica para todos y la deja visible un mes', async () => {
+  it('sin grupos la publica para todos y la deja visible 30 días', async () => {
     const antes = new Date();
     await publicar(staff, { titulo: novedad.titulo, texto: novedad.texto, imagenUrl: null, grupoIds: [], notificar: false });
 
     const input = vi.mocked(repo.crear).mock.calls[0]![2];
     expect(input.grupoIds).toBeNull();
-    const esperado = new Date(antes);
-    esperado.setMonth(esperado.getMonth() + 1);
+    const esperado = new Date(antes.getTime() + 30 * 86_400_000);
     expect(Math.abs(new Date(input.visibleHasta).getTime() - esperado.getTime())).toBeLessThan(5000);
     expect(notificationsAdminService.crear).not.toHaveBeenCalled();
   });
 
+  it('con una fecha a futuro queda programada y el aviso se programa para el mismo momento', async () => {
+    const futuro = new Date(Date.now() + 3 * 86_400_000).toISOString();
+    vi.mocked(repo.crear).mockResolvedValue({ ...novedad, publicar_en: futuro });
+    vi.mocked(notificationsAdminService.crear).mockResolvedValue({ id: 'notif-2' } as Notification);
+
+    await publicar(staff, { titulo: novedad.titulo, texto: novedad.texto, imagenUrl: null, grupoIds: [], notificar: true, publicarEn: futuro });
+
+    expect(vi.mocked(repo.crear).mock.calls[0]![2].publicarEn).toBe(futuro);
+    expect(notificationsAdminService.crear).toHaveBeenCalledWith(
+      staff,
+      expect.objectContaining({ programacion_tipo: 'programada', programada_para: futuro }),
+      'programar',
+    );
+  });
+
+  it('un borrador se guarda sin mandar ningún aviso', async () => {
+    await publicar(staff, { titulo: novedad.titulo, texto: novedad.texto, imagenUrl: null, grupoIds: [], notificar: true, borrador: true });
+
+    expect(vi.mocked(repo.crear).mock.calls[0]![2].esBorrador).toBe(true);
+    expect(notificationsAdminService.crear).not.toHaveBeenCalled();
+  });
+
   it('con aviso manda la notificación a los mismos grupos y la vincula', async () => {
+    vi.mocked(repo.crear).mockResolvedValue({ ...novedad, grupo_ids: ['g-1'] });
     vi.mocked(notificationsAdminService.crear).mockResolvedValue({ id: 'notif-1' } as Notification);
 
     const resultado = await publicar(staff, { titulo: novedad.titulo, texto: novedad.texto, imagenUrl: null, grupoIds: ['g-1'], notificar: true });

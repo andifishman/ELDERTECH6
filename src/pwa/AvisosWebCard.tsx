@@ -7,8 +7,7 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { activarAvisos, estadoAvisosReal, type EstadoAvisos } from './avisosWeb';
 
-const TEXTO_ESTADO: Record<EstadoAvisos, string> = {
-  activo: '✅ Los avisos están activados en este dispositivo.',
+const TEXTO_ESTADO: Record<Exclude<EstadoAvisos, 'activo'>, string> = {
   pendiente: 'Activá los avisos para enterarte de mensajes, recordatorios y actividades aunque no tengas la aplicación abierta.',
   'requiere-instalar':
     'Para recibir avisos en el iPhone, primero agregá ElderTech a tu pantalla de inicio (botón Compartir › Agregar a inicio) y abrila desde ahí.',
@@ -17,7 +16,7 @@ const TEXTO_ESTADO: Record<EstadoAvisos, string> = {
 };
 
 export function AvisosWebCard(): React.ReactElement | null {
-  const [estado, setEstado] = useState<EstadoAvisos>('no-soportado');
+  const [estado, setEstado] = useState<EstadoAvisos | null>(null);
   const [resultado, setResultado] = useState<string | null>(null);
   const [trabajando, setTrabajando] = useState(false);
 
@@ -33,7 +32,8 @@ export function AvisosWebCard(): React.ReactElement | null {
     setTrabajando(false);
   }, []);
 
-  if (Platform.OS !== 'web') return null;
+  // Mientras se consulta el estado, o si los avisos ya están activados, no se muestra la tarjeta.
+  if (Platform.OS !== 'web' || estado === null || estado === 'activo') return null;
 
   return (
     <View style={estilos.tarjeta}>

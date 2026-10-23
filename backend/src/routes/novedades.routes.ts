@@ -25,5 +25,7 @@ novedadesAdminRouter.post('/', requirePermission('novedades', 'crear'), asyncHan
 novedadesAdminRouter.post('/images', requirePermission('novedades', 'crear', 'editar'), upload.single('archivo'), asyncHandler(controller.postImagen));
 
 novedadesAdminRouter.get('/:id', requirePermission('novedades', 'ver'), asyncHandler(controller.getDetalleAdmin));
+novedadesAdminRouter.post('/:id/publicar', requirePermission('novedades', 'crear'), asyncHandler(controller.postPublicarBorrador));
+novedadesAdminRouter.post('/:id/reenviar-aviso', requirePermission('novedades', 'editar'), asyncHandler(controller.postReenviarAviso));
 novedadesAdminRouter.patch('/:id', requirePermission('novedades', 'editar'), asyncHandler(controller.patchActualizar));
 novedadesAdminRouter.delete('/:id', requirePermission('novedades', 'eliminar'), asyncHandler(controller.deleteEliminar));

@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { HttpError } from '../middlewares/errorHandler';
 import * as novedadesService from '../services/novedades/NovedadesService';
-import { actualizarNovedadSchema, publicarNovedadSchema } from '../validators/novedades.validators';
+import { actualizarNovedadSchema, publicarBorradorSchema, publicarNovedadSchema } from '../validators/novedades.validators';
 import { requireUser, requireUuidParam } from '../utils/validators';
 
 // ─── Backoffice ─────────────────────────────────────────────────────────────
@@ -19,6 +19,15 @@ export async function postPublicar(req: Request, res: Response): Promise<void> {
   const input = publicarNovedadSchema.parse(req.body);
   const novedad = await novedadesService.publicar(requireUser(req), { ...input, imagenUrl: input.imagenUrl ?? null });
   res.status(StatusCodes.CREATED).json(novedad);
+}
+
+export async function postPublicarBorrador(req: Request, res: Response): Promise<void> {
+  const input = publicarBorradorSchema.parse(req.body);
+  res.json(await novedadesService.publicarBorrador(requireUser(req), requireUuidParam(req, 'id'), input));
+}
+
+export async function postReenviarAviso(req: Request, res: Response): Promise<void> {
+  res.json(await novedadesService.reenviarAviso(requireUser(req), requireUuidParam(req, 'id')));
 }
 
 export async function patchActualizar(req: Request, res: Response): Promise<void> {

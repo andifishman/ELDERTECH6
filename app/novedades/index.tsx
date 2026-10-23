@@ -12,7 +12,7 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useNovedades } from '@/hooks/useNovedades';
 import type { Novedad } from '@/services/novedadesService';
-import { fechaDePublicacion } from '@/utils/novedades';
+import { CATEGORIAS_NOVEDAD, fechaDeEvento, fechaDePublicacion } from '@/utils/novedades';
 
 export default function NovedadesScreen() {
   const router = useRouter();
@@ -66,6 +66,8 @@ export default function NovedadesScreen() {
 }
 
 function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () => void }) {
+  // Con un backend que todavía no manda los campos nuevos, se ve como una novedad común.
+  const categoria = novedad.categoria ?? 'general';
   return (
     <TouchableOpacity
       style={[styles.tarjeta, !novedad.leida && styles.tarjetaNueva]}
@@ -76,16 +78,31 @@ function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () =>
     >
       {novedad.imagen_url ? <Image source={{ uri: novedad.imagen_url }} style={styles.foto} resizeMode="cover" /> : null}
       <View style={styles.cuerpo}>
-        {!novedad.leida && (
-          <View style={styles.cartelNueva}>
-            <Text style={styles.cartelNuevaTexto}>Nueva</Text>
-          </View>
-        )}
+        <View style={styles.carteles}>
+          {!novedad.leida && (
+            <View style={styles.cartelNueva}>
+              <Text style={styles.cartelNuevaTexto}>Nueva</Text>
+            </View>
+          )}
+          {novedad.fijada && (
+            <View style={styles.cartelFijada}>
+              <Text style={styles.cartelFijadaTexto}>📌 Importante</Text>
+            </View>
+          )}
+          {categoria !== 'general' && (
+            <View style={styles.cartelCategoria}>
+              <Text style={styles.cartelCategoriaTexto}>
+                {CATEGORIAS_NOVEDAD[categoria].emoji} {CATEGORIAS_NOVEDAD[categoria].nombre}
+              </Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.titulo}>{novedad.titulo}</Text>
+        {novedad.fecha_evento ? <Text style={styles.fechaEvento}>🗓️ {fechaDeEvento(novedad.fecha_evento)}</Text> : null}
         <Text style={styles.resumen} numberOfLines={2}>
           {novedad.texto}
         </Text>
-        <Text style={styles.fecha}>{fechaDePublicacion(novedad.created_at)}</Text>
+        <Text style={styles.fecha}>{fechaDePublicacion(novedad.publicar_en ?? novedad.created_at)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -104,14 +121,18 @@ const styles = StyleSheet.create({
   tarjetaNueva: { borderColor: Colors.brand.primary },
   foto: { width: '100%', aspectRatio: 16 / 9, backgroundColor: Colors.ui.border },
   cuerpo: { padding: Spacing.card.horizontal, gap: Spacing.xs },
+  carteles: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginBottom: Spacing.xs },
   cartelNueva: {
-    alignSelf: 'flex-start',
     backgroundColor: Colors.hablemos.noLeidosBadge,
     borderRadius: Spacing.radius.full,
     paddingHorizontal: Spacing.md,
     paddingVertical: 2,
-    marginBottom: Spacing.xs,
   },
+  cartelFijada: { backgroundColor: '#FFF3CD', borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.md, paddingVertical: 2 },
+  cartelFijadaTexto: { color: '#7A5200', fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
+  cartelCategoria: { backgroundColor: '#E9E2F2', borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.md, paddingVertical: 2 },
+  cartelCategoriaTexto: { color: Colors.brand.primary, fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
+  fechaEvento: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold, color: Colors.brand.primary },
   cartelNuevaTexto: { color: Colors.text.onDark, fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
   titulo: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.text.primary },
   resumen: { fontSize: Typography.size.md, color: Colors.text.primary, lineHeight: 26 },

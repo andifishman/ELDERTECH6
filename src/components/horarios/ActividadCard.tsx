@@ -96,8 +96,7 @@ export function ActividadCard({ actividad, onPress, recomendada = false }: Activ
           accessibilityLabel={`Escuchar descripción de ${actividad.nombre}`}
           accessibilityRole="button"
         >
-          <IconoParlante size={22} />
-          <Text style={[styles.btnTexto, { color: colorBadge }]}>Escuchar</Text>
+          <IconoParlante size={26} />
         </TouchableOpacity>
 
       </View>
@@ -181,6 +180,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   btnEscuchar: {
+    flex: 0,
+    width: 60,
+    paddingHorizontal: 0,
     backgroundColor: Colors.ui.background,
     borderWidth: 1.5,
     borderColor: Colors.ui.border,

@@ -671,9 +671,6 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                         activeOpacity={0.75}
                       >
                         <IconoParlante size={iconSize} />
-                        <Text style={[styles.accionTexto, styles.accionTextoEscuchar, { fontSize: accionFontSize }]}>
-                          Escuchar
-                        </Text>
                       </TouchableOpacity>
 
                       {/* Guardar como favorito */}
@@ -895,6 +892,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   accionBtnEscuchar: {
+    flex: 0,
+    width: 64,
     backgroundColor: '#E3F2FD',
     borderWidth: 1.5,
     borderColor: '#90CAF9',

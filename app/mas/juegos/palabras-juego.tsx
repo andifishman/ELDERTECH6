@@ -7,6 +7,7 @@
 //   · Los acentos no cuentan (se escribe CANCION, no CANCIÓN).
 import { FondoPalabras } from '@/components/palabras/FondoPalabras';
 import { Confeti } from '@/components/palabras/Confeti';
+import { IconoParlante } from '@/components/common/IconoParlante';
 import { mundoDeNivel } from '@/constants/mundosPalabras';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -505,12 +506,13 @@ export default function PalabrasJuegoScreen() {
   }
 
   // ─── Medidas ───
-  const ALTO_BARRA = 64;
+  const ALTO_BARRA = 88;
   const ALTO_PILDORA = 76;
+  const RESERVA_CONTADOR = 30; // lugar propio para "X / Y palabras", así no se pisa con la grilla
   const diametro = Math.round(Math.min(width - 24, 340, (height - insets.top - insets.bottom - ALTO_BARRA - ALTO_PILDORA) * 0.52));
   const radioRueda = diametro / 2 - TAM_LETRA / 2 - 14;
   const altoGrilla = Math.max(height - insets.top - insets.bottom - ALTO_BARRA - ALTO_PILDORA - diametro - 28, 150);
-  const celda = Math.max(30, Math.min(56, Math.floor((width - 40) / nivel.ancho), Math.floor(altoGrilla / nivel.alto)));
+  const celda = Math.max(30, Math.min(56, Math.floor((width - 40) / nivel.ancho), Math.floor((altoGrilla - RESERVA_CONTADOR) / nivel.alto)));
   const anchoGrilla = celda * nivel.ancho;
   const altoGrillaReal = celda * nivel.alto;
 
@@ -566,7 +568,7 @@ export default function PalabrasJuegoScreen() {
       </View>
 
       {/* Grilla */}
-      <View style={[styles.zonaGrilla, { height: altoGrilla }]}>
+      <View style={[styles.zonaGrilla, { height: altoGrilla, paddingBottom: RESERVA_CONTADOR }]}>
         <Animated.View
           style={{
             width: anchoGrilla,
@@ -680,8 +682,9 @@ export default function PalabrasJuegoScreen() {
                 )
               }
               accessibilityRole="button"
+              accessibilityLabel="Escuchar cómo se juega"
             >
-              <Text style={styles.modalEscucharTexto}>Escuchar</Text>
+              <IconoParlante size={28} />
             </TouchableOpacity>
           </View>
         </View>
@@ -720,19 +723,19 @@ const styles = StyleSheet.create({
   vacio: { fontSize: 22, textAlign: 'center', margin: 24, color: '#FFFFFF' },
 
   barra: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingBottom: 6 },
-  volver: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
-  volverTexto: { fontSize: 38, lineHeight: 42, color: '#FFFFFF', fontWeight: '700', marginTop: -4 },
-  ayudaTexto: { fontSize: 26, color: '#FFFFFF', fontWeight: '800' },
+  volver: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
+  volverTexto: { fontSize: 52, lineHeight: 56, color: '#FFFFFF', fontWeight: '700', marginTop: -6 },
+  ayudaTexto: { fontSize: 36, color: '#FFFFFF', fontWeight: '800' },
   tituloCaja: { alignItems: 'center' },
-  tituloNivel: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 4, textShadowOffset: { width: 0, height: 1 } },
-  tituloMundo: { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
+  tituloNivel: { fontSize: 30, fontWeight: '800', color: '#FFFFFF', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 4, textShadowOffset: { width: 0, height: 1 } },
+  tituloMundo: { fontSize: 22, fontWeight: '700', color: 'rgba(255,255,255,0.9)' },
 
   zonaGrilla: { alignItems: 'center', justifyContent: 'center' },
   celda: { borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.55)', alignItems: 'center', justifyContent: 'center' },
   celdaVisible: { backgroundColor: AMARILLO, borderColor: AMARILLO_OSCURO },
   celdaPista: { backgroundColor: '#FFE08A', borderColor: '#FFFFFF' },
   celdaLetra: { fontWeight: '800', color: MARRON },
-  contador: { position: 'absolute', bottom: 0, fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.95)', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  contador: { position: 'absolute', bottom: -6, fontSize: 17, fontWeight: '700', color: 'rgba(255,255,255,0.95)', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
 
   zonaPildora: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   pildora: { minHeight: 52, minWidth: 90, paddingHorizontal: 22, paddingVertical: 6, borderRadius: 26, alignItems: 'center', justifyContent: 'center', ...sombra },
@@ -759,8 +762,7 @@ const styles = StyleSheet.create({
   negrita: { fontWeight: '800' },
   modalBtn: { minHeight: 60, borderRadius: 18, backgroundColor: '#2E7D32', alignItems: 'center', justifyContent: 'center' },
   modalBtnTexto: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
-  modalEscuchar: { minHeight: 52, borderRadius: 16, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' },
-  modalEscucharTexto: { fontSize: 18, fontWeight: '700', color: '#1B5E3B' },
+  modalEscuchar: { alignSelf: 'center', width: 60, height: 60, borderRadius: 30, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' },
   modalSecundario: { minHeight: 52, alignItems: 'center', justifyContent: 'center' },
   modalSecundarioTexto: { fontSize: 18, fontWeight: '700', color: '#5E35B1' },
   modalReintentar: { minHeight: 52, borderRadius: 14, backgroundColor: '#FDECEA', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },

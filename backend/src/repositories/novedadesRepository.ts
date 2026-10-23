@@ -1,6 +1,9 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { logger } from '../logging/logger';
 
+export const CATEGORIAS_NOVEDAD = ['general', 'evento', 'salud', 'comida', 'cumpleanos', 'visita', 'aviso'] as const;
+export type CategoriaNovedad = (typeof CATEGORIAS_NOVEDAD)[number];
+
 export interface Novedad {
   id: string;
   organizacion_id: string;
@@ -10,6 +13,15 @@ export interface Novedad {
   /** null = para todos los residentes */
   grupo_ids: string[] | null;
   visible_hasta: string;
+  /** Desde cuándo se ve en la app (puede ser a futuro: novedad programada) */
+  publicar_en: string;
+  /** Guardada sin publicar: no se ve en la app */
+  es_borrador: boolean;
+  /** Aparece primero en la lista de los residentes */
+  fijada: boolean;
+  categoria: CategoriaNovedad;
+  /** Si la noticia es de un evento, cuándo es */
+  fecha_evento: string | null;
   notificacion_id: string | null;
   creado_por: string | null;
   created_at: string;
@@ -18,6 +30,8 @@ export interface Novedad {
 
 export interface NovedadAdmin extends Novedad {
   cantidad_lecturas: number;
+  /** A cuántos residentes les llega (todos los activos, o los de los grupos elegidos) */
+  cantidad_destinatarios: number;
 }
 
 export interface NovedadResidente extends Novedad {
@@ -30,12 +44,23 @@ export interface CrearNovedadInput {
   imagenUrl: string | null;
   grupoIds: string[] | null;
   visibleHasta: string;
+  publicarEn: string;
+  esBorrador: boolean;
+  fijada: boolean;
+  categoria: CategoriaNovedad;
+  fechaEvento: string | null;
 }
 
 export interface ActualizarNovedadInput {
   titulo?: string;
   texto?: string;
   imagenUrl?: string | null;
+  fijada?: boolean;
+  categoria?: CategoriaNovedad;
+  fechaEvento?: string | null;
+  publicarEn?: string;
+  visibleHasta?: string;
+  esBorrador?: boolean;
 }
 
 export async function listarParaAdmin(organizacionId: string): Promise<NovedadAdmin[]> {
@@ -45,10 +70,44 @@ export async function listarParaAdmin(organizacionId: string): Promise<NovedadAd
     .eq('organizacion_id', organizacionId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(`Error al cargar las novedades: ${error.message}`);
-  return ((data ?? []) as unknown as Array<Novedad & { novedad_lecturas: Array<{ count: number }> }>).map(({ novedad_lecturas, ...n }) => ({
+  const filas = (data ?? []) as unknown as Array<Novedad & { novedad_lecturas: Array<{ count: number }> }>;
+  const destinatarios = await contarDestinatarios(organizacionId, filas.map((f) => f.grupo_ids));
+  return filas.map(({ novedad_lecturas, ...n }, i) => ({
     ...n,
     cantidad_lecturas: novedad_lecturas?.[0]?.count ?? 0,
+    cantidad_destinatarios: destinatarios[i] ?? 0,
   }));
+}
+
+/** Cuántos residentes alcanza cada novedad: todos los activos si no tiene grupos, o los integrantes de sus grupos. */
+async function contarDestinatarios(organizacionId: string, gruposPorNovedad: Array<string[] | null>): Promise<number[]> {
+  const { count, error } = await getSupabaseAdmin()
+    .from('residentes')
+    .select('*', { count: 'exact', head: true })
+    .eq('organizacion_id', organizacionId)
+    .eq('activo', true);
+  if (error) throw new Error(`Error al contar los residentes: ${error.message}`);
+  const total = count ?? 0;
+
+  const todosLosGrupos = [...new Set(gruposPorNovedad.flatMap((g) => g ?? []))];
+  const integrantes = new Map<string, Set<string>>();
+  if (todosLosGrupos.length > 0) {
+    const { data: filas, error: errorGrupos } = await getSupabaseAdmin()
+      .from('grupo_residentes')
+      .select('grupo_id, residente_id')
+      .in('grupo_id', todosLosGrupos);
+    if (errorGrupos) throw new Error(`Error al cargar los grupos: ${errorGrupos.message}`);
+    for (const f of (filas ?? []) as Array<{ grupo_id: string; residente_id: string }>) {
+      if (!integrantes.has(f.grupo_id)) integrantes.set(f.grupo_id, new Set());
+      integrantes.get(f.grupo_id)!.add(f.residente_id);
+    }
+  }
+  return gruposPorNovedad.map((grupos) => {
+    if (!grupos) return total;
+    const union = new Set<string>();
+    for (const g of grupos) integrantes.get(g)?.forEach((r) => union.add(r));
+    return union.size;
+  });
 }
 
 export async function obtener(id: string): Promise<Novedad | null> {
@@ -68,6 +127,11 @@ export async function crear(organizacionId: string, creadoPor: string, input: Cr
       imagen_url: input.imagenUrl,
       grupo_ids: input.grupoIds,
       visible_hasta: input.visibleHasta,
+      publicar_en: input.publicarEn,
+      es_borrador: input.esBorrador,
+      fijada: input.fijada,
+      categoria: input.categoria,
+      fecha_evento: input.fechaEvento,
       creado_por: creadoPor,
     })
     .select('*')
@@ -81,6 +145,12 @@ export async function actualizar(id: string, cambios: ActualizarNovedadInput): P
   if (cambios.titulo !== undefined) fila.titulo = cambios.titulo;
   if (cambios.texto !== undefined) fila.texto = cambios.texto;
   if (cambios.imagenUrl !== undefined) fila.imagen_url = cambios.imagenUrl;
+  if (cambios.fijada !== undefined) fila.fijada = cambios.fijada;
+  if (cambios.categoria !== undefined) fila.categoria = cambios.categoria;
+  if (cambios.fechaEvento !== undefined) fila.fecha_evento = cambios.fechaEvento;
+  if (cambios.publicarEn !== undefined) fila.publicar_en = cambios.publicarEn;
+  if (cambios.visibleHasta !== undefined) fila.visible_hasta = cambios.visibleHasta;
+  if (cambios.esBorrador !== undefined) fila.es_borrador = cambios.esBorrador;
   const { data, error } = await getSupabaseAdmin().from('novedades').update(fila).eq('id', id).select('*').single();
   if (error) throw new Error(`Error al actualizar la novedad: ${error.message}`);
   return data as Novedad;
@@ -111,7 +181,10 @@ export async function listarParaResidente(organizacionId: string, residenteId: s
     .select('*')
     .eq('organizacion_id', organizacionId)
     .gt('visible_hasta', new Date().toISOString())
-    .order('created_at', { ascending: false });
+    .lte('publicar_en', new Date().toISOString())
+    .eq('es_borrador', false)
+    .order('fijada', { ascending: false })
+    .order('publicar_en', { ascending: false });
   query = grupos.length > 0 ? query.or(`grupo_ids.is.null,grupo_ids.ov.{${grupos.join(',')}}`) : query.is('grupo_ids', null);
 
   const { data, error } = await query;

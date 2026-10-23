@@ -437,8 +437,7 @@ export default function TutorialDetalleScreen() {
               accessibilityLabel="Escuchar este paso"
               accessibilityRole="button"
             >
-              <IconoParlante size={22} />
-              <Text style={styles.escucharTexto}>Escuchar este paso</Text>
+              <IconoParlante size={28} />
             </TouchableOpacity>
           </>
         ) : (
@@ -838,19 +837,13 @@ const styles = StyleSheet.create({
   },
 
   escucharBtn: {
-    flexDirection: 'row',
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
     backgroundColor: Colors.tutoriales.soft,
-    borderRadius: Spacing.radius.lg,
-    minHeight: Spacing.touch.comfortable,
-    paddingVertical: Spacing.md,
-  },
-  escucharTexto: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.bold,
-    color: Colors.brand.purple,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
 
   // ── Pantalla de fin ──

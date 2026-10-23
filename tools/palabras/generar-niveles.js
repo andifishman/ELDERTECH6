@@ -1,4 +1,4 @@
-// Genera src/constants/nivelesPalabras.ts — los 150 niveles del juego "Palabras"
+// Genera src/constants/nivelesPalabras.ts — los 300 niveles del juego "Palabras"
 // (rueda de letras + crucigrama). Se corre una sola vez (o al retocar la
 // curva de dificultad); el resultado se commitea, la app NO genera nada en runtime.
 //
@@ -8,8 +8,9 @@
 // - frecuencias.txt: "palabra frecuencia" por línea, más frecuente primero (FrequencyWords es_50k).
 //
 // Criterios pensados para adultos mayores:
-//   · Niveles 1-35: 4 letras, 3-4 palabras, vocabulario MUY común.
-//   · 36-90: 5 letras · 91-150: 6 letras (nunca 7: más letras en la rueda confunden).
+//   · Niveles 1-12: rueda de 4 letras (con algunos de 5 intercalados), 5-6 palabras, vocabulario MUY común.
+//   · 13-45: 5 letras (con uno de 6 cada 4 niveles) · 46-300: 6 letras (nunca 7: más letras en la rueda confunden).
+//   · Ninguna palabra de la grilla se repite en otro nivel (ni siquiera las cortas).
 //   · Sin tiempo, sin acentos (se ignoran, como en los juegos de palabras en español).
 //   · Se filtran palabras vulgares o desagradables (ver BLOQUEADAS).
 const fs = require('fs');
@@ -20,9 +21,9 @@ if (!dicPath || !freqPath || !outPath) {
   process.exit(1);
 }
 
-const TOTAL_NIVELES = 150;
-const MAX_ANCHO = 7;
-const MAX_ALTO = 8;
+const TOTAL_NIVELES = 300;
+const MAX_ANCHO = 8;
+const MAX_ALTO = 9;
 
 const sinAcentos = (w) =>
   w
@@ -77,7 +78,7 @@ const EXCLUIDAS = new Set(
 // Conjugaciones poco naturales (vosotros, futuro, subjuntivo…) — válidas como "extra" pero no como palabra de la grilla.
 const CONJUGADA = /(ais|eis|ian|ias|aran|eran|aras|eras|are|ere|ire|aba|abas|aban|asen|esen|ase|ese|ria|rian|rias|ra[ns]|sen)$/;
 
-const RANGO_MAX_VALIDA = 40000; // una palabra "válida" tiene que ser conocida
+const RANGO_MAX_VALIDA = 50000; // una palabra "válida" tiene que ser conocida
 const validas = [];
 for (const w of diccionario) {
   const r = ranking.get(w);
@@ -122,15 +123,19 @@ const cabeEn = (w, letras) => {
 // ── Curva de dificultad ──────────────────────────────────────────────────────
 function paramsNivel(n) {
   const t = (n - 1) / (TOTAL_NIVELES - 1); // 0 → 1
-  const letras = n <= 35 ? 4 : n <= 90 ? 5 : 6;
-  // Cuántas palabras hay que encontrar
+  let letras = n <= 12 ? 4 : n <= 45 ? 5 : 6;
+  // Algunos niveles más largos intercalados entre los primeros (cada 4 niveles, hasta el 45)
+  if (n <= 45 && n % 4 === 0) letras = Math.min(6, letras + 1);
+  // Cuántas palabras hay que encontrar (más que antes: antes eran 3-9)
   let k;
-  if (letras === 4) k = n <= 10 ? 3 : n <= 22 ? 4 : 5;
-  else if (letras === 5) k = n <= 55 ? 5 : n <= 75 ? 6 : 7;
-  else k = n <= 110 ? 7 : n <= 130 ? 8 : 9;
+  if (letras === 4) k = n <= 6 ? 5 : 6;
+  else if (letras === 5) k = n <= 80 ? 7 : 8;
+  else k = n <= 100 ? 8 : 9;
+  // Palabras de 3 letras permitidas en la grilla (en ruedas grandes, casi todas tienen que ser de 4+)
+  const maxCortas = letras === 4 ? k : letras === 5 ? 2 : 1;
   // Qué tan comunes tienen que ser las palabras de la grilla (rango en la lista de frecuencias)
-  const rangoMax = Math.round(2500 + t * 17500);
-  return { letras, k, rangoMax };
+  const rangoMax = Math.round(2500 + t * 20000);
+  return { letras, k, rangoMax, maxCortas };
 }
 
 // ── Armado de la grilla estilo crucigrama ───────────────────────────────────
@@ -216,43 +221,70 @@ function armarGrilla(palabras, rnd) {
 // ── Generación de los niveles ───────────────────────────────────────────────
 const porLongitud = (n) => validas.filter((v) => v.w.length === n);
 const usadas = new Set(); // letras ordenadas ya usadas como base
+const palabrasUsadas = new Set(); // palabras de grilla ya usadas en algún nivel (no se repiten)
 const niveles = [];
 
 for (let n = 1; n <= TOTAL_NIVELES; n++) {
-  const { letras, k, rangoMax: rangoBase } = paramsNivel(n);
+  const { letras, k: kPedido, rangoMax: rangoBase, maxCortas } = paramsNivel(n);
   const rnd = mulberry32(1000 + n * 7919);
 
   // Si con el vocabulario "pedido" no alcanza, se amplía de a poco (la dificultad igual sube con el nivel).
   let hecho = null;
-  for (const mult of [1, 2, 4, 8]) {
-    if (hecho) break;
-    const rangoMax = Math.round(rangoBase * mult);
-    // Candidatas a palabra base: de `letras` letras, comunes, sin letras raras y con muchos anagramas/sub-palabras.
-    const bases = mezclar(
-      porLongitud(letras).filter((v) => v.r <= rangoMax && !/[ñwkxzjqy]/.test(v.w) && esObjetivoLimpio(v.w)),
-      rnd,
-    );
-    for (const base of bases) {
-      const firma = [...base.w].sort().join('');
-      if (usadas.has(firma)) continue;
-      const disp = conteo(base.w);
-      const formables = validas.filter((v) => cabeEn(v.w, disp));
-      const comunes = formables.filter((v) => v.r <= rangoMax && v.w !== base.w && esObjetivoLimpio(v.w));
-      if (comunes.length < k - 1) continue;
-
-      for (let intento = 0; intento < 60 && !hecho; intento++) {
-        const elegidas = [base.w, ...mezclar(comunes, rnd).slice(0, k - 1).map((v) => v.w)];
-        const grilla = armarGrilla(elegidas, rnd);
-        if (grilla) hecho = { base, formables, grilla, firma };
-      }
+  for (const k of [kPedido, kPedido - 1, kPedido - 2, kPedido - 3]) {
+    for (const mult of [1, 2, 4, 8, 20]) {
       if (hecho) break;
+      const rangoMax = Math.round(rangoBase * mult);
+      // Candidatas a palabra base: de `letras` letras, comunes, sin letras raras y con muchos anagramas/sub-palabras.
+      const bases = mezclar(
+        porLongitud(letras).filter(
+          (v) => v.r <= rangoMax && !/[ñwkxzjqy]/.test(v.w) && esObjetivoLimpio(v.w) && !palabrasUsadas.has(v.w),
+        ),
+        rnd,
+      );
+      for (const base of bases) {
+        const firma = [...base.w].sort().join('');
+        if (usadas.has(firma)) continue;
+        const disp = conteo(base.w);
+        const formables = validas.filter((v) => cabeEn(v.w, disp));
+        const comunes = formables.filter(
+          (v) => v.r <= rangoMax && v.w !== base.w && esObjetivoLimpio(v.w) && !palabrasUsadas.has(v.w),
+        );
+        const largas = comunes.filter((v) => v.w.length >= letras - 1);
+        const medias = comunes.filter((v) => v.w.length >= 4 && v.w.length < letras - 1);
+        const cortas = comunes.filter((v) => v.w.length === 3 && v.w.length < letras - 1);
+        if (comunes.length < k - 1) continue;
+
+        for (let intento = 0; intento < 12 && !hecho; intento++) {
+          // Primero las palabras largas, después las medianas y, si hace falta, algunas cortas.
+          const pool = [...mezclar(largas, rnd), ...mezclar(medias, rnd)];
+          const elegidas = [base.w, ...pool.slice(0, k - 1).map((v) => v.w)];
+          const cortasElegidas = mezclar(cortas, rnd);
+          let usadasCortas = 0;
+          while (elegidas.length < k && usadasCortas < maxCortas && usadasCortas < cortasElegidas.length) {
+            elegidas.push(cortasElegidas[usadasCortas++].w);
+          }
+          if (elegidas.length < k) continue;
+          if (intento > 0) {
+            // variar la selección en los reintentos
+            const alt = [base.w, ...mezclar([...largas, ...medias, ...cortas.slice(0, maxCortas)], rnd).slice(0, k - 1).map((v) => v.w)];
+            if (alt.filter((w) => w.length === 3).length <= maxCortas) elegidas.splice(0, elegidas.length, ...alt);
+          }
+          if (new Set(elegidas).size !== elegidas.length) continue; // nunca la misma palabra dos veces
+          const grilla = armarGrilla(elegidas, rnd);
+          if (grilla) hecho = { base, formables, grilla, firma };
+        }
+        if (hecho) break;
+      }
     }
+    if (hecho) break;
   }
   if (!hecho) {
     console.error(`No se pudo generar el nivel ${n}`);
     process.exit(2);
   }
   usadas.add(hecho.firma);
+  hecho.grilla.palabras.forEach((p) => palabrasUsadas.add(p.p));
+  if (hecho.grilla.palabras.length < kPedido) console.warn(`Nivel ${n}: ${hecho.grilla.palabras.length} palabras (se pedían ${kPedido})`);
 
   const enGrilla = new Set(hecho.grilla.palabras.map((p) => p.p));
   const extras = hecho.formables
