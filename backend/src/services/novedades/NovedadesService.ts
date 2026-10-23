@@ -55,6 +55,8 @@ export interface PublicarNovedadInput {
   /** null/ausente = ahora; a futuro = queda programada */
   publicarEn?: string | null;
   duracionDias?: number;
+  /** Si viene, manda sobre duracionDias */
+  visibleHasta?: string;
   fechaEvento?: string | null;
   /** Guardarla sin publicar */
   borrador?: boolean;
@@ -110,7 +112,7 @@ export async function publicar(user: AuthUser, input: PublicarNovedadInput): Pro
     texto: input.texto,
     imagenUrl: input.imagenUrl,
     grupoIds,
-    visibleHasta: sumarDias(publicarEn, input.duracionDias ?? DIAS_VISIBLE_POR_DEFECTO),
+    visibleHasta: input.visibleHasta ?? sumarDias(publicarEn, input.duracionDias ?? DIAS_VISIBLE_POR_DEFECTO),
     publicarEn: publicarEn.toISOString(),
     esBorrador,
     fijada: input.fijada ?? false,
@@ -135,6 +137,7 @@ export interface PublicarBorradorInput {
   notificar: boolean;
   publicarEn?: string | null;
   duracionDias?: number;
+  visibleHasta?: string;
 }
 
 /** Pasa un borrador a publicada (ahora o programada), con o sin aviso. */
@@ -145,7 +148,7 @@ export async function publicarBorrador(user: AuthUser, id: string, input: Public
   const publicada = await repo.actualizar(id, {
     esBorrador: false,
     publicarEn: publicarEn.toISOString(),
-    visibleHasta: sumarDias(publicarEn, input.duracionDias ?? DIAS_VISIBLE_POR_DEFECTO),
+    visibleHasta: input.visibleHasta ?? sumarDias(publicarEn, input.duracionDias ?? DIAS_VISIBLE_POR_DEFECTO),
   });
   await auditService.registrarAuditoria(user, {
     accion: 'publicar',

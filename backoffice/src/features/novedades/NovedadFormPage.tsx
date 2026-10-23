@@ -7,7 +7,7 @@
 // guardar como borrador, duplicar una existente y ver una vista previa de
 // cómo la ve el residente en la app.
 // ========================================
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, CalendarDays, FileEdit, ImagePlus, Pin, Save, Send, Trash2, X } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -22,7 +22,6 @@ import { notify } from '@/components/ui/toast';
 import { useGruposLista } from '@/features/grupos/useGrupos';
 import {
   CATEGORIAS_NOVEDAD,
-  DURACIONES_NOVEDAD,
   categoriaDe,
   estadoDe,
   subirFotoNovedad,
@@ -42,17 +41,14 @@ function aInputFechaHora(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** ISO → valor de <input type="date"> en hora local. */
-function aInputFecha(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 /** Valor de <input type="datetime-local"> → ISO (la hora que se escribió es la local del navegador). */
 const aIso = (valorLocal: string): string => new Date(valorLocal).toISOString();
 
-/** "2026-10-30" → fin de ese día, en hora local, como ISO. */
-const finDelDiaIso = (fecha: string): string => new Date(`${fecha}T23:59:00`).toISOString();
+/** Valor de <input type="datetime-local"> del evento → 00:00 del día siguiente (hora local), como ISO: ahí deja de verse. */
+const diaSiguienteIso = (valorLocal: string): string => {
+  const d = new Date(valorLocal);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toISOString();
+};
 
 const fechaLarga = (d: Date) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 const fechaHoraLarga = (valorLocal: string) => {
@@ -86,9 +82,7 @@ export function NovedadFormPage() {
   const [fijada, setFijada] = useState(false);
   const [programar, setProgramar] = useState(false);
   const [programadaPara, setProgramadaPara] = useState('');
-  const [duracionDias, setDuracionDias] = useState(30);
   const [fechaEvento, setFechaEvento] = useState('');
-  const [visibleHasta, setVisibleHasta] = useState('');
   const inputFoto = useRef<HTMLInputElement>(null);
 
   const original = editando ? detalleQ.data : undefined;
@@ -96,7 +90,6 @@ export function NovedadFormPage() {
   const esBorrador = estadoOriginal === 'borrador';
   /** Al crear, al duplicar y al editar un borrador se elige cuándo sale; en una ya publicada ya salió. */
   const eligeCuando = !editando || esBorrador || estadoOriginal === 'programada';
-  const eligeDuracion = !editando || esBorrador;
 
   // Al editar o duplicar se cargan los valores de la novedad una sola vez.
   const cargada = useRef(false);
@@ -113,7 +106,6 @@ export function NovedadFormPage() {
     setFijada(n.fijada);
     setFechaEvento(!duplicarDe ? aInputFechaHora(n.fecha_evento) : '');
     if (editando) {
-      setVisibleHasta(aInputFecha(n.visible_hasta));
       if (estadoDe(n) === 'programada') {
         setProgramar(true);
         setProgramadaPara(aInputFechaHora(n.publicar_en));
@@ -145,6 +137,8 @@ export function NovedadFormPage() {
   const publicarEnIso = eligeCuando && programar && programadaPara ? aIso(programadaPara) : null;
   // Vacía al abrir el formulario: convertirla recién cuando hay valor (si no, new Date('') rompe la página).
   const fechaEventoIso = fechaEvento ? aIso(fechaEvento) : null;
+  // La novedad se ve hasta el día del evento inclusive: desaparece a las 00:00 del día siguiente.
+  const visibleHastaIso = fechaEvento ? diaSiguienteIso(fechaEvento) : null;
 
   const volver = () => navigate('/novedades');
 
@@ -160,7 +154,7 @@ export function NovedadFormPage() {
         categoria,
         fijada,
         publicarEn: borrador ? null : publicarEnIso,
-        duracionDias,
+        visibleHasta: visibleHastaIso ?? undefined,
         fechaEvento: fechaEventoIso,
         borrador,
       },
@@ -182,13 +176,13 @@ export function NovedadFormPage() {
           fijada,
           fechaEvento: fechaEventoIso,
           ...(estadoOriginal === 'programada' && publicarEnIso ? { publicarEn: publicarEnIso } : {}),
-          ...(!esBorrador && visibleHasta ? { visibleHasta: finDelDiaIso(visibleHasta) } : {}),
+          ...(visibleHastaIso ? { visibleHasta: visibleHastaIso } : {}),
         },
       },
       {
         onSuccess: () => {
           if (publicarDespues) {
-            publicarBorrador.mutate({ id, notificar, publicarEn: publicarEnIso, duracionDias }, { onSuccess: volver });
+            publicarBorrador.mutate({ id, notificar, publicarEn: publicarEnIso, visibleHasta: visibleHastaIso ?? undefined }, { onSuccess: volver });
           } else {
             notify.success(esBorrador ? 'Borrador guardado' : 'Novedad actualizada');
             volver();
@@ -203,10 +197,7 @@ export function NovedadFormPage() {
   const grupos = gruposQ.data ?? [];
   const nombresGrupos = grupos.filter((g) => grupoIds.includes(g.id)).map((g) => g.nombre);
 
-  const hastaTexto = useMemo(() => {
-    const base = eligeCuando && programar && programadaPara ? new Date(programadaPara) : new Date();
-    return fechaLarga(new Date(base.getTime() + duracionDias * 86_400_000));
-  }, [eligeCuando, programar, programadaPara, duracionDias]);
+  const hastaTexto = fechaEvento ? fechaLarga(new Date(fechaEvento)) : 'el día del evento';
 
   if (editando && detalleQ.isLoading) return <LoadingState mensaje="Cargando novedad…" />;
   if ((editando || duplicarDe) && detalleQ.isError) return <ErrorState onReintentar={() => void detalleQ.refetch()} />;
@@ -220,7 +211,7 @@ export function NovedadFormPage() {
         descripcion={
           editando && !esBorrador
             ? 'Los cambios se ven enseguida en la app. No se manda un aviso nuevo (para eso usá "Reenviar aviso" en la lista).'
-            : `Se va a ver en el botón "Novedades" de la app hasta el ${hastaTexto}.`
+            : `Se va a ver en el botón "Novedades" de la app hasta el día del evento (${hastaTexto}) inclusive.`
         }
       />
 
@@ -313,27 +304,6 @@ export function NovedadFormPage() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Publicada el {fechaLarga(new Date(original!.publicar_en))}.</p>
-              )}
-
-              {/* Cuánto dura */}
-              {eligeDuracion ? (
-                <div className="space-y-2">
-                  <Label>¿Cuánto tiempo se ve?</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {DURACIONES_NOVEDAD.map((d) => (
-                      <button key={d.dias} type="button" onClick={() => setDuracionDias(d.dias)} className={claseChip(duracionDias === d.dias)}>
-                        {d.texto}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">Después de ese tiempo deja de verse en la app sola.</p>
-                </div>
-              ) : (
-                <div className="max-w-xs space-y-1.5">
-                  <Label htmlFor="hasta">Se ve hasta el</Label>
-                  <Input id="hasta" type="date" value={visibleHasta} onChange={(e) => setVisibleHasta(e.target.value)} />
-                  <p className="text-sm text-muted-foreground">Podés estirar la fecha para que siga visible, o acortarla para sacarla antes.</p>
-                </div>
               )}
 
               {/* Evento */}

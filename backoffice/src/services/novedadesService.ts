@@ -82,7 +82,9 @@ export interface PublicarNovedadInput {
   fijada: boolean;
   /** ISO. null = ahora */
   publicarEn: string | null;
-  duracionDias: number;
+  duracionDias?: number;
+  /** ISO. Hasta cuándo se ve (el día del evento inclusive) */
+  visibleHasta?: string;
   /** ISO */
   fechaEvento: string | null;
   borrador: boolean;
@@ -116,7 +118,7 @@ export async function editarNovedad(id: string, input: EditarNovedadInput): Prom
 }
 
 /** Pasa un borrador a publicada: ahora o a una fecha, con o sin aviso. */
-export async function publicarBorrador(id: string, input: { notificar: boolean; publicarEn?: string | null; duracionDias?: number }): Promise<Novedad> {
+export async function publicarBorrador(id: string, input: { notificar: boolean; publicarEn?: string | null; duracionDias?: number; visibleHasta?: string }): Promise<Novedad> {
   return apiClient.post<Novedad>(`/api/admin/novedades/${id}/publicar`, input);
 }
 

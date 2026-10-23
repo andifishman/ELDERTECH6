@@ -15,6 +15,8 @@ export const publicarNovedadSchema = z.object({
   publicarEn: fechaIso.nullable().optional(),
   /** Cuántos días se muestra desde que se publica */
   duracionDias: z.number().int().min(1).max(365).optional().default(30),
+  /** Hasta cuándo se ve (el backoffice manda el fin del día del evento); si falta, se usa duracionDias */
+  visibleHasta: fechaIso.optional(),
   /** Día y hora del evento — obligatoria */
   fechaEvento: fechaIso,
   /** Guardarla sin publicar */
@@ -37,4 +39,5 @@ export const publicarBorradorSchema = z.object({
   notificar: z.boolean().optional().default(true),
   publicarEn: fechaIso.nullable().optional(),
   duracionDias: z.number().int().min(1).max(365).optional().default(30),
+  visibleHasta: fechaIso.optional(),
 });

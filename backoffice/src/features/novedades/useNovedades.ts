@@ -43,7 +43,7 @@ export function useEditarNovedad() {
 export function usePublicarBorrador() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: string; notificar: boolean; publicarEn?: string | null; duracionDias?: number }) => service.publicarBorrador(id, input),
+    mutationFn: ({ id, ...input }: { id: string; notificar: boolean; publicarEn?: string | null; duracionDias?: number; visibleHasta?: string }) => service.publicarBorrador(id, input),
     onSuccess: (_data, vars) => {
       notify.success(vars.notificar ? 'Novedad publicada y aviso enviado' : 'Novedad publicada');
       void qc.invalidateQueries({ queryKey: KEY_LISTA });

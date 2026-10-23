@@ -112,17 +112,6 @@ function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () =>
             )}
           </View>
         ) : null}
-        {/* El botón "Ver más" va entre la fecha y la descripción, y solo si el texto pasa de 2 renglones */}
-        {cortado && (
-          <TouchableOpacity
-            style={styles.verMas}
-            onPress={onPress}
-            accessibilityRole="button"
-            accessibilityLabel={`Ver más de ${novedad.titulo}`}
-          >
-            <Text style={styles.verMasTexto}>Ver más</Text>
-          </TouchableOpacity>
-        )}
         <View>
           <Text style={styles.resumen} numberOfLines={2}>
             {novedad.texto}
@@ -137,6 +126,17 @@ function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () =>
             {novedad.texto}
           </Text>
         </View>
+        {/* El botón "Ver más" va debajo de la descripción, y solo si el texto pasa de 2 renglones */}
+        {cortado && (
+          <TouchableOpacity
+            style={styles.verMas}
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Ver más de ${novedad.titulo}`}
+          >
+            <Text style={styles.verMasTexto}>Ver más</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
