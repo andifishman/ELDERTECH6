@@ -13,7 +13,6 @@ import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
-import { AvisosWebCard } from '@/pwa/AvisosWebCard';
 
 interface OpcionMenu {
   id: string;
@@ -87,11 +86,6 @@ export default function MasScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Solo web: activar Web Push. Arriba de todo, sin tener que scrollear
-            para encontrarla — para alguien mayor, "activar avisos" tiene que
-            verse apenas entra a Más, no estar escondido al final de la lista. */}
-        <AvisosWebCard />
-
         {/* ── Opciones disponibles ── */}
         {OPCIONES_ACTIVAS.map((opcion) => (
           <View

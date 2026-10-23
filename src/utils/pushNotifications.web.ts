@@ -25,7 +25,7 @@ export async function registrarCategoriasNotificacion(): Promise<void> {}
 /**
  * Registro SILENCIOSO al iniciar sesión: solo devuelve token si la persona YA activó los
  * avisos antes. El permiso nunca se pide acá (iOS exige un toque del usuario) — se pide
- * desde el botón "Activar avisos" (src/pwa/AvisosWebCard.tsx).
+ * desde `activarAvisos` (src/pwa/avisosWeb.ts). Ya no hay un botón en la pantalla Más: se sacó a pedido.
  */
 export async function pedirPermisoYObtenerToken(): Promise<string | null> {
   return obtenerTokenSilencioso();
