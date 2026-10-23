@@ -143,7 +143,8 @@ export function NovedadFormPage() {
   const guardando = publicar.isPending || editar.isPending || publicarBorrador.isPending;
 
   const publicarEnIso = eligeCuando && programar && programadaPara ? aIso(programadaPara) : null;
-  const fechaEventoIso = aIso(fechaEvento);
+  // Vacía al abrir el formulario: convertirla recién cuando hay valor (si no, new Date('') rompe la página).
+  const fechaEventoIso = fechaEvento ? aIso(fechaEvento) : null;
 
   const volver = () => navigate('/novedades');
 
