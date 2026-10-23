@@ -31,6 +31,7 @@ import { useGameSounds } from '@/hooks/useGameSounds';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { useAuth } from '@/context/AuthContext';
 import { registrarPartida, obtenerEstadisticasPuntaje, obtenerTopPuntajes, TopPuntaje } from '@/services/juegosService';
+import { IconoParlante } from '@/components/common/IconoParlante';
 
 const TAM = 8;
 const PADDING_TABLERO = 5;
@@ -795,7 +796,7 @@ export default function BloquesScreen() {
             onPress={toggleSonido}
             accessibilityLabel={sonidoActivado ? 'Silenciar sonido' : 'Activar sonido'}
           >
-            <Ionicons name={sonidoActivado ? 'volume-high-outline' : 'volume-mute-outline'} size={20} color={Colors.primary} />
+            <IconoParlante size={20} apagado={!sonidoActivado} />
             <Text style={styles.helpBtnText}>{sonidoActivado ? 'Sonido activado' : 'Sonido apagado'}</Text>
           </TouchableOpacity>
         </View>

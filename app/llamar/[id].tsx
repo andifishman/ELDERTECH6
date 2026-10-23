@@ -25,6 +25,7 @@ import { pickImage, takePhoto } from '@/services/authService';
 import { hablar } from '@/utils/tts';
 import { abrirLlamada, abrirWhatsApp } from '@/utils/enlaces';
 import { useAuth } from '@/context/AuthContext';
+import { IconoParlante } from '@/components/common/IconoParlante';
 
 export default function ContactoDetalleScreen() {
   const params = useLocalSearchParams<{
@@ -159,7 +160,7 @@ export default function ContactoDetalleScreen() {
             accessibilityRole="button"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="volume-high" size={26} color={Colors.text.onDark} />
+            <IconoParlante size={26} />
           </TouchableOpacity>
         </View>
       </LinearGradient>

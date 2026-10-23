@@ -32,6 +32,7 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { formatearDuracion } from '@/services/tutorialesService';
 import { hablar } from '@/utils/tts';
+import { IconoParlante } from '@/components/common/IconoParlante';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const VIDEO_W = SCREEN_W - Spacing.screen.horizontal * 2;
@@ -280,7 +281,7 @@ export default function TutorialDetalleScreen() {
                   accessibilityRole="button"
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="volume-medium-outline" size={22} color={Colors.brand.purple} />
+                  <IconoParlante size={22} />
                 </TouchableOpacity>
               </View>
               {aprenderas.map((item, i) => (
@@ -436,7 +437,7 @@ export default function TutorialDetalleScreen() {
               accessibilityLabel="Escuchar este paso"
               accessibilityRole="button"
             >
-              <Ionicons name="volume-medium" size={22} color={Colors.brand.purple} />
+              <IconoParlante size={22} />
               <Text style={styles.escucharTexto}>Escuchar este paso</Text>
             </TouchableOpacity>
           </>

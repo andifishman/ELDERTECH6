@@ -1,7 +1,7 @@
 //botón de texto a voz — lee el texto en voz alta al tocar; soporta variantes de estilo y tamaño
 import React, { useState, useCallback } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { IconoParlante } from '@/components/common/IconoParlante';
 import { hablar, estaHablando } from '@/utils/tts';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -39,11 +39,7 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
         accessibilityRole="button"
         hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
       >
-        <Ionicons
-          name={activo ? 'volume-high' : 'volume-medium'}
-          size={22}
-          color={activo ? Colors.speak.active : Colors.brand.primary}
-        />
+        <IconoParlante size={22} />
         <Text style={[styles.escucharLabel, activo && styles.escucharLabelActivo]}>
           {label}
         </Text>
@@ -60,11 +56,7 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
         accessibilityRole="button"
         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
       >
-        <Ionicons
-          name={activo ? 'volume-high' : 'volume-medium-outline'}
-          size={16}
-          color={activo ? Colors.speak.active : Colors.brand.primary}
-        />
+        <IconoParlante size={16} />
         <Text style={[styles.chipLabel, activo && styles.chipLabelActivo]}>
           {label}
         </Text>
@@ -90,11 +82,7 @@ export function SpeakButton({ texto, label = 'Escuchar', variante = 'onLight', s
       accessibilityRole="button"
       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
     >
-      <Ionicons
-        name={activo ? 'volume-high' : 'volume-medium-outline'}
-        size={iconSize}
-        color={isOnDark ? Colors.text.onDark : (activo ? Colors.speak.active : Colors.speak.idle)}
-      />
+      <IconoParlante size={iconSize} />
     </TouchableOpacity>
   );
 }
@@ -123,11 +111,7 @@ export function SpeakRow({ texto, onDark = false }: SpeakRowProps) {
       <Text style={[styles.rowLabel, { color: onDark ? Colors.text.onDark : Colors.speak.idle }]}>
         Escuchar
       </Text>
-      <Ionicons
-        name={activo ? 'volume-high' : 'volume-medium-outline'}
-        size={14}
-        color={onDark ? Colors.text.onDark : Colors.speak.idle}
-      />
+      <IconoParlante size={14} />
     </TouchableOpacity>
   );
 }

@@ -37,6 +37,7 @@ import {
 import { useMensajesRealtime } from '@/hooks/useHablemosRealtime';
 import { formatHoraDeISO, formatFechaSeparadorChat, esMismodia } from '@/utils/dateUtils';
 import { setConversacionHablemosActiva } from '@/utils/hablemosActiveChat';
+import { IconoParlante } from '@/components/common/IconoParlante';
 import { nombreParaMostrar, type EstadoMensajeHablemos, type MensajeHablemos } from '@/services/hablemosService';
 
 function formatearDuracion(segundos: number): string {
@@ -510,11 +511,11 @@ function Burbuja({ mensaje, esPropio, nombreRemitente, reproduciendo, onTogglePl
               accessibilityLabel={reproduciendo ? 'Pausar mensaje de voz' : 'Escuchar mensaje de voz'}
               activeOpacity={0.75}
             >
-              <Ionicons
-                name={reproduciendo ? 'pause' : 'volume-medium'}
-                size={20}
-                color={reproduciendo ? Colors.speak.active : Colors.brand.primary}
-              />
+              {reproduciendo ? (
+                <Ionicons name="pause" size={20} color={Colors.speak.active} />
+              ) : (
+                <IconoParlante size={20} />
+              )}
               <Text style={[styles.audioMensajeBtnTexto, reproduciendo && styles.audioMensajeBtnTextoActivo]}>
                 {reproduciendo ? 'Pausar' : 'Escuchar'}
               </Text>
