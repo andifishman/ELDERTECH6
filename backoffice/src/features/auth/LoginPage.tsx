@@ -49,13 +49,13 @@ export function LoginPage() {
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* panel de marca */}
       <div className="relative hidden flex-col justify-between bg-primary-600 p-12 text-white lg:flex">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-            <img src="/favicon-48.png" alt="ElderTech" className="h-10 w-10 object-contain" />
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15">
+            <img src="/favicon-48.png" alt="ElderTech" className="h-14 w-14 object-contain" />
           </div>
           <div>
-            <p className="text-xl font-extrabold">ElderTech</p>
-            <p className="text-sm text-white/70">Backoffice</p>
+            <p className="text-2xl font-extrabold">ElderTech</p>
+            <p className="text-base text-white/70">Backoffice</p>
           </div>
         </div>
         <div className="max-w-md">
@@ -74,10 +74,10 @@ export function LoginPage() {
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
-            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white">
-              <img src="/favicon-48.png" alt="ElderTech" className="h-10 w-10 object-contain" />
+            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white">
+              <img src="/favicon-48.png" alt="ElderTech" className="h-14 w-14 object-contain" />
             </div>
-            <p className="text-xl font-extrabold">ElderTech Backoffice</p>
+            <p className="text-2xl font-extrabold">ElderTech Backoffice</p>
           </div>
 
           <h2 className="text-2xl font-bold tracking-tight">Iniciar sesión</h2>
