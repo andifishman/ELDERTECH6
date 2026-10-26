@@ -661,18 +661,20 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                   /* Estado normal: Escuchar, Guardar y navegación */
                   <>
                     <View style={styles.accionesRow}>
-                      {/* Escuchar de nuevo */}
+                      {/* Escuchar de nuevo — botón circular, solo ícono */}
                       <TouchableOpacity
-                        style={[styles.accionBtn, styles.accionBtnEscuchar, { minHeight: accionAltura }]}
+                        style={[
+                          styles.accionBtn,
+                          styles.accionBtnEscuchar,
+                          styles.accionBtnEscucharCircular,
+                          { width: accionAltura, height: accionAltura, borderRadius: accionAltura / 2 },
+                        ]}
                         onPress={onLeer}
                         accessibilityLabel="Escuchar respuesta nuevamente"
                         accessibilityRole="button"
                         activeOpacity={0.75}
                       >
                         <Ionicons name="volume-medium" size={iconSize} color={Colors.brand.blueDark} />
-                        <Text style={[styles.accionTexto, styles.accionTextoEscuchar, { fontSize: accionFontSize }]}>
-                          Escuchar
-                        </Text>
                       </TouchableOpacity>
 
                       {/* Guardar como favorito */}
@@ -898,6 +900,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#90CAF9',
   },
+  // Circular en vez de píldora — solo ícono, sin texto, no estira con flex:1.
+  accionBtnEscucharCircular: {
+    flex: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
   accionBtnGuardar: {
     backgroundColor: '#F5F5F5',
     borderWidth: 1.5,
@@ -910,9 +918,6 @@ const styles = StyleSheet.create({
   },
   accionTexto: {
     fontWeight: Typography.weight.bold,
-  },
-  accionTextoEscuchar: {
-    color: Colors.brand.blueDark,
   },
   accionTextoGuardar: {
     color: Colors.text.secondary,
