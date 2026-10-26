@@ -35,7 +35,7 @@ export function RecuperarContrasenaPage() {
     <div className="relative hidden flex-col justify-between bg-primary-600 p-12 text-white lg:flex">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-          <img src="/logo-puente.png" alt="ElderTech" className="h-8 w-8 object-contain" />
+          <img src="/favicon-48.png" alt="ElderTech" className="h-10 w-10 object-contain" />
         </div>
         <div>
           <p className="text-xl font-extrabold">ElderTech</p>
@@ -62,7 +62,7 @@ export function RecuperarContrasenaPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white">
-              <img src="/logo-puente.png" alt="ElderTech" className="h-8 w-8 object-contain" />
+              <img src="/favicon-48.png" alt="ElderTech" className="h-10 w-10 object-contain" />
             </div>
             <p className="text-xl font-extrabold">ElderTech Backoffice</p>
           </div>
