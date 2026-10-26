@@ -2,10 +2,11 @@
 // el texto completo con letra grande. Al abrirla se marca como leída, así
 // deja de mostrar el cartel "Nueva" en la lista y en la Home.
 import React, { useEffect } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/common/AppHeader';
+import { FotoCompleta } from '@/components/common/FotoCompleta';
 import { ErrorState, LoadingState } from '@/components/common/LoadingState';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -48,7 +49,7 @@ export default function NovedadDetalleScreen() {
     <View style={styles.root}>
       <AppHeader titulo="Novedad" mostrarVolver textoHablar={`${novedad.titulo}. ${novedad.texto}`} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Spacing.xxxl }]}>
-        {novedad.imagen_url ? <Image source={{ uri: novedad.imagen_url }} style={styles.foto} resizeMode="cover" /> : null}
+        {novedad.imagen_url ? <FotoCompleta uri={novedad.imagen_url} style={styles.foto} /> : null}
         <View style={styles.cuerpo}>
           {(novedad.categoria ?? 'general') !== 'general' ? (
             <Text style={styles.categoria}>

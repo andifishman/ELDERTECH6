@@ -2,10 +2,11 @@
 // el backoffice. Cada tarjeta muestra la foto (si tiene), el título, la fecha y
 // hora del evento (con cartel "¡HOY!" si es hoy) y un cartel "Nueva" hasta que el residente la abre.
 import React, { useMemo, useState } from 'react';
-import { FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/common/AppHeader';
+import { FotoCompleta } from '@/components/common/FotoCompleta';
 import { ErrorState, LoadingState } from '@/components/common/LoadingState';
 import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
@@ -85,7 +86,7 @@ function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () =>
       accessibilityRole="button"
       accessibilityLabel={`${novedad.leida ? '' : 'Nueva. '}${novedad.titulo}. Tocá para leerla.`}
     >
-      {novedad.imagen_url ? <Image source={{ uri: novedad.imagen_url }} style={styles.foto} resizeMode="cover" /> : null}
+      {novedad.imagen_url ? <FotoCompleta uri={novedad.imagen_url} style={styles.foto} /> : null}
       <View style={styles.cuerpo}>
         <View style={styles.carteles}>
           {!novedad.leida && (

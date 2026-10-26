@@ -28,6 +28,7 @@ import {
   type CategoriaNovedad,
 } from '@/services/novedadesService';
 import { useEditarNovedad, useNovedadDetalle, usePublicarBorrador, usePublicarNovedad } from './useNovedades';
+import { FotoCompleta } from './FotoCompleta';
 
 const LARGO_TITULO = 120;
 const LARGO_TEXTO = 4000;
@@ -249,7 +250,7 @@ export function NovedadFormPage() {
                 <Label>Foto (opcional)</Label>
                 {imagenUrl ? (
                   <div className="relative w-full max-w-md overflow-hidden rounded-lg border border-border">
-                    <img src={imagenUrl} alt="Foto de la novedad" className="aspect-video w-full object-cover" />
+                    <FotoCompleta src={imagenUrl} alt="Foto de la novedad" className="aspect-video w-full" />
                     <Button type="button" variant="outline" size="sm" className="absolute right-2 top-2 gap-1.5 bg-background/90" onClick={() => setImagenUrl(null)}>
                       <Trash2 className="h-4 w-4" /> Quitar
                     </Button>
@@ -413,7 +414,7 @@ export function NovedadFormPage() {
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Así la ve el residente</p>
           <div className="overflow-hidden rounded-2xl border-2 border-primary bg-card shadow-sm">
-            {imagenUrl && <img src={imagenUrl} alt="" className="aspect-video w-full object-cover" />}
+            {imagenUrl && <FotoCompleta src={imagenUrl} className="aspect-video w-full" />}
             <div className="space-y-1.5 p-4">
               <div className="flex flex-wrap gap-1.5">
                 <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">Nueva</span>
