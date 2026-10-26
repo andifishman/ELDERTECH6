@@ -9,6 +9,7 @@ import { activitiesAdminRouter } from './routes/activitiesAdmin.routes';
 import { administradoresRouter } from './routes/administradores.routes';
 import { agendaRouter } from './routes/agenda.routes';
 import { agendaCronRouter } from './routes/agendaCron.routes';
+import { novedadesCronRouter } from './routes/novedadesCron.routes';
 import { assistantRouter } from './routes/assistant.routes';
 import { ttsRouter } from './routes/tts.routes';
 import { assistantAdminRouter } from './routes/assistantAdmin.routes';
@@ -103,6 +104,7 @@ export function createApp(): Express {
   app.use('/api/internal/notifications', notificationsCronRouter);
   app.use('/api/games', gamesRouter);
   app.use('/api/novedades', novedadesRouter);
+  app.use('/api/internal/novedades', novedadesCronRouter);
   app.use('/api/admin/novedades', novedadesAdminRouter);
 
   app.use(notFoundHandler);

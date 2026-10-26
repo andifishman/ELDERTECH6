@@ -11,6 +11,7 @@
   ],
   "crons": [
     { "path": "/api/internal/notifications/process", "schedule": "0 12 * * *" },
-    { "path": "/api/internal/agenda/process", "schedule": "0 13 * * *" }
+    { "path": "/api/internal/agenda/process", "schedule": "0 13 * * *" },
+    { "path": "/api/internal/novedades/cleanup", "schedule": "0 4 * * *" }
   ]
 }

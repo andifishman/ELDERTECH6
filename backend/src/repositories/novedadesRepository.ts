@@ -166,6 +166,22 @@ export async function eliminar(id: string): Promise<void> {
   if (error) throw new Error(`Error al eliminar la novedad: ${error.message}`);
 }
 
+/**
+ * Borra las novedades publicadas cuyo evento ya pasó (visible_hasta es las
+ * 00:00 del día siguiente al evento). Los borradores no se tocan. Las
+ * lecturas se borran solas (on delete cascade). Devuelve los títulos borrados.
+ */
+export async function eliminarVencidas(ahora: Date): Promise<string[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('novedades')
+    .delete()
+    .eq('es_borrador', false)
+    .lte('visible_hasta', ahora.toISOString())
+    .select('titulo');
+  if (error) throw new Error(`Error al eliminar las novedades vencidas: ${error.message}`);
+  return ((data ?? []) as Array<{ titulo: string }>).map((n) => n.titulo);
+}
+
 async function gruposDelResidente(residenteId: string): Promise<string[]> {
   const { data, error } = await getSupabaseAdmin().from('grupo_residentes').select('grupo_id').eq('residente_id', residenteId);
   if (error) throw new Error(`Error al cargar los grupos del residente: ${error.message}`);

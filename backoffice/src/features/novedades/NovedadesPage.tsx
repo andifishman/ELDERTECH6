@@ -1,8 +1,9 @@
 // ========================================
 // PANTALLA: NovedadesPage
 // DESCRIPCIÓN:
-// Noticias para los residentes, con su estado (publicada, programada,
-// borrador o vencida), buscador y filtros por estado y categoría.
+// Noticias para los residentes, con su estado (publicada, programada o
+// borrador), buscador y filtros por estado y categoría. Cuando pasa el
+// día del evento, el backend la borra sola (cron de novedades).
 // Desde cada tarjeta se edita, duplica, reenvía el aviso al celular,
 // publica un borrador o se elimina.
 // ========================================
@@ -20,6 +21,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { useAuth } from '@/features/auth/AuthContext';
 import { categoriaDe, CATEGORIAS_NOVEDAD, estadoDe, type CategoriaNovedad, type EstadoNovedad, type NovedadConLecturas } from '@/services/novedadesService';
 import { useEliminarNovedad, usePublicarBorrador, useNovedadesLista, useReenviarAviso } from './useNovedades';
+import { FotoCompleta } from './FotoCompleta';
 
 const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 const fechaHora = (iso: string) =>
@@ -30,7 +32,6 @@ const ESTADOS: Array<{ id: EstadoNovedad | 'todas'; texto: string }> = [
   { id: 'publicada', texto: 'Publicadas' },
   { id: 'programada', texto: 'Programadas' },
   { id: 'borrador', texto: 'Borradores' },
-  { id: 'vencida', texto: 'Vencidas' },
 ];
 
 const BADGE_ESTADO: Record<EstadoNovedad, { variante: 'success' | 'info' | 'warning' | 'muted'; texto: string }> = {
@@ -55,7 +56,9 @@ export function NovedadesPage() {
   const [aReenviar, setAReenviar] = useState<NovedadConLecturas | null>(null);
   const [aPublicar, setAPublicar] = useState<NovedadConLecturas | null>(null);
 
-  const novedades = useMemo(() => novedadesQ.data ?? [], [novedadesQ.data]);
+  // Las vencidas no se muestran: el cron del backend las borra esa misma
+  // madrugada, esto solo cubre el rato entre las 00:00 y que corra.
+  const novedades = useMemo(() => (novedadesQ.data ?? []).filter((n) => estadoDe(n) !== 'vencida'), [novedadesQ.data]);
 
   const conteo = useMemo(() => {
     const c: Record<EstadoNovedad, number> = { publicada: 0, programada: 0, borrador: 0, vencida: 0 };
@@ -106,12 +109,12 @@ export function NovedadesPage() {
             <Resumen icono={Eye} titulo="Lectura" valor={`${porcentajeLectura}%`} detalle={`${totalLecturas} de ${totalDestinatarios} lecturas posibles`} />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-5">
             <div className="relative max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por título o texto…" className="pl-9" aria-label="Buscar novedades" />
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-x-2 gap-y-3">
               {ESTADOS.map((e) => (
                 <Chip key={e.id} activo={filtroEstado === e.id} onClick={() => setFiltroEstado(e.id)}>
                   {e.texto}
@@ -119,7 +122,7 @@ export function NovedadesPage() {
                 </Chip>
               ))}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-x-2 gap-y-3">
               <Chip activo={filtroCategoria === 'todas'} onClick={() => setFiltroCategoria('todas')}>Todas las categorías</Chip>
               {CATEGORIAS_NOVEDAD.map((c) => (
                 <Chip key={c.id} activo={filtroCategoria === c.id} onClick={() => setFiltroCategoria(c.id)}>
@@ -233,15 +236,13 @@ function TarjetaNovedad({ n, onEditar, onDuplicar, onReenviar, onPublicar, onEli
   const cuando =
     estado === 'programada'
       ? `Sale el ${fechaHora(n.publicar_en)}`
-      : estado === 'vencida'
-        ? `Venció el ${fecha(n.visible_hasta)}`
-        : estado === 'borrador'
-          ? `Se vería hasta el ${fecha(n.visible_hasta)} si se publica hoy`
-          : `Publicada el ${fecha(n.publicar_en)} · hasta el ${fecha(n.visible_hasta)}`;
+      : estado === 'borrador'
+        ? `Se vería hasta el ${fecha(n.visible_hasta)} si se publica hoy`
+        : `Publicada el ${fecha(n.publicar_en)} · hasta el ${fecha(n.visible_hasta)}`;
 
   return (
-    <Card className={`flex overflow-hidden ${estado === 'vencida' ? 'opacity-70' : ''}`}>
-      {n.imagen_url && <img src={n.imagen_url} alt="" className="h-auto w-28 shrink-0 object-cover sm:w-36" />}
+    <Card className="flex overflow-hidden">
+      {n.imagen_url && <FotoCompleta src={n.imagen_url} className="w-28 shrink-0 sm:w-36" />}
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -298,7 +299,7 @@ function TarjetaNovedad({ n, onEditar, onDuplicar, onReenviar, onPublicar, onEli
           )}
         </div>
 
-        {(estado === 'publicada' || estado === 'vencida') && (
+        {estado === 'publicada' && (
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Leída por {n.cantidad_lecturas} de {n.cantidad_destinatarios}</span>
