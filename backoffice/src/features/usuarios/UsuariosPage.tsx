@@ -5,8 +5,7 @@
 // nombre de usuario y una sección; la contraseña es el DNI.
 // No usa email ni foto de perfil. Activar/desactivar da o
 // quita acceso a la app; eliminar lo borra definitivamente.
-// Los intereses se cargan al crear y se editan desde "Editar";
-// a los empleados de Ledor Vador se les carga además su rol.
+// A los empleados de Ledor Vador se les carga además su rol.
 // ========================================
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -36,8 +35,6 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { iniciales } from '@/lib/utils';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermisos } from '@/hooks/usePermisos';
-import { useCatalogos } from '@/features/horarios/useActividades';
-import { SelectorIntereses } from './SelectorIntereses';
 import {
   useActualizarResidente,
   useCrearUsuario,
@@ -80,7 +77,6 @@ export function UsuariosPage() {
   const resetearPassword = useResetearPassword();
   const toggle = useToggleResidente();
   const eliminar = useEliminarResidente();
-  const catalogos = useCatalogos();
   useRealtime('residentes', [['residentes']]);
 
   const [busqueda, setBusqueda] = useState('');
@@ -90,7 +86,6 @@ export function UsuariosPage() {
   const [abierto, setAbierto] = useState(false);
   const [editando, setEditando] = useState<ResidenteConCuenta | null>(null);
   const [nuevoDni, setNuevoDni] = useState('');
-  const [intereses, setIntereses] = useState<string[]>([]);
   const [aEliminar, setAEliminar] = useState<ResidenteConCuenta | null>(null);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Campos>({
@@ -131,7 +126,6 @@ export function UsuariosPage() {
   const abrirNuevo = () => {
     setEditando(null);
     setNuevoDni('');
-    setIntereses([]);
     reset(CAMPOS_VACIOS);
     setAbierto(true);
   };
@@ -139,7 +133,6 @@ export function UsuariosPage() {
   const abrirEditar = (r: ResidenteConCuenta) => {
     setEditando(r);
     setNuevoDni('');
-    setIntereses(r.intereses_ids ?? []);
     reset({
       nombre: r.nombre,
       apellido: r.apellido,
@@ -172,7 +165,6 @@ export function UsuariosPage() {
           dni: c.dni,
           seccion: c.seccion || null,
           rol_empleado: rolEmpleado,
-          intereses,
         },
         { onSuccess: () => setAbierto(false) },
       );
@@ -188,7 +180,6 @@ export function UsuariosPage() {
           nombre_completo: c.nombreCompleto.trim() || null,
           seccion: c.seccion || null,
           rol_empleado: rolEmpleado,
-          intereses,
         },
       },
       {
@@ -408,16 +399,6 @@ export function UsuariosPage() {
                   {errors.rolEmpleado && <p className="text-xs text-destructive">{errors.rolEmpleado.message}</p>}
                 </div>
               )}
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Intereses {intereses.length > 0 && <span className="font-normal text-muted-foreground">({intereses.length} elegidos)</span>}</Label>
-                <SelectorIntereses
-                  intereses={catalogos.data?.intereses ?? []}
-                  seleccionados={intereses}
-                  onCambiar={setIntereses}
-                  cargando={catalogos.isLoading}
-                />
-              </div>
 
               {/* No es un campo editable: se detecta solo la primera vez que el
                   residente abre la app (con qué dispositivo se registra a
