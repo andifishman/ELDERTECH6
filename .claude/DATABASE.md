@@ -1,5 +1,10 @@
 # ElderTech — Base de Datos (Supabase)
 
+> **Dump completo y actualizado del schema:** `supabase/schema.sql` (todas las
+> tablas y columnas reales, generado desde Supabase). Esta narrativa puede
+> estar desactualizada en detalles — ante cualquier duda sobre una tabla,
+> columna o FK, confiar en `supabase/schema.sql` por sobre este documento.
+
 ## ENUMs
 ```sql
 nivel_dificultad_enum: 'independiente' | 'necesita_ayuda' | 'dependiente'
