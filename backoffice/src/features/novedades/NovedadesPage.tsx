@@ -19,13 +19,14 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
 import { useAuth } from '@/features/auth/AuthContext';
-import { categoriaDe, CATEGORIAS_NOVEDAD, estadoDe, type CategoriaNovedad, type EstadoNovedad, type NovedadConLecturas } from '@/services/novedadesService';
-import { useEliminarNovedad, usePublicarBorrador, useNovedadesLista, useReenviarAviso } from './useNovedades';
+import { categoriaDe, estadoDe, type CategoriaNovedad, type EstadoNovedad, type NovedadConLecturas } from '@/services/novedadesService';
+import { useEliminarNovedad, usePublicarBorrador, useNovedadesLista, useReenviarAviso, useCategoriasNovedad } from './useNovedades';
 import { FotoCompleta } from './FotoCompleta';
 
-const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+// Siempre con el año: puede haber novedades de eventos del año que viene.
+const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 const fechaHora = (iso: string) =>
-  `${new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })}, ${new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs`;
+  `${fecha(iso)}, ${new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })} hs`;
 
 const ESTADOS: Array<{ id: EstadoNovedad | 'todas'; texto: string }> = [
   { id: 'todas', texto: 'Todas' },
@@ -45,6 +46,7 @@ export function NovedadesPage() {
   const navigate = useNavigate();
   const { puede } = useAuth();
   const novedadesQ = useNovedadesLista();
+  const { opciones: categorias } = useCategoriasNovedad();
   const eliminar = useEliminarNovedad();
   const publicarBorrador = usePublicarBorrador();
   const reenviar = useReenviarAviso();
@@ -124,7 +126,7 @@ export function NovedadesPage() {
             </div>
             <div className="flex flex-wrap gap-x-2 gap-y-3">
               <Chip activo={filtroCategoria === 'todas'} onClick={() => setFiltroCategoria('todas')}>Todas las categorías</Chip>
-              {CATEGORIAS_NOVEDAD.map((c) => (
+              {categorias.map((c) => (
                 <Chip key={c.id} activo={filtroCategoria === c.id} onClick={() => setFiltroCategoria(c.id)}>
                   {c.emoji} {c.nombre}
                 </Chip>
@@ -230,7 +232,8 @@ interface TarjetaProps {
 
 function TarjetaNovedad({ n, onEditar, onDuplicar, onReenviar, onPublicar, onEliminar }: TarjetaProps) {
   const estado = estadoDe(n);
-  const cat = categoriaDe(n.categoria);
+  const { opciones: categorias } = useCategoriasNovedad();
+  const cat = categoriaDe(n.categoria, categorias);
   const porcentaje = n.cantidad_destinatarios > 0 ? Math.min(100, Math.round((n.cantidad_lecturas / n.cantidad_destinatarios) * 100)) : 0;
 
   const cuando =

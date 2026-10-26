@@ -1,8 +1,24 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { logger } from '../logging/logger';
 
-export const CATEGORIAS_NOVEDAD = ['general', 'evento', 'salud', 'comida', 'cumpleanos', 'visita', 'aviso'] as const;
-export type CategoriaNovedad = (typeof CATEGORIAS_NOVEDAD)[number];
+/** Categorías fijas. Además, cada residencia puede crear las suyas (tabla novedad_categorias). */
+export const CATEGORIAS_FIJAS: Record<string, { nombre: string; emoji: string }> = {
+  general: { nombre: 'Novedad', emoji: '📰' },
+  evento: { nombre: 'Evento', emoji: '🎉' },
+  salud: { nombre: 'Salud', emoji: '🩺' },
+  comida: { nombre: 'Comida', emoji: '🍽️' },
+  cumpleanos: { nombre: 'Cumpleaños', emoji: '🎂' },
+  visita: { nombre: 'Visitas', emoji: '👪' },
+  aviso: { nombre: 'Aviso importante', emoji: '📢' },
+};
+/** Clave de una categoría fija, o el id (uuid) de una categoría propia. */
+export type CategoriaNovedad = string;
+
+export interface CategoriaPropia {
+  id: string;
+  nombre: string;
+  emoji: string | null;
+}
 
 export interface Novedad {
   id: string;
@@ -36,6 +52,9 @@ export interface NovedadAdmin extends Novedad {
 
 export interface NovedadResidente extends Novedad {
   leida: boolean;
+  /** Nombre y emoji ya resueltos, así la app muestra también las categorías propias. */
+  categoria_nombre: string;
+  categoria_emoji: string;
 }
 
 export interface CrearNovedadInput {
@@ -182,6 +201,28 @@ export async function eliminarVencidas(ahora: Date): Promise<string[]> {
   return ((data ?? []) as Array<{ titulo: string }>).map((n) => n.titulo);
 }
 
+export async function listarCategorias(organizacionId: string): Promise<CategoriaPropia[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('novedad_categorias')
+    .select('id, nombre, emoji')
+    .eq('organizacion_id', organizacionId)
+    .order('nombre', { ascending: true });
+  if (error) throw new Error(`Error al cargar las categorías de novedades: ${error.message}`);
+  return (data ?? []) as CategoriaPropia[];
+}
+
+/** null si ya hay una con ese nombre (sin distinguir mayúsculas). */
+export async function crearCategoria(organizacionId: string, nombre: string, emoji: string | null): Promise<CategoriaPropia | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('novedad_categorias')
+    .insert({ organizacion_id: organizacionId, nombre, emoji })
+    .select('id, nombre, emoji')
+    .single();
+  if (error?.code === '23505') return null;
+  if (error) throw new Error(`Error al crear la categoría: ${error.message}`);
+  return data as CategoriaPropia;
+}
+
 async function gruposDelResidente(residenteId: string): Promise<string[]> {
   const { data, error } = await getSupabaseAdmin().from('grupo_residentes').select('grupo_id').eq('residente_id', residenteId);
   if (error) throw new Error(`Error al cargar los grupos del residente: ${error.message}`);
@@ -216,7 +257,23 @@ export async function listarParaResidente(organizacionId: string, residenteId: s
   if (errorLecturas) throw new Error(`Error al cargar las lecturas: ${errorLecturas.message}`);
   const leidas = new Set(((lecturas ?? []) as Array<{ novedad_id: string }>).map((l) => l.novedad_id));
 
-  return novedades.map((n) => ({ ...n, leida: leidas.has(n.id) }));
+  // Si falla (p. ej. la tabla todavía no existe) las propias caen en "Novedad", pero la lista se ve igual.
+  const propias = await listarCategorias(organizacionId).catch((err: unknown) => {
+    logger.warn('[novedades] no se pudieron cargar las categorías propias', { err });
+    return [] as CategoriaPropia[];
+  });
+  const porId = new Map(propias.map((c) => [c.id, c]));
+
+  return novedades.map((n) => {
+    const fija = CATEGORIAS_FIJAS[n.categoria];
+    const propia = porId.get(n.categoria);
+    return {
+      ...n,
+      leida: leidas.has(n.id),
+      categoria_nombre: fija?.nombre ?? propia?.nombre ?? 'Novedad',
+      categoria_emoji: fija?.emoji ?? propia?.emoji ?? '🏷️',
+    };
+  });
 }
 
 export async function marcarLeida(novedadId: string, residenteId: string): Promise<void> {

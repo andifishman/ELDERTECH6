@@ -10,9 +10,17 @@
 import { apiClient } from '@/lib/apiClient';
 import { optimizarImagen } from './articulosService';
 
-export type CategoriaNovedad = 'general' | 'evento' | 'salud' | 'comida' | 'cumpleanos' | 'visita' | 'aviso';
+/** Clave de una categoría fija, o el id de una creada con "Nueva categoría". */
+export type CategoriaNovedad = string;
 
-export const CATEGORIAS_NOVEDAD: Array<{ id: CategoriaNovedad; emoji: string; nombre: string }> = [
+export interface OpcionCategoria {
+  id: CategoriaNovedad;
+  emoji: string;
+  nombre: string;
+}
+
+/** Las categorías fijas; las propias de la residencia se suman con useCategoriasNovedad. */
+export const CATEGORIAS_NOVEDAD: OpcionCategoria[] = [
   { id: 'general', emoji: '📰', nombre: 'Novedad' },
   { id: 'evento', emoji: '🎉', nombre: 'Evento' },
   { id: 'salud', emoji: '🩺', nombre: 'Salud' },
@@ -22,7 +30,11 @@ export const CATEGORIAS_NOVEDAD: Array<{ id: CategoriaNovedad; emoji: string; no
   { id: 'aviso', emoji: '📢', nombre: 'Aviso importante' },
 ];
 
-export const categoriaDe = (id: CategoriaNovedad) => CATEGORIAS_NOVEDAD.find((c) => c.id === id) ?? CATEGORIAS_NOVEDAD[0];
+/** Emoji para una categoría propia creada sin emoji. */
+export const EMOJI_CATEGORIA_PROPIA = '🏷️';
+
+export const categoriaDe = (id: CategoriaNovedad, opciones: OpcionCategoria[] = CATEGORIAS_NOVEDAD): OpcionCategoria =>
+  opciones.find((c) => c.id === id) ?? CATEGORIAS_NOVEDAD[0]!;
 
 /** Cuánto tiempo se muestra desde que se publica. */
 export const DURACIONES_NOVEDAD: Array<{ dias: number; texto: string }> = [
@@ -99,6 +111,20 @@ export interface EditarNovedadInput {
   fechaEvento?: string | null;
   publicarEn?: string;
   visibleHasta?: string;
+}
+
+export interface CategoriaPropia {
+  id: string;
+  nombre: string;
+  emoji: string | null;
+}
+
+export async function listarCategoriasPropias(): Promise<CategoriaPropia[]> {
+  return apiClient.get<CategoriaPropia[]>('/api/admin/novedades/categorias');
+}
+
+export async function crearCategoriaNovedad(input: { nombre: string; emoji: string | null }): Promise<CategoriaPropia> {
+  return apiClient.post<CategoriaPropia>('/api/admin/novedades/categorias', input);
 }
 
 export async function listarNovedades(): Promise<NovedadConLecturas[]> {

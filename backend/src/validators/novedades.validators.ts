@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { CATEGORIAS_NOVEDAD } from '../repositories/novedadesRepository';
 
 const fechaIso = z.string().datetime({ offset: true });
+/** Clave de una categoría fija o id de una propia — el servicio verifica que exista. */
+const categoria = z.string().trim().min(1).max(64);
 
 export const publicarNovedadSchema = z.object({
   titulo: z.string().trim().min(1, 'El título es obligatorio').max(120),
@@ -9,7 +10,7 @@ export const publicarNovedadSchema = z.object({
   imagenUrl: z.string().url().nullable().optional(),
   grupoIds: z.array(z.string().uuid()).optional().default([]),
   notificar: z.boolean().optional().default(true),
-  categoria: z.enum(CATEGORIAS_NOVEDAD).optional().default('general'),
+  categoria: categoria.optional().default('general'),
   fijada: z.boolean().optional().default(false),
   /** null/ausente = ahora; a futuro = novedad programada */
   publicarEn: fechaIso.nullable().optional(),
@@ -27,7 +28,7 @@ export const actualizarNovedadSchema = z.object({
   titulo: z.string().trim().min(1).max(120).optional(),
   texto: z.string().trim().min(1).max(4000).optional(),
   imagenUrl: z.string().url().nullable().optional(),
-  categoria: z.enum(CATEGORIAS_NOVEDAD).optional(),
+  categoria: categoria.optional(),
   fijada: z.boolean().optional(),
   fechaEvento: fechaIso.optional(),
   publicarEn: fechaIso.optional(),
@@ -40,4 +41,9 @@ export const publicarBorradorSchema = z.object({
   publicarEn: fechaIso.nullable().optional(),
   duracionDias: z.number().int().min(1).max(365).optional().default(30),
   visibleHasta: fechaIso.optional(),
+});
+
+export const crearCategoriaSchema = z.object({
+  nombre: z.string().trim().min(1, 'Escribí un nombre').max(40),
+  emoji: z.string().trim().max(8).nullable().optional(),
 });

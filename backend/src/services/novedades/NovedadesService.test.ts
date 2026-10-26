@@ -10,6 +10,9 @@ vi.mock('../../repositories/novedadesRepository', () => ({
   listarParaResidente: vi.fn(),
   marcarLeida: vi.fn(),
   subirImagen: vi.fn(),
+  listarCategorias: vi.fn(),
+  crearCategoria: vi.fn(),
+  CATEGORIAS_FIJAS: { general: { nombre: 'Novedad', emoji: '📰' }, evento: { nombre: 'Evento', emoji: '🎉' } },
 }));
 vi.mock('../audit/AuditService', () => ({ registrarAuditoria: vi.fn() }));
 vi.mock('../notifications/NotificationsAdminService', () => ({ crear: vi.fn() }));
@@ -53,6 +56,18 @@ describe('publicar', () => {
     const esperado = new Date(antes.getTime() + 30 * 86_400_000);
     expect(Math.abs(new Date(input.visibleHasta).getTime() - esperado.getTime())).toBeLessThan(5000);
     expect(notificationsAdminService.crear).not.toHaveBeenCalled();
+  });
+
+  it('acepta una categoría propia de la residencia y rechaza una que no existe', async () => {
+    const propia = '4f6c1d2e-8a3b-4c5d-9e7f-0a1b2c3d4e5f';
+    vi.mocked(repo.listarCategorias).mockResolvedValue([{ id: propia, nombre: 'Paseos', emoji: '🚶' }]);
+    const base = { titulo: novedad.titulo, texto: novedad.texto, imagenUrl: null, grupoIds: [], notificar: false };
+
+    await publicar(staff, { ...base, categoria: propia });
+    expect(vi.mocked(repo.crear).mock.calls[0]![2].categoria).toBe(propia);
+
+    await expect(publicar(staff, { ...base, categoria: 'inventada' })).rejects.toThrow('La categoría elegida no existe.');
+    expect(repo.crear).toHaveBeenCalledTimes(1);
   });
 
   it('con una fecha a futuro queda programada y el aviso se programa para el mismo momento', async () => {
@@ -110,7 +125,7 @@ describe('marcarLeida', () => {
   });
 
   it('marca como leída una novedad visible para el residente', async () => {
-    vi.mocked(repo.listarParaResidente).mockResolvedValue([{ ...novedad, leida: false }]);
+    vi.mocked(repo.listarParaResidente).mockResolvedValue([{ ...novedad, leida: false, categoria_nombre: 'Novedad', categoria_emoji: '📰' }]);
     await marcarLeida(residente, 'nov-1');
     expect(repo.marcarLeida).toHaveBeenCalledWith('nov-1', 'res-1');
   });

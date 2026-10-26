@@ -13,7 +13,7 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useNovedades } from '@/hooks/useNovedades';
 import type { Novedad } from '@/services/novedadesService';
-import { CATEGORIAS_NOVEDAD, eventoEsHoy, fechaDeEvento } from '@/utils/novedades';
+import { etiquetaCategoria, eventoEsHoy, fechaDeEvento } from '@/utils/novedades';
 
 const LINEA_RESUMEN = 26;
 
@@ -76,7 +76,7 @@ export default function NovedadesScreen() {
 
 function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () => void }) {
   // Con un backend que todavía no manda los campos nuevos, se ve como una novedad común.
-  const categoria = novedad.categoria ?? 'general';
+  const categoria = etiquetaCategoria(novedad);
   const [cortado, setCortado] = useState(false);
   return (
     <TouchableOpacity
@@ -94,11 +94,9 @@ function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () =>
               <Text style={styles.cartelNuevaTexto}>Nueva</Text>
             </View>
           )}
-          {categoria !== 'general' && (
+          {categoria && (
             <View style={styles.cartelCategoria}>
-              <Text style={styles.cartelCategoriaTexto}>
-                {CATEGORIAS_NOVEDAD[categoria].emoji} {CATEGORIAS_NOVEDAD[categoria].nombre}
-              </Text>
+              <Text style={styles.cartelCategoriaTexto}>{categoria}</Text>
             </View>
           )}
         </View>

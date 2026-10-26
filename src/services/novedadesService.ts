@@ -2,7 +2,8 @@
 // desde el backoffice. Habla con el backend propio, nunca con Supabase directo.
 import { apiClient } from './apiClient';
 
-export type CategoriaNovedad = 'general' | 'evento' | 'salud' | 'comida' | 'cumpleanos' | 'visita' | 'aviso';
+/** Clave de una categoría fija, o el id de una que creó la residencia desde el backoffice. */
+export type CategoriaNovedad = string;
 
 export interface Novedad {
   id: string;
@@ -16,6 +17,9 @@ export interface Novedad {
   /** Las fijadas van primero en la lista */
   fijada: boolean;
   categoria: CategoriaNovedad;
+  /** Nombre y emoji de la categoría, ya resueltos por el backend (sirven también para las propias). */
+  categoria_nombre?: string;
+  categoria_emoji?: string;
   /** Si es de un evento, cuándo es */
   fecha_evento: string | null;
   /** true si este residente ya la abrió — las no leídas muestran el cartel "Nueva" */

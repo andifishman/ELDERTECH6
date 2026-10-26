@@ -33,6 +33,34 @@ function resumirParaAviso(texto: string): string {
   return texto.length <= LARGO_AVISO ? texto : `${texto.slice(0, LARGO_AVISO - 1).trimEnd()}…`;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** La categoría tiene que ser una fija o una propia de esta residencia. */
+async function validarCategoria(organizacionId: string, categoria: string | undefined): Promise<void> {
+  if (categoria === undefined || repo.CATEGORIAS_FIJAS[categoria]) return;
+  const propias = UUID.test(categoria) ? await repo.listarCategorias(organizacionId) : [];
+  if (!propias.some((c) => c.id === categoria)) throw new HttpError(StatusCodes.BAD_REQUEST, 'La categoría elegida no existe.');
+}
+
+export async function listarCategorias(user: AuthUser): Promise<repo.CategoriaPropia[]> {
+  return repo.listarCategorias(requireOrganizacionId(user));
+}
+
+export async function crearCategoria(user: AuthUser, nombre: string, emoji: string | null): Promise<repo.CategoriaPropia> {
+  const organizacionId = requireOrganizacionId(user);
+  const repetida = Object.values(repo.CATEGORIAS_FIJAS).some((c) => c.nombre.toLowerCase() === nombre.toLowerCase());
+  const categoria = repetida ? null : await repo.crearCategoria(organizacionId, nombre, emoji);
+  if (!categoria) throw new HttpError(StatusCodes.CONFLICT, `Ya existe una categoría llamada "${nombre}".`);
+  await auditService.registrarAuditoria(user, {
+    accion: 'crear',
+    tabla: 'novedad_categorias',
+    registroId: categoria.id,
+    descripcion: `Creó la categoría de novedades "${nombre}"`,
+    datosNuevos: { nombre, emoji },
+  });
+  return categoria;
+}
+
 export async function listarAdmin(user: AuthUser): Promise<repo.NovedadAdmin[]> {
   return repo.listarParaAdmin(requireOrganizacionId(user));
 }
@@ -106,6 +134,7 @@ export async function publicar(user: AuthUser, input: PublicarNovedadInput): Pro
   const grupoIds = input.grupoIds.length > 0 ? input.grupoIds : null;
   const publicarEn = resolverPublicarEn(input.publicarEn);
   const esBorrador = input.borrador ?? false;
+  await validarCategoria(organizacionId, input.categoria);
 
   const novedad = await repo.crear(organizacionId, user.supabaseUserId, {
     titulo: input.titulo,
@@ -176,6 +205,7 @@ export async function reenviarAviso(user: AuthUser, id: string): Promise<repo.No
 
 export async function actualizar(user: AuthUser, id: string, cambios: repo.ActualizarNovedadInput): Promise<repo.Novedad> {
   const actual = await obtenerAdmin(id);
+  await validarCategoria(actual.organizacion_id, cambios.categoria);
   const actualizada = await repo.actualizar(id, cambios);
   await auditService.registrarAuditoria(user, {
     accion: 'editar',

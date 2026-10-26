@@ -2,13 +2,22 @@ import type { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { HttpError } from '../middlewares/errorHandler';
 import * as novedadesService from '../services/novedades/NovedadesService';
-import { actualizarNovedadSchema, publicarBorradorSchema, publicarNovedadSchema } from '../validators/novedades.validators';
+import { actualizarNovedadSchema, crearCategoriaSchema, publicarBorradorSchema, publicarNovedadSchema } from '../validators/novedades.validators';
 import { requireUser, requireUuidParam } from '../utils/validators';
 
 // ─── Backoffice ─────────────────────────────────────────────────────────────
 
 export async function getListadoAdmin(req: Request, res: Response): Promise<void> {
   res.json(await novedadesService.listarAdmin(requireUser(req)));
+}
+
+export async function getCategorias(req: Request, res: Response): Promise<void> {
+  res.json(await novedadesService.listarCategorias(requireUser(req)));
+}
+
+export async function postCategoria(req: Request, res: Response): Promise<void> {
+  const { nombre, emoji } = crearCategoriaSchema.parse(req.body);
+  res.status(StatusCodes.CREATED).json(await novedadesService.crearCategoria(requireUser(req), nombre, emoji || null));
 }
 
 export async function getDetalleAdmin(req: Request, res: Response): Promise<void> {

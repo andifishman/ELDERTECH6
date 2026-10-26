@@ -12,7 +12,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useMarcarNovedadLeida, useNovedades } from '@/hooks/useNovedades';
-import { CATEGORIAS_NOVEDAD, eventoEsHoy, fechaDeEvento } from '@/utils/novedades';
+import { etiquetaCategoria, eventoEsHoy, fechaDeEvento } from '@/utils/novedades';
 
 export default function NovedadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,17 +45,15 @@ export default function NovedadDetalleScreen() {
     );
   }
 
+  const categoria = etiquetaCategoria(novedad);
+
   return (
     <View style={styles.root}>
       <AppHeader titulo="Novedad" mostrarVolver textoHablar={`${novedad.titulo}. ${novedad.texto}`} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Spacing.xxxl }]}>
         {novedad.imagen_url ? <FotoCompleta uri={novedad.imagen_url} style={styles.foto} /> : null}
         <View style={styles.cuerpo}>
-          {(novedad.categoria ?? 'general') !== 'general' ? (
-            <Text style={styles.categoria}>
-              {CATEGORIAS_NOVEDAD[novedad.categoria].emoji} {CATEGORIAS_NOVEDAD[novedad.categoria].nombre}
-            </Text>
-          ) : null}
+          {categoria ? <Text style={styles.categoria}>{categoria}</Text> : null}
           <Text style={styles.titulo}>{novedad.titulo}</Text>
           {novedad.fecha_evento ? (
             <View style={styles.fechaFila}>

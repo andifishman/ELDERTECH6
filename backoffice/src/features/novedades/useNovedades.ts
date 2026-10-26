@@ -1,9 +1,36 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notify } from '@/components/ui/toast';
 import * as service from '@/services/novedadesService';
 
 const KEY_LISTA = ['novedades'] as const;
 const KEY_DETALLE = (id: string) => ['novedades', id] as const;
+const KEY_CATEGORIAS = ['novedades', 'categorias'] as const;
+
+/** Las categorías fijas más las que creó la residencia (si fallan las propias, quedan las fijas). */
+export function useCategoriasNovedad() {
+  const q = useQuery({ queryKey: KEY_CATEGORIAS, queryFn: service.listarCategoriasPropias });
+  const opciones = useMemo<service.OpcionCategoria[]>(
+    () => [
+      ...service.CATEGORIAS_NOVEDAD,
+      ...(q.data ?? []).map((c) => ({ id: c.id, nombre: c.nombre, emoji: c.emoji || service.EMOJI_CATEGORIA_PROPIA })),
+    ],
+    [q.data],
+  );
+  return { opciones, cargando: q.isLoading };
+}
+
+export function useCrearCategoriaNovedad() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: service.crearCategoriaNovedad,
+    onSuccess: (c) => {
+      notify.success(`Categoría "${c.nombre}" creada`);
+      void qc.invalidateQueries({ queryKey: KEY_CATEGORIAS });
+    },
+    onError: (err: Error) => notify.error('No se pudo crear la categoría', err.message),
+  });
+}
 
 export function useNovedadesLista() {
   return useQuery({ queryKey: KEY_LISTA, queryFn: service.listarNovedades });

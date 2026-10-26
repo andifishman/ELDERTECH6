@@ -9,7 +9,7 @@
 // ========================================
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CalendarClock, CalendarDays, FileEdit, ImagePlus, Save, Send, Trash2, X } from 'lucide-react';
+import { CalendarClock, CalendarDays, FileEdit, ImagePlus, Plus, Save, Send, Trash2, X } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,13 +21,12 @@ import { LoadingState, ErrorState } from '@/components/common/states';
 import { notify } from '@/components/ui/toast';
 import { useGruposLista } from '@/features/grupos/useGrupos';
 import {
-  CATEGORIAS_NOVEDAD,
   categoriaDe,
   estadoDe,
   subirFotoNovedad,
   type CategoriaNovedad,
 } from '@/services/novedadesService';
-import { useEditarNovedad, useNovedadDetalle, usePublicarBorrador, usePublicarNovedad } from './useNovedades';
+import { useCategoriasNovedad, useCrearCategoriaNovedad, useEditarNovedad, useNovedadDetalle, usePublicarBorrador, usePublicarNovedad } from './useNovedades';
 import { FotoCompleta } from './FotoCompleta';
 
 const LARGO_TITULO = 120;
@@ -51,10 +50,10 @@ const diaSiguienteIso = (valorLocal: string): string => {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toISOString();
 };
 
-const fechaLarga = (d: Date) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
+const fechaLarga = (d: Date) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 const fechaHoraLarga = (valorLocal: string) => {
   const d = new Date(valorLocal);
-  return `${d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}, ${pad(d.getHours())}:${pad(d.getMinutes())} hs`;
+  return `${d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${pad(d.getHours())}:${pad(d.getMinutes())} hs`;
 };
 
 const claseChip = (activo: boolean) =>
@@ -73,6 +72,10 @@ export function NovedadFormPage() {
   const publicarBorrador = usePublicarBorrador();
 
   const [titulo, setTitulo] = useState('');
+  const { opciones: categorias } = useCategoriasNovedad();
+  const crearCategoria = useCrearCategoriaNovedad();
+  const [mostrarFormCategoria, setMostrarFormCategoria] = useState(false);
+  const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: '', emoji: '' });
   const [texto, setTexto] = useState('');
   const [imagenUrl, setImagenUrl] = useState<string | null>(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
@@ -200,7 +203,26 @@ export function NovedadFormPage() {
   if (editando && detalleQ.isLoading) return <LoadingState mensaje="Cargando novedad…" />;
   if ((editando || duplicarDe) && detalleQ.isError) return <ErrorState onReintentar={() => void detalleQ.refetch()} />;
 
-  const cat = categoriaDe(categoria);
+  const cat = categoriaDe(categoria, categorias);
+
+  const cerrarFormCategoria = () => {
+    setMostrarFormCategoria(false);
+    setNuevaCategoria({ nombre: '', emoji: '' });
+  };
+
+  const handleCrearCategoria = () => {
+    const nombre = nuevaCategoria.nombre.trim();
+    if (!nombre) return;
+    crearCategoria.mutate(
+      { nombre, emoji: nuevaCategoria.emoji.trim() || null },
+      {
+        onSuccess: (c) => {
+          setCategoria(c.id);
+          cerrarFormCategoria();
+        },
+      },
+    );
+  };
 
   return (
     <div className="space-y-5 pb-10">
@@ -217,15 +239,60 @@ export function NovedadFormPage() {
         <div className="space-y-5">
           <Card>
             <CardContent className="form-campos pt-6">
-              <div className="space-y-1.5">
-                <Label>Categoría</Label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Categoría</Label>
+                  <button
+                    type="button"
+                    onClick={() => (mostrarFormCategoria ? cerrarFormCategoria() : setMostrarFormCategoria(true))}
+                    className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <Plus className="h-4 w-4" /> Nueva categoría
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  {CATEGORIAS_NOVEDAD.map((c) => (
+                  {categorias.map((c) => (
                     <button key={c.id} type="button" onClick={() => setCategoria(c.id)} className={claseChip(categoria === c.id)}>
                       {c.emoji} {c.nombre}
                     </button>
                   ))}
                 </div>
+
+                {mostrarFormCategoria && (
+                  <div className="space-y-3 rounded-lg border border-dashed border-primary/50 bg-primary/5 p-4">
+                    <p className="text-xs font-semibold text-primary">Nueva categoría</p>
+                    <div className="flex gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Emoji (opcional)</Label>
+                        <Input
+                          value={nuevaCategoria.emoji}
+                          onChange={(e) => setNuevaCategoria((p) => ({ ...p, emoji: e.target.value }))}
+                          placeholder="🎵"
+                          maxLength={8}
+                          className="w-16 text-center"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs">Nombre de la categoría *</Label>
+                        <Input
+                          value={nuevaCategoria.nombre}
+                          onChange={(e) => setNuevaCategoria((p) => ({ ...p, nombre: e.target.value }))}
+                          placeholder="Ej: Paseos, Talleres, Música…"
+                          maxLength={40}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCrearCategoria(); } }}
+                        />
+                      </div>
+                      <div className="flex items-end gap-1">
+                        <Button type="button" size="sm" disabled={!nuevaCategoria.nombre.trim() || crearCategoria.isPending} onClick={handleCrearCategoria}>
+                          {crearCategoria.isPending ? 'Creando…' : 'Crear'}
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={cerrarFormCategoria} aria-label="Cancelar">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="titulo">Título</Label>
