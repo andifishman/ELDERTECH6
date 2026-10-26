@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Leaf, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ export function RecuperarContrasenaPage() {
     <div className="relative hidden flex-col justify-between bg-primary-600 p-12 text-white lg:flex">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-          <Leaf className="h-6 w-6" />
+          <img src="/logo-puente.png" alt="ElderTech" className="h-8 w-8 object-contain" />
         </div>
         <div>
           <p className="text-xl font-extrabold">ElderTech</p>
@@ -62,7 +62,7 @@ export function RecuperarContrasenaPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white">
-              <Leaf className="h-6 w-6" />
+              <img src="/logo-puente.png" alt="ElderTech" className="h-8 w-8 object-contain" />
             </div>
             <p className="text-xl font-extrabold">ElderTech Backoffice</p>
           </div>
