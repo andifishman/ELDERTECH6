@@ -200,7 +200,7 @@ export function NotificacionFormPage() {
       {/* 1. Contenido */}
       <Card>
         <CardHeader><CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">1 · Contenido</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="form-campos">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
@@ -234,7 +234,7 @@ export function NotificacionFormPage() {
       {/* 2. Destino */}
       <Card>
         <CardHeader><CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">2 · Destino</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="form-campos">
           <div className="space-y-1.5">
             <Label>Enviar a</Label>
             <Select value={destinoTipo} onValueChange={(v) => setDestinoTipo(v as DestinoTipo)}>
@@ -361,7 +361,7 @@ export function NotificacionFormPage() {
       {/* 3. Programación */}
       <Card>
         <CardHeader><CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">3 · Programación</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="form-campos">
           <div className="flex gap-2">
             <Button type="button" variant={programacionTipo === 'instantanea' ? 'default' : 'outline'} onClick={() => setProgramacionTipo('instantanea')}>
               <Send className="h-4 w-4" /> Enviar ahora

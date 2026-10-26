@@ -307,7 +307,7 @@ export function ArticuloFormPage() {
           <CardHeader>
             <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">1 · Contenido</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="form-campos">
             <div className="space-y-1.5">
               <Label htmlFor="titulo">Título *</Label>
               <Input
@@ -324,9 +324,9 @@ export function ArticuloFormPage() {
                 <button
                   type="button"
                   onClick={() => setMostrarFormCategoria((v) => !v)}
-                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Nueva categoría
+                  <Plus className="h-4 w-4" /> Nueva categoría
                 </button>
               </div>
 
@@ -501,7 +501,7 @@ export function ArticuloFormPage() {
           <CardHeader>
             <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">2 · Multimedia</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="form-campos">
             {/* Thumbnail */}
             <div className="space-y-2">
               <Label>Imagen de portada</Label>
@@ -621,7 +621,7 @@ export function ArticuloFormPage() {
                 <Plus className="h-4 w-4" /> Agregar paso
               </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="form-campos">
               {pasos.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">No hay pasos aún.</p>
               )}

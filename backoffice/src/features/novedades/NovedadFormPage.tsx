@@ -215,7 +215,7 @@ export function NovedadFormPage() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
           <Card>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="form-campos pt-6">
               <div className="space-y-1.5">
                 <Label>Categoría</Label>
                 <div className="flex flex-wrap gap-2">
@@ -272,7 +272,7 @@ export function NovedadFormPage() {
           </Card>
 
           <Card>
-            <CardContent className="space-y-5 pt-6">
+            <CardContent className="form-campos pt-6">
               {/* Cuándo sale */}
               {eligeCuando ? (
                 <div className="space-y-2">
@@ -319,7 +319,7 @@ export function NovedadFormPage() {
           </Card>
 
           <Card>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="form-campos pt-6">
               <div className="space-y-2">
                 <Label>¿Para quién es?</Label>
                 {cambiarDestinoNoPermitido ? (

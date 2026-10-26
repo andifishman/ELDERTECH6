@@ -48,7 +48,7 @@ export function GrupoFormPage() {
       <PageHeader titulo="Nuevo grupo" descripcion="Un grupo sirve para elegir a quién le llega algo sin tener que armar la lista cada vez." />
 
       <Card>
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="form-campos pt-6">
           <div className="space-y-1.5">
             <Label htmlFor="nombre">Nombre</Label>
             <Input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Taller de música" maxLength={80} />

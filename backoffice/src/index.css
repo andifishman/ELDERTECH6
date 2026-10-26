@@ -108,6 +108,11 @@
 
 /* Scrollbar sutil y consistente */
 @layer utilities {
+  /* Campos de formulario separados con una línea y aire entre cada uno,
+     para que no se vea todo pegado. */
+  .form-campos > :not([hidden]) ~ :not([hidden]) {
+    @apply mt-6 border-t border-border pt-6;
+  }
   .scrollbar-thin::-webkit-scrollbar {
     width: 8px;
     height: 8px;

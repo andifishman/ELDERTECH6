@@ -260,7 +260,7 @@ export function ActividadFormPage() {
         <CardHeader>
           <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">1 · Datos básicos</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="form-campos">
           <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
             <div className="space-y-1.5">
               <Label htmlFor="nombre">Nombre de la actividad</Label>
@@ -283,9 +283,9 @@ export function ActividadFormPage() {
               <button
                 type="button"
                 onClick={() => setMostrarFormTipo((v) => !v)}
-                className="flex items-center gap-1 text-xs text-primary hover:underline"
+                className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
               >
-                <Plus className="h-3.5 w-3.5" /> Nueva categoría
+                <Plus className="h-4 w-4" /> Nueva categoría
               </button>
             </div>
 
@@ -436,7 +436,7 @@ export function ActividadFormPage() {
         <CardHeader>
           <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">2 · Repetición</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="form-campos">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {PRESETS.map((p) => (
               <button
@@ -504,7 +504,7 @@ export function ActividadFormPage() {
         <CardHeader>
           <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">3 · Para quién</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="form-campos">
           <div className="space-y-2">
             <Label>Secciones objetivo (vacío = todas las secciones)</Label>
             <div className="flex flex-wrap gap-2">
@@ -641,7 +641,7 @@ export function ActividadFormPage() {
         <CardHeader>
           <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">4 · Opciones avanzadas</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="form-campos">
           {!esEdicion && (
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>
