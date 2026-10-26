@@ -3,13 +3,13 @@
 // DESCRIPCIÓN:
 // Crear o editar una novedad: título, texto, foto, categoría, a quién va,
 // cuándo se publica (ahora o programada con fecha y hora), cuánto dura,
-// fecha del evento, fijarla arriba y si se manda aviso al celular. Se puede
+// fecha del evento y si se manda aviso al celular. Se puede
 // guardar como borrador, duplicar una existente y ver una vista previa de
 // cómo la ve el residente en la app.
 // ========================================
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CalendarClock, CalendarDays, FileEdit, ImagePlus, Pin, Save, Send, Trash2, X } from 'lucide-react';
+import { CalendarClock, CalendarDays, FileEdit, ImagePlus, Save, Send, Trash2, X } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -79,7 +79,6 @@ export function NovedadFormPage() {
   const [grupoIds, setGrupoIds] = useState<string[]>([]);
   const [notificar, setNotificar] = useState(true);
   const [categoria, setCategoria] = useState<CategoriaNovedad>('general');
-  const [fijada, setFijada] = useState(false);
   const [programar, setProgramar] = useState(false);
   const [programadaPara, setProgramadaPara] = useState('');
   const [fechaEvento, setFechaEvento] = useState('');
@@ -103,7 +102,6 @@ export function NovedadFormPage() {
     setParaTodos(!n.grupo_ids);
     setGrupoIds(n.grupo_ids ?? []);
     setCategoria(n.categoria);
-    setFijada(n.fijada);
     setFechaEvento(!duplicarDe ? aInputFechaHora(n.fecha_evento) : '');
     if (editando) {
       if (estadoDe(n) === 'programada') {
@@ -152,7 +150,7 @@ export function NovedadFormPage() {
         grupoIds: paraTodos ? [] : grupoIds,
         notificar,
         categoria,
-        fijada,
+        fijada: false,
         publicarEn: borrador ? null : publicarEnIso,
         visibleHasta: visibleHastaIso ?? undefined,
         fechaEvento: fechaEventoIso,
@@ -173,7 +171,6 @@ export function NovedadFormPage() {
           texto: texto.trim(),
           imagenUrl,
           categoria,
-          fijada,
           fechaEvento: fechaEventoIso,
           ...(estadoOriginal === 'programada' && publicarEnIso ? { publicarEn: publicarEnIso } : {}),
           ...(visibleHastaIso ? { visibleHasta: visibleHastaIso } : {}),
@@ -318,14 +315,6 @@ export function NovedadFormPage() {
                 </div>
               </div>
 
-              {/* Fijar */}
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <Label htmlFor="fijada" className="flex items-center gap-1.5"><Pin className="h-4 w-4" /> Fijar arriba</Label>
-                  <p className="text-sm text-muted-foreground">Aparece primero en la lista de los residentes, con la marca "Importante".</p>
-                </div>
-                <Switch id="fijada" checked={fijada} onCheckedChange={setFijada} />
-              </div>
             </CardContent>
           </Card>
 
@@ -423,12 +412,11 @@ export function NovedadFormPage() {
         {/* Vista previa de cómo la ve el residente */}
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Así la ve el residente</p>
-          <div className={`overflow-hidden rounded-2xl border-2 bg-card shadow-sm ${fijada ? 'border-amber-300' : 'border-primary'}`}>
+          <div className="overflow-hidden rounded-2xl border-2 border-primary bg-card shadow-sm">
             {imagenUrl && <img src={imagenUrl} alt="" className="aspect-video w-full object-cover" />}
             <div className="space-y-1.5 p-4">
               <div className="flex flex-wrap gap-1.5">
                 <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">Nueva</span>
-                {fijada && <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">📌 Importante</span>}
                 {categoria !== 'general' && (
                   <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-700">{cat.emoji} {cat.nombre}</span>
                 )}

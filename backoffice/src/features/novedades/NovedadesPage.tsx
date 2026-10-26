@@ -3,12 +3,12 @@
 // DESCRIPCIÓN:
 // Noticias para los residentes, con su estado (publicada, programada,
 // borrador o vencida), buscador y filtros por estado y categoría.
-// Desde cada tarjeta se edita, duplica, fija arriba, reenvía el aviso
-// al celular, publica un borrador o se elimina.
+// Desde cada tarjeta se edita, duplica, reenvía el aviso al celular,
+// publica un borrador o se elimina.
 // ========================================
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, CalendarClock, CalendarDays, Copy, Eye, FileEdit, Newspaper, Pencil, Pin, PinOff, Plus, Search, Send, Trash2, Users2 } from 'lucide-react';
+import { Bell, CalendarClock, CalendarDays, Copy, Eye, FileEdit, Newspaper, Pencil, Plus, Search, Send, Trash2, Users2 } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,10 +17,9 @@ import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingState, ErrorState } from '@/components/common/states';
 import { EmptyState } from '@/components/common/EmptyState';
-import { notify } from '@/components/ui/toast';
 import { useAuth } from '@/features/auth/AuthContext';
 import { categoriaDe, CATEGORIAS_NOVEDAD, estadoDe, type CategoriaNovedad, type EstadoNovedad, type NovedadConLecturas } from '@/services/novedadesService';
-import { useEditarNovedad, useEliminarNovedad, usePublicarBorrador, useNovedadesLista, useReenviarAviso } from './useNovedades';
+import { useEliminarNovedad, usePublicarBorrador, useNovedadesLista, useReenviarAviso } from './useNovedades';
 
 const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 const fechaHora = (iso: string) =>
@@ -46,7 +45,6 @@ export function NovedadesPage() {
   const { puede } = useAuth();
   const novedadesQ = useNovedadesLista();
   const eliminar = useEliminarNovedad();
-  const editar = useEditarNovedad();
   const publicarBorrador = usePublicarBorrador();
   const reenviar = useReenviarAviso();
 
@@ -71,7 +69,7 @@ export function NovedadesPage() {
       .filter((n) => filtroEstado === 'todas' || estadoDe(n) === filtroEstado)
       .filter((n) => filtroCategoria === 'todas' || n.categoria === filtroCategoria)
       .filter((n) => !q || n.titulo.toLowerCase().includes(q) || n.texto.toLowerCase().includes(q))
-      .sort((a, b) => Number(b.fijada) - Number(a.fijada) || new Date(b.publicar_en).getTime() - new Date(a.publicar_en).getTime());
+      .sort((a, b) => new Date(b.publicar_en).getTime() - new Date(a.publicar_en).getTime());
   }, [novedades, busqueda, filtroEstado, filtroCategoria]);
 
   if (novedadesQ.isLoading) return <LoadingState mensaje="Cargando novedades…" />;
@@ -143,7 +141,6 @@ export function NovedadesPage() {
                   n={n}
                   onEditar={puede('novedades', 'editar') ? () => navigate(`/novedades/${n.id}/editar`) : undefined}
                   onDuplicar={puede('novedades', 'crear') ? () => navigate(`/novedades/nueva?duplicar=${n.id}`) : undefined}
-                  onFijar={puede('novedades', 'editar') ? () => editar.mutate({ id: n.id, input: { fijada: !n.fijada } }, { onSuccess: () => notify.success(n.fijada ? 'Novedad desfijada' : 'Novedad fijada arriba') }) : undefined}
                   onReenviar={puede('novedades', 'editar') ? () => setAReenviar(n) : undefined}
                   onPublicar={puede('novedades', 'crear') ? () => setAPublicar(n) : undefined}
                   onEliminar={puede('novedades', 'eliminar') ? () => setAEliminar(n) : undefined}
@@ -223,13 +220,12 @@ interface TarjetaProps {
   n: NovedadConLecturas;
   onEditar?: () => void;
   onDuplicar?: () => void;
-  onFijar?: () => void;
   onReenviar?: () => void;
   onPublicar?: () => void;
   onEliminar?: () => void;
 }
 
-function TarjetaNovedad({ n, onEditar, onDuplicar, onFijar, onReenviar, onPublicar, onEliminar }: TarjetaProps) {
+function TarjetaNovedad({ n, onEditar, onDuplicar, onReenviar, onPublicar, onEliminar }: TarjetaProps) {
   const estado = estadoDe(n);
   const cat = categoriaDe(n.categoria);
   const porcentaje = n.cantidad_destinatarios > 0 ? Math.min(100, Math.round((n.cantidad_lecturas / n.cantidad_destinatarios) * 100)) : 0;
@@ -244,7 +240,7 @@ function TarjetaNovedad({ n, onEditar, onDuplicar, onFijar, onReenviar, onPublic
           : `Publicada el ${fecha(n.publicar_en)} · hasta el ${fecha(n.visible_hasta)}`;
 
   return (
-    <Card className={`flex overflow-hidden ${estado === 'vencida' ? 'opacity-70' : ''} ${n.fijada ? 'border-amber-300' : ''}`}>
+    <Card className={`flex overflow-hidden ${estado === 'vencida' ? 'opacity-70' : ''}`}>
       {n.imagen_url && <img src={n.imagen_url} alt="" className="h-auto w-28 shrink-0 object-cover sm:w-36" />}
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
@@ -252,7 +248,6 @@ function TarjetaNovedad({ n, onEditar, onDuplicar, onFijar, onReenviar, onPublic
             <div className="mb-1 flex flex-wrap gap-1.5">
               <Badge variant={BADGE_ESTADO[estado].variante}>{BADGE_ESTADO[estado].texto}</Badge>
               <Badge variant="purple">{cat.emoji} {cat.nombre}</Badge>
-              {n.fijada && <Badge variant="warning" className="gap-1"><Pin className="h-3 w-3" /> Fijada</Badge>}
             </div>
             <p className="font-semibold leading-snug">{n.titulo}</p>
           </div>
@@ -260,11 +255,6 @@ function TarjetaNovedad({ n, onEditar, onDuplicar, onFijar, onReenviar, onPublic
             {estado === 'borrador' && onPublicar && (
               <Button variant="ghost" size="icon" aria-label={`Publicar ${n.titulo}`} title="Publicar ahora" onClick={onPublicar} className="hover:text-primary">
                 <Send className="h-4 w-4" />
-              </Button>
-            )}
-            {onFijar && estado !== 'vencida' && (
-              <Button variant="ghost" size="icon" aria-label={n.fijada ? `Quitar de fijadas ${n.titulo}` : `Fijar ${n.titulo}`} title={n.fijada ? 'Quitar de fijadas' : 'Fijar arriba'} onClick={onFijar}>
-                {n.fijada ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
               </Button>
             )}
             {onReenviar && estado === 'publicada' && (

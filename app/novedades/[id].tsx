@@ -50,11 +50,9 @@ export default function NovedadDetalleScreen() {
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + Spacing.xxxl }]}>
         {novedad.imagen_url ? <Image source={{ uri: novedad.imagen_url }} style={styles.foto} resizeMode="cover" /> : null}
         <View style={styles.cuerpo}>
-          {(novedad.categoria ?? 'general') !== 'general' || novedad.fijada ? (
+          {(novedad.categoria ?? 'general') !== 'general' ? (
             <Text style={styles.categoria}>
-              {novedad.fijada ? '📌 Importante' : ''}
-              {novedad.fijada && (novedad.categoria ?? 'general') !== 'general' ? '  ·  ' : ''}
-              {(novedad.categoria ?? 'general') !== 'general' ? `${CATEGORIAS_NOVEDAD[novedad.categoria].emoji} ${CATEGORIAS_NOVEDAD[novedad.categoria].nombre}` : ''}
+              {CATEGORIAS_NOVEDAD[novedad.categoria].emoji} {CATEGORIAS_NOVEDAD[novedad.categoria].nombre}
             </Text>
           ) : null}
           <Text style={styles.titulo}>{novedad.titulo}</Text>

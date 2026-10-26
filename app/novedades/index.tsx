@@ -16,10 +16,10 @@ import { CATEGORIAS_NOVEDAD, eventoEsHoy, fechaDeEvento } from '@/utils/novedade
 
 const LINEA_RESUMEN = 26;
 
-/** Fijadas primero; después por fecha del evento, de la más cercana a la más lejana (sin fecha, al final). */
+/** Por fecha del evento, de la más cercana a la más lejana (sin fecha, al final). */
 function ordenarNovedades(lista: Novedad[]): Novedad[] {
   const t = (n: Novedad) => (n.fecha_evento ? new Date(n.fecha_evento).getTime() : Number.POSITIVE_INFINITY);
-  return [...lista].sort((a, b) => Number(!!b.fijada) - Number(!!a.fijada) || t(a) - t(b));
+  return [...lista].sort((a, b) => t(a) - t(b));
 }
 
 export default function NovedadesScreen() {
@@ -93,11 +93,6 @@ function TarjetaNovedad({ novedad, onPress }: { novedad: Novedad; onPress: () =>
               <Text style={styles.cartelNuevaTexto}>Nueva</Text>
             </View>
           )}
-          {novedad.fijada && (
-            <View style={styles.cartelFijada}>
-              <Text style={styles.cartelFijadaTexto}>📌 Importante</Text>
-            </View>
-          )}
           {categoria !== 'general' && (
             <View style={styles.cartelCategoria}>
               <Text style={styles.cartelCategoriaTexto}>
@@ -167,8 +162,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 2,
   },
-  cartelFijada: { backgroundColor: '#FFF3CD', borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.md, paddingVertical: 2 },
-  cartelFijadaTexto: { color: '#7A5200', fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
   cartelCategoria: { backgroundColor: '#E9E2F2', borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.md, paddingVertical: 2 },
   cartelCategoriaTexto: { color: Colors.brand.primary, fontSize: Typography.size.sm, fontWeight: Typography.weight.bold },
   fechaFila: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.sm },

@@ -9,9 +9,9 @@ export function eventoEsHoy(iso: string): boolean {
   return f.getFullYear() === h.getFullYear() && f.getMonth() === h.getMonth() && f.getDate() === h.getDate();
 }
 
-const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-/** "sábado 25 de octubre, 16:30 hs" — hora local; sin la hora si es medianoche. */
+/** "Sábado 25 de octubre, 16:30 hs" — hora local; sin la hora si es medianoche. */
 export function fechaDeEvento(iso: string): string {
   const f = new Date(iso);
   const hora = f.getHours() === 0 && f.getMinutes() === 0 ? '' : `, ${String(f.getHours()).padStart(2, '0')}:${String(f.getMinutes()).padStart(2, '0')} hs`;
