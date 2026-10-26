@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
-import { SpeakButton } from '@/components/common/SpeakButton';
+import { hablar } from '@/utils/tts';
 import { useAuth } from '@/context/AuthContext';
 import { useFaq, useSesionesRecientes } from '@/hooks/useAsistente';
 import { Colors } from '@/constants/Colors';
@@ -89,7 +89,15 @@ export default function AsistenteScreen() {
         {/* ── Preguntas frecuentes ── */}
         <View style={styles.seccionHeader}>
           <Text style={styles.seccionTitulo}>Preguntas frecuentes</Text>
-          <SpeakButton texto="Preguntas frecuentes. Toque cualquier pregunta para que el asistente la responda." size="sm" />
+          <TouchableOpacity
+            style={styles.escucharFaqBtn}
+            onPress={() => hablar('Preguntas frecuentes. Toque cualquier pregunta para que el asistente la responda.')}
+            accessibilityLabel="Escuchar: Preguntas frecuentes"
+            accessibilityRole="button"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons name="volume-medium" size={24} color={Colors.brand.blueDark} />
+          </TouchableOpacity>
         </View>
 
         {cargandoFaq ? (
@@ -231,6 +239,19 @@ const styles = StyleSheet.create({
   },
 
   // Sección
+  // Idéntico al botón "Escuchar" circular de las respuestas del chat —
+  // mismo celeste, mismo ícono — pero con tamaño fijo en el mínimo táctil
+  // accesible (48×48pt), no escala hacia abajo con el texto.
+  escucharFaqBtn: {
+    width: Spacing.touch.min,
+    height: Spacing.touch.min,
+    borderRadius: Spacing.touch.min / 2,
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1.5,
+    borderColor: '#90CAF9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   seccionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
