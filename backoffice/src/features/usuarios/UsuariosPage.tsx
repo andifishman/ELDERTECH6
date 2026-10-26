@@ -7,7 +7,7 @@
 // quita acceso a la app; eliminar lo borra definitivamente.
 // A los empleados de Ledor Vador se les carga además su rol.
 // ========================================
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, Trash2 } from 'lucide-react';
@@ -57,15 +57,28 @@ const TIPO_CELULAR_LABEL: Record<string, string> = {
 interface Campos {
   nombre: string;
   apellido: string;
-  nombreCompleto: string;
   username: string;
   dni: string;
   seccion: SeccionResidente | '';
   rolEmpleado: string;
 }
 
+/** "Lucas" + "Martínez" → "LMartinez": inicial del nombre + apellido con
+ *  inicial mayúscula, sin tildes, espacios ni signos. */
+function generarUsername(nombre: string, apellido: string): string {
+  const limpiar = (s: string) =>
+    s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9\s]/g, '').trim();
+  const inicial = limpiar(nombre).charAt(0).toUpperCase();
+  const resto = limpiar(apellido)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join('');
+  return inicial + resto;
+}
+
 const CAMPOS_VACIOS: Campos = {
-  nombre: '', apellido: '', nombreCompleto: '', username: '', dni: '', seccion: '', rolEmpleado: '',
+  nombre: '', apellido: '', username: '', dni: '', seccion: '', rolEmpleado: '',
 };
 
 export function UsuariosPage() {
@@ -87,12 +100,19 @@ export function UsuariosPage() {
   const [editando, setEditando] = useState<ResidenteConCuenta | null>(null);
   const [nuevoDni, setNuevoDni] = useState('');
   const [aEliminar, setAEliminar] = useState<ResidenteConCuenta | null>(null);
+  // Si el admin escribe el usuario a mano, dejamos de pisarlo con el automático.
+  const [usernameManual, setUsernameManual] = useState(false);
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Campos>({
+  const { register, handleSubmit, reset, setValue, getValues, watch, formState: { errors } } = useForm<Campos>({
     defaultValues: CAMPOS_VACIOS,
   });
   const seccion = watch('seccion');
   const esEmpleado = seccion === SECCION_EMPLEADO;
+
+  const autocompletarUsername = () => {
+    if (editando || usernameManual) return;
+    setValue('username', generarUsername(getValues('nombre'), getValues('apellido')));
+  };
 
   const toggleOrden = (col: typeof ordenarPor) => {
     if (ordenarPor === col) setOrdenDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -126,6 +146,7 @@ export function UsuariosPage() {
   const abrirNuevo = () => {
     setEditando(null);
     setNuevoDni('');
+    setUsernameManual(false);
     reset(CAMPOS_VACIOS);
     setAbierto(true);
   };
@@ -136,7 +157,6 @@ export function UsuariosPage() {
     reset({
       nombre: r.nombre,
       apellido: r.apellido,
-      nombreCompleto: r.nombre_completo ?? '',
       username: '',
       dni: '',
       seccion: r.seccion ?? '',
@@ -160,7 +180,6 @@ export function UsuariosPage() {
         {
           nombre: c.nombre,
           apellido: c.apellido,
-          nombre_completo: c.nombreCompleto.trim() || null,
           username: c.username,
           dni: c.dni,
           seccion: c.seccion || null,
@@ -177,7 +196,6 @@ export function UsuariosPage() {
         input: {
           nombre: c.nombre,
           apellido: c.apellido,
-          nombre_completo: c.nombreCompleto.trim() || null,
           seccion: c.seccion || null,
           rol_empleado: rolEmpleado,
         },
@@ -340,18 +358,13 @@ export function UsuariosPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="nombre">Nombre</Label>
-                <Input id="nombre" {...register('nombre', { required: 'Requerido' })} />
+                <Input id="nombre" {...register('nombre', { required: 'Requerido', onChange: autocompletarUsername })} />
                 {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="apellido">Apellido</Label>
-                <Input id="apellido" {...register('apellido', { required: 'Requerido' })} />
+                <Input id="apellido" {...register('apellido', { required: 'Requerido', onChange: autocompletarUsername })} />
                 {errors.apellido && <p className="text-xs text-destructive">{errors.apellido.message}</p>}
-              </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="nombreCompleto">Nombre completo (opcional)</Label>
-                <Input id="nombreCompleto" placeholder="Se usa como nombre en Hablemos, en vez de nombre + apellido" {...register('nombreCompleto')} />
               </div>
 
               {!editando && (
@@ -361,7 +374,12 @@ export function UsuariosPage() {
                     <Input
                       id="username"
                       autoCapitalize="none"
-                      {...register('username', { required: 'Requerido', minLength: { value: 3, message: 'Mínimo 3 caracteres' } })}
+                      {...register('username', {
+                        required: 'Requerido',
+                        minLength: { value: 3, message: 'Mínimo 3 caracteres' },
+                        // Si lo borra entero, vuelve a completarse solo.
+                        onChange: (e: ChangeEvent<HTMLInputElement>) => setUsernameManual(e.target.value !== ''),
+                      })}
                     />
                     {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
                   </div>
