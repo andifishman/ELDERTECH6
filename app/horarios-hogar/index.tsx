@@ -18,6 +18,8 @@ const MESES = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
+//sección con la que se cargan los empleados del hogar en el backoffice
+const SECCION_EMPLEADO = 'EMPLEADO LEDOR VADOR';
 const COLOR_MANANA = '#1E9A9A';
 const COLOR_TARDE = '#F08030';
 const COLOR_TITULO = '#1F3A6E';
@@ -95,6 +97,14 @@ export default function HorariosHogarScreen() {
   const hayMiPiso = !!miSector && (data?.actividades ?? []).some((a) => perteneceAlSector(a.sectores, miSector));
   const [verTodo, setVerTodo] = useState(false);
   const soloMiPiso = hayMiPiso && !verTodo;
+  //los empleados del hogar no tienen un piso propio: pueden ver todo o elegir cualquier piso
+  const esEmpleado = miSeccion === SECCION_EMPLEADO;
+  const [pisoElegido, setPisoElegido] = useState<string | null>(null);
+  const pisos = useMemo(() => {
+    const todos = new Set<string>();
+    (data?.actividades ?? []).forEach((a) => a.sectores.forEach((s) => todos.add(s)));
+    return [...todos].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+  }, [data]);
 
   const fecha = useMemo(() => {
     const d = new Date();
@@ -108,10 +118,11 @@ export default function HorariosHogarScreen() {
       (a) =>
         sinTildes(a.dia) === sinTildes(nombreDia) &&
         //una actividad sin sectores es para todo el hogar
+        (!esEmpleado || !pisoElegido || a.sectores.length === 0 || perteneceAlSector(a.sectores, sectorDeMiPiso(pisoElegido) ?? '')) &&
         (!soloMiPiso || !miSector || a.sectores.length === 0 || perteneceAlSector(a.sectores, miSector)),
     );
     return delDia.sort((a, b) => (horaEnMinutos(a.hora) ?? 9999) - (horaEnMinutos(b.hora) ?? 9999));
-  }, [data, nombreDia, soloMiPiso, miSector]);
+  }, [data, nombreDia, soloMiPiso, miSector, esEmpleado, pisoElegido]);
 
   //el cartel beige marca la actividad que está pasando ahora o, si no hay, la próxima (solo en el día de hoy)
   const idAhora = useMemo(() => {
@@ -203,6 +214,22 @@ export default function HorariosHogarScreen() {
               </View>
             ) : null}
 
+            {esEmpleado ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsPiso} contentContainerStyle={styles.chipsPisoContenido}>
+                {[null, ...pisos].map((p) => (
+                  <TouchableOpacity
+                    key={p ?? 'todo'}
+                    style={[styles.opcionPiso, styles.chipPiso, pisoElegido === p && styles.opcionPisoActiva]}
+                    onPress={() => setPisoElegido(p)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: pisoElegido === p }}
+                  >
+                    <Text style={[styles.opcionPisoTexto, pisoElegido === p && styles.opcionPisoTextoActiva]}>{p ?? 'Todo el hogar'}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : null}
+
             {actividades.length === 0 ? (
               <View style={styles.vacio}>
                 <Text style={styles.vacioEmoji}>📭</Text>
@@ -265,6 +292,9 @@ const styles = StyleSheet.create({
   opcionPisoActiva: { backgroundColor: Colors.brand.primary },
   opcionPisoTexto: { fontSize: 18, fontWeight: '700', color: Colors.brand.primary, textAlign: 'center' },
   opcionPisoTextoActiva: { color: '#FFFFFF' },
+  chipsPiso: { flexGrow: 0, marginBottom: 10 },
+  chipsPisoContenido: { paddingHorizontal: 14, gap: 8 },
+  chipPiso: { flex: 0, minWidth: 72, paddingHorizontal: 16 },
   tuPiso: { fontSize: 17, fontWeight: '800', color: '#9A6B12' },
 
   grilla: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
