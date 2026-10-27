@@ -34,7 +34,10 @@ const HORA_CORTE_TARDE = 13;
 const DURACION_MIN = 60;
 const ANCHO_MAXIMO = 600;
 //lo que ocupan los márgenes (lista + celda + tarjeta) en cada mitad de la grilla
-const MARGENES_POR_COLUMNA = 36;
+const MARGENES_POR_COLUMNA = 32;
+//cuántas filas de tarjetas entran enteras en pantalla, más un pedazo de la siguiente para que se note que se puede bajar
+const FILAS_VISIBLES = 2.35;
+const ALTO_MINIMO_FILA = 170;
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -70,7 +73,7 @@ function frase(a: ActividadHogar): string {
 function tamanioNombre(nombre: string, anchoDisponible: number): number {
   const masLarga = Math.max(...nombre.split(/\s+/).map((p) => p.length), 1);
   const queEntra = Math.floor(anchoDisponible / (masLarga * 0.74));
-  return Math.max(12, Math.min(19, queEntra));
+  return Math.max(13, Math.min(24, queEntra));
 }
 
 interface TarjetaProps {
@@ -93,7 +96,7 @@ function Tarjeta({ actividad, enCurso, anchoNombre }: TarjetaProps) {
         {actividad.suspendido ? <Text style={styles.suspendida}>SUSPENDIDA</Text> : null}
       </View>
       <View style={styles.tarjetaLugar}>
-        <Ionicons name="location-outline" size={16} color="#FFFFFF" />
+        <Ionicons name="location-outline" size={18} color="#FFFFFF" />
         <Text style={styles.tarjetaLugarTexto} numberOfLines={2}>{actividad.lugar ?? 'A coordinar'}</Text>
       </View>
     </View>
@@ -105,6 +108,7 @@ export default function HorariosHogarScreen() {
   const { width } = useWindowDimensions();
   const { profile } = useAuth();
   const [offset, setOffset] = useState(0);
+  const [altoLista, setAltoLista] = useState(0);
   const [pisoElegido, setPisoElegido] = useState<string | null>(null);
   //minutos desde las 00:00, se actualiza cada minuto para que "en curso" y la actividad siguiente avancen solos
   const [ahoraMin, setAhoraMin] = useState(minutosActuales);
@@ -177,11 +181,12 @@ export default function HorariosHogarScreen() {
   const textoHablar = actividades.length
     ? `Actividades del ${nombreDia}. ${actividades.map(frase).join(' ')}`
     : `No hay actividades el ${nombreDia}.`;
+  const altoFila = Math.max(ALTO_MINIMO_FILA, altoLista / FILAS_VISIBLES);
   const anchoNombre = Math.min(width, ANCHO_MAXIMO) / 2 - MARGENES_POR_COLUMNA;
 
   return (
     <View style={styles.root}>
-      <AppHeader titulo="Horarios" mostrarVolver textoHablar={textoHablar} backgroundColor={Colors.brand.red} />
+      <AppHeader titulo="Actividades" mostrarVolver textoHablar={textoHablar} backgroundColor={Colors.brand.red} />
 
       {isLoading ? (
         <LoadingState mensaje="Cargando actividades..." />
@@ -191,58 +196,72 @@ export default function HorariosHogarScreen() {
           onReintentar={refetch}
         />
       ) : (
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.contenido}>
-            <View style={styles.cabecera}>
-              <View style={styles.diaFila}>
-                <TouchableOpacity style={styles.flecha} onPress={() => setOffset((o) => o - 1)} accessibilityRole="button" accessibilityLabel="Día anterior">
-                  <Ionicons name="chevron-back" size={28} color={COLOR_TITULO} />
-                </TouchableOpacity>
-                <Text style={styles.diaTexto} adjustsFontSizeToFit numberOfLines={1}>{nombreDia.toUpperCase()}</Text>
-                <TouchableOpacity style={styles.flecha} onPress={() => setOffset((o) => o + 1)} accessibilityRole="button" accessibilityLabel="Día siguiente">
-                  <Ionicons name="chevron-forward" size={28} color={COLOR_TITULO} />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.fechaTexto}>{fechaTexto}</Text>
-              {!esHoy ? (
-                <TouchableOpacity onPress={() => setOffset(0)} style={styles.volverHoy} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button">
-                  <Text style={styles.volverHoyTexto}>Volver a hoy</Text>
-                </TouchableOpacity>
-              ) : null}
+        <>
+          <View style={styles.cabecera}>
+            <View style={styles.diaFila}>
+              <TouchableOpacity style={styles.flecha} onPress={() => setOffset((o) => o - 1)} accessibilityRole="button" accessibilityLabel="Día anterior">
+                <Ionicons name="chevron-back" size={34} color={COLOR_TITULO} />
+              </TouchableOpacity>
+              <Text style={styles.diaTexto} adjustsFontSizeToFit numberOfLines={1}>{nombreDia.toUpperCase()}</Text>
+              <TouchableOpacity style={styles.flecha} onPress={() => setOffset((o) => o + 1)} accessibilityRole="button" accessibilityLabel="Día siguiente">
+                <Ionicons name="chevron-forward" size={34} color={COLOR_TITULO} />
+              </TouchableOpacity>
             </View>
-
-            {esEmpleado ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsPiso} contentContainerStyle={styles.chipsPisoContenido}>
-                {[null, ...pisos].map((p) => (
-                  <TouchableOpacity
-                    key={p ?? 'todo'}
-                    style={[styles.chipPiso, pisoElegido === p && styles.chipPisoActivo]}
-                    onPress={() => setPisoElegido(p)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: pisoElegido === p }}
-                  >
-                    <Text style={[styles.chipPisoTexto, pisoElegido === p && styles.chipPisoTextoActivo]}>{p ?? 'Todo el hogar'}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            ) : null}
-
-            {actividades.length === 0 ? (
-              <View style={styles.vacio}>
-                <Text style={styles.vacioEmoji}>📭</Text>
-                <Text style={styles.vacioTexto}>No hay actividades para este día.</Text>
-              </View>
-            ) : (
-              <View style={styles.grilla} onLayout={(e) => { yGrilla.current = e.nativeEvent.layout.y; }}>
-                {actividades.map((a) => (
-                  <View key={a.id} style={styles.celda} onLayout={(e) => { yCeldas.current[a.id] = e.nativeEvent.layout.y; }}>
-                    <Tarjeta actividad={a} enCurso={enCurso(a)} anchoNombre={anchoNombre} />
-                  </View>
-                ))}
-              </View>
-            )}
+            <Text style={styles.fechaTexto}>{fechaTexto}</Text>
+            {/* siempre ocupa su lugar, así nada se mueve al cambiar de día */}
+            <TouchableOpacity
+              onPress={() => setOffset(0)}
+              style={[styles.volverHoy, esHoy && styles.oculto]}
+              disabled={esHoy}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              importantForAccessibility={esHoy ? 'no-hide-descendants' : 'auto'}
+            >
+              <Text style={styles.volverHoyTexto}>Volver a hoy</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+
+          {esEmpleado ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsPiso} contentContainerStyle={styles.chipsPisoContenido}>
+              {[null, ...pisos].map((p) => (
+                <TouchableOpacity
+                  key={p ?? 'todo'}
+                  style={[styles.chipPiso, pisoElegido === p && styles.chipPisoActivo]}
+                  onPress={() => setPisoElegido(p)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: pisoElegido === p }}
+                >
+                  <Text style={[styles.chipPisoTexto, pisoElegido === p && styles.chipPisoTextoActivo]}>{p ?? 'Todo el hogar'}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : null}
+
+          <ScrollView
+            ref={scrollRef}
+            style={styles.lista}
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            onLayout={(e) => setAltoLista(e.nativeEvent.layout.height)}
+          >
+            <View style={styles.contenido}>
+              {actividades.length === 0 ? (
+                <View style={styles.vacio}>
+                  <Text style={styles.vacioEmoji}>📭</Text>
+                  <Text style={styles.vacioTexto}>No hay actividades para este día.</Text>
+                </View>
+              ) : (
+                <View style={styles.grilla} onLayout={(e) => { yGrilla.current = e.nativeEvent.layout.y; }}>
+                  {actividades.map((a) => (
+                    <View key={a.id} style={[styles.celda, { height: altoFila }]} onLayout={(e) => { yCeldas.current[a.id] = e.nativeEvent.layout.y; }}>
+                      <Tarjeta actividad={a} enCurso={enCurso(a)} anchoNombre={anchoNombre} />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </>
       )}
     </View>
   );
@@ -250,15 +269,17 @@ export default function HorariosHogarScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.ui.background },
+  lista: { flex: 1 },
   scroll: { alignItems: 'center', paddingBottom: 24 },
   contenido: { width: '100%', maxWidth: ANCHO_MAXIMO },
 
-  cabecera: { backgroundColor: '#FFFFFF', alignItems: 'center', paddingTop: 6, paddingBottom: 10, paddingHorizontal: 12 },
+  cabecera: { backgroundColor: '#FFFFFF', alignItems: 'center', paddingTop: 4, paddingBottom: 8, paddingHorizontal: 8 },
   diaFila: { flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'center' },
-  flecha: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  diaTexto: { flexShrink: 1, fontSize: 34, fontWeight: '900', fontStyle: 'italic', color: COLOR_TITULO, textAlign: 'center' },
-  fechaTexto: { fontSize: 18, color: Colors.text.primary },
-  volverHoy: { marginTop: 6, paddingVertical: 4, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1.5, borderColor: Colors.brand.primary },
+  flecha: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
+  diaTexto: { flex: 1, fontSize: 38, fontWeight: '900', fontStyle: 'italic', color: COLOR_TITULO, textAlign: 'center' },
+  fechaTexto: { fontSize: 20, color: Colors.text.primary },
+  oculto: { opacity: 0 },
+  volverHoy: { marginTop: 4, paddingVertical: 4, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1.5, borderColor: Colors.brand.primary },
   volverHoyTexto: { fontSize: 16, fontWeight: '700', color: Colors.brand.primary },
 
   chipsPiso: { flexGrow: 0, marginTop: 10 },
@@ -268,20 +289,20 @@ const styles = StyleSheet.create({
   chipPisoTexto: { fontSize: 17, fontWeight: '700', color: Colors.brand.primary },
   chipPisoTextoActivo: { color: '#FFFFFF' },
 
-  grilla: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8, paddingTop: 10 },
-  celda: { width: '50%', padding: 6 },
+  grilla: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 6, paddingTop: 6 },
+  celda: { width: '50%', padding: 5 },
 
   tarjeta: { flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: '#FFFFFF', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
   tarjetaSuspendida: { opacity: 0.85 },
-  tarjetaHora: { paddingVertical: 6, alignItems: 'center' },
-  tarjetaHoraTexto: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
-  tarjetaCuerpo: { flex: 1, minHeight: 80, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 10, gap: 4 },
+  tarjetaHora: { paddingVertical: 8, alignItems: 'center' },
+  tarjetaHoraTexto: { fontSize: 28, fontWeight: '800', color: '#FFFFFF' },
+  tarjetaCuerpo: { flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 10, gap: 4 },
   tarjetaNombre: { fontWeight: '800', color: COLOR_TEXTO, textAlign: 'center' },
   tachado: { textDecorationLine: 'line-through' },
-  tarjetaTallerista: { fontSize: 17, fontWeight: '700', color: COLOR_TALLERISTA, textAlign: 'center' },
+  tarjetaTallerista: { fontSize: 20, fontWeight: '700', color: COLOR_TALLERISTA, textAlign: 'center' },
   suspendida: { fontSize: 17, fontWeight: '800', color: Colors.brand.red },
-  tarjetaLugar: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.brand.primary, paddingHorizontal: 8, paddingVertical: 8, minHeight: 40 },
-  tarjetaLugarTexto: { flex: 1, fontSize: 17, fontWeight: '600', color: '#FFFFFF' },
+  tarjetaLugar: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.brand.primary, paddingHorizontal: 8, paddingVertical: 10, minHeight: 48 },
+  tarjetaLugarTexto: { flex: 1, fontSize: 19, fontWeight: '600', color: '#FFFFFF' },
 
   vacio: { alignItems: 'center', gap: 10, padding: 32 },
   vacioEmoji: { fontSize: 44 },
