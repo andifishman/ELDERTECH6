@@ -61,6 +61,7 @@ export default function PedidosScreen() {
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const scrollRef = useRef<KeyboardAwareScrollView>(null);
 
   const [grabando, setGrabando] = useState(false);
   const [audioUri, setAudioUri] = useState<string | null>(null);
@@ -152,6 +153,8 @@ export default function PedidosScreen() {
     setTipo(p.tipo);
     setTitulo(p.titulo);
     setDescripcion(p.descripcion ?? '');
+    // El formulario de edición está arriba de todo: subir para que se vea
+    scrollRef.current?.scrollToPosition(0, 0, true);
   }, []);
 
   const cancelarEdicion = useCallback(() => {
@@ -212,6 +215,7 @@ export default function PedidosScreen() {
       />
 
       <KeyboardAwareScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -346,7 +350,7 @@ export default function PedidosScreen() {
               <ActivityIndicator color={Colors.text.onDark} />
             ) : (
               <>
-                <Ionicons name={editandoId ? 'checkmark' : 'send'} size={22} color={Colors.text.onDark} />
+                {!editandoId && <Ionicons name="send" size={22} color={Colors.text.onDark} />}
                 <Text style={styles.enviarTexto}>{editandoId ? 'Guardar cambios' : 'Enviar'}</Text>
               </>
             )}
@@ -525,7 +529,7 @@ const styles = StyleSheet.create({
   },
   enviarBtnDisabled: { opacity: 0.7 },
   enviarBtnEditando: { flex: 1, marginTop: 0 },
-  enviarTexto: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
+  enviarTexto: { textAlign: 'center', fontSize: Typography.size.lg, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   accionesRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
   cancelarBtn: {
     flex: 1,
