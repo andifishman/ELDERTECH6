@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { ErrorState, LoadingState } from '@/components/common/LoadingState';
 import { useHorariosHogar } from '@/hooks/useHorariosHogar';
+import { useAuth } from '@/context/AuthContext';
+import { perteneceAlSector, sectorDeMiPiso } from '@/utils/pisoHogar';
 import { Colors } from '@/constants/Colors';
 import { hablar } from '@/utils/tts';
 import type { ActividadHogar } from '@/services/horariosHogarService';
@@ -58,7 +60,7 @@ function frase(a: ActividadHogar): string {
   ].filter(Boolean).join(', ') + '.';
 }
 
-function Tarjeta({ actividad, ahora }: { actividad: ActividadHogar; ahora: boolean }) {
+function Tarjeta({ actividad, ahora, esMiPiso }: { actividad: ActividadHogar; ahora: boolean; esMiPiso: boolean }) {
   const color = esTarde(actividad) ? COLOR_TARDE : COLOR_MANANA;
   return (
     <View
@@ -73,6 +75,7 @@ function Tarjeta({ actividad, ahora }: { actividad: ActividadHogar; ahora: boole
         <Text style={[styles.tarjetaNombre, actividad.suspendido && styles.tachado]}>{actividad.nombre}</Text>
         {actividad.tallerista ? <Text style={styles.tarjetaTallerista}>{actividad.tallerista}</Text> : null}
         {actividad.suspendido ? <Text style={styles.suspendida}>SUSPENDIDA</Text> : null}
+        {esMiPiso ? <Text style={styles.tuPiso}>★ Tu piso</Text> : null}
       </View>
       <View style={styles.tarjetaLugar}>
         <Ionicons name="location-outline" size={18} color="#FFFFFF" />
@@ -85,6 +88,13 @@ function Tarjeta({ actividad, ahora }: { actividad: ActividadHogar; ahora: boole
 export default function HorariosHogarScreen() {
   const { data, isLoading, error, refetch } = useHorariosHogar();
   const [offset, setOffset] = useState(0);
+  const { profile } = useAuth();
+  const miSeccion = profile?.residente?.seccion ?? null;
+  const miSector = sectorDeMiPiso(miSeccion);
+  //solo se ofrece filtrar por piso si el piso del residente existe en la grilla del hogar
+  const hayMiPiso = !!miSector && (data?.actividades ?? []).some((a) => perteneceAlSector(a.sectores, miSector));
+  const [verTodo, setVerTodo] = useState(false);
+  const soloMiPiso = hayMiPiso && !verTodo;
 
   const fecha = useMemo(() => {
     const d = new Date();
@@ -94,9 +104,14 @@ export default function HorariosHogarScreen() {
   const nombreDia = DIAS[fecha.getDay()];
 
   const actividades = useMemo(() => {
-    const delDia = (data?.actividades ?? []).filter((a) => sinTildes(a.dia) === sinTildes(nombreDia));
+    const delDia = (data?.actividades ?? []).filter(
+      (a) =>
+        sinTildes(a.dia) === sinTildes(nombreDia) &&
+        //una actividad sin sectores es para todo el hogar
+        (!soloMiPiso || !miSector || a.sectores.length === 0 || perteneceAlSector(a.sectores, miSector)),
+    );
     return delDia.sort((a, b) => (horaEnMinutos(a.hora) ?? 9999) - (horaEnMinutos(b.hora) ?? 9999));
-  }, [data, nombreDia]);
+  }, [data, nombreDia, soloMiPiso, miSector]);
 
   //el cartel beige marca la actividad que está pasando ahora o, si no hay, la próxima (solo en el día de hoy)
   const idAhora = useMemo(() => {
@@ -169,6 +184,25 @@ export default function HorariosHogarScreen() {
               </View>
             </View>
 
+            {hayMiPiso ? (
+              <View style={styles.selectorPiso}>
+                {[
+                  { id: 'piso', texto: `Mi piso (${miSeccion})`, activo: soloMiPiso },
+                  { id: 'todo', texto: 'Todo el hogar', activo: !soloMiPiso },
+                ].map((op) => (
+                  <TouchableOpacity
+                    key={op.id}
+                    style={[styles.opcionPiso, op.activo && styles.opcionPisoActiva]}
+                    onPress={() => setVerTodo(op.id === 'todo')}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: op.activo }}
+                  >
+                    <Text style={[styles.opcionPisoTexto, op.activo && styles.opcionPisoTextoActiva]}>{op.texto}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+
             {actividades.length === 0 ? (
               <View style={styles.vacio}>
                 <Text style={styles.vacioEmoji}>📭</Text>
@@ -178,7 +212,11 @@ export default function HorariosHogarScreen() {
               <View style={styles.grilla}>
                 {actividades.map((a) => (
                   <View key={a.id} style={styles.celda}>
-                    <Tarjeta actividad={a} ahora={a.id === idAhora} />
+                    <Tarjeta
+                      actividad={a}
+                      ahora={a.id === idAhora}
+                      esMiPiso={!!miSector && a.sectores.length > 0 && perteneceAlSector(a.sectores, miSector)}
+                    />
                   </View>
                 ))}
               </View>
@@ -221,6 +259,13 @@ const styles = StyleSheet.create({
   leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   leyendaPunto: { width: 16, height: 16, borderRadius: 4 },
   leyendaTexto: { fontSize: 18, color: COLOR_TEXTO },
+
+  selectorPiso: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 10 },
+  opcionPiso: { flex: 1, minHeight: 52, borderRadius: 14, borderWidth: 2, borderColor: Colors.brand.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, backgroundColor: '#FFFFFF' },
+  opcionPisoActiva: { backgroundColor: Colors.brand.primary },
+  opcionPisoTexto: { fontSize: 18, fontWeight: '700', color: Colors.brand.primary, textAlign: 'center' },
+  opcionPisoTextoActiva: { color: '#FFFFFF' },
+  tuPiso: { fontSize: 17, fontWeight: '800', color: '#9A6B12' },
 
   grilla: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
   celda: { width: '50%', padding: 6 },
