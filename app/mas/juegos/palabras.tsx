@@ -6,6 +6,8 @@ import { MUNDOS_PALABRAS, mundoDeNivel, NIVELES_POR_MUNDO } from '@/constants/mu
 import { obtenerProgresoPalabras, obtenerTopPuntajes, type ProgresoPalabras, type TopPuntaje } from '@/services/juegosService';
 import { guardarProgresoPalabras, leerProgresoPalabras } from '@/utils/palabrasEstado';
 import { TOTAL_NIVELES_PALABRAS } from '@/utils/palabrasNiveles';
+import { hablar } from '@/utils/tts';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -59,7 +61,14 @@ export default function PalabrasNivelesScreen() {
           <Text style={styles.volverTexto}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.titulo} allowFontScaling={false}>Palabras</Text>
-        <View style={styles.volver} />
+        <TouchableOpacity
+          style={styles.volver}
+          onPress={() => hablar('Palabras. Armá palabras con las letras de la rueda. Tocá Continuar para seguir jugando, o elegí un nivel.')}
+          accessibilityRole="button"
+          accessibilityLabel="Escuchar: Palabras"
+        >
+          <Ionicons name="volume-medium" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>

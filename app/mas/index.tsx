@@ -88,9 +88,13 @@ export default function MasScreen() {
       >
         {/* ── Opciones disponibles ── */}
         {OPCIONES_ACTIVAS.map((opcion) => (
-          <View
+          // Tocar lo blanco de la tarjeta hace lo mismo que "Ver más"; "Escuchar" conserva su función
+          <TouchableOpacity
             key={opcion.id}
             style={styles.opcionCard}
+            onPress={() => router.push(opcion.ruta as any)}
+            activeOpacity={0.9}
+            accessible={false}
           >
             {/* Fila superior: emoji + título */}
             <View style={styles.cardTop}>
@@ -116,7 +120,7 @@ export default function MasScreen() {
                 <SpeakButton texto={opcion.textoHablar} variante="escuchar" />
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
 
       </ScrollView>
