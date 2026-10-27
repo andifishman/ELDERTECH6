@@ -678,7 +678,7 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                           styles.accionBtn,
                           styles.accionBtnEscuchar,
                           styles.accionBtnEscucharCircular,
-                          { width: accionAltura, height: accionAltura, borderRadius: accionAltura / 2 },
+                          { width: accionAltura, minWidth: accionAltura, height: accionAltura, borderRadius: accionAltura / 2 },
                         ]}
                         onPress={onLeer}
                         accessibilityLabel="Escuchar respuesta nuevamente"
@@ -693,7 +693,7 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                         style={[
                           styles.accionBtn,
                           mensaje.es_favorito ? styles.accionBtnGuardado : styles.accionBtnGuardar,
-                          { minHeight: accionAltura },
+                          { minHeight: accionAltura, minWidth: 0 },
                         ]}
                         onPress={onToggleFavorito}
                         accessibilityLabel={mensaje.es_favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'}
@@ -915,6 +915,8 @@ const styles = StyleSheet.create({
   // Circular en vez de píldora — solo ícono, sin texto, no estira con flex:1.
   accionBtnEscucharCircular: {
     flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
     paddingHorizontal: 0,
     paddingVertical: 0,
   },
