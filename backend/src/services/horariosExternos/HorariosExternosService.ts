@@ -108,10 +108,10 @@ async function refrescar(previo: SnapshotHorariosExternos | null): Promise<Snaps
   try {
     return await refrescoEnCurso;
   } catch (err) {
-    logger.error('[horarios-externos] no se pudo leer el feed', { error: err instanceof Error ? err.message : String(err) });
+    logger.error('[horarios-externos] no se pudo leer el feed', { error: err instanceof Error ? err.message : String(err), causa: err instanceof Error && err.cause ? String(err.cause) : undefined });
     // Si el feed se cae, la app sigue mostrando la última grilla buena en vez de quedarse vacía.
     if (previo) return previo;
-    throw err instanceof HttpError ? err : new HttpError(StatusCodes.BAD_GATEWAY, 'No se pudo consultar el sistema de horarios del hogar.');
+    throw err instanceof HttpError ? err : new HttpError(StatusCodes.BAD_GATEWAY, `No se pudo consultar el sistema de horarios del hogar (${err instanceof Error ? err.message : 'error desconocido'}).`);
   }
 }
 

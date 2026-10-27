@@ -70,6 +70,7 @@ export function createApp(): Express {
         openRouter: !!env.openRouterApiKey,
         busquedaExterna: !!env.tavilyApiKey,
         cacheCompartido: !!env.upstashRedisUrl,
+        feedHorariosHogar: !!env.ledorFeedKey,
       },
     });
   });

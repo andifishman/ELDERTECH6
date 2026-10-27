@@ -34,7 +34,7 @@ export function HorariosHogarPage() {
   const [dia, setDia] = useState(() => DIAS[new Date().getDay()]);
 
   // Pregunta al backend cada 5 min (el backend, a su vez, solo consulta al hogar si su caché venció).
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: KEY,
     queryFn: obtenerHorariosHogar,
     refetchInterval: CINCO_MINUTOS,
@@ -105,7 +105,7 @@ export function HorariosHogarPage() {
           <LoadingState />
         ) : isError ? (
           <div className="p-5">
-            <ErrorState mensaje="No se pudo leer el sistema de horarios del hogar." onReintentar={() => void refetch()} />
+            <ErrorState mensaje={error instanceof Error ? error.message : 'No se pudo leer el sistema de horarios del hogar.'} onReintentar={() => void refetch()} />
           </div>
         ) : delDia.length === 0 ? (
           <div className="p-5">
