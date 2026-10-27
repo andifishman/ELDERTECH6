@@ -23,6 +23,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { hablar, detenerHabla } from '@/utils/tts';
+import { RUTA_HORARIOS } from '@/constants/features';
 import { pedirPermisoMicrofono, iniciarGrabacion as crearGrabacion, finalizarModoGrabacion, type Grabacion } from '@/utils/grabadora';
 import { useAuth } from '@/context/AuthContext';
 import { useAsistenteConfig, getFontScale, getSpeechRate } from '@/context/AsistenteConfigContext';
@@ -36,6 +37,16 @@ import type { MensajeLocal, MensajeContexto } from '@/types/asistente.types';
 // ID temporal para mensajes locales mientras cargan
 let tempId = 0;
 const nextTempId = () => `temp_${++tempId}`;
+
+//deja el texto listo para leer en voz alta: sin símbolos de formato ni llamadas a herramientas que se hayan colado
+function textoParaVoz(texto: string): string {
+  return texto
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\b(?:navegar_a_pantalla|buscar_[a-z_]+)\b[^\n]*/g, ' ')
+    .replace(/[*_#`~>|]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 export default function ChatAsistenteScreen() {
   const { pregunta: preguntaInicial, sesionId: sesionIdParam, mensajeId: mensajeIdParam } = useLocalSearchParams<{ pregunta?: string; sesionId?: string; mensajeId?: string }>();
@@ -172,7 +183,7 @@ export default function ChatAsistenteScreen() {
 
   const leerTexto = useCallback(
     (texto: string) => {
-      void hablar(texto, { rate: getSpeechRate(config.velocidad), alternar: false });
+      void hablar(textoParaVoz(texto), { rate: getSpeechRate(config.velocidad), alternar: false });
     },
     [config.velocidad],
   );
@@ -713,7 +724,8 @@ function BurbujaMensaje({ mensaje, scale, destacado, onLeer, onToggleFavorito, o
                           // Corrección si la IA envía "/" para el perfil
                           const ruta = (nav.ruta === '/' && /perfil/i.test(nav.etiqueta))
                             ? '/profile'
-                            : nav.ruta;
+                            //las actividades ahora se ven en la pantalla del hogar (la vieja /horarios quedó oculta)
+                            : /^\/horarios(\/|$)/.test(nav.ruta) ? RUTA_HORARIOS : nav.ruta;
                           router.push(ruta as Parameters<typeof router.push>[0]);
                         }}
                         accessibilityLabel={mensaje.navegacion.etiqueta}

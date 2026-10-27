@@ -47,43 +47,59 @@ export function esRutaValida(ruta: string): boolean {
 }
 
 /**
- * Algunos modelos, en vez de invocar la herramienta, escriben la llamada como
- * texto plano: `navegar_a_pantalla(ruta="/x", etiqueta="y", emoji="z")`. Sin
- * esto, esa línea le llega tal cual al residente en la burbuja del chat.
+ * Algunos modelos, en vez de invocar la herramienta, la escriben como texto en la
+ * respuesta. Los formatos vistos: `navegar_a_pantalla(ruta="/x", ...)`, tags
+ * `<navegar_a_pantalla ruta="/x"/>`, el estilo Llama `<function=navegar_a_pantalla>{...}</function>`
+ * y objetos JSON `{"name": "navegar_a_pantalla", "parameters": {...}}`. Sin esto,
+ * ese código le llega tal cual al residente en la burbuja del chat.
  */
-const LLAMADA_FUNCION_REGEX =
-  /(?:^|\n)[^\n]*\b(?:navegar_a_pantalla|buscar_actividades|buscar_tutoriales|buscar_clima|buscar_informacion_externa|buscar_mi_informacion)\s*\([^)]*\)[^\n]*/g;
+const HERRAMIENTAS = 'navegar_a_pantalla|buscar_actividades|buscar_tutoriales|buscar_clima|buscar_informacion_externa|buscar_mi_informacion';
+const MENCIONA_HERRAMIENTA = new RegExp(String.raw`\b(?:${HERRAMIENTAS})\b`);
+/** Objeto JSON con hasta un nivel de anidado ({"name": ..., "parameters": {...}}). */
+const OBJETO_JSON_REGEX = /\{(?:[^{}]|\{[^{}]*\})*\}/g;
+
+/** Saca de `texto` todo lo que matchee `regex` y cumpla `filtro`, y guarda lo sacado en `sacados`. */
+function quitar(texto: string, regex: RegExp, sacados: string[], filtro: (m: string) => boolean = () => true): string {
+  return texto.replace(regex, (m) => {
+    if (!filtro(m)) return m;
+    sacados.push(m);
+    return '';
+  });
+}
+
+/** Lee `clave="valor"`, `clave: "valor"` o `"clave": "valor"` (comillas simples o dobles). */
+function leerCampo(fuente: string, clave: string): string | undefined {
+  return new RegExp(String.raw`["']?${clave}["']?\s*[:=]\s*["']([^"']*)["']`).exec(fuente)?.[1];
+}
 
 /**
- * Algunos modelos escriben <navegar_a_pantalla .../> como texto en lugar de invocar
- * la herramienta correctamente. Este helper extrae la navegación del texto y lo limpia.
- * Porteo textual de src/services/asistenteService.ts (cliente).
+ * Extrae la navegación que el modelo escribió como texto y limpia la respuesta de
+ * cualquier llamada a herramienta que haya quedado visible.
  */
 export function extraerNavegacionDelTexto(texto: string): { texto: string; navegacion?: NavegacionAccion } {
-  const navTagRegex = /<navegar_a_pantalla([^>]*)>(.*?)<\/navegar_a_pantalla>|<navegar_a_pantalla([^/]*)\/>/gs;
-  const match = navTagRegex.exec(texto);
-  const matchLlamada = /navegar_a_pantalla\s*\(([^)]*)\)/.exec(texto);
+  const sacados: string[] = [];
+  let limpio = texto;
 
-  const textoLimpio = texto
-    .replace(/<[a-zA-Z_][a-zA-Z0-9_]*(?:\s[^>]*)?>[\s\S]*?<\/[a-zA-Z_][a-zA-Z0-9_]*>/gs, '')
-    .replace(/<[a-zA-Z_][a-zA-Z0-9_]*(?:\s[^>]*)?\s*\/>/gs, '')
-    .replace(LLAMADA_FUNCION_REGEX, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  // Orden: de lo más específico a lo más general.
+  limpio = quitar(limpio, /<\|[^|>]*\|>/g, []); // marcadores especiales como <|python_tag|>
+  limpio = quitar(limpio, /<function[=\s][^>]*>[\s\S]*?(?:<\/function>|$)/gi, sacados);
+  limpio = quitar(limpio, OBJETO_JSON_REGEX, sacados, (m) => MENCIONA_HERRAMIENTA.test(m));
+  limpio = quitar(limpio, /<([a-zA-Z_][a-zA-Z0-9_]*)(?:\s[^>]*)?>[\s\S]*?<\/\1>/g, sacados, (m) => MENCIONA_HERRAMIENTA.test(m));
+  limpio = quitar(limpio, /<[a-zA-Z_][a-zA-Z0-9_]*(?:\s[^>]*)?\/>/g, sacados);
+  // Línea suelta con una llamada tipo función, con o sin paréntesis cerrados.
+  limpio = quitar(limpio, /(?:^|\n)[^\n]*\b(?:navegar_a_pantalla|buscar_[a-z_]+)\b[^\n]*/g, sacados, (m) => MENCIONA_HERRAMIENTA.test(m));
+  limpio = limpio.replace(/\n{3,}/g, '\n\n').trim();
 
-  if (!match && !matchLlamada) return { texto: textoLimpio };
+  const bloque = sacados.find((b) => /navegar_a_pantalla/.test(b));
+  if (!bloque) return { texto: limpio };
 
-  const attrs = match?.[1] ?? match?.[3] ?? matchLlamada?.[1] ?? '';
-  const rutaCruda = /ruta="([^"]*)"/.exec(attrs)?.[1];
+  const rutaCruda = leerCampo(bloque, 'ruta');
   const ruta = rutaCruda ? normalizarRuta(rutaCruda) : undefined;
-  const etiqueta = /etiqueta="([^"]*)"/.exec(attrs)?.[1];
-  const emoji = /emoji="([^"]*)"/.exec(attrs)?.[1];
-
-  if (!ruta || !esRutaValida(ruta)) return { texto: textoLimpio };
+  if (!ruta || !esRutaValida(ruta)) return { texto: limpio };
 
   return {
-    texto: textoLimpio,
-    navegacion: { ruta, etiqueta: etiqueta ?? 'Ver más', emoji: emoji ?? '📱' },
+    texto: limpio,
+    navegacion: { ruta, etiqueta: leerCampo(bloque, 'etiqueta') ?? 'Ver más', emoji: leerCampo(bloque, 'emoji') ?? '📱' },
   };
 }
 
