@@ -277,10 +277,10 @@ const styles = StyleSheet.create({
   diaFila: { flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'center' },
   flecha: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   diaTexto: { flex: 1, fontSize: 38, fontWeight: '900', fontStyle: 'italic', color: COLOR_TITULO, textAlign: 'center' },
-  fechaTexto: { fontSize: 20, color: Colors.text.primary },
+  fechaTexto: { fontSize: 23, color: Colors.text.primary },
   oculto: { opacity: 0 },
-  volverHoy: { marginTop: 4, paddingVertical: 4, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1.5, borderColor: Colors.brand.primary },
-  volverHoyTexto: { fontSize: 16, fontWeight: '700', color: Colors.brand.primary },
+  volverHoy: { marginTop: 4, paddingVertical: 6, paddingHorizontal: 18, borderRadius: 16, borderWidth: 1.5, borderColor: Colors.brand.primary },
+  volverHoyTexto: { fontSize: 19, fontWeight: '700', color: Colors.brand.primary },
 
   chipsPiso: { flexGrow: 0, marginTop: 10 },
   chipsPisoContenido: { paddingHorizontal: 12, gap: 8 },
