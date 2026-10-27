@@ -46,6 +46,11 @@ export const env = {
   // Búsqueda externa (herramienta buscar_informacion_externa del asistente) — sin esta key la herramienta queda deshabilitada, no rompe el resto del chat.
   tavilyApiKey: optional('TAVILY_API_KEY'),
 
+  // Feed de horarios del Hogar LeDor VaDor (sistema externo, solo lectura). Sin la key la
+  // pantalla de Horarios del hogar responde 503 — no rompe nada más.
+  ledorFeedUrl: process.env.LEDOR_FEED_URL || 'https://ledor.com.ar/actividades-feed.php',
+  ledorFeedKey: optional('LEDOR_FEED_KEY'),
+
   // Vercel inyecta automáticamente `Authorization: Bearer <CRON_SECRET>` en las
   // llamadas de sus Cron Jobs SOLO si la env var se llama exactamente así — es
   // el mecanismo estándar de Vercel, no algo que armamos nosotros. Reemplaza a

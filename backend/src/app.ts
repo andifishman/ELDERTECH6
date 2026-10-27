@@ -21,6 +21,7 @@ import { dashboardRouter } from './routes/dashboard.routes';
 import { gamesRouter } from './routes/games.routes';
 import { gamesAdminRouter } from './routes/gamesAdmin.routes';
 import { gruposRouter } from './routes/grupos.routes';
+import { horariosExternosAdminRouter, horariosExternosRouter } from './routes/horariosExternos.routes';
 import { hablemosRouter } from './routes/hablemos.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { novedadesAdminRouter, novedadesRouter } from './routes/novedades.routes';
@@ -80,6 +81,8 @@ export function createApp(): Express {
   app.use('/api/weather', weatherRouter);
   app.use('/api/radio', radioRouter);
   app.use('/api/activities', activitiesRouter);
+  app.use('/api/horarios-externos', horariosExternosRouter);
+  app.use('/api/admin/horarios-externos', horariosExternosAdminRouter);
   app.use('/api/tutorials', tutorialsRouter);
   app.use('/api/contacts', contactsRouter);
   app.use('/api/admin/providers', providersRouter);

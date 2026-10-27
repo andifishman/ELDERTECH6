@@ -1,4 +1,5 @@
 //pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
+import { RUTA_HORARIOS } from '@/constants/features';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { hablar } from '@/utils/tts';
@@ -33,7 +34,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   {
     id: 'horarios',
-    route: '/horarios',
+    route: RUTA_HORARIOS,
     icon: '📅',
     label: 'Horarios',
     subtitle: 'Actividades de la semana',

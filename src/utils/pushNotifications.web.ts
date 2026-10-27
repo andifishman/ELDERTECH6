@@ -1,12 +1,13 @@
 // Versión WEB de las utilidades de push — Metro la elige en lugar de pushNotifications.ts.
 // expo-notifications no implementa Web Push real (no hay token de Expo en web), así que
 // acá se usa la Push API del navegador + el Service Worker (public/sw.js). Ver src/pwa/avisosWeb.ts.
+import { RUTA_HORARIOS } from '@/constants/features';
 import { estaInstalada, nombreNavegador, obtenerTokenSilencioso } from '@/pwa/avisosWeb';
 
 /** Mapeo de `pantalla_destino` a ruta — misma tabla que la versión nativa (el backend arma la `url` con la suya). */
 export const PANTALLA_A_RUTA: Record<string, string> = {
   home: '/',
-  horarios: '/horarios',
+  horarios: RUTA_HORARIOS,
   tutoriales: '/mas',
   asistente: '/asistente',
   clima: '/mas/clima',

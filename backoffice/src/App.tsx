@@ -21,7 +21,8 @@ import { NotFoundPage } from '@/components/common/NotFoundPage';
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const HorariosPage = lazy(() => import('@/features/horarios/HorariosPage').then((m) => ({ default: m.HorariosPage })));
 const ActividadFormPage = lazy(() => import('@/features/horarios/ActividadFormPage').then((m) => ({ default: m.ActividadFormPage })));
-const TutorialesPage = lazy(() => import('@/features/tutoriales/TutorialesPage').then((m) => ({ default: m.TutorialesPage })));
+const HorariosHogarPage = lazy(() => import('@/features/horariosHogar/HorariosHogarPage').then((m) => ({ default: m.HorariosHogarPage })));
+const TutorialesPage =lazy(() => import('@/features/tutoriales/TutorialesPage').then((m) => ({ default: m.TutorialesPage })));
 const ArticuloFormPage = lazy(() => import('@/features/tutoriales/ArticuloFormPage').then((m) => ({ default: m.ArticuloFormPage })));
 const TutorialesVistosPage = lazy(() => import('@/features/tutoriales/TutorialesVistosPage').then((m) => ({ default: m.TutorialesVistosPage })));
 const UsuariosPage = lazy(() => import('@/features/usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })));
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
         children: [
           { path: '/', element: <Inicio><DashboardPage /></Inicio>, handle: { titulo: 'Dashboard', subtitulo: 'Resumen general · ElderTech Backoffice' } },
           { path: '/horarios', element: <RequireModulo modulo="horarios"><HorariosPage /></RequireModulo>, handle: { titulo: 'Horarios' } },
+          { path: '/horarios-hogar', element: <RequireModulo modulo="horarios"><HorariosHogarPage /></RequireModulo>, handle: { titulo: 'Horarios del Hogar' } },
           { path: '/horarios/nueva', element: <RequireModulo modulo="horarios" accion="crear"><ActividadFormPage /></RequireModulo>, handle: { titulo: 'Nueva actividad' } },
           { path: '/horarios/:id/editar', element: <RequireModulo modulo="horarios" accion="editar"><ActividadFormPage /></RequireModulo>, handle: { titulo: 'Editar actividad' } },
           { path: '/tutoriales', element: <RequireModulo modulo="tutoriales"><TutorialesPage /></RequireModulo>, handle: { titulo: 'Tutoriales' } },

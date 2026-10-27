@@ -1,6 +1,7 @@
 // Utilidades de Push Notifications (Expo). El envío real vive en el backend
 // (services/notifications/*) — acá solo se pide permiso, se obtiene el token
 // del dispositivo y se maneja qué pasa cuando el residente toca una notificación.
+import { RUTA_HORARIOS } from '@/constants/features';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -26,7 +27,7 @@ Notifications.setNotificationHandler({
 /** Mapeo de `pantalla_destino` (guardado en la notificación) a una ruta real de expo-router. */
 export const PANTALLA_A_RUTA: Record<string, string> = {
   home: '/',
-  horarios: '/horarios',
+  horarios: RUTA_HORARIOS,
   tutoriales: '/mas', // no hay pantalla propia de tutoriales todavía en esta versión
   asistente: '/asistente',
   clima: '/mas/clima',
