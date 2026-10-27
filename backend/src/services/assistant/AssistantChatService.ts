@@ -8,6 +8,7 @@ import { GeminiProvider } from '../../providers/chat/GeminiProvider';
 import { OpenRouterProvider } from '../../providers/chat/OpenRouterProvider';
 import * as activitiesService from '../activities/ActivitiesService';
 import * as tutorialsService from '../tutorials/TutorialsService';
+import * as horariosExternos from '../horariosExternos/HorariosExternosService';
 import * as weatherService from '../weather/WeatherService';
 import * as residentsService from '../residents/ResidentsService';
 import * as searchService from '../search/SearchService';
@@ -230,10 +231,18 @@ async function ejecutarHerramienta(
     herramientasUsadas.add(toolKey);
 
     if (toolCall.function.name === 'buscar_actividades') {
-      if (!organizacionId) return JSON.stringify({ error: 'No se pudo resolver la organización del residente.' });
       const fechaStr = args.fecha as string | undefined;
       const busqueda = (args.busqueda as string | undefined) ?? '';
       const horaStr = args.hora as string | undefined;
+      // Con el feed del hogar configurado, las actividades son las que ve el residente en
+      // la pantalla Actividades (vienen del sistema del hogar), no las de la tabla propia.
+      if (env.ledorFeedKey) {
+        const delHogar = await horariosExternos.buscarParaAsistente({ fecha: fechaStr, busqueda, hora: horaStr });
+        return delHogar.length > 0
+          ? JSON.stringify(delHogar)
+          : JSON.stringify({ mensaje: 'No se encontraron actividades para esa búsqueda en ese día/hora.' });
+      }
+      if (!organizacionId) return JSON.stringify({ error: 'No se pudo resolver la organización del residente.' });
       // Antes, una `fecha` mal formada (p. ej. si el modelo, sin parámetro de
       // hora disponible, intentaba meter una hora como "08:00" acá) producía
       // un Invalid Date silencioso que terminaba en un `.eq('fecha', 'NaN-NaN-

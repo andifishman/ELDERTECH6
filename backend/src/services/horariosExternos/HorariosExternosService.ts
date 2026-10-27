@@ -126,6 +126,8 @@ export async function obtenerSnapshot(forzar = false): Promise<SnapshotHorariosE
   return refrescar(guardado);
 }
 
+const NOMBRES_DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
 function diaDeHoyArgentina(): string {
   return normalizarDia(new Intl.DateTimeFormat('es-AR', { weekday: 'long', timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date()));
 }
@@ -136,4 +138,54 @@ export async function obtenerActividades(dia?: string): Promise<SnapshotHorarios
   if (!dia) return snapshot;
   const buscado = normalizarDia(dia) === 'hoy' ? diaDeHoyArgentina() : normalizarDia(dia);
   return { ...snapshot, actividades: snapshot.actividades.filter((a) => normalizarDia(a.dia) === buscado) };
+}
+
+export interface ActividadParaAsistente {
+  id: string;
+  nombre: string;
+  dia: string;
+  hora_inicio: string;
+  lugar: string;
+  tallerista: string;
+  sectores: string[];
+  suspendida: boolean;
+}
+
+function aMinutos(hora: string): number | null {
+  const [h, m] = hora.split(':').map(Number);
+  return h !== undefined && m !== undefined && Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+}
+
+/**
+ * Búsqueda para la herramienta `buscar_actividades` del asistente: mismas actividades
+ * que ve el residente en la pantalla Actividades. `fecha` es YYYY-MM-DD (sin fecha = hoy);
+ * como la grilla es semanal, de la fecha solo importa el día de la semana.
+ */
+export async function buscarParaAsistente(params: { fecha?: string; busqueda?: string; hora?: string }): Promise<ActividadParaAsistente[]> {
+  const coincideFecha = params.fecha ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(params.fecha) : null;
+  const dia = coincideFecha
+    ? NOMBRES_DIAS[new Date(Date.UTC(Number(coincideFecha[1]), Number(coincideFecha[2]) - 1, Number(coincideFecha[3]))).getUTCDay()]
+    : diaDeHoyArgentina();
+  const { actividades } = await obtenerActividades(dia);
+
+  const texto = normalizarDia(params.busqueda ?? '');
+  const pedida = params.hora ? aMinutos(params.hora) : null;
+
+  return actividades
+    .filter((a) => !texto || [a.nombre, a.tallerista ?? '', a.lugar ?? ''].some((c) => normalizarDia(c).includes(texto)))
+    .filter((a) => {
+      if (pedida === null) return true;
+      const inicio = a.hora ? aMinutos(a.hora) : null;
+      return inicio !== null && Math.abs(inicio - pedida) <= 60;
+    })
+    .map((a) => ({
+      id: String(a.id),
+      nombre: a.nombre,
+      dia: a.dia,
+      hora_inicio: a.hora ?? 'a coordinar',
+      lugar: a.lugar ?? '',
+      tallerista: a.tallerista ?? '',
+      sectores: a.sectores,
+      suspendida: a.suspendido,
+    }));
 }
