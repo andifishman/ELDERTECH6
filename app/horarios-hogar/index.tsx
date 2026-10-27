@@ -222,7 +222,7 @@ export default function HorariosHogarScreen() {
           </View>
 
           {esEmpleado ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsPiso} contentContainerStyle={styles.chipsPisoContenido}>
+            <View style={styles.chipsPisoContenido}>
               {[null, ...pisos].map((p) => (
                 <TouchableOpacity
                   key={p ?? 'todo'}
@@ -234,7 +234,7 @@ export default function HorariosHogarScreen() {
                   <Text style={[styles.chipPisoTexto, pisoElegido === p && styles.chipPisoTextoActivo]}>{p ?? 'Todo el hogar'}</Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           ) : null}
 
           <ScrollView
@@ -282,9 +282,8 @@ const styles = StyleSheet.create({
   volverHoy: { marginTop: 4, paddingVertical: 6, paddingHorizontal: 18, borderRadius: 16, borderWidth: 1.5, borderColor: Colors.brand.primary },
   volverHoyTexto: { fontSize: 19, fontWeight: '700', color: Colors.brand.primary },
 
-  chipsPiso: { flexGrow: 0, marginTop: 10 },
-  chipsPisoContenido: { paddingHorizontal: 12, gap: 8 },
-  chipPiso: { minHeight: 44, minWidth: 64, paddingHorizontal: 14, borderRadius: 12, borderWidth: 2, borderColor: Colors.brand.primary, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  chipsPisoContenido: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingTop: 10, gap: 8 },
+  chipPiso: { minHeight: 44, minWidth: 64, paddingHorizontal: 12, borderRadius: 12, borderWidth: 2, borderColor: Colors.brand.primary, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   chipPisoActivo: { backgroundColor: Colors.brand.primary },
   chipPisoTexto: { fontSize: 17, fontWeight: '700', color: Colors.brand.primary },
   chipPisoTextoActivo: { color: '#FFFFFF' },
