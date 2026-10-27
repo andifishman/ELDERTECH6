@@ -32,12 +32,16 @@ const FONDO_EN_CURSO = '#FFEB6B';
 const HORA_CORTE_TARDE = 13;
 //no sabemos cuánto dura cada actividad: se considera "en curso" durante una hora desde su inicio
 const DURACION_MIN = 60;
-const ANCHO_MAXIMO = 600;
-//lo que ocupan los márgenes (lista + celda + tarjeta) en cada mitad de la grilla
-const MARGENES_POR_COLUMNA = 32;
+//en tablets y iPad la lista se abre en más columnas en vez de estirar las tarjetas
+const ANCHO_MAXIMO = 1100;
+const ancho_columnas = (ancho: number) => (ancho >= 900 ? 4 : ancho >= 600 ? 3 : 2);
+const limitar = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+//lo que ocupan los márgenes de la celda y de la tarjeta en cada columna
+const MARGENES_POR_COLUMNA = 26;
 //cuántas filas de tarjetas entran enteras en pantalla, más un pedazo de la siguiente para que se note que se puede bajar
 const FILAS_VISIBLES = 2.35;
-const ALTO_MINIMO_FILA = 170;
+//alto mínimo de una fila de tarjetas, a escala 1
+const ALTO_MINIMO_FILA = 150;
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -70,34 +74,36 @@ function frase(a: ActividadHogar): string {
 }
 
 //achica la letra solo si la palabra más larga no entra en la tarjeta (ej. RECREATIVAMENTE), para que no se corte
-function tamanioNombre(nombre: string, anchoDisponible: number): number {
+function tamanioNombre(nombre: string, anchoDisponible: number, maximo: number): number {
   const masLarga = Math.max(...nombre.split(/\s+/).map((p) => p.length), 1);
   const queEntra = Math.floor(anchoDisponible / (masLarga * 0.74));
-  return Math.max(13, Math.min(24, queEntra));
+  return Math.max(13, Math.min(maximo, queEntra));
 }
 
 interface TarjetaProps {
   actividad: ActividadHogar;
   enCurso: boolean;
   anchoNombre: number;
+  //1 = celular normal; crece en tablets y baja un poco en celulares chicos
+  escala: number;
 }
 
-function Tarjeta({ actividad, enCurso, anchoNombre }: TarjetaProps) {
+function Tarjeta({ actividad, enCurso, anchoNombre, escala }: TarjetaProps) {
   const color = esTarde(actividad) ? COLOR_TARDE : COLOR_MANANA;
-  const size = tamanioNombre(actividad.nombre, anchoNombre);
+  const size = tamanioNombre(actividad.nombre, anchoNombre, 24 * escala);
   return (
     <View style={[styles.tarjeta, actividad.suspendido && styles.tarjetaSuspendida]} accessible accessibilityLabel={frase(actividad)}>
       <View style={[styles.tarjetaHora, { backgroundColor: actividad.suspendido ? '#8A8A8A' : color }]}>
-        <Text style={styles.tarjetaHoraTexto}>{actividad.horario}</Text>
+        <Text style={[styles.tarjetaHoraTexto, { fontSize: 28 * escala }]}>{actividad.horario}</Text>
       </View>
       <View style={[styles.tarjetaCuerpo, enCurso && { backgroundColor: FONDO_EN_CURSO }]}>
         <Text style={[styles.tarjetaNombre, { fontSize: size }, actividad.suspendido && styles.tachado]}>{actividad.nombre}</Text>
-        {actividad.tallerista ? <Text style={styles.tarjetaTallerista}>{actividad.tallerista}</Text> : null}
+        {actividad.tallerista ? <Text style={[styles.tarjetaTallerista, { fontSize: 20 * escala }]}>{actividad.tallerista}</Text> : null}
         {actividad.suspendido ? <Text style={styles.suspendida}>SUSPENDIDA</Text> : null}
       </View>
       <View style={styles.tarjetaLugar}>
-        <Ionicons name="location-outline" size={18} color="#FFFFFF" />
-        <Text style={styles.tarjetaLugarTexto} numberOfLines={2}>{actividad.lugar ?? 'A coordinar'}</Text>
+        <Ionicons name="location-outline" size={18 * escala} color="#FFFFFF" />
+        <Text style={[styles.tarjetaLugarTexto, { fontSize: 19 * escala }]} numberOfLines={2}>{actividad.lugar ?? 'A coordinar'}</Text>
       </View>
     </View>
   );
@@ -181,8 +187,15 @@ export default function HorariosHogarScreen() {
   const textoHablar = actividades.length
     ? `Actividades del ${nombreDia}. ${actividades.map(frase).join(' ')}`
     : `No hay actividades el ${nombreDia}.`;
-  const altoFila = Math.max(ALTO_MINIMO_FILA, altoLista / FILAS_VISIBLES);
-  const anchoNombre = Math.min(width, ANCHO_MAXIMO) / 2 - MARGENES_POR_COLUMNA;
+  const anchoUtil = Math.min(width, ANCHO_MAXIMO);
+  const columnas = ancho_columnas(anchoUtil);
+  const anchoColumna = (anchoUtil - 12) / columnas;
+  const anchoNombre = anchoColumna - MARGENES_POR_COLUMNA;
+  //las tarjetas crecen con la columna (tablets) y se achican un poco en celulares angostos
+  const escala = limitar(anchoColumna / 175, 0.85, 1.35);
+  //el título del día y la fecha escalan con el ancho de la pantalla
+  const escalaCabecera = limitar(anchoUtil / 400, 0.88, 1.35);
+  const altoFila = Math.max(ALTO_MINIMO_FILA * escala, altoLista / FILAS_VISIBLES);
 
   return (
     <View style={styles.root}>
@@ -200,14 +213,14 @@ export default function HorariosHogarScreen() {
           <View style={styles.cabecera}>
             <View style={styles.diaFila}>
               <TouchableOpacity style={styles.flecha} onPress={() => setOffset((o) => o - 1)} accessibilityRole="button" accessibilityLabel="Día anterior">
-                <Ionicons name="chevron-back" size={34} color={COLOR_TITULO} />
+                <Ionicons name="chevron-back" size={34 * escalaCabecera} color={COLOR_TITULO} />
               </TouchableOpacity>
-              <Text style={styles.diaTexto} adjustsFontSizeToFit numberOfLines={1}>{nombreDia.toUpperCase()}</Text>
+              <Text style={[styles.diaTexto, { fontSize: 38 * escalaCabecera }]} adjustsFontSizeToFit numberOfLines={1}>{nombreDia.toUpperCase()}</Text>
               <TouchableOpacity style={styles.flecha} onPress={() => setOffset((o) => o + 1)} accessibilityRole="button" accessibilityLabel="Día siguiente">
-                <Ionicons name="chevron-forward" size={34} color={COLOR_TITULO} />
+                <Ionicons name="chevron-forward" size={34 * escalaCabecera} color={COLOR_TITULO} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.fechaTexto}>{fechaTexto}</Text>
+            <Text style={[styles.fechaTexto, { fontSize: 23 * escalaCabecera }]}>{fechaTexto}</Text>
             {/* siempre ocupa su lugar, así nada se mueve al cambiar de día */}
             <TouchableOpacity
               onPress={() => setOffset(0)}
@@ -217,7 +230,7 @@ export default function HorariosHogarScreen() {
               accessibilityRole="button"
               importantForAccessibility={esHoy ? 'no-hide-descendants' : 'auto'}
             >
-              <Text style={styles.volverHoyTexto}>Volver a hoy</Text>
+              <Text style={[styles.volverHoyTexto, { fontSize: 19 * escalaCabecera }]}>Volver a hoy</Text>
             </TouchableOpacity>
           </View>
 
@@ -231,7 +244,7 @@ export default function HorariosHogarScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: pisoElegido === p }}
                 >
-                  <Text style={[styles.chipPisoTexto, pisoElegido === p && styles.chipPisoTextoActivo]}>{p ?? 'Todo el hogar'}</Text>
+                  <Text style={[styles.chipPisoTexto, { fontSize: 17 * escalaCabecera }, pisoElegido === p && styles.chipPisoTextoActivo]}>{p ?? 'Todo el hogar'}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -253,8 +266,8 @@ export default function HorariosHogarScreen() {
               ) : (
                 <View style={styles.grilla} onLayout={(e) => { yGrilla.current = e.nativeEvent.layout.y; }}>
                   {actividades.map((a) => (
-                    <View key={a.id} style={[styles.celda, { height: altoFila }]} onLayout={(e) => { yCeldas.current[a.id] = e.nativeEvent.layout.y; }}>
-                      <Tarjeta actividad={a} enCurso={enCurso(a)} anchoNombre={anchoNombre} />
+                    <View key={a.id} style={[styles.celda, { minHeight: altoFila, width: `${100 / columnas}%` }]} onLayout={(e) => { yCeldas.current[a.id] = e.nativeEvent.layout.y; }}>
+                      <Tarjeta actividad={a} enCurso={enCurso(a)} anchoNombre={anchoNombre} escala={escala} />
                     </View>
                   ))}
                 </View>
