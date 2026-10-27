@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { usePrefetchHome } from '@/hooks/usePrefetchHome';
@@ -193,12 +194,14 @@ export default function HomeScreen() {
   const fecha = getFechaHoy();
   usePrefetchHome();
 
-  // Tarjetas medianas en filas de a 2 — genérico así agregar/sacar una no
-  // rompe el layout (la última fila puede quedar con una sola, ocupa el ancho entero).
+  // Tarjetas medianas en filas de a 2 (celular) o de a 3 (tablet / iPad) — genérico así
+  // agregar/sacar una no rompe el layout (la última fila queda completada con huecos invisibles).
+  const { width: anchoPantalla } = useWindowDimensions();
+  const columnas = anchoPantalla >= 700 ? 3 : 2;
   const mediumItems = menuItems.slice(1);
   const mediumRows: MenuItem[][] = [];
-  for (let i = 0; i < mediumItems.length; i += 2) {
-    mediumRows.push(mediumItems.slice(i, i + 2));
+  for (let i = 0; i < mediumItems.length; i += columnas) {
+    mediumRows.push(mediumItems.slice(i, i + columnas));
   }
 
   const speak = (text: string) => {
@@ -280,7 +283,9 @@ export default function HomeScreen() {
             {/* Fila incompleta (ej. mientras solo hay 1 tarjeta nueva) — placeholder
                 invisible para que la tarjeta real quede del mismo tamaño, pegada
                 a la izquierda, dejando el lugar reservado para la próxima sección. */}
-            {fila.length === 1 && <View style={styles.mediumCardPlaceholder} />}
+            {Array.from({ length: columnas - fila.length }, (_, k) => (
+              <View key={`hueco-${k}`} style={styles.mediumCardPlaceholder} />
+            ))}
           </View>
         ))}
       </ScrollView>

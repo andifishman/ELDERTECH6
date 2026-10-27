@@ -26,7 +26,7 @@ Backoffice (Vite)  ──┘      + Supabase Auth (login/sesión)
 | Video de YouTube | WebView | `<iframe>` (`VideoYoutube.web.tsx`) |
 | `adjustsFontSizeToFit` | nativo | `src/utils/ajusteTextoWeb.ts` (RN-web lo ignora → textos cortados con "…") |
 | Texto grande (Accesibilidad) | parche de `Text` | `escalaTexto.ts` rama web (el parche nativo **crashea** en web) |
-| Pantalla ancha | — | columna de 600 px centrada (`marcoWeb.ts`), mismo diseño y botones |
+| Pantalla ancha | — | columna centrada de hasta 900 px (`marcoWeb.ts`): una tablet en vertical usa todo el ancho; Home y Actividades pasan a 3/4 columnas según el ancho |
 | Actualizaciones | expo-updates (OTA) | Service Worker — se aplica sola en un momento seguro, sin avisos |
 | Cerrar sesión | no existe (celular personal) | tampoco existe — se sacó a pedido, para que los residentes no puedan desloguearse |
 
