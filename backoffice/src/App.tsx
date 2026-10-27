@@ -54,8 +54,8 @@ const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { path: '/', element: <Inicio><DashboardPage /></Inicio>, handle: { titulo: 'Dashboard', subtitulo: 'Resumen general · ElderTech Backoffice' } },
-          { path: '/horarios', element: <RequireModulo modulo="horarios"><HorariosPage /></RequireModulo>, handle: { titulo: 'Horarios' } },
-          { path: '/horarios-hogar', element: <RequireModulo modulo="horarios"><HorariosHogarPage /></RequireModulo>, handle: { titulo: 'Horarios del Hogar' } },
+          { path: '/horarios', element: <RequireModulo modulo="horarios"><HorariosPage /></RequireModulo>, handle: { titulo: 'Actividades' } },
+          { path: '/horarios-hogar', element: <RequireModulo modulo="horarios"><HorariosHogarPage /></RequireModulo>, handle: { titulo: 'Actividades del Hogar' } },
           { path: '/horarios/nueva', element: <RequireModulo modulo="horarios" accion="crear"><ActividadFormPage /></RequireModulo>, handle: { titulo: 'Nueva actividad' } },
           { path: '/horarios/:id/editar', element: <RequireModulo modulo="horarios" accion="editar"><ActividadFormPage /></RequireModulo>, handle: { titulo: 'Editar actividad' } },
           { path: '/tutoriales', element: <RequireModulo modulo="tutoriales"><TutorialesPage /></RequireModulo>, handle: { titulo: 'Tutoriales' } },

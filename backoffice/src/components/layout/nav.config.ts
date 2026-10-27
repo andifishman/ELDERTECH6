@@ -37,7 +37,7 @@ const HORARIOS_DEL_HOGAR = true;
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, modulo: 'dashboard' },
-  { label: 'Horarios', to: HORARIOS_DEL_HOGAR ? '/horarios-hogar' : '/horarios', icon: CalendarClock, modulo: 'horarios' },
+  { label: 'Actividades', to: HORARIOS_DEL_HOGAR ? '/horarios-hogar' : '/horarios', icon: CalendarClock, modulo: 'horarios' },
   { label: 'Tutoriales', to: '/tutoriales', icon: GraduationCap, modulo: 'tutoriales' },
   { label: 'Usuarios', to: '/usuarios', icon: Users, modulo: 'usuarios' },
   { label: 'Grupos', to: '/grupos', icon: Users2, modulo: 'grupos' },

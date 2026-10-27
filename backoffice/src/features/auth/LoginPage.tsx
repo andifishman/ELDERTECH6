@@ -63,7 +63,7 @@ export function LoginPage() {
             Gestioná la experiencia de tus residentes
           </h1>
           <p className="mt-4 text-white/80">
-            Horarios, tutoriales, asistente IA y usuarios. Todo lo que cambies acá se refleja al
+            Actividades, tutoriales, asistente IA y usuarios. Todo lo que cambies acá se refleja al
             instante en la app de los residentes.
           </p>
         </div>

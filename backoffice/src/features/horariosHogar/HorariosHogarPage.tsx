@@ -45,7 +45,7 @@ export function HorariosHogarPage() {
     mutationFn: actualizarHorariosHogar,
     onSuccess: (nuevo: HorariosHogar) => {
       qc.setQueryData(KEY, nuevo);
-      notify.success('Horarios actualizados', 'Ya se ven así en la app de los residentes.');
+      notify.success('Actividades actualizadas', 'Ya se ven así en la app de los residentes.');
     },
     onError: () => notify.error('No se pudo actualizar'),
   });
@@ -63,7 +63,7 @@ export function HorariosHogarPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        titulo="Horarios del Hogar"
+        titulo="Actividades del Hogar"
         descripcion="Actividades y talleres que publica el sistema del hogar. Solo lectura: se editan allá."
         acciones={
           permisos.puedeEditar && (
@@ -105,7 +105,7 @@ export function HorariosHogarPage() {
           <LoadingState />
         ) : isError ? (
           <div className="p-5">
-            <ErrorState mensaje={error instanceof Error ? error.message : 'No se pudo leer el sistema de horarios del hogar.'} onReintentar={() => void refetch()} />
+            <ErrorState mensaje={error instanceof Error ? error.message : 'No se pudo leer el sistema de actividades del hogar.'} onReintentar={() => void refetch()} />
           </div>
         ) : delDia.length === 0 ? (
           <div className="p-5">

@@ -71,7 +71,7 @@ export function HorariosPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        titulo="Gestión de Horarios"
+        titulo="Gestión de Actividades"
         descripcion="Crear, editar y gestionar todas las actividades del geriátrico."
         acciones={
           permisos.puedeCrear && (
