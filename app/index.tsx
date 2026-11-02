@@ -197,11 +197,13 @@ export default function HomeScreen() {
   // Tarjetas medianas en filas de a 2 (celular) o de a 3 (tablet / iPad) — genérico así
   // agregar/sacar una no rompe el layout (la última fila queda completada con huecos invisibles).
   const { width: anchoPantalla } = useWindowDimensions();
-  // Siempre 3 columnas (2 filas): la Home es la misma en celular, tablet y compu, solo cambia el tamaño.
-  const columnas = 3;
-  const compacto = anchoPantalla < 540; // celular: tarjetas más angostas, ícono/parlante/nombre más chicos
-  // Nombre de la sección: lo más grande que entra en el ancho útil de la tarjeta (≈5,4 px de ancho por px de fuente), entre 17 y 22.
-  const tamanoNombreCompacto = Math.max(17, Math.min(22, ((anchoPantalla - 52) / 3 - 20) / 5.4));
+  // Es la misma Home en todos los tamaños: tarjetas de a 2 por fila cuando la pantalla es angosta (celular) y
+  // de a 3 cuando hay lugar (tablet, compu). Solo cambia la cantidad por fila; el zoom de marcoWeb hace el resto.
+  const columnas = anchoPantalla >= 540 ? 3 : 2;
+  // Celulares muy angostos (< 340 px): ni 2 columnas entran con ícono + parlante, se achican un poco.
+  const compacto = anchoPantalla < 340;
+  // Solo celulares muy angostos: el nombre más grande que entra en la tarjeta (≈5,4 px de ancho por px de fuente), entre 17 y 22.
+  const tamanoNombreCompacto = Math.max(17, Math.min(22, ((anchoPantalla - 40) / 2 - 20) / 5.4));
   const mediumItems = menuItems.slice(1);
   const mediumRows: MenuItem[][] = [];
   for (let i = 0; i < mediumItems.length; i += columnas) {
@@ -269,7 +271,7 @@ export default function HomeScreen() {
             {fila.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.mediumCard, compacto && styles.mediumCardCompacta, { backgroundColor: item.color }]}
+                style={[styles.mediumCard, columnas === 2 && styles.mediumCardDe2, compacto && styles.mediumCardCompacta, { backgroundColor: item.color }]}
                 onPress={() => router.push(item.route as Href)}
                 activeOpacity={0.8}
               >
@@ -280,7 +282,7 @@ export default function HomeScreen() {
                   <BotonParlante item={item} onPress={speak} compacto={compacto} />
                 </View>
                 <View style={styles.mediumCardLabelZona}>
-                  <Text style={[styles.mediumCardLabel, anchoPantalla < 700 && styles.mediumCardLabelAngosta, compacto && { fontSize: tamanoNombreCompacto }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{item.label}</Text>
+                  <Text style={[styles.mediumCardLabel, columnas === 3 && anchoPantalla < 700 && styles.mediumCardLabelAngosta, compacto && { fontSize: tamanoNombreCompacto }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{item.label}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -428,7 +430,6 @@ const styles = StyleSheet.create({
     elevation: 5,
     // 30% más alta que su contenido (58 de ícono + 2×16 de padding = 90), contenido centrado
     minHeight: 117,
-    flexGrow: 1,
     padding: 16,
     flexDirection: 'column',
     justifyContent: 'center',
@@ -477,6 +478,8 @@ const styles = StyleSheet.create({
   mediumCardLabelAngosta: { fontSize: 22 },
 
   // Celular: 3 columnas en ~110 px de tarjeta — todo se achica para que ícono + parlante + nombre entren
+  // De a 2 por fila hay 3 filas: un poco más bajas para que la Home entre entera en un celular de ~844 px de alto
+  mediumCardDe2: { minHeight: 140 },
   mediumCardCompacta: { padding: 10, paddingBottom: 0, minHeight: 120 },
   iconRowCompacto: { gap: 4 },
   iconCircleCompacto: { width: 42, height: 42, borderRadius: 21 },
