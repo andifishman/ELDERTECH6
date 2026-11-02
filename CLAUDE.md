@@ -50,6 +50,17 @@ variables y matriz de funcionalidades: **`docs/WEB_PWA.md`**. El backend necesit
 con el dominio web y las claves `VAPID_*` para Web Push.
 
 ## Reglas de desarrollo
+0. **Una sola puerta**: las apps hablan con el backend, no con las tablas de Supabase.
+   Las únicas excepciones (login/sesión, lectura de la propia fila de perfil, Realtime
+   y subida de videos del backoffice) están listadas en `src/services/apiClient.ts`
+   y `supabase/README.md`. Quién es super admin lo decide solo
+   `backend/src/config/superAdmins.ts`; el backoffice se lo pregunta al backend.
+   RLS: nunca `TO authenticated USING (true)` (los residentes también son "authenticated").
+   Reutilizar lo transversal que ya existe: `withRepoLogging` en todo repositorio,
+   `requireUuidParam` / `requireResidenteContext` en controladores y servicios,
+   `useGuardadoPartida` en juegos con puntaje, `useGrabadoraDeVoz` al grabar audio,
+   `Colors.status.*` para errores. Vocabulario de dominio: `docs/GLOSARIO.md`.
+   Antes de cerrar un cambio: `npm run lint` y `npm run typecheck`.
 1. **Accesibilidad primero**: botones mínimo 48×48pt, texto mínimo 17px body
 2. **Sin tabs**: la navegación es Stack (Expo Router), no bottom tabs
 3. **TypeScript estricto**: sin `any`, tipado explícito siempre
