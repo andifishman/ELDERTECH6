@@ -19,11 +19,12 @@ export const MAX_ANCHO_APP = 900;
 // "ven" una ventana más chica: la real dividida por el zoom — así siguen armando su layout
 // como si estuvieran en un celular grande, y todo el contenido entra.
 //
-// El zoom es el mayor que deja el área lógica en, al menos, ANCHO_LOGICO_MIN × ALTO_LOGICO_MIN:
-// un celular (≈390×844) queda en 1; una tablet en vertical (820×1180) ≈ 1,9; una compu o
-// tablet horizontal (1280×800) ≈ 1,4.
+// El zoom es el mayor que deja el área lógica en, al menos, ANCHO_LOGICO_MIN × ALTO_LOGICO_MIN
+// (el tamaño de un celular: la Home entra entera, sin desplazarse): un celular (≈390×844)
+// queda en 1; una tablet en vertical (820×1180) ≈ 1,55; una compu o tablet horizontal
+// (1280×800) ≈ 1,05. Lo que sobra en horizontal lo aprovechan las pantallas con más columnas.
 const ANCHO_LOGICO_MIN = 430;
-const ALTO_LOGICO_MIN = 560;
+const ALTO_LOGICO_MIN = 760; // lo que ocupa la Home de un celular: así en una tablet se ve entera, sin desplazarse
 const ZOOM_MAX = 2.2;
 
 /** Zoom para una ventana de `ancho`×`alto` px (redondeado a 0,05 para no borronear el texto). */

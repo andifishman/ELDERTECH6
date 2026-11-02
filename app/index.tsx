@@ -344,7 +344,9 @@ const styles = StyleSheet.create({
   welcome: { color: '#2E3A59', fontSize: 26, fontWeight: 'bold', marginBottom: 2 },
 
   // Grid
-  grid: { padding: 14, paddingTop: 2, gap: 12 },
+  // flexGrow: si la pantalla es más alta de lo que ocupan las tarjetas (tablet, compu), se reparten el
+  // espacio sobrante en vez de dejar un hueco abajo — así la Home se ve entera, sin desplazarse.
+  grid: { padding: 14, paddingTop: 2, gap: 12, flexGrow: 1 },
 
   // Shared icon circle
   iconCircle: {
@@ -422,6 +424,7 @@ const styles = StyleSheet.create({
     elevation: 5,
     // 30% más alta que su contenido (58 de ícono + 2×16 de padding = 90), contenido centrado
     minHeight: 117,
+    flexGrow: 1,
     padding: 16,
     flexDirection: 'column',
     justifyContent: 'center',
@@ -436,6 +439,7 @@ const styles = StyleSheet.create({
 
   // Medium Cards
   mediumRow: {
+    flexGrow: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,

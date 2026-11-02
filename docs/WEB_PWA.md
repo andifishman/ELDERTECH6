@@ -26,7 +26,7 @@ Backoffice (Vite)  ──┘      + Supabase Auth (login/sesión)
 | Video de YouTube | WebView | `<iframe>` (`VideoYoutube.web.tsx`) |
 | `adjustsFontSizeToFit` | nativo | `src/utils/ajusteTextoWeb.ts` (RN-web lo ignora → textos cortados con "…") |
 | Texto grande (Accesibilidad) | parche de `Text` | `escalaTexto.ts` rama web (el parche nativo **crashea** en web) |
-| Pantalla ancha | — | zoom automático (`marcoWeb.ts`): todo se agranda por igual (texto, botones, modales) hasta ×2,2 para que una tablet o compu muestre la app a un tamaño legible; las pantallas ven la ventana dividida por el zoom (un celular = ×1, una tablet vertical ≈ ×1,9, una compu/tablet horizontal ≈ ×1,4) y la columna se acota a 900 px lógicos. Los juegos que arrastran sobre una grilla dividen los eventos por `zoomActual()` |
+| Pantalla ancha | — | zoom automático (`marcoWeb.ts`): todo se agranda por igual (texto, botones, modales) hasta ×2,2, con la condición de que el área lógica nunca baje de 430×760 (la Home entera sin desplazarse); las pantallas ven la ventana dividida por el zoom (un celular = ×1, una tablet vertical ≈ ×1,55, una compu/tablet horizontal ≈ ×1,05) y la columna se acota a 900 px lógicos. Los juegos que arrastran sobre una grilla dividen los eventos por `zoomActual()` |
 | Actualizaciones | expo-updates (OTA) | Service Worker — se aplica sola en un momento seguro, sin avisos |
 | Cerrar sesión | no existe (celular personal) | tampoco existe — se sacó a pedido, para que los residentes no puedan desloguearse |
 
