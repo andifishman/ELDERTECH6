@@ -1,6 +1,6 @@
 //pantalla de Horarios con las actividades del Hogar (vienen del sistema del hogar, vía nuestro backend).
 //un día a la vez; el residente ve las de su piso y el empleado puede elegir cualquier piso o todo el hogar.
-//la lectura en voz alta es el parlante del header
+//la lectura en voz alta: el parlante del header lee todo el día; cada tarjeta tiene su propio parlante en la franja de la hora
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useHorariosHogar } from '@/hooks/useHorariosHogar';
 import { useAuth } from '@/context/AuthContext';
 import { perteneceAlSector, sectorDeMiPiso } from '@/utils/pisoHogar';
 import { Colors } from '@/constants/Colors';
+import { hablar } from '@/utils/tts';
 import type { ActividadHogar } from '@/services/horariosHogarService';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -91,12 +92,28 @@ interface TarjetaProps {
 function Tarjeta({ actividad, enCurso, anchoNombre, escala }: TarjetaProps) {
   const color = esTarde(actividad) ? COLOR_TARDE : COLOR_MANANA;
   const size = tamanioNombre(actividad.nombre, anchoNombre, 24 * escala);
+  const colorFranja = actividad.suspendido ? '#8A8A8A' : color;
+  //círculo blanco de al menos 44 px (zona de toque), crece con la tarjeta
+  const tamParlante = Math.max(44, 44 * escala);
   return (
-    <View style={[styles.tarjeta, actividad.suspendido && styles.tarjetaSuspendida]} accessible accessibilityLabel={frase(actividad)}>
-      <View style={[styles.tarjetaHora, { backgroundColor: actividad.suspendido ? '#8A8A8A' : color }]}>
-        <Text style={[styles.tarjetaHoraTexto, { fontSize: 28 * escala }]}>{actividad.horario}</Text>
+    <View style={[styles.tarjeta, actividad.suspendido && styles.tarjetaSuspendida]}>
+      {/* franja de arriba: la hora y, al lado, el parlante de ESTA actividad (hermanos, no anidados: el botón sigue siendo accesible) */}
+      <View style={[styles.tarjetaHora, { backgroundColor: colorFranja }]}>
+        <Text style={[styles.tarjetaHoraTexto, { fontSize: 26 * escala }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+          {actividad.horario}
+        </Text>
+        <TouchableOpacity
+          style={[styles.parlante, { width: tamParlante, height: tamParlante, borderRadius: tamParlante / 2 }]}
+          onPress={() => void hablar(frase(actividad))}
+          activeOpacity={0.7}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel={`Escuchar ${actividad.nombre}`}
+        >
+          <Ionicons name="volume-high" size={tamParlante * 0.55} color={colorFranja} />
+        </TouchableOpacity>
       </View>
-      <View style={[styles.tarjetaCuerpo, enCurso && { backgroundColor: FONDO_EN_CURSO }]}>
+      <View style={[styles.tarjetaCuerpo, enCurso && { backgroundColor: FONDO_EN_CURSO }]} accessible accessibilityLabel={frase(actividad)}>
         <Text style={[styles.tarjetaNombre, { fontSize: size }, actividad.suspendido && styles.tachado]}>{actividad.nombre}</Text>
         {actividad.tallerista ? <Text style={[styles.tarjetaTallerista, { fontSize: 20 * escala }]}>{actividad.tallerista}</Text> : null}
         {actividad.suspendido ? <Text style={styles.suspendida}>SUSPENDIDA</Text> : null}
@@ -306,8 +323,9 @@ const styles = StyleSheet.create({
 
   tarjeta: { flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: '#FFFFFF', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
   tarjetaSuspendida: { opacity: 0.85 },
-  tarjetaHora: { paddingVertical: 8, alignItems: 'center' },
-  tarjetaHoraTexto: { fontSize: 28, fontWeight: '800', color: '#FFFFFF' },
+  tarjetaHora: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingLeft: 10, paddingRight: 6 },
+  tarjetaHoraTexto: { flex: 1, fontSize: 26, fontWeight: '800', color: '#FFFFFF', textAlign: 'center' },
+  parlante: { backgroundColor: 'rgba(255,255,255,0.95)', alignItems: 'center', justifyContent: 'center' },
   tarjetaCuerpo: { flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 10, gap: 4 },
   tarjetaNombre: { fontWeight: '800', color: COLOR_TEXTO, textAlign: 'center' },
   tachado: { textDecorationLine: 'line-through' },
