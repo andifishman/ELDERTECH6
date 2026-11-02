@@ -5,6 +5,7 @@
 //   · Pistas: cada nivel completado da 3; una pista revela una letra de una palabra que falta.
 //   · Todo responde AL INSTANTE: pistas y avance se muestran de inmediato y se sincronizan de fondo.
 //   · Los acentos no cuentan (se escribe CANCION, no CANCIÓN).
+import { zoomActual } from '@/utils/marcoWeb';
 import { FondoPalabras } from '@/components/palabras/FondoPalabras';
 import { Confeti } from '@/components/palabras/Confeti';
 import { mundoDeNivel } from '@/constants/mundosPalabras';
@@ -413,13 +414,14 @@ export default function PalabrasJuegoScreen() {
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e) => {
         const ev = e.nativeEvent;
-        origenRef.current = { x: ev.pageX - ev.locationX, y: ev.pageY - ev.locationY };
+        const z = zoomActual(); // en web con zoom los eventos vienen en píxeles de pantalla (ver marcoWeb)
+        origenRef.current = { x: (ev.pageX - ev.locationX) / z, y: (ev.pageY - ev.locationY) / z };
         agregadosRef.current = 0;
-        procesarRef.current(ev.locationX, ev.locationY);
+        procesarRef.current(ev.locationX / z, ev.locationY / z);
       },
       onPanResponderMove: (e) => {
         const ev = e.nativeEvent;
-        procesarRef.current(ev.pageX - origenRef.current.x, ev.pageY - origenRef.current.y);
+        procesarRef.current(ev.pageX / zoomActual() - origenRef.current.x, ev.pageY / zoomActual() - origenRef.current.y);
       },
       onPanResponderRelease: () => {
         // un instante para que React termine de aplicar la última letra

@@ -1,3 +1,4 @@
+import { zoomActual } from '@/utils/marcoWeb';
 import AppHeader from '@/components/ui/AppHeader';
 import { SpeakButton } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
@@ -174,7 +175,7 @@ export default function SopaScreen() {
   const measureGrid = () => {
     requestAnimationFrame(() => {
       gridViewRef.current?.measureInWindow((x, y) => {
-        gridMeasure.current = { x, y };
+        gridMeasure.current = { x: x / zoomActual(), y: y / zoomActual() };
       });
     });
   };
@@ -183,8 +184,8 @@ export default function SopaScreen() {
   // apunta visualmente — sin este ajuste, se selecciona la fila de abajo.
   const TOUCH_Y_OFFSET = 16;
   const getCellAt = (pageX: number, pageY: number): [number, number] | null => {
-    const col = Math.floor((pageX - gridMeasure.current.x) / CELL_SIZE);
-    const row = Math.floor((pageY - TOUCH_Y_OFFSET - gridMeasure.current.y) / CELL_SIZE);
+    const col = Math.floor((pageX / zoomActual() - gridMeasure.current.x) / CELL_SIZE);
+    const row = Math.floor((pageY / zoomActual() - TOUCH_Y_OFFSET - gridMeasure.current.y) / CELL_SIZE);
     if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) return [row, col];
     return null;
   };
@@ -257,7 +258,7 @@ export default function SopaScreen() {
         // queda desactualizada si el usuario scrolleó antes de tocar) — así el cálculo
         // de celda siempre usa la posición real en pantalla en el momento del toque.
         gridViewRef.current?.measureInWindow((x, y) => {
-          gridMeasure.current = { x, y };
+          gridMeasure.current = { x: x / zoomActual(), y: y / zoomActual() };
           dragStartCell.current = getCellAt(pageX, pageY);
         });
       },

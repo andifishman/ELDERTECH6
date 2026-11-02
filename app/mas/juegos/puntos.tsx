@@ -1,3 +1,4 @@
+import { zoomActual } from '@/utils/marcoWeb';
 import AppHeader from '@/components/ui/AppHeader';
 import { SpeakRow } from '@/components/common/SpeakButton';
 import { Colors, FontSizes, Radius, Spacing } from '@/constants/theme';
@@ -287,8 +288,8 @@ export default function PuntosScreen() {
   const TOUCH_Y_OFFSET = 16;
   const getCellAt = (pageX: number, pageY: number): Cell | null => {
     const size = cellSizeRef.current;
-    const col = Math.floor((pageX - gridMeasure.current.x) / size);
-    const row = Math.floor((pageY - TOUCH_Y_OFFSET - gridMeasure.current.y) / size);
+    const col = Math.floor((pageX / zoomActual() - gridMeasure.current.x) / size);
+    const row = Math.floor((pageY / zoomActual() - TOUCH_Y_OFFSET - gridMeasure.current.y) / size);
     if (row >= 0 && row < puzzleRef.current.size && col >= 0 && col < puzzleRef.current.size) return [row, col];
     return null;
   };
@@ -342,7 +343,7 @@ export default function PuntosScreen() {
         // queda desactualizada si el usuario scrolleó antes de tocar) — así el cálculo
         // de celda siempre usa la posición real en pantalla en el momento del toque.
         gridViewRef.current?.measureInWindow((x, y) => {
-          gridMeasure.current = { x, y };
+          gridMeasure.current = { x: x / zoomActual(), y: y / zoomActual() };
 
           const cell = getCellAt(pageX, pageY);
           if (!cell) {

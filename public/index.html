@@ -43,7 +43,8 @@
       body { margin: 0; overflow: hidden; background-color: #F5F5F5; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
       /* #root fijo y del alto del viewport VISIBLE: evita el "rebote" de la página entera en iOS
          y hace que el teclado virtual achique la pantalla en vez de taparla (ver script de abajo). */
-      #root { position: fixed; left: 0; right: 0; top: var(--app-top); height: var(--app-height); display: flex; overflow: hidden; }
+      #root { position: fixed; left: 0; right: 0; top: calc(var(--app-top) / var(--app-zoom, 1)); height: calc(var(--app-height) / var(--app-zoom, 1)); display: flex; overflow: hidden; }
+      /* --app-zoom lo fija src/utils/marcoWeb.ts (zoom de body en tablets/pantallas grandes); los px de arriba están en pantalla real, por eso se dividen. */
       /* Sin zoom por doble toque en botones (el zoom por pellizco sigue disponible — accesibilidad). */
       a, button, [role="button"] { touch-action: manipulation; }
       /* Foco visible al navegar con teclado (accesibilidad en escritorio). */

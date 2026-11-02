@@ -31,6 +31,7 @@ import { useGameSounds } from '@/hooks/useGameSounds';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { useAuth } from '@/context/AuthContext';
 import { registrarPartida, obtenerEstadisticasPuntaje, obtenerTopPuntajes, TopPuntaje } from '@/services/juegosService';
+import { zoomActual } from '@/utils/marcoWeb';
 import { useGuardadoPartida } from '@/hooks/useGuardadoPartida';
 import { AvisoGuardadoPartida } from '@/components/juegos/AvisoGuardadoPartida';
 
@@ -305,6 +306,8 @@ function PiezaArrastrable({
   // que lo hacía sentir trabado). Solo se llama a onMover (JS) para
   // actualizar la previsualización de celdas, y esa función ya viene
   // limitada a una frecuencia baja (ver throttle en la pantalla principal).
+  // En web con zoom (tablets) los eventos del gesto vienen en píxeles de pantalla; el tablero está en lógicos.
+  const zoom = zoomActual();
   const gesto = Gesture.Pan()
     // Margen extra invisible alrededor de la pieza para agarrarla — no hace
     // falta tocar el pixel exacto, sobre todo para piezas chicas o con
@@ -316,14 +319,14 @@ function PiezaArrastrable({
       runOnJS(onComenzar)(pieza);
     })
     .onUpdate((e) => {
-      dragX.value = e.translationX;
-      dragY.value = e.translationY;
-      fantasmaX.value = e.absoluteX - containerPosX.value - (columnas * tamanoCelda) / 2;
-      fantasmaY.value = e.absoluteY - containerPosY.value - LEVANTAR_AL_ARRASTRAR - (filas * tamanoCelda) / 2;
-      runOnJS(onMover)(pieza, e.absoluteX, e.absoluteY);
+      dragX.value = e.translationX / zoom;
+      dragY.value = e.translationY / zoom;
+      fantasmaX.value = e.absoluteX / zoom - containerPosX.value - (columnas * tamanoCelda) / 2;
+      fantasmaY.value = e.absoluteY / zoom - containerPosY.value - LEVANTAR_AL_ARRASTRAR - (filas * tamanoCelda) / 2;
+      runOnJS(onMover)(pieza, e.absoluteX / zoom, e.absoluteY / zoom);
     })
     .onEnd((e) => {
-      runOnJS(onSoltar)(pieza, e.absoluteX, e.absoluteY);
+      runOnJS(onSoltar)(pieza, e.absoluteX / zoom, e.absoluteY / zoom);
       dragX.value = withSpring(0);
       dragY.value = withSpring(0);
       escala.value = withSpring(1);
@@ -541,7 +544,7 @@ export default function BloquesScreen() {
   const onLayoutTablero = useCallback((e: LayoutChangeEvent) => {
     const ancho = e.nativeEvent.layout.width;
     setTamanoCelda((ancho - PADDING_TABLERO * 2) / TAM);
-    boardRef.current?.measureInWindow((x, y) => { boardPos.current = { x, y }; });
+    boardRef.current?.measureInWindow((x, y) => { boardPos.current = { x: x / zoomActual(), y: y / zoomActual() }; });
   }, []);
 
   // Misma cuenta que usa el fantasma para dibujarse (ver onMoverArrastre) —
@@ -688,7 +691,7 @@ export default function BloquesScreen() {
     <View
       ref={containerRef}
       style={styles.container}
-      onLayout={() => containerRef.current?.measureInWindow((x, y) => { containerPosX.value = x; containerPosY.value = y; })}
+      onLayout={() => containerRef.current?.measureInWindow((x, y) => { containerPosX.value = x / zoomActual(); containerPosY.value = y / zoomActual(); })}
     >
       <AppHeader title="Bloques ElderTech" showBack />
 
