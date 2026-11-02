@@ -127,17 +127,17 @@ function getFechaHoy() {
 }
 
 //parlante al lado del ícono de cada tarjeta — lee en voz alta de qué se trata la sección
-function BotonParlante({ item, onPress }: { item: MenuItem; onPress: (texto: string) => void }) {
+function BotonParlante({ item, onPress, compacto = false }: { item: MenuItem; onPress: (texto: string) => void; compacto?: boolean }) {
   return (
     <TouchableOpacity
-      style={styles.parlanteBtn}
+      style={[styles.parlanteBtn, compacto && styles.parlanteBtnCompacto]}
       onPress={() => onPress(item.audio)}
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={`Escuchar qué es ${item.label}`}
       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
     >
-      <Text style={styles.parlanteIcon}>🔊</Text>
+      <Text style={[styles.parlanteIcon, compacto && styles.iconoCompacto]}>🔊</Text>
     </TouchableOpacity>
   );
 }
@@ -197,7 +197,11 @@ export default function HomeScreen() {
   // Tarjetas medianas en filas de a 2 (celular) o de a 3 (tablet / iPad) — genérico así
   // agregar/sacar una no rompe el layout (la última fila queda completada con huecos invisibles).
   const { width: anchoPantalla } = useWindowDimensions();
-  const columnas = anchoPantalla >= 540 ? 3 : 2;
+  // Siempre 3 columnas (2 filas): la Home es la misma en celular, tablet y compu, solo cambia el tamaño.
+  const columnas = 3;
+  const compacto = anchoPantalla < 540; // celular: tarjetas más angostas, ícono/parlante/nombre más chicos
+  // Nombre de la sección: lo más grande que entra en el ancho útil de la tarjeta (≈5,4 px de ancho por px de fuente), entre 17 y 22.
+  const tamanoNombreCompacto = Math.max(17, Math.min(22, ((anchoPantalla - 52) / 3 - 20) / 5.4));
   const mediumItems = menuItems.slice(1);
   const mediumRows: MenuItem[][] = [];
   for (let i = 0; i < mediumItems.length; i += columnas) {
@@ -265,18 +269,18 @@ export default function HomeScreen() {
             {fila.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.mediumCard, { backgroundColor: item.color }]}
+                style={[styles.mediumCard, compacto && styles.mediumCardCompacta, { backgroundColor: item.color }]}
                 onPress={() => router.push(item.route as Href)}
                 activeOpacity={0.8}
               >
-                <View style={styles.iconRow}>
-                  <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-                    <Text style={styles.mediumCardIcon}>{item.icon}</Text>
+                <View style={[styles.iconRow, compacto && styles.iconRowCompacto]}>
+                  <View style={[styles.iconCircle, compacto && styles.iconCircleCompacto, { backgroundColor: item.iconBg }]}>
+                    <Text style={[styles.mediumCardIcon, compacto && styles.iconoCompacto]}>{item.icon}</Text>
                   </View>
-                  <BotonParlante item={item} onPress={speak} />
+                  <BotonParlante item={item} onPress={speak} compacto={compacto} />
                 </View>
                 <View style={styles.mediumCardLabelZona}>
-                  <Text style={[styles.mediumCardLabel, columnas === 3 && anchoPantalla < 700 && styles.mediumCardLabelAngosta]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{item.label}</Text>
+                  <Text style={[styles.mediumCardLabel, anchoPantalla < 700 && styles.mediumCardLabelAngosta, compacto && { fontSize: tamanoNombreCompacto }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{item.label}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -471,5 +475,12 @@ const styles = StyleSheet.create({
   mediumCardLabel: { fontSize: 29, fontWeight: 'bold', color: '#FFFFFF' },
   // 3 columnas en un ancho justo (tablet en vertical): el nombre más largo ("Tutoriales") tiene que entrar entero
   mediumCardLabelAngosta: { fontSize: 22 },
+
+  // Celular: 3 columnas en ~110 px de tarjeta — todo se achica para que ícono + parlante + nombre entren
+  mediumCardCompacta: { padding: 10, paddingBottom: 0, minHeight: 120 },
+  iconRowCompacto: { gap: 4 },
+  iconCircleCompacto: { width: 42, height: 42, borderRadius: 21 },
+  parlanteBtnCompacto: { width: 42, height: 42, borderRadius: 21 },
+  iconoCompacto: { fontSize: 20 },
 
 });
