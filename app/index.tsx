@@ -197,7 +197,7 @@ export default function HomeScreen() {
   // Tarjetas medianas en filas de a 2 (celular) o de a 3 (tablet / iPad) — genérico así
   // agregar/sacar una no rompe el layout (la última fila queda completada con huecos invisibles).
   const { width: anchoPantalla } = useWindowDimensions();
-  const columnas = anchoPantalla >= 700 ? 3 : 2;
+  const columnas = anchoPantalla >= 540 ? 3 : 2;
   const mediumItems = menuItems.slice(1);
   const mediumRows: MenuItem[][] = [];
   for (let i = 0; i < mediumItems.length; i += columnas) {
@@ -276,7 +276,7 @@ export default function HomeScreen() {
                   <BotonParlante item={item} onPress={speak} />
                 </View>
                 <View style={styles.mediumCardLabelZona}>
-                  <Text style={styles.mediumCardLabel}>{item.label}</Text>
+                  <Text style={[styles.mediumCardLabel, columnas === 3 && anchoPantalla < 700 && styles.mediumCardLabelAngosta]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{item.label}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -469,5 +469,7 @@ const styles = StyleSheet.create({
   },
   mediumCardIcon: { fontSize: 26 },
   mediumCardLabel: { fontSize: 29, fontWeight: 'bold', color: '#FFFFFF' },
+  // 3 columnas en un ancho justo (tablet en vertical): el nombre más largo ("Tutoriales") tiene que entrar entero
+  mediumCardLabelAngosta: { fontSize: 22 },
 
 });
