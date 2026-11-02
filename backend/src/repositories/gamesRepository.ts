@@ -1,19 +1,17 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 
 export const JUEGOS = ['ahorcado', 'memotest', 'simon', 'conexiones', 'laberinto', 'sopa', 'puntos', 'jardin', 'bloques', 'palabras'] as const;
 export type Juego = (typeof JUEGOS)[number];
 export type ResultadoPartida = 'ganado' | 'perdido';
 
-export async function registrarPartida(
+export const registrarPartida = withRepoLogging('gamesRepository', 'registrarPartida', async (
   residenteId: string,
   organizacionId: string,
   juego: Juego,
   resultado: ResultadoPartida | null,
   puntos: number | null = null,
-): Promise<void> {
-  logger.info('repo:call', { repository: 'gamesRepository', action: 'registrarPartida', residenteId, organizacionId, juego, resultado, puntos });
-  try {
+): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('partidas_juegos').insert({
     residente_id: residenteId,
     organizacion_id: organizacionId,
@@ -22,12 +20,7 @@ export async function registrarPartida(
     puntos,
   });
   if (error) throw new Error(`Error al registrar la partida: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'gamesRepository', action: 'registrarPartida', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface EstadisticasPuntaje {
   mejorPuntaje: number | null;
@@ -36,9 +29,7 @@ export interface EstadisticasPuntaje {
 }
 
 /** Mejor puntaje, último puntaje y cantidad de partidas de un residente en un juego de puntaje. */
-export async function obtenerEstadisticasPuntaje(residenteId: string, juego: Juego): Promise<EstadisticasPuntaje> {
-  logger.info('repo:call', { repository: 'gamesRepository', action: 'obtenerEstadisticasPuntaje', residenteId, juego });
-  try {
+export const obtenerEstadisticasPuntaje = withRepoLogging('gamesRepository', 'obtenerEstadisticasPuntaje', async (residenteId: string, juego: Juego): Promise<EstadisticasPuntaje> => {
     const { data, error } = await getSupabaseAdmin()
       .from('partidas_juegos')
       .select('puntos, created_at')
@@ -55,11 +46,7 @@ export async function obtenerEstadisticasPuntaje(residenteId: string, juego: Jue
       ultimoPuntaje: primera ? primera.puntos : null,
       partidasJugadas: filas.length,
     };
-  } catch (err) {
-    logger.error('repo:error', { repository: 'gamesRepository', action: 'obtenerEstadisticasPuntaje', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface TopPuntaje {
   residenteId: string;
@@ -68,9 +55,7 @@ export interface TopPuntaje {
 }
 
 /** Top N residentes con mejor puntaje en un juego, dentro de la organización — para el ranking que ven todos los residentes. */
-export async function obtenerTopPuntajes(organizacionId: string, juego: Juego, limite = 3): Promise<TopPuntaje[]> {
-  logger.info('repo:call', { repository: 'gamesRepository', action: 'obtenerTopPuntajes', organizacionId, juego, limite });
-  try {
+export const obtenerTopPuntajes = withRepoLogging('gamesRepository', 'obtenerTopPuntajes', async (organizacionId: string, juego: Juego, limite: number = 3): Promise<TopPuntaje[]> => {
     const { data, error } = await getSupabaseAdmin()
       .from('partidas_juegos')
       .select('residente_id, puntos, residente:residentes(nombre, apellido, nombre_completo)')
@@ -100,11 +85,7 @@ export async function obtenerTopPuntajes(organizacionId: string, juego: Juego, l
       if (top.length >= limite) break;
     }
     return top;
-  } catch (err) {
-    logger.error('repo:error', { repository: 'gamesRepository', action: 'obtenerTopPuntajes', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface ConteoPorJuego {
   juego: Juego;
@@ -112,9 +93,7 @@ export interface ConteoPorJuego {
 }
 
 /** Cantidad de partidas por juego para un residente — usado en su ficha en el backoffice. */
-export async function contarPartidasPorJuego(residenteId: string): Promise<ConteoPorJuego[]> {
-  logger.info('repo:call', { repository: 'gamesRepository', action: 'contarPartidasPorJuego', residenteId });
-  try {
+export const contarPartidasPorJuego = withRepoLogging('gamesRepository', 'contarPartidasPorJuego', async (residenteId: string): Promise<ConteoPorJuego[]> => {
   const { data, error } = await getSupabaseAdmin().from('partidas_juegos').select('juego').eq('residente_id', residenteId);
   if (error) throw new Error(`Error al cargar las partidas: ${error.message}`);
 
@@ -123,12 +102,7 @@ export async function contarPartidasPorJuego(residenteId: string): Promise<Conte
     conteo.set(row.juego, (conteo.get(row.juego) ?? 0) + 1);
   }
   return JUEGOS.map((juego) => ({ juego, cantidad: conteo.get(juego) ?? 0 }));
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'gamesRepository', action: 'contarPartidasPorJuego', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface ResumenJuego {
   juego: Juego;
@@ -141,9 +115,7 @@ export interface ResumenJuego {
 }
 
 /** Resumen por juego de un residente (partidas, ganadas/perdidas, mejor puntaje, última vez) — ficha del usuario en el backoffice. */
-export async function resumenPorJuego(residenteId: string): Promise<ResumenJuego[]> {
-  logger.info('repo:call', { repository: 'gamesRepository', action: 'resumenPorJuego', residenteId });
-  try {
+export const resumenPorJuego = withRepoLogging('gamesRepository', 'resumenPorJuego', async (residenteId: string): Promise<ResumenJuego[]> => {
     const { data, error } = await getSupabaseAdmin()
       .from('partidas_juegos')
       .select('juego, resultado, puntos, created_at')
@@ -163,11 +135,7 @@ export async function resumenPorJuego(residenteId: string): Promise<ResumenJuego
       if (!r.ultimaPartida || fila.created_at > r.ultimaPartida) r.ultimaPartida = fila.created_at;
     }
     return [...resumen.values()];
-  } catch (err) {
-    logger.error('repo:error', { repository: 'gamesRepository', action: 'resumenPorJuego', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface FilaRankingJuego {
   residenteId: string;
@@ -181,9 +149,7 @@ export interface FilaRankingJuego {
 }
 
 /** Ranking de un juego en la organización — lo agrega Postgres (función ranking_juego). */
-export async function rankingJuego(organizacionId: string, juego: Juego, desde: string | null, limite: number): Promise<FilaRankingJuego[]> {
-  logger.info('repo:call', { repository: 'gamesRepository', action: 'rankingJuego', organizacionId, juego, desde });
-  try {
+export const rankingJuego = withRepoLogging('gamesRepository', 'rankingJuego', async (organizacionId: string, juego: Juego, desde: string | null, limite: number): Promise<FilaRankingJuego[]> => {
     const { data, error } = await getSupabaseAdmin().rpc('ranking_juego', { p_org: organizacionId, p_juego: juego, p_desde: desde, p_limite: limite });
     if (error) throw new Error(`Error al cargar el ranking: ${error.message}`);
     type Fila = { residente_id: string; nombre: string; partidas: number; ganadas: number; perdidas: number; mejor_puntaje: number | null; puntos_total: number; ultima_partida: string | null };
@@ -197,11 +163,7 @@ export async function rankingJuego(organizacionId: string, juego: Juego, desde: 
       puntosTotal: Number(f.puntos_total),
       ultimaPartida: f.ultima_partida,
     }));
-  } catch (err) {
-    logger.error('repo:error', { repository: 'gamesRepository', action: 'rankingJuego', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface FilaResumenJuego {
   juego: Juego;
@@ -213,9 +175,7 @@ export interface FilaResumenJuego {
 }
 
 /** Totales por juego de toda la organización (función resumen_juegos). Incluye juegos sin partidas, en 0. */
-export async function resumenJuegos(organizacionId: string, desde: string | null): Promise<FilaResumenJuego[]> {
-  logger.info('repo:call', { repository: 'gamesRepository', action: 'resumenJuegos', organizacionId, desde });
-  try {
+export const resumenJuegos = withRepoLogging('gamesRepository', 'resumenJuegos', async (organizacionId: string, desde: string | null): Promise<FilaResumenJuego[]> => {
     const { data, error } = await getSupabaseAdmin().rpc('resumen_juegos', { p_org: organizacionId, p_desde: desde });
     if (error) throw new Error(`Error al cargar el resumen de juegos: ${error.message}`);
     type Fila = { juego: string; partidas: number; jugadores: number; ganadas: number; mejor_puntaje: number | null; ultima_partida: string | null };
@@ -231,8 +191,4 @@ export async function resumenJuegos(organizacionId: string, desde: string | null
         ultimaPartida: f?.ultima_partida ?? null,
       };
     });
-  } catch (err) {
-    logger.error('repo:error', { repository: 'gamesRepository', action: 'resumenJuegos', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

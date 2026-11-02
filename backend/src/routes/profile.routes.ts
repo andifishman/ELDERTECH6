@@ -11,5 +11,7 @@ export const profileRouter = Router();
 // Perfil propio del admin/staff que está autenticado en el backoffice.
 profileRouter.use(requireAuth, requireAdmin);
 
+profileRouter.get('/', asyncHandler(controller.getPerfil));
+profileRouter.post('/acceso', asyncHandler(controller.postAcceso));
 profileRouter.patch('/', asyncHandler(controller.patchPerfil));
 profileRouter.post('/avatar', upload.single('archivo'), asyncHandler(controller.postAvatar));

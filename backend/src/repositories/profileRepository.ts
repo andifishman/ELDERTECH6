@@ -1,27 +1,18 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 
 export interface ActualizarPerfilInput {
   nombre_completo?: string;
   avatar_url?: string;
 }
 
-export async function actualizarPerfil(userId: string, input: ActualizarPerfilInput): Promise<void> {
-  logger.info('repo:call', { repository: 'profileRepository', action: 'actualizarPerfil', userId, input });
-  try {
+export const actualizarPerfil = withRepoLogging('profileRepository', 'actualizarPerfil', async (userId: string, input: ActualizarPerfilInput): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('perfiles_usuario').update(input).eq('id', userId);
   if (error) throw new Error(`Error al actualizar el perfil: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'profileRepository', action: 'actualizarPerfil', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Sube al bucket `tutorial-images` (mismo bucket que usa el resto del backoffice para imágenes). */
-export async function subirAvatar(userId: string, buffer: Buffer, contentType: string, originalName: string): Promise<string> {
-  logger.info('repo:call', { repository: 'profileRepository', action: 'subirAvatar', userId, buffer, contentType, originalName });
-  try {
+export const subirAvatar = withRepoLogging('profileRepository', 'subirAvatar', async (userId: string, buffer: Buffer, contentType: string, originalName: string): Promise<string> => {
   const ext = originalName.split('.').pop() ?? 'jpg';
   const path = `avatars/${userId}-${Date.now()}.${ext}`;
 
@@ -30,9 +21,28 @@ export async function subirAvatar(userId: string, buffer: Buffer, contentType: s
 
   const { data } = getSupabaseAdmin().storage.from('tutorial-images').getPublicUrl(path);
   return data.publicUrl;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'profileRepository', action: 'subirAvatar', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
+export interface PerfilPropioRow {
+  id: string;
+  organizacion_id: string | null;
+  residente_id: string | null;
+  rol: string | null;
+  nombre_completo: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  activo: boolean;
+  ultimo_acceso: string | null;
+  created_at: string;
 }
+
+export const obtenerPerfilPropio = withRepoLogging('profileRepository', 'obtenerPerfilPropio', async (userId: string): Promise<PerfilPropioRow | null> => {
+  const { data, error } = await getSupabaseAdmin().from('perfiles_usuario').select('*').eq('id', userId).maybeSingle();
+  if (error) throw new Error(`Error al cargar el perfil: ${error.message}`);
+  return data as PerfilPropioRow | null;
+});
+
+export const registrarAcceso = withRepoLogging('profileRepository', 'registrarAcceso', async (userId: string): Promise<void> => {
+  const { error } = await getSupabaseAdmin().from('perfiles_usuario').update({ ultimo_acceso: new Date().toISOString() }).eq('id', userId);
+  if (error) throw new Error(`Error al registrar el acceso: ${error.message}`);
+});

@@ -1,3 +1,5 @@
+import { StatusCodes } from 'http-status-codes';
+import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/assistantRepository';
 import * as auditService from '../audit/AuditService';
@@ -20,7 +22,7 @@ export async function crearFaq(user: AuthUser, input: repo.FaqAdminInput): Promi
 }
 
 export async function actualizarFaq(user: AuthUser, id: string, input: repo.FaqAdminInput): Promise<void> {
-  await repo.actualizarFaqAdmin(id, input);
+  if (!(await repo.actualizarFaqAdmin(id, input))) throw new HttpError(StatusCodes.NOT_FOUND, 'Pregunta frecuente no encontrada.');
   await auditService.registrarAuditoria(user, {
     accion: 'editar',
     tabla: 'faq_asistente',
@@ -30,7 +32,7 @@ export async function actualizarFaq(user: AuthUser, id: string, input: repo.FaqA
 }
 
 export async function eliminarFaq(user: AuthUser, id: string, pregunta?: string): Promise<void> {
-  await repo.eliminarFaqAdmin(id);
+  if (!(await repo.eliminarFaqAdmin(id))) throw new HttpError(StatusCodes.NOT_FOUND, 'Pregunta frecuente no encontrada.');
   await auditService.registrarAuditoria(user, {
     accion: 'eliminar',
     tabla: 'faq_asistente',

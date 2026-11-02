@@ -1,9 +1,7 @@
 import type { Request, Response } from 'express';
-import { HttpError } from '../middlewares/errorHandler';
 import * as activitiesService from '../services/activities/ActivitiesService';
 import { getActivitiesQuerySchema } from '../validators/activities.validators';
-import { requireResidenteId } from '../utils/validators';
-import { StatusCodes } from 'http-status-codes';
+import { requireResidenteId, requireUuidParam } from '../utils/validators';
 
 export async function getActivities(req: Request, res: Response): Promise<void> {
   const { fecha } = getActivitiesQuerySchema.parse(req.query);
@@ -14,7 +12,6 @@ export async function getActivities(req: Request, res: Response): Promise<void> 
 }
 
 export async function getActivityById(req: Request, res: Response): Promise<void> {
-  const id = req.params.id;
-  if (!id) throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta el id de la actividad.');
+  const id = requireUuidParam(req, 'id');
   res.json(await activitiesService.getActividadById(id));
 }

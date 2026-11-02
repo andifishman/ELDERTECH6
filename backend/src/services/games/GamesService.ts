@@ -1,3 +1,4 @@
+import { requireResidenteContext } from '../../utils/validators';
 import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/gamesRepository';
@@ -13,9 +14,8 @@ export async function registrarPartida(
   resultado: repo.ResultadoPartida | null,
   puntos: number | null = null,
 ): Promise<void> {
-  if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
-  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
-  await repo.registrarPartida(user.residenteId, user.organizacionId, juego, resultado, puntos);
+  const { residenteId, organizacionId } = requireResidenteContext(user);
+  await repo.registrarPartida(residenteId, organizacionId, juego, resultado, puntos);
 }
 
 /** Resumen por juego de un residente (partidas, ganadas/perdidas, mejor puntaje) — ficha del usuario en el backoffice. */
@@ -29,8 +29,8 @@ export async function contarPartidasPorJuego(residenteId: string): Promise<repo.
 }
 
 export async function obtenerEstadisticasPuntaje(user: AuthUser, juego: repo.Juego): Promise<repo.EstadisticasPuntaje> {
-  if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
-  return repo.obtenerEstadisticasPuntaje(user.residenteId, juego);
+  const { residenteId } = requireResidenteContext(user);
+  return repo.obtenerEstadisticasPuntaje(residenteId, juego);
 }
 
 /** Top 3 (por defecto) de residentes con mejor puntaje en un juego, dentro de la misma organización. */

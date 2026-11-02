@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
+import { firmarUrlPrivada } from './storageUrls';
 import { withRepoLogging } from '../logging/repoLogger';
 import type {
   Conversacion,
@@ -10,6 +11,12 @@ import type {
   MensajeHablemos,
   ResidenteResumenHablemos,
 } from '../providers/hablemos/HablemosTypes';
+
+/** Cambia las URLs de audio/foto por URLs firmadas temporales (los buckets del chat son privados). */
+async function conUrlsFirmadas(m: MensajeHablemos): Promise<MensajeHablemos> {
+  const [audio_url, imagen_url] = await Promise.all([firmarUrlPrivada(m.audio_url), firmarUrlPrivada(m.imagen_url)]);
+  return { ...m, audio_url, imagen_url };
+}
 
 const REPO = 'hablemosRepository';
 
@@ -196,7 +203,7 @@ export const listarMensajes = withRepoLogging(REPO, 'listarMensajes', async (
 
   const { data, error } = await query;
   if (error) throw new Error(`Error al cargar los mensajes: ${error.message}`);
-  return (data ?? []) as MensajeHablemos[];
+  return Promise.all(((data ?? []) as MensajeHablemos[]).map(conUrlsFirmadas));
 });
 
 export const crearMensajeTexto = withRepoLogging(REPO, 'crearMensajeTexto', async (
@@ -213,7 +220,7 @@ export const crearMensajeTexto = withRepoLogging(REPO, 'crearMensajeTexto', asyn
     .select('*')
     .single();
   if (error) throw new Error(`Error al enviar el mensaje: ${error.message}`);
-  return data as MensajeHablemos;
+  return conUrlsFirmadas(data as MensajeHablemos);
 });
 
 export const crearMensajeAudio = withRepoLogging(REPO, 'crearMensajeAudio', async (
@@ -231,7 +238,7 @@ export const crearMensajeAudio = withRepoLogging(REPO, 'crearMensajeAudio', asyn
     .select('*')
     .single();
   if (error) throw new Error(`Error al enviar el mensaje de voz: ${error.message}`);
-  return data as MensajeHablemos;
+  return conUrlsFirmadas(data as MensajeHablemos);
 });
 
 export const crearMensajeImagen = withRepoLogging(REPO, 'crearMensajeImagen', async (
@@ -248,7 +255,7 @@ export const crearMensajeImagen = withRepoLogging(REPO, 'crearMensajeImagen', as
     .select('*')
     .single();
   if (error) throw new Error(`Error al enviar la foto: ${error.message}`);
-  return data as MensajeHablemos;
+  return conUrlsFirmadas(data as MensajeHablemos);
 });
 
 /** Marca como "recibido" los mensajes ajenos que todavía estaban en "enviado" (nunca retrocede uno ya "leído"). */

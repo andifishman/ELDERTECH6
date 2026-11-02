@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import type { CategoriaRadio, PaisRadio, RadioStation } from '../providers/radio/RadioTypes';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 
 const PAIS_LABELS: Record<string, string> = {
   AR: 'Argentina', IL: 'Israel', US: 'Estados Unidos', ES: 'España',
@@ -29,9 +29,7 @@ interface RawRadioRow {
 }
 
 /** Porteo de `getRadioData()` (src/services/radioService.ts) — sin los URL_OVERRIDES, eso lo aplica el provider. */
-export async function fetchRadioCatalog(): Promise<{ radios: RadioStation[]; categorias: CategoriaRadio[]; paises: PaisRadio[] }> {
-  logger.info('repo:call', { repository: 'radioRepository', action: 'fetchRadioCatalog' });
-  try {
+export const fetchRadioCatalog = withRepoLogging('radioRepository', 'fetchRadioCatalog', async (): Promise<{ radios: RadioStation[]; categorias: CategoriaRadio[]; paises: PaisRadio[] }> => {
   const supabase = getSupabaseAdmin();
 
   const [radiosRes, categoriasRes, paisesRes] = await Promise.all([
@@ -83,9 +81,4 @@ export async function fetchRadioCatalog(): Promise<{ radios: RadioStation[]; cat
     }));
 
   return { radios, categorias, paises };
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'radioRepository', action: 'fetchRadioCatalog', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

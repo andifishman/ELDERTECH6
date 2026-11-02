@@ -7,7 +7,7 @@ import {
   previewAudienciaSchema,
   programarSchema,
 } from '../validators/notificationsAdmin.validators';
-import { requireParam, requireUser } from '../utils/validators';
+import { requireUuidParam, requireUser } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
 
 export async function getListado(req: Request, res: Response): Promise<void> {
@@ -35,45 +35,45 @@ export async function postCrear(req: Request, res: Response): Promise<void> {
 }
 
 export async function getDetalle(req: Request, res: Response): Promise<void> {
-  res.json(await service.obtenerDetalle(requireParam(req, 'id')));
+  res.json(await service.obtenerDetalle(requireUuidParam(req, 'id')));
 }
 
 export async function patchActualizar(req: Request, res: Response): Promise<void> {
   const input = notificationInputSchema.partial().parse(req.body);
-  res.json(await service.actualizar(requireUser(req), requireParam(req, 'id'), input));
+  res.json(await service.actualizar(requireUser(req), requireUuidParam(req, 'id'), input));
 }
 
 export async function deleteEliminar(req: Request, res: Response): Promise<void> {
-  await service.eliminar(requireUser(req), requireParam(req, 'id'));
+  await service.eliminar(requireUser(req), requireUuidParam(req, 'id'));
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function postEnviarAhora(req: Request, res: Response): Promise<void> {
-  res.json(await service.enviarAhora(requireUser(req), requireParam(req, 'id')));
+  res.json(await service.enviarAhora(requireUser(req), requireUuidParam(req, 'id')));
 }
 
 export async function postProgramar(req: Request, res: Response): Promise<void> {
   const { programada_para, recurrencia } = programarSchema.parse(req.body);
-  res.json(await service.programar(requireUser(req), requireParam(req, 'id'), programada_para, recurrencia));
+  res.json(await service.programar(requireUser(req), requireUuidParam(req, 'id'), programada_para, recurrencia));
 }
 
 export async function postCancelar(req: Request, res: Response): Promise<void> {
-  await service.cancelar(requireUser(req), requireParam(req, 'id'));
+  await service.cancelar(requireUser(req), requireUuidParam(req, 'id'));
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function postReenviar(req: Request, res: Response): Promise<void> {
-  res.json(await service.reenviar(requireUser(req), requireParam(req, 'id')));
+  res.json(await service.reenviar(requireUser(req), requireUuidParam(req, 'id')));
 }
 
 export async function postDuplicar(req: Request, res: Response): Promise<void> {
-  res.status(StatusCodes.CREATED).json(await service.duplicar(requireUser(req), requireParam(req, 'id')));
+  res.status(StatusCodes.CREATED).json(await service.duplicar(requireUser(req), requireUuidParam(req, 'id')));
 }
 
 export async function getDestinatarios(req: Request, res: Response): Promise<void> {
-  res.json(await service.listarDestinatarios(requireParam(req, 'id')));
+  res.json(await service.listarDestinatarios(requireUuidParam(req, 'id')));
 }
 
 export async function getLogs(req: Request, res: Response): Promise<void> {
-  res.json(await service.listarLogs(requireParam(req, 'id')));
+  res.json(await service.listarLogs(requireUuidParam(req, 'id')));
 }

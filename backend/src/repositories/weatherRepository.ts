@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 
 export interface ConfiguracionClima {
   id: string;
@@ -18,9 +18,7 @@ export interface CiudadFamiliar {
   timezone: string;
 }
 
-export async function getConfiguracionClima(organizacionId: string): Promise<ConfiguracionClima | null> {
-  logger.info('repo:call', { repository: 'weatherRepository', action: 'getConfiguracionClima', organizacionId });
-  try {
+export const getConfiguracionClima = withRepoLogging('weatherRepository', 'getConfiguracionClima', async (organizacionId: string): Promise<ConfiguracionClima | null> => {
   const { data, error } = await getSupabaseAdmin()
     .from('configuracion_clima')
     .select('id, organizacion_id, ciudad, latitud, longitud')
@@ -30,17 +28,10 @@ export async function getConfiguracionClima(organizacionId: string): Promise<Con
 
   if (error) return null;
   return data as ConfiguracionClima | null;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'weatherRepository', action: 'getConfiguracionClima', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Ciudades "familiares" ya vinculadas al residente — porteo de la carga inicial de clima.tsx. */
-export async function getCiudadesFamiliaresDeResidente(residenteId: string): Promise<CiudadFamiliar[]> {
-  logger.info('repo:call', { repository: 'weatherRepository', action: 'getCiudadesFamiliaresDeResidente', residenteId });
-  try {
+export const getCiudadesFamiliaresDeResidente = withRepoLogging('weatherRepository', 'getCiudadesFamiliaresDeResidente', async (residenteId: string): Promise<CiudadFamiliar[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('residente_ciudades_familiares')
     .select('ciudad_familiar:ciudades_familiares(id, nombre, pais_codigo, lat, lon, timezone)')
@@ -51,26 +42,19 @@ export async function getCiudadesFamiliaresDeResidente(residenteId: string): Pro
   return ((data ?? []) as unknown as Array<{ ciudad_familiar: CiudadFamiliar | null }>)
     .map((row) => row.ciudad_familiar)
     .filter((c): c is CiudadFamiliar => !!c?.lat && !!c?.lon && !!c?.timezone);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'weatherRepository', action: 'getCiudadesFamiliaresDeResidente', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /**
  * Busca una ciudad familiar por nombre+país; si no existe la crea (activo=false,
  * orden=999 — igual que hacía `resolverCiudadId` en clima.tsx). Devuelve su id.
  */
-export async function resolverOCrearCiudadFamiliar(ciudad: {
+export const resolverOCrearCiudadFamiliar = withRepoLogging('weatherRepository', 'resolverOCrearCiudadFamiliar', async (ciudad: {
   nombre: string;
   pais: string;
   lat: number;
   lon: number;
   timezone: string;
-}): Promise<string | null> {
-  logger.info('repo:call', { repository: 'weatherRepository', action: 'resolverOCrearCiudadFamiliar', ciudad });
-  try {
+}): Promise<string | null> => {
   const supabase = getSupabaseAdmin();
 
   const { data: existente } = await supabase
@@ -95,16 +79,9 @@ export async function resolverOCrearCiudadFamiliar(ciudad: {
     .select('id')
     .single();
   return nueva?.id ?? null;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'weatherRepository', action: 'resolverOCrearCiudadFamiliar', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function buscarCiudadFamiliarPorNombreYPais(nombre: string, pais: string): Promise<string | null> {
-  logger.info('repo:call', { repository: 'weatherRepository', action: 'buscarCiudadFamiliarPorNombreYPais', nombre, pais });
-  try {
+export const buscarCiudadFamiliarPorNombreYPais = withRepoLogging('weatherRepository', 'buscarCiudadFamiliarPorNombreYPais', async (nombre: string, pais: string): Promise<string | null> => {
   const { data } = await getSupabaseAdmin()
     .from('ciudades_familiares')
     .select('id')
@@ -112,37 +89,18 @@ export async function buscarCiudadFamiliarPorNombreYPais(nombre: string, pais: s
     .eq('pais_codigo', pais)
     .maybeSingle();
   return data?.id ?? null;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'weatherRepository', action: 'buscarCiudadFamiliarPorNombreYPais', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function vincularCiudadAResidente(residenteId: string, ciudadId: string): Promise<void> {
-  logger.info('repo:call', { repository: 'weatherRepository', action: 'vincularCiudadAResidente', residenteId, ciudadId });
-  try {
+export const vincularCiudadAResidente = withRepoLogging('weatherRepository', 'vincularCiudadAResidente', async (residenteId: string, ciudadId: string): Promise<void> => {
   await getSupabaseAdmin()
     .from('residente_ciudades_familiares')
     .upsert({ residente_id: residenteId, ciudad_id: ciudadId }, { onConflict: 'residente_id,ciudad_id', ignoreDuplicates: true });
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'weatherRepository', action: 'vincularCiudadAResidente', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function desvincularCiudadDeResidente(residenteId: string, ciudadId: string): Promise<void> {
-  logger.info('repo:call', { repository: 'weatherRepository', action: 'desvincularCiudadDeResidente', residenteId, ciudadId });
-  try {
+export const desvincularCiudadDeResidente = withRepoLogging('weatherRepository', 'desvincularCiudadDeResidente', async (residenteId: string, ciudadId: string): Promise<void> => {
   await getSupabaseAdmin()
     .from('residente_ciudades_familiares')
     .delete()
     .eq('residente_id', residenteId)
     .eq('ciudad_id', ciudadId);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'weatherRepository', action: 'desvincularCiudadDeResidente', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

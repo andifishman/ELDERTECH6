@@ -1,3 +1,4 @@
+import { requireResidenteContext } from '../../utils/validators';
 import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/palabrasRepository';
@@ -10,14 +11,8 @@ export const PISTAS_POR_NIVEL = 3;
 
 export type { ProgresoPalabras } from '../../repositories/palabrasRepository';
 
-function requireResidente(user: AuthUser): { residenteId: string; organizacionId: string } {
-  if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
-  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
-  return { residenteId: user.residenteId, organizacionId: user.organizacionId };
-}
-
 export async function obtenerProgreso(user: AuthUser): Promise<repo.ProgresoPalabras> {
-  return repo.obtenerProgreso(requireResidente(user).residenteId);
+  return repo.obtenerProgreso(requireResidenteContext(user).residenteId);
 }
 
 /**
@@ -27,7 +22,7 @@ export async function obtenerProgreso(user: AuthUser): Promise<repo.ProgresoPala
  * ranking: el "puntaje" de Palabras es el nivel alcanzado.
  */
 export async function completarNivel(user: AuthUser, nivel: number, pistasUsadas: number): Promise<repo.ProgresoPalabras & { nuevo: boolean }> {
-  const { residenteId, organizacionId } = requireResidente(user);
+  const { residenteId, organizacionId } = requireResidenteContext(user);
 
   if (nivel > 1 && !(await repo.nivelCompletado(residenteId, nivel - 1))) {
     throw new HttpError(StatusCodes.FORBIDDEN, `El nivel ${nivel} todavía está bloqueado: hay que completar el nivel ${nivel - 1} primero.`);
@@ -44,7 +39,7 @@ export async function completarNivel(user: AuthUser, nivel: number, pistasUsadas
 
 /** Gasta una pista del saldo. */
 export async function usarPista(user: AuthUser): Promise<{ pistas: number }> {
-  const { residenteId, organizacionId } = requireResidente(user);
+  const { residenteId, organizacionId } = requireResidenteContext(user);
   const pistas = await repo.gastarPista(residenteId, organizacionId);
   if (pistas === null) throw new HttpError(StatusCodes.CONFLICT, 'No te quedan pistas. Ganás 3 más al completar un nivel.');
   return { pistas };

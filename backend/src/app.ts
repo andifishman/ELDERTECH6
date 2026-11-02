@@ -22,6 +22,7 @@ import { gamesRouter } from './routes/games.routes';
 import { gamesAdminRouter } from './routes/gamesAdmin.routes';
 import { gruposRouter } from './routes/grupos.routes';
 import { horariosExternosAdminRouter, horariosExternosRouter } from './routes/horariosExternos.routes';
+import { meRouter } from './routes/me.routes';
 import { hablemosRouter } from './routes/hablemos.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { novedadesAdminRouter, novedadesRouter } from './routes/novedades.routes';
@@ -100,6 +101,7 @@ export function createApp(): Express {
   app.use('/api/admin/configuracion', configuracionRouter);
   app.use('/api/admin/dashboard', dashboardRouter);
   app.use('/api/admin/profile', profileRouter);
+  app.use('/api/me', meRouter);
   app.use('/api/hablemos', hablemosRouter);
   app.use('/api/requests', requestsRouter);
   app.use('/api/admin/requests', requestsAdminRouter);

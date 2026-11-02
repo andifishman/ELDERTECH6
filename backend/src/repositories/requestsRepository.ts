@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import type { CrearPedidoInput, EstadoPedido, PedidoSugerenciaConResidente, TranscripcionEstado } from '../providers/requests/RequestTypes';
-import { logger } from '../logging/logger';
+import { firmarUrlPrivada } from './storageUrls';
+import { withRepoLogging } from '../logging/repoLogger';
 
 const SELECT_CON_RESIDENTE = '*, residente:residentes(id, nombre, apellido, habitacion, seccion)';
 
@@ -9,9 +10,11 @@ function mapRow(row: unknown): PedidoSugerenciaConResidente {
   return { ...r, residente: Array.isArray(r.residente) ? (r.residente[0] ?? null) : r.residente };
 }
 
-export async function crearPedido(input: CrearPedidoInput): Promise<PedidoSugerenciaConResidente> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'crearPedido', input });
-  try {
+async function firmarAudio(p: PedidoSugerenciaConResidente): Promise<PedidoSugerenciaConResidente> {
+  return { ...p, audio_url: await firmarUrlPrivada(p.audio_url) };
+}
+
+export const crearPedido = withRepoLogging('requestsRepository', 'crearPedido', async (input: CrearPedidoInput): Promise<PedidoSugerenciaConResidente> => {
   const { data, error } = await getSupabaseAdmin()
     .from('pedidos_sugerencias')
     .insert({
@@ -28,13 +31,8 @@ export async function crearPedido(input: CrearPedidoInput): Promise<PedidoSugere
     .select(SELECT_CON_RESIDENTE)
     .single();
   if (error) throw new Error(`Error al guardar la solicitud: ${error.message}`);
-  return mapRow(data);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'crearPedido', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+  return firmarAudio(mapRow(data));
+});
 
 export interface EditarPropioInput {
   titulo: string;
@@ -42,9 +40,7 @@ export interface EditarPropioInput {
 }
 
 /** Solo permite editar mientras el residente sigue siendo el dueño y la solicitud sigue "pendiente" (nadie la tomó todavía). */
-export async function actualizarPropio(id: string, residenteId: string, input: EditarPropioInput): Promise<PedidoSugerenciaConResidente | null> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'actualizarPropio', id, residenteId, input });
-  try {
+export const actualizarPropio = withRepoLogging('requestsRepository', 'actualizarPropio', async (id: string, residenteId: string, input: EditarPropioInput): Promise<PedidoSugerenciaConResidente | null> => {
   const { data, error } = await getSupabaseAdmin()
     .from('pedidos_sugerencias')
     .update({ titulo: input.titulo, descripcion: input.descripcion ?? null })
@@ -54,30 +50,18 @@ export async function actualizarPropio(id: string, residenteId: string, input: E
     .select(SELECT_CON_RESIDENTE)
     .maybeSingle();
   if (error) throw new Error(`Error al editar la solicitud: ${error.message}`);
-  return data ? mapRow(data) : null;
+  return data ? firmarAudio(mapRow(data)) : null;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'actualizarPropio', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function listarPropios(residenteId: string): Promise<PedidoSugerenciaConResidente[]> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'listarPropios', residenteId });
-  try {
+export const listarPropios = withRepoLogging('requestsRepository', 'listarPropios', async (residenteId: string): Promise<PedidoSugerenciaConResidente[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('pedidos_sugerencias')
     .select(SELECT_CON_RESIDENTE)
     .eq('residente_id', residenteId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(`Error al cargar tus solicitudes: ${error.message}`);
-  return ((data ?? []) as unknown[]).map(mapRow);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'listarPropios', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+  return Promise.all(((data ?? []) as unknown[]).map((f) => firmarAudio(mapRow(f))));
+});
 
 export interface ListarAdminFiltros {
   estado?: EstadoPedido;
@@ -87,9 +71,7 @@ export interface ListarAdminFiltros {
   fechaHasta?: string;
 }
 
-export async function listarAdmin(organizacionId: string, filtros: ListarAdminFiltros): Promise<PedidoSugerenciaConResidente[]> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'listarAdmin', organizacionId, filtros });
-  try {
+export const listarAdmin = withRepoLogging('requestsRepository', 'listarAdmin', async (organizacionId: string, filtros: ListarAdminFiltros): Promise<PedidoSugerenciaConResidente[]> => {
   let query = getSupabaseAdmin().from('pedidos_sugerencias').select(SELECT_CON_RESIDENTE).eq('organizacion_id', organizacionId);
 
   if (filtros.estado) query = query.eq('estado', filtros.estado);
@@ -100,46 +82,25 @@ export async function listarAdmin(organizacionId: string, filtros: ListarAdminFi
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw new Error(`Error al cargar las solicitudes: ${error.message}`);
 
-  let filas = ((data ?? []) as unknown[]).map(mapRow);
+  let filas = await Promise.all(((data ?? []) as unknown[]).map((f) => firmarAudio(mapRow(f))));
   // La sección vive en el residente relacionado — se filtra en memoria porque
   // el filtro cruza una tabla vinculada (mismo enfoque que el resto del backoffice).
   if (filtros.seccion) filas = filas.filter((f) => f.residente?.seccion === filtros.seccion);
   return filas;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'listarAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function obtenerPorId(id: string): Promise<PedidoSugerenciaConResidente | null> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'obtenerPorId', id });
-  try {
+export const obtenerPorId = withRepoLogging('requestsRepository', 'obtenerPorId', async (id: string): Promise<PedidoSugerenciaConResidente | null> => {
   const { data, error } = await getSupabaseAdmin().from('pedidos_sugerencias').select(SELECT_CON_RESIDENTE).eq('id', id).maybeSingle();
   if (error) throw new Error(`Error al cargar la solicitud: ${error.message}`);
-  return data ? mapRow(data) : null;
+  return data ? firmarAudio(mapRow(data)) : null;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'obtenerPorId', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function getResidenteId(id: string): Promise<string | null> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'getResidenteId', id });
-  try {
+export const getResidenteId = withRepoLogging('requestsRepository', 'getResidenteId', async (id: string): Promise<string | null> => {
   const { data } = await getSupabaseAdmin().from('pedidos_sugerencias').select('residente_id').eq('id', id).maybeSingle();
   return data?.residente_id ?? null;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'getResidenteId', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function actualizarEstado(id: string, estado: EstadoPedido, resueltoPor: string | null): Promise<void> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'actualizarEstado', id, estado, resueltoPor });
-  try {
+export const actualizarEstado = withRepoLogging('requestsRepository', 'actualizarEstado', async (id: string, estado: EstadoPedido, resueltoPor: string | null): Promise<void> => {
   const { error } = await getSupabaseAdmin()
     .from('pedidos_sugerencias')
     .update({
@@ -149,41 +110,20 @@ export async function actualizarEstado(id: string, estado: EstadoPedido, resuelt
     })
     .eq('id', id);
   if (error) throw new Error(`Error al actualizar el estado: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'actualizarEstado', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function actualizarTranscripcion(id: string, transcripcion: string | null, estado: TranscripcionEstado): Promise<void> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'actualizarTranscripcion', id, transcripcion, estado });
-  try {
+export const actualizarTranscripcion = withRepoLogging('requestsRepository', 'actualizarTranscripcion', async (id: string, transcripcion: string | null, estado: TranscripcionEstado): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('pedidos_sugerencias').update({ transcripcion, transcripcion_estado: estado }).eq('id', id);
   if (error) throw new Error(`Error al guardar la transcripción: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'actualizarTranscripcion', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function eliminar(id: string): Promise<void> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'eliminar', id });
-  try {
+export const eliminar = withRepoLogging('requestsRepository', 'eliminar', async (id: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('pedidos_sugerencias').delete().eq('id', id);
   if (error) throw new Error(`Error al eliminar la solicitud: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'eliminar', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Sube al bucket `pedidos-audio`. */
-export async function subirAudio(residenteId: string, buffer: Buffer, contentType: string, originalName: string): Promise<string> {
-  logger.info('repo:call', { repository: 'requestsRepository', action: 'subirAudio', residenteId, buffer, contentType, originalName });
-  try {
+export const subirAudio = withRepoLogging('requestsRepository', 'subirAudio', async (residenteId: string, buffer: Buffer, contentType: string, originalName: string): Promise<string> => {
   const ext = originalName.split('.').pop() ?? 'm4a';
   const path = `${residenteId}/${Date.now()}.${ext}`;
 
@@ -192,9 +132,4 @@ export async function subirAudio(residenteId: string, buffer: Buffer, contentTyp
 
   const { data } = getSupabaseAdmin().storage.from('pedidos-audio').getPublicUrl(path);
   return data.publicUrl;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'requestsRepository', action: 'subirAudio', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import * as assistantAdminService from '../services/assistant/AssistantAdminService';
 import { eliminarFaqQuerySchema, faqInputSchema, historialQuerySchema, reordenarFaqSchema } from '../validators/assistantAdmin.validators';
-import { requireParam, requireUser } from '../utils/validators';
+import { requireUuidParam, requireUser } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
 
 export async function getFaqs(_req: Request, res: Response): Promise<void> {
@@ -16,13 +16,13 @@ export async function postFaq(req: Request, res: Response): Promise<void> {
 
 export async function patchFaq(req: Request, res: Response): Promise<void> {
   const input = faqInputSchema.parse(req.body);
-  await assistantAdminService.actualizarFaq(requireUser(req), requireParam(req, 'id'), input);
+  await assistantAdminService.actualizarFaq(requireUser(req), requireUuidParam(req, 'id'), input);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function deleteFaq(req: Request, res: Response): Promise<void> {
   const { pregunta } = eliminarFaqQuerySchema.parse(req.query);
-  await assistantAdminService.eliminarFaq(requireUser(req), requireParam(req, 'id'), pregunta);
+  await assistantAdminService.eliminarFaq(requireUser(req), requireUuidParam(req, 'id'), pregunta);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 

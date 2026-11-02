@@ -2,7 +2,7 @@ import { getSupabaseAdmin } from './supabaseAdmin';
 import type { ActividadCompleta } from '../providers/activities/ActivityTypes';
 import type { AuditLog } from './auditRepository';
 import type { Residente } from './residentsRepository';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 
 const ACTIVIDAD_SELECT_SIMPLE = '*, tipo_actividad:tipos_actividad(*), ubicacion:ubicaciones(*), responsable:responsables(*)';
 
@@ -36,9 +36,7 @@ export interface DashboardKpis {
   tutorialMasVisto: { titulo: string; vistas: number } | null;
 }
 
-export async function obtenerKpis(organizacionId: string): Promise<DashboardKpis> {
-  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerKpis', organizacionId });
-  try {
+export const obtenerKpis = withRepoLogging('dashboardRepository', 'obtenerKpis', async (organizacionId: string): Promise<DashboardKpis> => {
   const hoy = hoyISO();
   const hoyStart = `${hoy}T00:00:00.000Z`;
   const hoyEnd = `${hoy}T23:59:59.999Z`;
@@ -58,16 +56,9 @@ export async function obtenerKpis(organizacionId: string): Promise<DashboardKpis
     usuariosRegistrados: residentesActivos,
     tutorialMasVisto: null,
   };
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerKpis', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function obtenerActividadesHoy(organizacionId: string): Promise<ActividadCompleta[]> {
-  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerActividadesHoy', organizacionId });
-  try {
+export const obtenerActividadesHoy = withRepoLogging('dashboardRepository', 'obtenerActividadesHoy', async (organizacionId: string): Promise<ActividadCompleta[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('actividades')
     .select(ACTIVIDAD_SELECT_SIMPLE)
@@ -77,18 +68,11 @@ export async function obtenerActividadesHoy(organizacionId: string): Promise<Act
     .order('hora_inicio', { ascending: true });
   if (error) throw new Error(`Error al cargar actividades: ${error.message}`);
   return (data ?? []) as unknown as ActividadCompleta[];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerActividadesHoy', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export type ResidenteConConexion = Residente;
 
-export async function obtenerResidentesRecientes(organizacionId: string, limite = 5): Promise<ResidenteConConexion[]> {
-  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerResidentesRecientes', organizacionId, limite });
-  try {
+export const obtenerResidentesRecientes = withRepoLogging('dashboardRepository', 'obtenerResidentesRecientes', async (organizacionId: string, limite: number = 5): Promise<ResidenteConConexion[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('residentes')
     .select('*')
@@ -99,12 +83,7 @@ export async function obtenerResidentesRecientes(organizacionId: string, limite 
     .limit(limite);
   if (error) throw new Error(`Error al cargar residentes: ${error.message}`);
   return (data ?? []) as ResidenteConConexion[];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerResidentesRecientes', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface TutorialConVistas {
   id: string;
@@ -118,9 +97,7 @@ export interface TutorialConVistas {
 /** Todos los tutoriales (publicados y borradores) con su cantidad de vistas, ordenados de más a menos —
  * incluye los que todavía no tienen ninguna vista (vistas: 0), a diferencia de antes que solo traía los
  * que ya habían sido vistos. Sin `limite`, devuelve el listado completo (lo usa la pantalla "Tutoriales vistos"). */
-export async function obtenerTutorialesMasVistos(limite?: number): Promise<TutorialConVistas[]> {
-  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerTutorialesMasVistos', limite });
-  try {
+export const obtenerTutorialesMasVistos = withRepoLogging('dashboardRepository', 'obtenerTutorialesMasVistos', async (limite?: number): Promise<TutorialConVistas[]> => {
     const [{ data: progreso }, { data: tutoriales }] = await Promise.all([
       getSupabaseAdmin().from('progreso_tutorial').select('tutorial_id'),
       getSupabaseAdmin().from('tutoriales').select('id, titulo, formato, activo, categoria:categorias_tutorial(nombre)'),
@@ -145,15 +122,9 @@ export async function obtenerTutorialesMasVistos(limite?: number): Promise<Tutor
       .sort((a, b) => b.vistas - a.vistas);
 
     return typeof limite === 'number' ? resultado.slice(0, limite) : resultado;
-  } catch (err) {
-    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerTutorialesMasVistos', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
-export async function obtenerActividadReciente(organizacionId: string, limite = 6): Promise<AuditLog[]> {
-  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerActividadReciente', organizacionId, limite });
-  try {
+export const obtenerActividadReciente = withRepoLogging('dashboardRepository', 'obtenerActividadReciente', async (organizacionId: string, limite: number = 6): Promise<AuditLog[]> => {
   try {
     const { data } = await getSupabaseAdmin()
       .from('audit_logs')
@@ -165,21 +136,14 @@ export async function obtenerActividadReciente(organizacionId: string, limite = 
   } catch {
     return [];
   }
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerActividadReciente', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /**
  * Usuarios activos de la app agrupados por sección del geriátrico. Cuenta solo
  * residentes con cuenta (fila en `perfiles_usuario`) — los mismos que lista la
  * pantalla Usuarios del backoffice.
  */
-export async function obtenerUsuariosPorSeccion(organizacionId: string): Promise<{ nombre: string; total: number }[]> {
-  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerUsuariosPorSeccion', organizacionId });
-  try {
+export const obtenerUsuariosPorSeccion = withRepoLogging('dashboardRepository', 'obtenerUsuariosPorSeccion', async (organizacionId: string): Promise<{ nombre: string; total: number }[]> => {
     const [residentesR, perfilesR] = await Promise.all([
       getSupabaseAdmin().from('residentes').select('id, seccion').eq('organizacion_id', organizacionId).eq('activo', true),
       getSupabaseAdmin().from('perfiles_usuario').select('residente_id').eq('organizacion_id', organizacionId).not('residente_id', 'is', null),
@@ -202,15 +166,9 @@ export async function obtenerUsuariosPorSeccion(organizacionId: string): Promise
         if (b.nombre === 'Sin sección') return -1;
         return a.nombre.localeCompare(b.nombre, 'es', { numeric: true });
       });
-  } catch (err) {
-    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerUsuariosPorSeccion', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
-export async function obtenerActividadesPorCategoria(organizacionId: string): Promise<{ nombre: string; total: number }[]> {
-  logger.info('repo:call', { repository: 'dashboardRepository', action: 'obtenerActividadesPorCategoria', organizacionId });
-  try {
+export const obtenerActividadesPorCategoria = withRepoLogging('dashboardRepository', 'obtenerActividadesPorCategoria', async (organizacionId: string): Promise<{ nombre: string; total: number }[]> => {
   try {
     const { data } = await getSupabaseAdmin()
       .from('actividades')
@@ -231,9 +189,4 @@ export async function obtenerActividadesPorCategoria(organizacionId: string): Pr
   } catch {
     return [];
   }
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'dashboardRepository', action: 'obtenerActividadesPorCategoria', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { HttpError } from '../middlewares/errorHandler';
 import * as contactsService from '../services/contacts/ContactsService';
 import { actualizarContactoSchema, crearContactoSchema, toggleFavoritoSchema } from '../validators/contacts.validators';
-import { requireParam, requireResidenteId } from '../utils/validators';
+import { requireUuidParam, requireResidenteId } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
 
 export async function getContactos(req: Request, res: Response): Promise<void> {
@@ -26,18 +26,18 @@ export async function postContacto(req: Request, res: Response): Promise<void> {
 
 export async function patchContacto(req: Request, res: Response): Promise<void> {
   const updates = actualizarContactoSchema.parse(req.body);
-  await contactsService.actualizarContacto(requireResidenteId(req), requireParam(req, 'id'), updates);
+  await contactsService.actualizarContacto(requireResidenteId(req), requireUuidParam(req, 'id'), updates);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function patchFavorito(req: Request, res: Response): Promise<void> {
   const { favorito } = toggleFavoritoSchema.parse(req.body);
-  await contactsService.toggleFavorito(requireResidenteId(req), requireParam(req, 'id'), favorito);
+  await contactsService.toggleFavorito(requireResidenteId(req), requireUuidParam(req, 'id'), favorito);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function deleteContacto(req: Request, res: Response): Promise<void> {
-  await contactsService.eliminarContacto(requireResidenteId(req), requireParam(req, 'id'));
+  await contactsService.eliminarContacto(requireResidenteId(req), requireUuidParam(req, 'id'));
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
@@ -45,6 +45,6 @@ export async function postFoto(req: Request, res: Response): Promise<void> {
   const file = req.file;
   if (!file) throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta el archivo de la foto.');
 
-  const url = await contactsService.subirFoto(requireResidenteId(req), requireParam(req, 'id'), file.buffer, file.mimetype);
+  const url = await contactsService.subirFoto(requireResidenteId(req), requireUuidParam(req, 'id'), file.buffer, file.mimetype);
   res.json({ url });
 }

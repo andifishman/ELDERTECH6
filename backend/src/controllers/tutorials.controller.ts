@@ -6,7 +6,7 @@ import {
   progresoSchema,
   relacionadosQuerySchema,
 } from '../validators/tutorials.validators';
-import { requireParam, requireResidenteId } from '../utils/validators';
+import { requireUuidParam, requireResidenteId } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
 
 export async function getCategorias(_req: Request, res: Response): Promise<void> {
@@ -19,27 +19,27 @@ export async function getTutoriales(req: Request, res: Response): Promise<void> 
 }
 
 export async function getTutorialById(req: Request, res: Response): Promise<void> {
-  const id = requireParam(req, 'id');
+  const id = requireUuidParam(req, 'id');
   res.json(await tutorialsService.getTutorialById(id, req.user?.residenteId ?? null));
 }
 
 export async function getPasos(req: Request, res: Response): Promise<void> {
-  res.json(await tutorialsService.getPasos(requireParam(req, 'id')));
+  res.json(await tutorialsService.getPasos(requireUuidParam(req, 'id')));
 }
 
 export async function getRelacionados(req: Request, res: Response): Promise<void> {
   const { categoriaId } = relacionadosQuerySchema.parse(req.query);
-  res.json(await tutorialsService.getRelacionados(requireParam(req, 'id'), categoriaId ?? null));
+  res.json(await tutorialsService.getRelacionados(requireUuidParam(req, 'id'), categoriaId ?? null));
 }
 
 export async function postProgreso(req: Request, res: Response): Promise<void> {
   const updates = progresoSchema.parse(req.body);
-  await tutorialsService.guardarProgreso(requireResidenteId(req), requireParam(req, 'id'), updates);
+  await tutorialsService.guardarProgreso(requireResidenteId(req), requireUuidParam(req, 'id'), updates);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function postVista(req: Request, res: Response): Promise<void> {
-  await tutorialsService.registrarVista(requireResidenteId(req), requireParam(req, 'id'));
+  await tutorialsService.registrarVista(requireResidenteId(req), requireUuidParam(req, 'id'));
   res.status(StatusCodes.NO_CONTENT).end();
 }
 

@@ -7,7 +7,7 @@ import {
   subirImagenQuerySchema,
   tutorialAdminInputSchema,
 } from '../validators/tutorialsAdmin.validators';
-import { requireParam, requireUser } from '../utils/validators';
+import { requireUuidParam, requireUser } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
 
 export async function getTodos(_req: Request, res: Response): Promise<void> {
@@ -25,11 +25,11 @@ export async function postCategoria(req: Request, res: Response): Promise<void> 
 }
 
 export async function getPorId(req: Request, res: Response): Promise<void> {
-  res.json(await tutorialsAdminService.obtenerPorId(requireParam(req, 'id')));
+  res.json(await tutorialsAdminService.obtenerPorId(requireUuidParam(req, 'id')));
 }
 
 export async function getPasos(req: Request, res: Response): Promise<void> {
-  res.json(await tutorialsAdminService.listarPasos(requireParam(req, 'id')));
+  res.json(await tutorialsAdminService.listarPasos(requireUuidParam(req, 'id')));
 }
 
 export async function postTutorial(req: Request, res: Response): Promise<void> {
@@ -40,25 +40,25 @@ export async function postTutorial(req: Request, res: Response): Promise<void> {
 
 export async function patchTutorial(req: Request, res: Response): Promise<void> {
   const input = tutorialAdminInputSchema.parse(req.body);
-  await tutorialsAdminService.actualizar(requireUser(req), requireParam(req, 'id'), input);
+  await tutorialsAdminService.actualizar(requireUser(req), requireUuidParam(req, 'id'), input);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function deleteTutorial(req: Request, res: Response): Promise<void> {
   const { titulo } = eliminarQuerySchema.parse(req.query);
-  await tutorialsAdminService.eliminar(requireUser(req), requireParam(req, 'id'), titulo);
+  await tutorialsAdminService.eliminar(requireUser(req), requireUuidParam(req, 'id'), titulo);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function postRestaurar(req: Request, res: Response): Promise<void> {
   const { titulo } = eliminarQuerySchema.parse(req.query);
-  await tutorialsAdminService.restaurar(requireUser(req), requireParam(req, 'id'), titulo);
+  await tutorialsAdminService.restaurar(requireUser(req), requireUuidParam(req, 'id'), titulo);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function deletePermanente(req: Request, res: Response): Promise<void> {
   const { titulo } = eliminarQuerySchema.parse(req.query);
-  await tutorialsAdminService.eliminarDefinitivo(requireUser(req), requireParam(req, 'id'), titulo);
+  await tutorialsAdminService.eliminarDefinitivo(requireUser(req), requireUuidParam(req, 'id'), titulo);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 

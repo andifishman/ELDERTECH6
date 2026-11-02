@@ -18,3 +18,12 @@ export async function postAvatar(req: Request, res: Response): Promise<void> {
   const url = await profileService.subirAvatar(user, file.buffer, file.mimetype, file.originalname);
   res.json({ url });
 }
+
+export async function getPerfil(req: Request, res: Response): Promise<void> {
+  res.json(await profileService.obtener(requireUser(req)));
+}
+
+export async function postAcceso(req: Request, res: Response): Promise<void> {
+  await profileService.registrarAcceso(requireUser(req));
+  res.status(StatusCodes.NO_CONTENT).end();
+}

@@ -37,7 +37,7 @@ export async function cambiarRol(user: AuthUser, id: string, rol: repo.RolUsuari
     throw new HttpError(StatusCodes.FORBIDDEN, 'No se puede modificar el rol de una cuenta super admin.');
   }
 
-  await repo.actualizarRol(id, rol);
+  if (!(await repo.actualizarRol(id, rol))) throw new HttpError(StatusCodes.NOT_FOUND, 'Usuario no encontrado.');
   // Los permisos por módulo acompañan al acceso: quien entra al backoffice arranca con lo mínimo
   // (ver el Dashboard) y quien sale pierde todo. El Super Admin después ajusta desde Accesos.
   if (rol === 'residente') await accessService.quitarPermisos(id);

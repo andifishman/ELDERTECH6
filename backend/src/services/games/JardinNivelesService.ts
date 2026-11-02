@@ -1,3 +1,4 @@
+import { requireResidenteContext } from '../../utils/validators';
 import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/jardinNivelesRepository';
@@ -8,8 +9,8 @@ export const TOTAL_NIVELES_JARDIN = 60;
 export type { ProgresoNivel } from '../../repositories/jardinNivelesRepository';
 
 export async function obtenerProgreso(user: AuthUser): Promise<repo.ProgresoNivel[]> {
-  if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
-  return repo.obtenerProgreso(user.residenteId);
+  const { residenteId } = requireResidenteContext(user);
+  return repo.obtenerProgreso(residenteId);
 }
 
 /**
@@ -26,22 +27,21 @@ export async function completarNivel(
   estrellas: number,
   movimientosUsados: number,
 ): Promise<repo.ProgresoNivel> {
-  if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
-  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
+  const { residenteId, organizacionId } = requireResidenteContext(user);
 
   if (nivel > 1) {
-    const anterior = await repo.obtenerProgresoNivel(user.residenteId, nivel - 1);
+    const anterior = await repo.obtenerProgresoNivel(residenteId, nivel - 1);
     if (!anterior) {
       throw new HttpError(StatusCodes.FORBIDDEN, `El nivel ${nivel} todavía está bloqueado: hay que completar el nivel ${nivel - 1} primero.`);
     }
   }
 
-  const actual = await repo.obtenerProgresoNivel(user.residenteId, nivel);
+  const actual = await repo.obtenerProgresoNivel(residenteId, nivel);
   const esMejorIntento =
     !actual || estrellas > actual.estrellas || (estrellas === actual.estrellas && movimientosUsados < actual.movimientosUsados);
 
   if (esMejorIntento) {
-    await repo.guardarProgresoNivel(user.residenteId, user.organizacionId, nivel, estrellas, movimientosUsados);
+    await repo.guardarProgresoNivel(residenteId, organizacionId, nivel, estrellas, movimientosUsados);
     return { nivel, estrellas, movimientosUsados };
   }
   return actual;

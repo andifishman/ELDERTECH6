@@ -3,7 +3,7 @@ import { HttpError } from '../middlewares/errorHandler';
 import * as deviceTokensService from '../services/notifications/DeviceTokensService';
 import * as notificationsAdminService from '../services/notifications/NotificationsAdminService';
 import { marcarAbiertoSchema, registrarTokenSchema } from '../validators/notifications.validators';
-import { requireUser } from '../utils/validators';
+import { requireUser, requireResidenteContext } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
 import { env } from '../config/env';
 
@@ -16,8 +16,7 @@ export async function postRegistrarToken(req: Request, res: Response): Promise<v
 export async function postMarcarAbierto(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
   const { notificationId } = marcarAbiertoSchema.parse(req.body);
-  if (!user.residenteId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene un residente asociado.');
-  await notificationsAdminService.marcarAbierto(notificationId, user.residenteId);
+  await notificationsAdminService.marcarAbierto(notificationId, requireResidenteContext(user).residenteId);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 

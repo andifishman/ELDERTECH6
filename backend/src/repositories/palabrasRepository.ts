@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 
 export const PISTAS_INICIALES = 3;
 
@@ -23,20 +23,14 @@ async function guardarPistas(residenteId: string, organizacionId: string, pistas
   if (error) throw new Error(`Error al guardar las pistas: ${error.message}`);
 }
 
-export async function obtenerProgreso(residenteId: string): Promise<ProgresoPalabras> {
-  logger.info('repo:call', { repository: 'palabrasRepository', action: 'obtenerProgreso', residenteId });
-  try {
+export const obtenerProgreso = withRepoLogging('palabrasRepository', 'obtenerProgreso', async (residenteId: string): Promise<ProgresoPalabras> => {
     const [niveles, pistas] = await Promise.all([
       getSupabaseAdmin().from('palabras_niveles_progreso').select('nivel').eq('residente_id', residenteId).order('nivel', { ascending: true }),
       leerPistas(residenteId),
     ]);
     if (niveles.error) throw new Error(`Error al cargar el progreso: ${niveles.error.message}`);
     return { nivelesCompletados: (niveles.data ?? []).map((f) => f.nivel as number), pistas };
-  } catch (err) {
-    logger.error('repo:error', { repository: 'palabrasRepository', action: 'obtenerProgreso', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export async function nivelCompletado(residenteId: string, nivel: number): Promise<boolean> {
   const { data, error } = await getSupabaseAdmin()
@@ -53,15 +47,13 @@ export async function nivelCompletado(residenteId: string, nivel: number): Promi
  * Registra un nivel completado por primera vez y suma las pistas de premio.
  * Devuelve el saldo nuevo. (El service ya verificó que no estuviera completado.)
  */
-export async function guardarNivelCompletado(
+export const guardarNivelCompletado = withRepoLogging('palabrasRepository', 'guardarNivelCompletado', async (
   residenteId: string,
   organizacionId: string,
   nivel: number,
   pistasUsadas: number,
   premio: number,
-): Promise<number> {
-  logger.info('repo:call', { repository: 'palabrasRepository', action: 'guardarNivelCompletado', residenteId, nivel, pistasUsadas, premio });
-  try {
+): Promise<number> => {
     const { error } = await getSupabaseAdmin()
       .from('palabras_niveles_progreso')
       .upsert(
@@ -72,22 +64,12 @@ export async function guardarNivelCompletado(
     const nuevoSaldo = (await leerPistas(residenteId)) + premio;
     await guardarPistas(residenteId, organizacionId, nuevoSaldo);
     return nuevoSaldo;
-  } catch (err) {
-    logger.error('repo:error', { repository: 'palabrasRepository', action: 'guardarNivelCompletado', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Gasta una pista. Devuelve el saldo nuevo, o null si no quedaban. */
-export async function gastarPista(residenteId: string, organizacionId: string): Promise<number | null> {
-  logger.info('repo:call', { repository: 'palabrasRepository', action: 'gastarPista', residenteId });
-  try {
+export const gastarPista = withRepoLogging('palabrasRepository', 'gastarPista', async (residenteId: string, organizacionId: string): Promise<number | null> => {
     const actual = await leerPistas(residenteId);
     if (actual <= 0) return null;
     await guardarPistas(residenteId, organizacionId, actual - 1);
     return actual - 1;
-  } catch (err) {
-    logger.error('repo:error', { repository: 'palabrasRepository', action: 'gastarPista', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

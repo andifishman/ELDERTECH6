@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { logger } from '../logging/logger';
 import { getSupabaseAdmin } from '../repositories/supabaseAdmin';
-import { SUPER_ADMIN_EMAILS } from '../config/superAdmins';
+import { esCuentaSuperAdmin } from '../config/superAdmins';
 import { StatusCodes } from 'http-status-codes';
 
 export interface AuthUser {
@@ -74,7 +74,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     organizacionId: data?.organizacion_id ?? null,
     rol: (data?.rol as AuthUser['rol']) ?? null,
     activo: data?.activo !== false,
-    isSuperAdmin: !!email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase()),
+    isSuperAdmin: esCuentaSuperAdmin(userData.user.id, email),
   };
   next();
 }

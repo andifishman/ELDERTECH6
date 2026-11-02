@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 import type {
   DestinoFiltro,
   DestinoTipo,
@@ -30,15 +30,13 @@ interface ResidenteBasico {
  * `excluirResidenteIds` — la exclusión manual siempre gana, incluso sobre una
  * inclusión manual del mismo id.
  */
-export async function resolverAudiencia(
+export const resolverAudiencia = withRepoLogging('notificationsRepository', 'resolverAudiencia', async (
   organizacionId: string,
   destinoTipo: DestinoTipo,
   destinoFiltro: DestinoFiltro | null,
   excluirResidenteIds: string[] | null,
   incluirResidenteIds?: string[] | null,
-): Promise<ResidenteBasico[]> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'resolverAudiencia', organizacionId, destinoTipo, destinoFiltro, excluirResidenteIds, incluirResidenteIds });
-  try {
+): Promise<ResidenteBasico[]> => {
   const db = getSupabaseAdmin();
   let residentes: ResidenteBasico[] = [];
 
@@ -111,18 +109,11 @@ export async function resolverAudiencia(
     residentes = residentes.filter((r) => !excluidos.has(r.id));
   }
   return residentes;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'resolverAudiencia', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 // ─── CRUD notifications ─────────────────────────────────────────────────────────
 
-export async function crear(organizacionId: string, creadoPor: string | null, input: NotificationInput, estado: EstadoNotificacion): Promise<Notification> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'crear', organizacionId, creadoPor, input, estado });
-  try {
+export const crear = withRepoLogging('notificationsRepository', 'crear', async (organizacionId: string, creadoPor: string | null, input: NotificationInput, estado: EstadoNotificacion): Promise<Notification> => {
   const { data, error } = await getSupabaseAdmin()
     .from('notifications')
     .insert({
@@ -151,16 +142,9 @@ export async function crear(organizacionId: string, creadoPor: string | null, in
     .single();
   if (error) throw new Error(`Error al crear la notificación: ${error.message}`);
   return data as Notification;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'crear', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function actualizar(id: string, input: Partial<NotificationInput>): Promise<Notification> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'actualizar', id, input });
-  try {
+export const actualizar = withRepoLogging('notificationsRepository', 'actualizar', async (id: string, input: Partial<NotificationInput>): Promise<Notification> => {
   const { data, error } = await getSupabaseAdmin()
     .from('notifications')
     .update({ ...input, updated_at: new Date().toISOString() })
@@ -169,52 +153,26 @@ export async function actualizar(id: string, input: Partial<NotificationInput>):
     .single();
   if (error) throw new Error(`Error al actualizar la notificación: ${error.message}`);
   return data as Notification;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'actualizar', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function actualizarEstado(id: string, campos: Partial<Notification>): Promise<void> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'actualizarEstado', id, campos });
-  try {
+export const actualizarEstado = withRepoLogging('notificationsRepository', 'actualizarEstado', async (id: string, campos: Partial<Notification>): Promise<void> => {
   const { error } = await getSupabaseAdmin()
     .from('notifications')
     .update({ ...campos, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw new Error(`Error al actualizar la notificación: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'actualizarEstado', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function obtenerPorId(id: string): Promise<Notification | null> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'obtenerPorId', id });
-  try {
+export const obtenerPorId = withRepoLogging('notificationsRepository', 'obtenerPorId', async (id: string): Promise<Notification | null> => {
   const { data, error } = await getSupabaseAdmin().from('notifications').select(NOTIFICATION_SELECT).eq('id', id).maybeSingle();
   if (error) throw new Error(`Error al cargar la notificación: ${error.message}`);
   return (data as Notification) ?? null;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'obtenerPorId', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function eliminar(id: string): Promise<void> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'eliminar', id });
-  try {
+export const eliminar = withRepoLogging('notificationsRepository', 'eliminar', async (id: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('notifications').delete().eq('id', id);
   if (error) throw new Error(`Error al eliminar la notificación: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'eliminar', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface ListarFiltros {
   estado?: EstadoNotificacion;
@@ -229,9 +187,7 @@ export interface ListarResultado {
   total: number;
 }
 
-export async function listar(organizacionId: string, filtros: ListarFiltros): Promise<ListarResultado> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'listar', organizacionId, filtros });
-  try {
+export const listar = withRepoLogging('notificationsRepository', 'listar', async (organizacionId: string, filtros: ListarFiltros): Promise<ListarResultado> => {
   const db = getSupabaseAdmin();
   let query = db.from('notifications').select('*, notification_recipients(count)', { count: 'exact' }).eq('organizacion_id', organizacionId);
 
@@ -250,17 +206,10 @@ export async function listar(organizacionId: string, filtros: ListarFiltros): Pr
     destinatarios_count: n.notification_recipients?.[0]?.count ?? 0,
   }));
   return { items, total: count ?? 0 };
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'listar', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Notificaciones programadas cuya hora ya llegó — usado por el procesador cron. */
-export async function listarProgramadasVencidas(): Promise<Notification[]> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'listarProgramadasVencidas' });
-  try {
+export const listarProgramadasVencidas = withRepoLogging('notificationsRepository', 'listarProgramadasVencidas', async (): Promise<Notification[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('notifications')
     .select(NOTIFICATION_SELECT)
@@ -268,21 +217,14 @@ export async function listarProgramadasVencidas(): Promise<Notification[]> {
     .lte('programada_para', new Date().toISOString());
   if (error) throw new Error(`Error al buscar notificaciones programadas: ${error.message}`);
   return (data ?? []) as Notification[];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'listarProgramadasVencidas', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 // ─── Destinatarios (fanout) ──────────────────────────────────────────────────────
 
-export async function crearDestinatarios(
+export const crearDestinatarios = withRepoLogging('notificationsRepository', 'crearDestinatarios', async (
   notificationId: string,
   filas: Array<{ residenteId: string; deviceTokenId: string | null }>,
-): Promise<NotificationRecipient[]> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'crearDestinatarios', notificationId, filas });
-  try {
+): Promise<NotificationRecipient[]> => {
   if (filas.length === 0) return [];
   const { data, error } = await getSupabaseAdmin()
     .from('notification_recipients')
@@ -290,41 +232,20 @@ export async function crearDestinatarios(
     .select('*');
   if (error) throw new Error(`Error al preparar destinatarios: ${error.message}`);
   return (data ?? []) as NotificationRecipient[];
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'crearDestinatarios', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function eliminarDestinatarios(notificationId: string): Promise<void> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'eliminarDestinatarios', notificationId });
-  try {
+export const eliminarDestinatarios = withRepoLogging('notificationsRepository', 'eliminarDestinatarios', async (notificationId: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('notification_recipients').delete().eq('notification_id', notificationId);
   if (error) throw new Error(`Error al limpiar destinatarios: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'eliminarDestinatarios', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function actualizarDestinatario(id: string, campos: Partial<NotificationRecipient>): Promise<void> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'actualizarDestinatario', id, campos });
-  try {
+export const actualizarDestinatario = withRepoLogging('notificationsRepository', 'actualizarDestinatario', async (id: string, campos: Partial<NotificationRecipient>): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('notification_recipients').update(campos).eq('id', id);
   if (error) throw new Error(`Error al actualizar destinatario: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'actualizarDestinatario', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Destinatarios `enviado` con ticket pendiente de chequear recibo — usado por el procesador cron. */
-export async function listarDestinatariosConTicketPendiente(limit = 500): Promise<NotificationRecipient[]> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'listarDestinatariosConTicketPendiente', limit });
-  try {
+export const listarDestinatariosConTicketPendiente = withRepoLogging('notificationsRepository', 'listarDestinatariosConTicketPendiente', async (limit: number = 500): Promise<NotificationRecipient[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('notification_recipients')
     .select('*')
@@ -333,32 +254,18 @@ export async function listarDestinatariosConTicketPendiente(limit = 500): Promis
     .limit(limit);
   if (error) throw new Error(`Error al buscar destinatarios pendientes: ${error.message}`);
   return (data ?? []) as NotificationRecipient[];
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'listarDestinatariosConTicketPendiente', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function marcarAbierto(notificationId: string, residenteId: string): Promise<void> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'marcarAbierto', notificationId, residenteId });
-  try {
+export const marcarAbierto = withRepoLogging('notificationsRepository', 'marcarAbierto', async (notificationId: string, residenteId: string): Promise<void> => {
   const { error } = await getSupabaseAdmin()
     .from('notification_recipients')
     .update({ estado: 'abierto', abierto_en: new Date().toISOString() })
     .eq('notification_id', notificationId)
     .eq('residente_id', residenteId);
   if (error) throw new Error(`Error al registrar apertura: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'marcarAbierto', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function obtenerStats(notificationId: string): Promise<RecipientStats> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'obtenerStats', notificationId });
-  try {
+export const obtenerStats = withRepoLogging('notificationsRepository', 'obtenerStats', async (notificationId: string): Promise<RecipientStats> => {
   const { data, error } = await getSupabaseAdmin().from('notification_recipients').select('estado').eq('notification_id', notificationId);
   if (error) throw new Error(`Error al calcular estadísticas: ${error.message}`);
 
@@ -372,20 +279,13 @@ export async function obtenerStats(notificationId: string): Promise<RecipientSta
     fallidos: contar('fallido'),
     pendientes: contar('pendiente'),
   };
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'obtenerStats', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface DestinatarioDetalle extends NotificationRecipient {
   residente: ResidenteBasico | null;
 }
 
-export async function listarDestinatariosDetalle(notificationId: string): Promise<DestinatarioDetalle[]> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'listarDestinatariosDetalle', notificationId });
-  try {
+export const listarDestinatariosDetalle = withRepoLogging('notificationsRepository', 'listarDestinatariosDetalle', async (notificationId: string): Promise<DestinatarioDetalle[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('notification_recipients')
     .select('*, residente:residentes(id, nombre, apellido)')
@@ -396,26 +296,19 @@ export async function listarDestinatariosDetalle(notificationId: string): Promis
     ...r,
     residente: Array.isArray(r.residente) ? (r.residente[0] ?? null) : r.residente,
   }));
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'listarDestinatariosDetalle', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 // ─── Logs ────────────────────────────────────────────────────────────────────────
 
 export type AccionNotificacion = 'crear' | 'editar' | 'eliminar' | 'programar' | 'cancelar' | 'enviar' | 'reenviar' | 'duplicar' | 'error';
 
-export async function registrarLog(params: {
+export const registrarLog = withRepoLogging('notificationsRepository', 'registrarLog', async (params: {
   notificationId: string | null;
   usuarioId: string | null;
   accion: AccionNotificacion;
   descripcion?: string;
   metadata?: Record<string, unknown>;
-}): Promise<void> {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'registrarLog', params });
-  try {
+}): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('notification_logs').insert({
     notification_id: params.notificationId,
     usuario_id: params.usuarioId,
@@ -424,16 +317,9 @@ export async function registrarLog(params: {
     metadata: params.metadata ?? null,
   });
   if (error) throw new Error(`Error al registrar el log: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'registrarLog', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function listarLogs(notificationId: string) {
-  logger.info('repo:call', { repository: 'notificationsRepository', action: 'listarLogs', notificationId });
-  try {
+export const listarLogs = withRepoLogging('notificationsRepository', 'listarLogs', async (notificationId: string) => {
   const { data, error } = await getSupabaseAdmin()
     .from('notification_logs')
     .select('*')
@@ -441,9 +327,4 @@ export async function listarLogs(notificationId: string) {
     .order('created_at', { ascending: false });
   if (error) throw new Error(`Error al cargar los logs: ${error.message}`);
   return data ?? [];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'notificationsRepository', action: 'listarLogs', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

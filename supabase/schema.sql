@@ -1,3 +1,4 @@
+-- NOTA: volcado de REFERENCIA, no es la fuente de verdad ni se puede ejecutar. Ver supabase/README.md.
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 

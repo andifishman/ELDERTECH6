@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 import type {
   CategoriaTutorial,
   ProgresoTutorial,
@@ -12,9 +12,7 @@ import type {
 
 const TUTORIAL_SELECT = '*, categoria:categorias_tutorial(id, nombre, emoji, orden, activo)';
 
-export async function getCategorias(): Promise<CategoriaTutorial[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'getCategorias' });
-  try {
+export const getCategorias = withRepoLogging('tutorialsRepository', 'getCategorias', async (): Promise<CategoriaTutorial[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('categorias_tutorial')
     .select('*')
@@ -23,17 +21,10 @@ export async function getCategorias(): Promise<CategoriaTutorial[]> {
 
   if (error) throw new Error(`Error al cargar categorías: ${error.message}`);
   return (data ?? []) as CategoriaTutorial[];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'getCategorias', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Porteo de `getTutorialesConProgreso` (src/services/tutorialesService.ts) — LEFT JOIN aplanado al residente. */
-export async function getTutorialesConProgreso(residenteId: string | null, categoriaId?: string | null): Promise<TutorialConProgreso[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'getTutorialesConProgreso', residenteId, categoriaId });
-  try {
+export const getTutorialesConProgreso = withRepoLogging('tutorialsRepository', 'getTutorialesConProgreso', async (residenteId: string | null, categoriaId?: string | null): Promise<TutorialConProgreso[]> => {
   let query = getSupabaseAdmin()
     .from('tutoriales')
     .select(`${TUTORIAL_SELECT}, progreso:progreso_tutorial(*)`)
@@ -52,16 +43,9 @@ export async function getTutorialesConProgreso(residenteId: string | null, categ
       progreso: Array.isArray(t.progreso) ? (t.progreso.find((p) => p.residente_id === residenteId) ?? null) : (t.progreso ?? null),
     }),
   );
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'getTutorialesConProgreso', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function getTutorialById(id: string, residenteId: string | null): Promise<TutorialConProgreso | null> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'getTutorialById', id, residenteId });
-  try {
+export const getTutorialById = withRepoLogging('tutorialsRepository', 'getTutorialById', async (id: string, residenteId: string | null): Promise<TutorialConProgreso | null> => {
   const { data, error } = await getSupabaseAdmin()
     .from('tutoriales')
     .select(`${TUTORIAL_SELECT}, progreso:progreso_tutorial(*)`)
@@ -74,16 +58,9 @@ export async function getTutorialById(id: string, residenteId: string | null): P
   const row = data as unknown as Tutorial & { categoria: CategoriaTutorial | null; progreso: ProgresoTutorial[] | null };
   const progreso = Array.isArray(row.progreso) ? (row.progreso.find((p) => p.residente_id === residenteId) ?? null) : null;
   return { ...row, progreso };
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'getTutorialById', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function getTutorialesRelacionados(tutorialId: string, categoriaId: string | null, limit = 3): Promise<Tutorial[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'getTutorialesRelacionados', tutorialId, categoriaId, limit });
-  try {
+export const getTutorialesRelacionados = withRepoLogging('tutorialsRepository', 'getTutorialesRelacionados', async (tutorialId: string, categoriaId: string | null, limit: number = 3): Promise<Tutorial[]> => {
   if (!categoriaId) return [];
 
   const { data, error } = await getSupabaseAdmin()
@@ -98,16 +75,9 @@ export async function getTutorialesRelacionados(tutorialId: string, categoriaId:
 
   if (error) return [];
   return (data ?? []) as unknown as Tutorial[];
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'getTutorialesRelacionados', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function getPasos(tutorialId: string): Promise<PasoTutorial[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'getPasos', tutorialId });
-  try {
+export const getPasos = withRepoLogging('tutorialsRepository', 'getPasos', async (tutorialId: string): Promise<PasoTutorial[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('pasos_tutorial')
     .select('*')
@@ -116,12 +86,7 @@ export async function getPasos(tutorialId: string): Promise<PasoTutorial[]> {
 
   if (error) throw new Error(`Error al cargar pasos: ${error.message}`);
   return (data ?? []) as PasoTutorial[];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'getPasos', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface ProgresoUpdates {
   favorito?: boolean;
@@ -130,9 +95,7 @@ export interface ProgresoUpdates {
   ultima_vista?: string;
 }
 
-export async function upsertProgreso(residenteId: string, tutorialId: string, updates: ProgresoUpdates): Promise<void> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'upsertProgreso', residenteId, tutorialId, updates });
-  try {
+export const upsertProgreso = withRepoLogging('tutorialsRepository', 'upsertProgreso', async (residenteId: string, tutorialId: string, updates: ProgresoUpdates): Promise<void> => {
   const { error } = await getSupabaseAdmin()
     .from('progreso_tutorial')
     .upsert(
@@ -141,16 +104,9 @@ export async function upsertProgreso(residenteId: string, tutorialId: string, up
     );
 
   if (error) throw new Error(`Error al guardar progreso: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'upsertProgreso', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function getHistorial(residenteId: string, limit = 5): Promise<TutorialConProgreso[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'getHistorial', residenteId, limit });
-  try {
+export const getHistorial = withRepoLogging('tutorialsRepository', 'getHistorial', async (residenteId: string, limit: number = 5): Promise<TutorialConProgreso[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('progreso_tutorial')
     .select(`*, tutorial:tutoriales(${TUTORIAL_SELECT})`)
@@ -165,16 +121,9 @@ export async function getHistorial(residenteId: string, limit = 5): Promise<Tuto
     ...p.tutorial,
     progreso: p as unknown as ProgresoTutorial,
   }));
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'getHistorial', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function getFavoritos(residenteId: string): Promise<TutorialConProgreso[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'getFavoritos', residenteId });
-  try {
+export const getFavoritos = withRepoLogging('tutorialsRepository', 'getFavoritos', async (residenteId: string): Promise<TutorialConProgreso[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('progreso_tutorial')
     .select(`*, tutorial:tutoriales(${TUTORIAL_SELECT})`)
@@ -187,12 +136,7 @@ export async function getFavoritos(residenteId: string): Promise<TutorialConProg
     ...p.tutorial,
     progreso: p as unknown as ProgresoTutorial,
   }));
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'getFavoritos', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface TutorialParaIA {
   id: string;
@@ -220,9 +164,7 @@ function formatearDuracion(segundos: number | null): string {
  * `buscar_tutoriales` del asistente. Porteo de `buscarTutorialesPorTexto`
  * (src/services/tutorialesService.ts), ahora con búsqueda `ilike` server-side.
  */
-export async function searchTutorialsByText(busqueda: string): Promise<TutorialParaIA[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'searchTutorialsByText', busqueda });
-  try {
+export const searchTutorialsByText = withRepoLogging('tutorialsRepository', 'searchTutorialsByText', async (busqueda: string): Promise<TutorialParaIA[]> => {
   let query = getSupabaseAdmin()
     .from('tutoriales')
     .select('id, titulo, descripcion, duracion_segundos, categoria:categorias_tutorial(nombre)')
@@ -244,19 +186,12 @@ export async function searchTutorialsByText(busqueda: string): Promise<TutorialP
     categoria: t.categoria?.nombre ?? '',
     duracion: formatearDuracion(t.duracion_segundos),
   }));
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'searchTutorialsByText', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 // ─── Admin (backoffice) ──────────────────────────────────────────────────────
 // Porteo de `backoffice/src/services/articulosService.ts`.
 
-export async function listarTodosAdmin(): Promise<TutorialAdmin[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'listarTodosAdmin' });
-  try {
+export const listarTodosAdmin = withRepoLogging('tutorialsRepository', 'listarTodosAdmin', async (): Promise<TutorialAdmin[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('tutoriales')
     .select(TUTORIAL_SELECT)
@@ -270,17 +205,10 @@ export async function listarTodosAdmin(): Promise<TutorialAdmin[]> {
     return (fallback ?? []) as unknown as TutorialAdmin[];
   }
   return (data ?? []) as unknown as TutorialAdmin[];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'listarTodosAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Lista la papelera y de paso purga (borra definitivo) lo que lleva más de 7 días ahí. */
-export async function listarEliminadosAdmin(): Promise<TutorialAdmin[]> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'listarEliminadosAdmin' });
-  try {
+export const listarEliminadosAdmin = withRepoLogging('tutorialsRepository', 'listarEliminadosAdmin', async (): Promise<TutorialAdmin[]> => {
   const expirado = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   try {
     const { data: viejos } = await getSupabaseAdmin().from('tutoriales').select('id').not('deleted_at', 'is', null).lt('deleted_at', expirado);
@@ -300,41 +228,22 @@ export async function listarEliminadosAdmin(): Promise<TutorialAdmin[]> {
     .order('deleted_at', { ascending: false });
   if (error) return [];
   return (data ?? []) as unknown as TutorialAdmin[];
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'listarEliminadosAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function crearCategoriaTutorial(nombre: string, emoji: string | null): Promise<string> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'crearCategoriaTutorial', nombre, emoji });
-  try {
+export const crearCategoriaTutorial = withRepoLogging('tutorialsRepository', 'crearCategoriaTutorial', async (nombre: string, emoji: string | null): Promise<string> => {
   const { data: ultima } = await getSupabaseAdmin().from('categorias_tutorial').select('orden').order('orden', { ascending: false }).limit(1).maybeSingle();
   const orden = ((ultima as { orden?: number } | null)?.orden ?? 0) + 1;
 
   const { data, error } = await getSupabaseAdmin().from('categorias_tutorial').insert({ nombre, emoji, orden, activo: true }).select('id').single();
   if (error) throw new Error(`Error al crear categoría: ${error.message}`);
   return data.id as string;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'crearCategoriaTutorial', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function obtenerAdminPorId(id: string): Promise<TutorialAdmin | null> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'obtenerAdminPorId', id });
-  try {
+export const obtenerAdminPorId = withRepoLogging('tutorialsRepository', 'obtenerAdminPorId', async (id: string): Promise<TutorialAdmin | null> => {
   const { data, error } = await getSupabaseAdmin().from('tutoriales').select(TUTORIAL_SELECT).eq('id', id).maybeSingle();
   if (error) throw new Error(`Error al cargar tutorial: ${error.message}`);
   return (data as unknown as TutorialAdmin) ?? null;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'obtenerAdminPorId', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 async function sincronizarPasosAdmin(tutorialId: string, pasos: TutorialAdminInput['pasos']): Promise<void> {
   await getSupabaseAdmin().from('pasos_tutorial').delete().eq('tutorial_id', tutorialId);
@@ -351,9 +260,7 @@ async function siguienteOrden(): Promise<number> {
   return ((data as { orden?: number } | null)?.orden ?? 0) + 1;
 }
 
-export async function crearTutorialAdmin(input: TutorialAdminInput): Promise<string> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'crearTutorialAdmin', input });
-  try {
+export const crearTutorialAdmin = withRepoLogging('tutorialsRepository', 'crearTutorialAdmin', async (input: TutorialAdminInput): Promise<string> => {
   const { pasos, ...resto } = input;
   const orden = await siguienteOrden();
   const { data, error } = await getSupabaseAdmin().from('tutoriales').insert({ ...resto, orden }).select('id').single();
@@ -361,16 +268,9 @@ export async function crearTutorialAdmin(input: TutorialAdminInput): Promise<str
 
   if (pasos && pasos.length > 0) await sincronizarPasosAdmin(data.id as string, pasos);
   return data.id as string;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'crearTutorialAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function actualizarTutorialAdmin(id: string, input: TutorialAdminInput): Promise<void> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'actualizarTutorialAdmin', id, input });
-  try {
+export const actualizarTutorialAdmin = withRepoLogging('tutorialsRepository', 'actualizarTutorialAdmin', async (id: string, input: TutorialAdminInput): Promise<void> => {
   const { pasos, ...resto } = input;
   const { error } = await getSupabaseAdmin()
     .from('tutoriales')
@@ -379,55 +279,27 @@ export async function actualizarTutorialAdmin(id: string, input: TutorialAdminIn
   if (error) throw new Error(`Error al actualizar tutorial: ${error.message}`);
 
   if (pasos !== undefined) await sincronizarPasosAdmin(id, pasos);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'actualizarTutorialAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Soft delete — mueve a la papelera. */
-export async function eliminarTutorialAdmin(id: string): Promise<void> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'eliminarTutorialAdmin', id });
-  try {
+export const eliminarTutorialAdmin = withRepoLogging('tutorialsRepository', 'eliminarTutorialAdmin', async (id: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('tutoriales').update({ deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) throw new Error(`Error al eliminar tutorial: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'eliminarTutorialAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function restaurarTutorialAdmin(id: string): Promise<void> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'restaurarTutorialAdmin', id });
-  try {
+export const restaurarTutorialAdmin = withRepoLogging('tutorialsRepository', 'restaurarTutorialAdmin', async (id: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('tutoriales').update({ deleted_at: null }).eq('id', id);
   if (error) throw new Error(`Error al restaurar tutorial: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'restaurarTutorialAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function eliminarTutorialDefinitivo(id: string): Promise<void> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'eliminarTutorialDefinitivo', id });
-  try {
+export const eliminarTutorialDefinitivo = withRepoLogging('tutorialsRepository', 'eliminarTutorialDefinitivo', async (id: string): Promise<void> => {
   await getSupabaseAdmin().from('pasos_tutorial').delete().eq('tutorial_id', id);
   const { error } = await getSupabaseAdmin().from('tutoriales').delete().eq('id', id);
   if (error) throw new Error(`Error al eliminar definitivamente: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'eliminarTutorialDefinitivo', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Sube al bucket `tutorial-images` (usado para thumbnails y para imágenes de cada paso, según `carpeta`). */
-export async function subirImagenTutorial(carpeta: string, buffer: Buffer, contentType: string, originalName: string): Promise<string> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'subirImagenTutorial', carpeta, buffer, contentType, originalName });
-  try {
+export const subirImagenTutorial = withRepoLogging('tutorialsRepository', 'subirImagenTutorial', async (carpeta: string, buffer: Buffer, contentType: string, originalName: string): Promise<string> => {
   const ext = originalName.split('.').pop() ?? 'jpg';
   const path = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
@@ -436,17 +308,10 @@ export async function subirImagenTutorial(carpeta: string, buffer: Buffer, conte
 
   const { data } = getSupabaseAdmin().storage.from('tutorial-images').getPublicUrl(path);
   return data.publicUrl;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'subirImagenTutorial', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Sube al bucket `tutorial-audio`. */
-export async function subirAudioTutorial(buffer: Buffer, contentType: string, originalName: string): Promise<string> {
-  logger.info('repo:call', { repository: 'tutorialsRepository', action: 'subirAudioTutorial', buffer, contentType, originalName });
-  try {
+export const subirAudioTutorial = withRepoLogging('tutorialsRepository', 'subirAudioTutorial', async (buffer: Buffer, contentType: string, originalName: string): Promise<string> => {
   const ext = originalName.split('.').pop() ?? 'mp3';
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
@@ -457,9 +322,4 @@ export async function subirAudioTutorial(buffer: Buffer, contentType: string, or
 
   const { data } = getSupabaseAdmin().storage.from('tutorial-audio').getPublicUrl(path);
   return data.publicUrl;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'tutorialsRepository', action: 'subirAudioTutorial', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

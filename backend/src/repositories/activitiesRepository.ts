@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { toSupabaseDate } from '../utils/date';
 import type { ActividadCompleta, ActividadInputRow, ResidenteOverrideInput } from '../providers/activities/ActivityTypes';
-import { logger } from '../logging/logger';
+import { withRepoLogging } from '../logging/repoLogger';
 
 const ACTIVIDAD_SELECT = `
   *,
@@ -12,9 +12,7 @@ const ACTIVIDAD_SELECT = `
 `;
 
 /** Porteo de `fetchActividadesPorFecha` (src/services/actividadesService.ts). */
-export async function fetchActividadesPorFecha(organizacionId: string, fecha: Date): Promise<ActividadCompleta[]> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'fetchActividadesPorFecha', organizacionId, fecha });
-  try {
+export const fetchActividadesPorFecha = withRepoLogging('activitiesRepository', 'fetchActividadesPorFecha', async (organizacionId: string, fecha: Date): Promise<ActividadCompleta[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('actividades')
     .select(ACTIVIDAD_SELECT)
@@ -25,27 +23,15 @@ export async function fetchActividadesPorFecha(organizacionId: string, fecha: Da
 
   if (error) throw new Error(`Error al cargar actividades: ${error.message}`);
   return (data ?? []) as unknown as ActividadCompleta[];
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'fetchActividadesPorFecha', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Porteo de `getActividadById` (src/services/actividadesService.ts). */
-export async function getActividadById(id: string): Promise<ActividadCompleta | null> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'getActividadById', id });
-  try {
+export const getActividadById = withRepoLogging('activitiesRepository', 'getActividadById', async (id: string): Promise<ActividadCompleta | null> => {
   const { data, error } = await getSupabaseAdmin().from('actividades').select(ACTIVIDAD_SELECT).eq('id', id).maybeSingle();
 
   if (error) throw new Error(`Error al cargar actividad: ${error.message}`);
   return (data as unknown as ActividadCompleta) ?? null;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'getActividadById', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 export interface ActividadParaIA {
   id: string;
@@ -110,14 +96,12 @@ function filtrarPorHora(filas: ActividadRow[], horaConsulta: string): ActividadR
   return [masCercana.fila];
 }
 
-export async function searchActivitiesByText(
+export const searchActivitiesByText = withRepoLogging('activitiesRepository', 'searchActivitiesByText', async (
   organizacionId: string,
   busqueda: string,
   fecha: Date,
   hora?: string,
-): Promise<ActividadParaIA[]> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'searchActivitiesByText', organizacionId, busqueda, fecha, hora });
-  try {
+): Promise<ActividadParaIA[]> => {
   const { data, error } = await getSupabaseAdmin()
     .from('actividades')
     .select('id, nombre, hora_inicio, hora_fin, descripcion, ubicacion:ubicaciones(nombre)')
@@ -141,99 +125,50 @@ export async function searchActivitiesByText(
     lugar: a.ubicacion?.nombre ?? '',
     descripcion: a.descripcion ?? '',
   }));
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'searchActivitiesByText', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 // ─── Admin (backoffice) ──────────────────────────────────────────────────────
 // Porteo de `backoffice/src/services/actividadesService.ts`.
 
-export async function listarActividadesAdmin(organizacionId: string, fecha?: string): Promise<ActividadCompleta[]> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'listarActividadesAdmin', organizacionId, fecha });
-  try {
+export const listarActividadesAdmin = withRepoLogging('activitiesRepository', 'listarActividadesAdmin', async (organizacionId: string, fecha?: string): Promise<ActividadCompleta[]> => {
   let query = getSupabaseAdmin().from('actividades').select(ACTIVIDAD_SELECT).eq('organizacion_id', organizacionId).order('hora_inicio', { ascending: true });
   if (fecha) query = query.eq('fecha', fecha);
 
   const { data, error } = await query;
   if (error) throw new Error(`Error al cargar actividades: ${error.message}`);
   return (data ?? []) as unknown as ActividadCompleta[];
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'listarActividadesAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function obtenerActividadAdmin(id: string): Promise<ActividadCompleta | null> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'obtenerActividadAdmin', id });
-  try {
+export const obtenerActividadAdmin = withRepoLogging('activitiesRepository', 'obtenerActividadAdmin', async (id: string): Promise<ActividadCompleta | null> => {
   const { data, error } = await getSupabaseAdmin().from('actividades').select(ACTIVIDAD_SELECT).eq('id', id).maybeSingle();
   if (error) throw new Error(`Error al cargar actividad: ${error.message}`);
   return (data as unknown as ActividadCompleta) ?? null;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'obtenerActividadAdmin', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function getPlantillaIdYFecha(id: string): Promise<{ plantillaId: string | null; fecha: string | null }> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'getPlantillaIdYFecha', id });
-  try {
+export const getPlantillaIdYFecha = withRepoLogging('activitiesRepository', 'getPlantillaIdYFecha', async (id: string): Promise<{ plantillaId: string | null; fecha: string | null }> => {
   const { data, error } = await getSupabaseAdmin().from('actividades').select('plantilla_id, fecha').eq('id', id).single();
   if (error) throw new Error(`Error al cargar actividad: ${error.message}`);
   return { plantillaId: data?.plantilla_id ?? null, fecha: data?.fecha ?? null };
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'getPlantillaIdYFecha', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function insertActividad(row: ActividadInputRow): Promise<string> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'insertActividad', row });
-  try {
+export const insertActividad = withRepoLogging('activitiesRepository', 'insertActividad', async (row: ActividadInputRow): Promise<string> => {
   const { data, error } = await getSupabaseAdmin().from('actividades').insert(row).select('id').single();
   if (error) throw new Error(`Error al crear actividad: ${error.message}`);
   return data.id as string;
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'insertActividad', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function updateActividad(id: string, row: Partial<ActividadInputRow> & { updated_at?: string }): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'updateActividad', id, row });
-  try {
+export const updateActividad = withRepoLogging('activitiesRepository', 'updateActividad', async (id: string, row: Partial<ActividadInputRow> & { updated_at?: string }): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('actividades').update(row).eq('id', id);
   if (error) throw new Error(`Error al actualizar actividad: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'updateActividad', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function marcarComoPlantilla(id: string): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'marcarComoPlantilla', id });
-  try {
+export const marcarComoPlantilla = withRepoLogging('activitiesRepository', 'marcarComoPlantilla', async (id: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('actividades').update({ plantilla_id: id }).eq('id', id);
   if (error) throw new Error(`Error al marcar la plantilla: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'marcarComoPlantilla', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Inserta las filas de ocurrencias en lotes de 100 (paridad con el original) y devuelve los ids creados. */
-export async function insertOcurrenciasBatch(rows: ActividadInputRow[]): Promise<string[]> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'insertOcurrenciasBatch', rows });
-  try {
+export const insertOcurrenciasBatch = withRepoLogging('activitiesRepository', 'insertOcurrenciasBatch', async (rows: ActividadInputRow[]): Promise<string[]> => {
   const idsCreados: string[] = [];
   for (let i = 0; i < rows.length; i += 100) {
     const { data, error } = await getSupabaseAdmin().from('actividades').insert(rows.slice(i, i + 100)).select('id');
@@ -241,84 +176,42 @@ export async function insertOcurrenciasBatch(rows: ActividadInputRow[]): Promise
     if (data) idsCreados.push(...data.map((r) => r.id as string));
   }
   return idsCreados;
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'insertOcurrenciasBatch', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Borra todas las ocurrencias de un grupo (nunca la plantilla en sí). */
-export async function eliminarOcurrencias(plantillaId: string): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'eliminarOcurrencias', plantillaId });
-  try {
+export const eliminarOcurrencias = withRepoLogging('activitiesRepository', 'eliminarOcurrencias', async (plantillaId: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('actividades').delete().eq('plantilla_id', plantillaId).neq('id', plantillaId);
   if (error) throw new Error(`Error al borrar ocurrencias: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'eliminarOcurrencias', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Borra la plantilla + todas sus ocurrencias en un solo query. */
-export async function eliminarGrupo(plantillaId: string): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'eliminarGrupo', plantillaId });
-  try {
+export const eliminarGrupo = withRepoLogging('activitiesRepository', 'eliminarGrupo', async (plantillaId: string): Promise<void> => {
   const { error } = await getSupabaseAdmin()
     .from('actividades')
     .delete()
     .or(`id.eq.${plantillaId},plantilla_id.eq.${plantillaId}`);
   if (error) throw new Error(`Error al eliminar la actividad: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'eliminarGrupo', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function setActivoGrupo(plantillaId: string, activo: boolean): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'setActivoGrupo', plantillaId, activo });
-  try {
+export const setActivoGrupo = withRepoLogging('activitiesRepository', 'setActivoGrupo', async (plantillaId: string, activo: boolean): Promise<void> => {
   const { error } = await getSupabaseAdmin()
     .from('actividades')
     .update({ activo, updated_at: new Date().toISOString() })
     .or(`id.eq.${plantillaId},plantilla_id.eq.${plantillaId}`);
   if (error) throw new Error(`Error al actualizar la actividad: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'setActivoGrupo', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function setActivoUno(id: string, activo: boolean): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'setActivoUno', id, activo });
-  try {
+export const setActivoUno = withRepoLogging('activitiesRepository', 'setActivoUno', async (id: string, activo: boolean): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('actividades').update({ activo, updated_at: new Date().toISOString() }).eq('id', id);
   if (error) throw new Error(`Error al actualizar la actividad: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'setActivoUno', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function eliminarUno(id: string): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'eliminarUno', id });
-  try {
+export const eliminarUno = withRepoLogging('activitiesRepository', 'eliminarUno', async (id: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('actividades').delete().eq('id', id);
   if (error) throw new Error(`Error al eliminar la actividad: ${error.message}`);
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'eliminarUno', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function sincronizarResidentesOverride(actividadId: string, overrides?: ResidenteOverrideInput[]): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'sincronizarResidentesOverride', actividadId, overrides });
-  try {
+export const sincronizarResidentesOverride = withRepoLogging('activitiesRepository', 'sincronizarResidentesOverride', async (actividadId: string, overrides?: ResidenteOverrideInput[]): Promise<void> => {
   await getSupabaseAdmin().from('actividad_residentes_override').delete().eq('actividad_id', actividadId);
   if (overrides && overrides.length > 0) {
     const { error } = await getSupabaseAdmin()
@@ -326,29 +219,17 @@ export async function sincronizarResidentesOverride(actividadId: string, overrid
       .insert(overrides.map((o) => ({ actividad_id: actividadId, residente_id: o.residente_id, incluido: o.incluido })));
     if (error) throw new Error(`Error al guardar las excepciones: ${error.message}`);
   }
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'sincronizarResidentesOverride', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 /** Propaga las excepciones de la plantilla a cada ocurrencia recién generada, en lotes de 500. */
-export async function propagarOverrideAOcurrencias(occurrenceIds: string[], overrides?: ResidenteOverrideInput[]): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'propagarOverrideAOcurrencias', occurrenceIds, overrides });
-  try {
+export const propagarOverrideAOcurrencias = withRepoLogging('activitiesRepository', 'propagarOverrideAOcurrencias', async (occurrenceIds: string[], overrides?: ResidenteOverrideInput[]): Promise<void> => {
   if (!overrides || overrides.length === 0 || occurrenceIds.length === 0) return;
   const rows = occurrenceIds.flatMap((actividad_id) => overrides.map((o) => ({ actividad_id, residente_id: o.residente_id, incluido: o.incluido })));
   for (let i = 0; i < rows.length; i += 500) {
     const { error } = await getSupabaseAdmin().from('actividad_residentes_override').insert(rows.slice(i, i + 500));
     if (error) throw new Error(`Error al propagar las excepciones: ${error.message}`);
   }
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'propagarOverrideAOcurrencias', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});
 
 // ─── Recordatorios automáticos (módulo Notificaciones) ──────────────────────────
 
@@ -370,9 +251,7 @@ export interface ActividadPendienteRecordatorio {
  * combinar `fecha` (date) + `hora_inicio` (time) en una sola comparación de
  * timestamp no es directo en PostgREST.
  */
-export async function listarCandidatasRecordatorio(): Promise<ActividadPendienteRecordatorio[]> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'listarCandidatasRecordatorio' });
-  try {
+export const listarCandidatasRecordatorio = withRepoLogging('activitiesRepository', 'listarCandidatasRecordatorio', async (): Promise<ActividadPendienteRecordatorio[]> => {
   const hoy = toSupabaseDate(new Date());
   const mañana = toSupabaseDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
@@ -389,21 +268,9 @@ export async function listarCandidatasRecordatorio(): Promise<ActividadPendiente
     ...a,
     ubicacion: Array.isArray(a.ubicacion) ? (a.ubicacion[0] ?? null) : a.ubicacion,
   }));
+});
 
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'listarCandidatasRecordatorio', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
-
-export async function marcarRecordatorioEnviado(actividadId: string, notificationId: string): Promise<void> {
-  logger.info('repo:call', { repository: 'activitiesRepository', action: 'marcarRecordatorioEnviado', actividadId, notificationId });
-  try {
+export const marcarRecordatorioEnviado = withRepoLogging('activitiesRepository', 'marcarRecordatorioEnviado', async (actividadId: string, notificationId: string): Promise<void> => {
   const { error } = await getSupabaseAdmin().from('actividades').update({ recordatorio_enviado: true, notificacion_id: notificationId }).eq('id', actividadId);
   if (error) throw new Error(`Error al marcar el recordatorio como enviado: ${error.message}`);
-
-  } catch (err) {
-    logger.error('repo:error', { repository: 'activitiesRepository', action: 'marcarRecordatorioEnviado', error: err instanceof Error ? err.message : String(err) });
-    throw err;
-  }
-}
+});

@@ -10,7 +10,7 @@ import {
   guardarMensajeSchema,
   toggleFavoritoSchema,
 } from '../validators/assistant.validators';
-import { requireParam, requireResidenteId } from '../utils/validators';
+import { requireUuidParam, requireResidenteId } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
 
 export async function postSesion(req: Request, res: Response): Promise<void> {
@@ -26,7 +26,7 @@ export async function getSesiones(req: Request, res: Response): Promise<void> {
 
 export async function patchSesion(req: Request, res: Response): Promise<void> {
   const { titulo } = actualizarTituloSchema.parse(req.body);
-  await assistantService.actualizarTituloSesion(requireResidenteId(req), requireParam(req, 'id'), titulo);
+  await assistantService.actualizarTituloSesion(requireResidenteId(req), requireUuidParam(req, 'id'), titulo);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
@@ -53,7 +53,7 @@ export async function postMensaje(req: Request, res: Response): Promise<void> {
 
 export async function patchMensajeFavorito(req: Request, res: Response): Promise<void> {
   const { esFavorito } = toggleFavoritoSchema.parse(req.body);
-  await assistantService.toggleFavorito(requireResidenteId(req), requireParam(req, 'id'), esFavorito);
+  await assistantService.toggleFavorito(requireResidenteId(req), requireUuidParam(req, 'id'), esFavorito);
   res.status(StatusCodes.NO_CONTENT).end();
 }
 
