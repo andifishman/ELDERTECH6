@@ -199,7 +199,7 @@ export default function HomeScreen() {
   const { width: anchoPantalla } = useWindowDimensions();
   // Es la misma Home en todos los tamaños: tarjetas de a 2 por fila cuando la pantalla es angosta (celular) y
   // de a 3 cuando hay lugar (tablet, compu). Solo cambia la cantidad por fila; el zoom de marcoWeb hace el resto.
-  const columnas = anchoPantalla >= 540 ? 3 : 2;
+  const columnas = anchoPantalla >= 600 ? 3 : 2;
   // Celulares muy angostos (< 340 px): ni 2 columnas entran con ícono + parlante, se achican un poco.
   const compacto = anchoPantalla < 340;
   // Solo celulares muy angostos: el nombre más grande que entra en la tarjeta (≈5,4 px de ancho por px de fuente), entre 17 y 22.

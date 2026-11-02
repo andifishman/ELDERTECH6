@@ -23,14 +23,14 @@ export const MAX_ANCHO_APP = 900;
 // justo lo que necesita la Home para verse entera (3 columnas, 2 filas), sin desplazarse. Un
 // celular (≈390×844) queda en 1; una tablet en vertical (820×1180) ≈ 1,5; una compu o tablet
 // horizontal (1280×800) ≈ 1,05 — ahí la altura manda y las tarjetas se estiran a lo alto.
-const ANCHO_LOGICO_MIN = 540; // alcanza para que la Home arme 3 columnas (2 filas de tarjetas)
+const ANCHO_LOGICO_MIN = 600; // alcanza para que la Home arme 3 columnas (2 filas de tarjetas)
 const ALTO_LOGICO_MIN = 760; // lo que ocupa la Home con 3 columnas (≈745): así se ve entera, sin desplazarse
 const ZOOM_MAX = 2.2;
 
-/** Zoom para una ventana de `ancho`×`alto` px (redondeado a 0,05 para no borronear el texto). */
+/** Zoom para una ventana de `ancho`×`alto` px (redondeado hacia abajo a 0,05: no borronea el texto y nunca deja el área lógica por debajo del mínimo). */
 export function zoomParaVentana(ancho: number, alto: number): number {
   const z = Math.min(ancho / ANCHO_LOGICO_MIN, alto / ALTO_LOGICO_MIN);
-  return Math.round(Math.min(Math.max(z, 1), ZOOM_MAX) * 20) / 20;
+  return Math.floor(Math.min(Math.max(z, 1), ZOOM_MAX) * 20) / 20;
 }
 
 //lo que queda a los costados de la columna (pantallas más anchas) se pinta del color del fondo de la app
