@@ -38,7 +38,7 @@ export function useCrearCategoriaTutorial() {
       notify.success('Categoría creada');
       void qc.invalidateQueries({ queryKey: QUERY_CATEGORIAS });
     },
-    onError: (err: any) => notify.error('No se pudo crear la categoría', err?.message),
+    onError: (err: Error) => notify.error('No se pudo crear la categoría', err.message),
   });
 }
 
@@ -82,7 +82,7 @@ export function useGuardarArticulo() {
       notify.success('Tutorial guardado');
       invalidar();
     },
-    onError: (err: any) => notify.error('No se pudo guardar el tutorial', err?.message),
+    onError: (err: Error) => notify.error('No se pudo guardar el tutorial', err.message),
   });
 }
 

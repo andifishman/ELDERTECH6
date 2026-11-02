@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './supabase';
-import type { AuthProfile, Interes, CiudadFamiliar } from '@/types/auth.types';
+import type { AuthProfile } from '@/types/auth.types';
 
 // ─── Login ───────────────────────────────────────────────────────────────────
 
@@ -118,30 +118,6 @@ export async function getProfileForUser(userId: string): Promise<AuthProfile | n
     residente: residente ?? null,
     residente_interes_ids: (interesesData ?? []).map((r: { interes_id: string }) => r.interes_id),
   };
-}
-
-// ─── Lookups ─────────────────────────────────────────────────────────────────
-
-export async function getIntereses(): Promise<Interes[]> {
-  const { data, error } = await supabase
-    .from('intereses')
-    .select('id, nombre, emoji')
-    .eq('activo', true)
-    .order('nombre');
-
-  if (error) throw new Error(error.message);
-  return data ?? [];
-}
-
-export async function getCiudadesFamiliares(): Promise<CiudadFamiliar[]> {
-  const { data, error } = await supabase
-    .from('ciudades_familiares')
-    .select('id, nombre, pais_codigo, orden')
-    .eq('activo', true)
-    .order('orden');
-
-  if (error) throw new Error(error.message);
-  return data ?? [];
 }
 
 // ─── Photo picking (usado por contactos, no por el perfil del residente) ──────

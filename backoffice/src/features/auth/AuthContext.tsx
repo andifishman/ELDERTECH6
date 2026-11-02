@@ -9,24 +9,8 @@
 import * as React from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, ApiError } from '@/lib/apiClient';
 import type { AccionModulo, MisPermisos, ModuloId, PerfilUsuario, RolBackoffice } from '@/types/backoffice.types';
-
-// Cuentas con acceso total al backoffice y gestión de administradores
-const SUPER_ADMIN_EMAILS = ['eldertech6@gmail.com'];
-
-function mapearRol(rawRol: string | null, email: string | null): RolBackoffice {
-  if (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) return 'super_admin';
-  if (rawRol === 'admin') return 'admin';
-  if (rawRol === 'staff') return 'editor';
-  return 'editor';
-}
-
-function esAutorizado(rawRol: string | null, email: string | null): boolean {
-  if (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) return true;
-  // solo admin y staff tienen acceso al backoffice; 'residente' no
-  return rawRol === 'admin' || rawRol === 'staff';
-}
 
 interface AuthState {
   session: Session | null;
@@ -57,40 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [misPermisos, setMisPermisos] = React.useState<MisPermisos | null>(null);
   const [cargandoPermisos, setCargandoPermisos] = React.useState(false);
 
-  // obtenemos el perfil del admin (rol/organización) desde la DB
-  const cargarPerfil = React.useCallback(async (userId: string, email?: string) => {
-    const { data } = await supabase
-      .from('perfiles_usuario')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    const emailNorm = email?.toLowerCase() ?? null;
-
-    if (data) {
-      const rawRol = (data as Record<string, unknown>).rol as string | null;
-      const rolMapeado = mapearRol(rawRol, emailNorm);
-      setAutorizado(esAutorizado(rawRol, emailNorm));
-      setPerfil({ ...data, rol: rolMapeado } as PerfilUsuario);
-      void supabase.from('perfiles_usuario').update({ ultimo_acceso: new Date().toISOString() }).eq('id', userId);
-      // Cuenta deshabilitada: sin acceso (el servidor lo vuelve a verificar en cada request)
-      if ((data as Record<string, unknown>).activo === false && rolMapeado !== 'super_admin') setAutorizado(false);
-    } else {
-      // sin fila de perfil: solo acceso si el email es super_admin
-      const isSuperAdmin = !!emailNorm && SUPER_ADMIN_EMAILS.includes(emailNorm);
-      setAutorizado(isSuperAdmin);
-      setPerfil({
-        id: userId,
-        organizacion_id: null,
-        residente_id: null,
-        rol: isSuperAdmin ? 'super_admin' : 'editor',
-        nombre_completo: email ?? 'Administrador',
-        avatar_url: null,
-        email: email ?? null,
-        activo: true,
-        ultimo_acceso: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      });
+  // Perfil, rol y super admin los resuelve el backend (GET /api/admin/profile):
+  // el backoffice no decide por su cuenta quién es administrador. Si el backend
+  // responde 401/403, la cuenta no tiene acceso al backoffice (rol residente o
+  // cuenta deshabilitada) y se marca como no autorizada.
+  const cargarPerfil = React.useCallback(async (silencioso = false) => {
+    try {
+      const data = await apiClient.get<PerfilUsuario>('/api/admin/profile');
+      setPerfil(data);
+      setAutorizado(true);
+      void apiClient.post<void>('/api/admin/profile/acceso').catch(() => {});
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        setAutorizado(false);
+        setPerfil(null);
+      } else if (!silencioso) {
+        setPerfil(null);
+      }
+      // Un error transitorio de red en una re-verificación no borra el perfil que ya tenía.
     }
   }, []);
 
@@ -120,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       if (data.session?.user) {
-        await cargarPerfil(data.session.user.id, data.session.user.email);
+        await cargarPerfil();
         await cargarMisPermisos();
         usuarioCargadoRef.current = data.session.user.id;
       }
@@ -144,11 +112,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mismoUsuario) {
           // Re-verificación en segundo plano (cambio de pestaña, refresh del
           // token): la pantalla sigue visible mientras tanto.
-          void cargarPerfil(newSession.user.id, newSession.user.email);
+          void cargarPerfil(true);
           void cargarMisPermisos(true);
         } else {
-          await cargarPerfil(newSession.user.id, newSession.user.email);
-          void cargarMisPermisos();
+          await cargarPerfil();
+          await cargarMisPermisos();
         }
       } else {
         usuarioCargadoRef.current = null;
@@ -194,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPerfil((prev) => (prev ? { ...prev, ...data } : null));
   }, [session]);
 
-  const esSuperAdmin = misPermisos?.isSuperAdmin ?? perfil?.rol === 'super_admin';
+  const esSuperAdmin = perfil?.rol === 'super_admin' || (misPermisos?.isSuperAdmin ?? false);
 
   const puede = React.useCallback(
     (modulo: ModuloId, accion: AccionModulo = 'ver') => {

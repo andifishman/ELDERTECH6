@@ -242,6 +242,8 @@ function leer(partes: string[], voz: Speech.Voice | null, rate: number, android:
   return new Promise<Intento>((resolve) => {
     let inicioMs = 0;
     let terminado = false;
+    // `fin` lo lee antes de que se cree el timeout (se asigna más abajo), por eso no puede ser const.
+    // eslint-disable-next-line prefer-const
     let vigilante: ReturnType<typeof setTimeout> | undefined;
     let intervalo: ReturnType<typeof setInterval> | undefined;
     const largo = partes.reduce((n, p) => n + p.length, 0);

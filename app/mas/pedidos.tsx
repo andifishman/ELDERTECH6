@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Audio } from '@/utils/audioCompat';
-import { pedirPermisoMicrofono, iniciarGrabacion as crearGrabacion, finalizarModoGrabacion, type Grabacion } from '@/utils/grabadora';
+import { useGrabadoraDeVoz } from '@/hooks/useGrabadoraDeVoz';
+import { formatearDuracion } from '@/utils/formatoDuracion';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { Colors } from '@/constants/Colors';
@@ -46,12 +47,6 @@ function formatearFecha(iso: string): string {
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
-function formatearDuracion(segundos: number): string {
-  const m = Math.floor(segundos / 60);
-  const s = Math.floor(segundos % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
 export default function PedidosScreen() {
   const { data: pedidos, isLoading } = usePedidos();
   const enviarMutation = useEnviarPedido();
@@ -63,55 +58,26 @@ export default function PedidosScreen() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const scrollRef = useRef<KeyboardAwareScrollView>(null);
 
-  const [grabando, setGrabando] = useState(false);
+  const { grabando, iniciar: iniciarGrabacion, detener: detenerGrabadora } = useGrabadoraDeVoz('Pedidos');
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [duracionSegundos, setDuracionSegundos] = useState(0);
   const [reproduciendo, setReproduciendo] = useState(false);
 
-  const recordingRef = useRef<Grabacion | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const inicioGrabacionRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
       soundRef.current?.unloadAsync().catch(() => {});
-      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
     };
   }, []);
 
-  const iniciarGrabacion = useCallback(async () => {
-    try {
-      const permiso = await pedirPermisoMicrofono();
-      if (!permiso.granted) {
-        Alert.alert('Permiso de micrófono', permiso.mensaje);
-        return;
-      }
-      recordingRef.current = await crearGrabacion();
-      inicioGrabacionRef.current = Date.now();
-      setGrabando(true);
-    } catch (err) {
-      console.warn('[Pedidos] Error al iniciar grabación:', err);
-      Alert.alert('Error', 'No se pudo iniciar el micrófono. Intentá de nuevo.');
-    }
-  }, []);
-
   const detenerGrabacion = useCallback(async () => {
-    if (!recordingRef.current) return;
-    try {
-      await recordingRef.current.stopAndUnloadAsync();
-      await finalizarModoGrabacion();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-      setGrabando(false);
-      if (uri) {
-        setAudioUri(uri);
-        setDuracionSegundos(Math.round((Date.now() - inicioGrabacionRef.current) / 1000));
-      }
-    } catch (err) {
-      console.warn('[Pedidos] Error al detener grabación:', err);
-      setGrabando(false);
+    const grabacion = await detenerGrabadora();
+    if (grabacion) {
+      setAudioUri(grabacion.uri);
+      setDuracionSegundos(grabacion.duracionSegundos);
     }
-  }, []);
+  }, [detenerGrabadora]);
 
   const reproducirAudio = useCallback(async () => {
     if (!audioUri) return;
@@ -487,7 +453,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
-    backgroundColor: '#FFEBEE',
+    backgroundColor: Colors.status.errorBg,
     borderRadius: Spacing.radius.lg,
     paddingVertical: Spacing.lg,
     borderWidth: 2,

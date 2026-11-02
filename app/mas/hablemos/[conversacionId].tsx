@@ -18,7 +18,8 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from '@/utils/audioCompat';
-import { pedirPermisoMicrofono, iniciarGrabacion as crearGrabacion, finalizarModoGrabacion, type Grabacion } from '@/utils/grabadora';
+import { useGrabadoraDeVoz } from '@/hooks/useGrabadoraDeVoz';
+import { formatearDuracion } from '@/utils/formatoDuracion';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/Colors';
@@ -38,12 +39,6 @@ import { useMensajesRealtime } from '@/hooks/useHablemosRealtime';
 import { formatHoraDeISO, formatFechaSeparadorChat, esMismodia } from '@/utils/dateUtils';
 import { setConversacionHablemosActiva } from '@/utils/hablemosActiveChat';
 import { nombreParaMostrar, type EstadoMensajeHablemos, type MensajeHablemos } from '@/services/hablemosService';
-
-function formatearDuracion(segundos: number): string {
-  const m = Math.floor(segundos / 60);
-  const s = Math.floor(segundos % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 const ESTADO_TEXTO: Record<EstadoMensajeHablemos, string> = {
   enviado: 'Enviado',
@@ -75,15 +70,13 @@ export default function HablemosChatScreen() {
   const marcarLeidos = useMarcarLeidosHablemos(conversacionId);
 
   const [input, setInput] = useState('');
-  const [grabando, setGrabando] = useState(false);
+  const { grabando, iniciar: iniciarGrabacion, detener: detenerGrabadora, descartar: borrarGrabacion } = useGrabadoraDeVoz('Hablemos');
   const [reproduciendoId, setReproduciendoId] = useState<string | null>(null);
   const [pantallaActiva, setPantallaActiva] = useState(true);
   const [mostrarOpcionesFoto, setMostrarOpcionesFoto] = useState(false);
   const [fotoAmpliadaUrl, setFotoAmpliadaUrl] = useState<string | null>(null);
 
-  const recordingRef = useRef<Grabacion | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const inicioGrabacionRef = useRef<number>(0);
 
   // Respaldo de Realtime: mientras la pantalla está abierta se sondea la página
   // más nueva cada pocos segundos, así el mensaje llega junto con la push y no
@@ -113,7 +106,6 @@ export default function HablemosChatScreen() {
   useEffect(() => {
     return () => {
       soundRef.current?.unloadAsync().catch(() => {});
-      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
     };
   }, []);
 
@@ -130,63 +122,21 @@ export default function HablemosChatScreen() {
     }
   }, [input, enviarTexto]);
 
-  const iniciarGrabacion = useCallback(async () => {
-    try {
-      const permiso = await pedirPermisoMicrofono();
-      if (!permiso.granted) {
-        Alert.alert('Permiso de micrófono', permiso.mensaje);
-        return;
-      }
-      recordingRef.current = await crearGrabacion();
-      inicioGrabacionRef.current = Date.now();
-      setGrabando(true);
-    } catch (err) {
-      console.warn('[Hablemos] Error al iniciar grabación:', err);
-      Alert.alert('Error', 'No se pudo iniciar el micrófono. Intentá de nuevo.');
-    }
-  }, []);
-
   // "Enviar" manda el audio directo, sin pantalla intermedia de revisión: para
   // el residente son dos decisiones claras — borrar o mandar.
   const detenerYEnviarGrabacion = useCallback(async () => {
-    const recording = recordingRef.current;
-    if (!recording) return;
-    let uri: string | null = null;
-    let duracion = 0;
-    try {
-      await recording.stopAndUnloadAsync();
-      await finalizarModoGrabacion();
-      uri = recording.getURI();
-      duracion = Math.max(1, Math.round((Date.now() - inicioGrabacionRef.current) / 1000));
-    } catch (err) {
-      console.warn('[Hablemos] Error al detener grabación:', err);
-    } finally {
-      recordingRef.current = null;
-      setGrabando(false);
-    }
-
-    if (!uri) {
+    const grabacion = await detenerGrabadora();
+    if (!grabacion) {
       Alert.alert('Error', 'No se pudo guardar el mensaje de voz. Intentá de nuevo.');
       return;
     }
     try {
-      await enviarAudio.mutateAsync({ audioUri: uri, duracionSegundos: duracion });
+      await enviarAudio.mutateAsync({ audioUri: grabacion.uri, duracionSegundos: grabacion.duracionSegundos });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'No se pudo enviar el mensaje de voz.';
       Alert.alert('Error', msg);
     }
-  }, [enviarAudio]);
-
-  const borrarGrabacion = useCallback(async () => {
-    const recording = recordingRef.current;
-    recordingRef.current = null;
-    setGrabando(false);
-    if (!recording) return;
-    try {
-      await recording.stopAndUnloadAsync();
-      await finalizarModoGrabacion();
-    } catch {}
-  }, []);
+  }, [detenerGrabadora, enviarAudio]);
 
   const toggleReproducirMensaje = useCallback(
     async (mensaje: MensajeHablemos) => {
@@ -705,7 +655,7 @@ const styles = StyleSheet.create({
   enviandoTexto: { fontSize: Typography.size.md, color: Colors.hablemos.accentDark, fontWeight: Typography.weight.medium },
 
   grabandoWrapper: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: Colors.status.errorBg,
     paddingHorizontal: Spacing.screen.horizontal,
     paddingTop: Spacing.md,
     gap: Spacing.md,
@@ -714,7 +664,7 @@ const styles = StyleSheet.create({
   },
   grabandoTituloFila: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   puntoRojo: { width: 14, height: 14, borderRadius: 7, backgroundColor: Colors.brand.red },
-  grabandoTexto: { flex: 1, fontSize: Typography.size.md, color: '#C62828', fontWeight: Typography.weight.bold },
+  grabandoTexto: { flex: 1, fontSize: Typography.size.md, color: Colors.status.errorDark, fontWeight: Typography.weight.bold },
   grabandoAccionesFila: { flexDirection: 'row', gap: Spacing.xl },
   grabandoAccionBtn: {
     flex: 1,

@@ -5,7 +5,7 @@
 // para elegir cuál ver — igual que la grilla principal de /como-usar.
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/common/AppHeader';
 import { Colors } from '@/constants/Colors';
@@ -83,7 +83,7 @@ export default function ComoUsarDetalleScreen() {
               <TouchableOpacity
                 key={sub.id}
                 style={[styles.item, { backgroundColor: sub.color }]}
-                onPress={() => router.push({ pathname: '/como-usar/[id]', params: { id: sub.id } } as any)}
+                onPress={() => router.push({ pathname: '/como-usar/[id]', params: { id: sub.id } } as Href)}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={`${sub.titulo}. Tocá para ver cómo se usa`}

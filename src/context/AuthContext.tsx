@@ -4,16 +4,15 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, AUTH_STORAGE_KEY } from '@/services/supabase';
 import { getProfileForUser } from '@/services/authService';
+import { apiClient } from '@/services/apiClient';
 import { registrarPushToken } from '@/services/notificationsService';
 import { pedirPermisoYObtenerToken, plataformaActual, nombreDispositivo } from '@/utils/pushNotifications';
 import type { AuthProfile } from '@/types/auth.types';
 
-async function registrarConexion(residenteId: string): Promise<void> {
+/** Avisa al backend que el residente abrió la app. Best-effort: nunca debe frenar el arranque. */
+async function registrarConexion(): Promise<void> {
   try {
-    await supabase
-      .from('residentes')
-      .update({ ultima_conexion: new Date().toISOString() })
-      .eq('id', residenteId);
+    await apiClient.post<void>('/api/me/connection');
   } catch {}
 }
 
@@ -147,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setProfile(cached);
             setIsLoading(false); // App visible instantly
             if (cached.residente?.id) {
-              void registrarConexion(cached.residente.id);
+              void registrarConexion();
               void registrarDispositivoParaPush();
             }
             // Step 3: background refresh usando userId ya conocido — sin roundtrip extra
@@ -168,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (p) {
                   writeCache(uid, p);
                   if (p.residente?.id) {
-                    void registrarConexion(p.residente.id);
+                    void registrarConexion();
                     void registrarDispositivoParaPush();
                   }
                 }
@@ -252,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (p) {
                 writeCache(s.user.id, p);
                 if (event === 'SIGNED_IN' && p.residente?.id) {
-                  void registrarConexion(p.residente.id);
+                  void registrarConexion();
                   void registrarDispositivoParaPush();
                 }
               }

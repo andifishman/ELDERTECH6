@@ -1,6 +1,6 @@
 //pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
 import { RUTA_HORARIOS } from '@/constants/features';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { hablar } from '@/utils/tts';
 import {
@@ -217,7 +217,7 @@ export default function HomeScreen() {
               simples de cada sección de la aplicación. */}
           <TouchableOpacity
             style={styles.comoUsarBtn}
-            onPress={() => router.push('/como-usar' as any)}
+            onPress={() => router.push('/como-usar' as Href)}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="¿Cómo usar la aplicación? Abre una guía con explicaciones simples"
@@ -237,7 +237,7 @@ export default function HomeScreen() {
         contentInsetAdjustmentBehavior="never"
       >
         {/* Novedades de la residencia */}
-        <BotonNovedades onPress={() => router.push('/novedades' as any)} onEscuchar={speak} />
+        <BotonNovedades onPress={() => router.push('/novedades' as Href)} onEscuchar={speak} />
 
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
@@ -247,7 +247,7 @@ export default function HomeScreen() {
         {/* Large Horarios Card */}
         <TouchableOpacity
           style={[styles.largeCard, { backgroundColor: menuItems[0].color }]}
-          onPress={() => router.push(menuItems[0].route as any)}
+          onPress={() => router.push(menuItems[0].route as Href)}
           activeOpacity={0.8}
         >
           <View style={styles.largeCardInner}>
@@ -266,7 +266,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={item.id}
                 style={[styles.mediumCard, { backgroundColor: item.color }]}
-                onPress={() => router.push(item.route as any)}
+                onPress={() => router.push(item.route as Href)}
                 activeOpacity={0.8}
               >
                 <View style={styles.iconRow}>

@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     color: Colors.text.primary,
   },
-  error: { fontSize: Typography.size.md, color: '#B3261E', marginTop: Spacing.md, lineHeight: 24 },
+  error: { fontSize: Typography.size.md, color: Colors.status.errorDark, marginTop: Spacing.md, lineHeight: 24 },
   btnGuardar: {
     marginTop: Spacing.xl,
     backgroundColor: Colors.brand.primary,

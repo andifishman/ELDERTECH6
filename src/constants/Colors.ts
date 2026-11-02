@@ -11,6 +11,15 @@ export const Colors = {
     orange: '#E65100',      // Botón Más
   },
 
+  // Estado de error — único origen del rojo de error en toda la app. Los
+  // tonos de marca (brand.red) y los de estado se separan a propósito: si
+  // cambia el color de marca, los errores no deberían cambiar con él.
+  status: {
+    error: '#D32F2F',       // Badges, íconos y acentos de error
+    errorDark: '#C62828',   // Texto de error sobre fondo claro (contraste AA)
+    errorBg: '#FFEBEE',     // Fondo suave de avisos y filas con error
+  },
+
   // Colores de actividades en Horarios
   activity: {
     morning: '#3F51B5',        // Azul-índigo — actividades mañana (antes de 13hs)
@@ -65,7 +74,7 @@ export const Colors = {
     accentDark: '#5F3E88',
     burbujaPropia: '#DCF8C6', // Verde clarito estilo WhatsApp — referencia visual reconocible
     burbujaAjena: '#FFFFFF',
-    noLeidosBadge: '#D32F2F',
+    noLeidosBadge: '#D32F2F', // mismo valor que status.error
   },
 
   // Módulo Agenda — recordatorios personales (mismo índigo que la tarjeta de la Home)

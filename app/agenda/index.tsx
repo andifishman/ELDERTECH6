@@ -48,7 +48,7 @@ const ESTADO_LABEL: Record<EstadoRecordatorio, string> = {
 const ESTADO_COLOR: Record<EstadoRecordatorio, { bg: string; color: string }> = {
   pendiente: { bg: '#E3F2FD', color: '#0D47A1' },
   realizado: { bg: '#E8F5E9', color: '#1B5E3B' },
-  vencido: { bg: '#FFEBEE', color: '#C62828' },
+  vencido: { bg: Colors.status.errorBg, color: Colors.status.errorDark },
   cancelado: { bg: '#F5F5F5', color: '#757575' },
 };
 

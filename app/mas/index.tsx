@@ -6,7 +6,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/common/AppHeader';
 import { SpeakButton } from '@/components/common/SpeakButton';
@@ -92,7 +92,7 @@ export default function MasScreen() {
           <TouchableOpacity
             key={opcion.id}
             style={styles.opcionCard}
-            onPress={() => router.push(opcion.ruta as any)}
+            onPress={() => router.push(opcion.ruta as Href)}
             activeOpacity={0.9}
             accessible={false}
           >
@@ -108,7 +108,7 @@ export default function MasScreen() {
             <View style={styles.cardBottom}>
               <TouchableOpacity
                 style={styles.verMasBtn}
-                onPress={() => router.push(opcion.ruta as any)}
+                onPress={() => router.push(opcion.ruta as Href)}
                 activeOpacity={0.8}
                 accessibilityLabel={`Ver más sobre ${opcion.titulo}`}
                 accessibilityRole="button"

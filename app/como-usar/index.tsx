@@ -5,7 +5,7 @@
 // una pantalla aparte con la explicación detallada de esa sección.
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/common/AppHeader';
 import { Colors } from '@/constants/Colors';
@@ -45,7 +45,7 @@ export default function ComoUsarScreen() {
                 <TouchableOpacity
                   key={seccion.id}
                   style={[styles.item, { backgroundColor: seccion.color }]}
-                  onPress={() => router.push({ pathname: '/como-usar/[id]', params: { id: seccion.id } } as any)}
+                  onPress={() => router.push({ pathname: '/como-usar/[id]', params: { id: seccion.id } } as Href)}
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel={`${seccion.titulo}. Tocá para ver cómo se usa`}

@@ -1,7 +1,15 @@
 // Cliente HTTP para hablar con nuestro backend propio (eldertech-api) — nunca
-// con Supabase ni APIs externas directo. Agrega el access_token de la sesión
-// de Supabase (la única razón por la que el cliente sigue usando supabase-js
-// es para el login/sesión — ver src/services/supabase.ts).
+// con APIs externas directo. Agrega el access_token de la sesión de Supabase.
+//
+// Lo único que la app móvil sigue haciendo contra Supabase sin pasar por acá
+// (todo lo demás, incluida la "última conexión", va por el backend):
+//  - src/services/authService.ts: login, logout y el RPC get_email_by_username
+//    (resolver usuario → email antes de loguear, todavía sin sesión).
+//  - src/services/authService.ts → getProfileForUser: lee SU propia fila de
+//    perfiles_usuario/residentes al arrancar. Se mantiene directo a propósito
+//    (latencia del arranque, con caché y timeout); la RLS la limita a la fila
+//    del propio usuario y solo de lectura.
+//  - src/hooks/useHablemosRealtime.ts: suscripción Realtime del chat.
 import { supabase } from './supabase';
 import { API_URL } from '@/utils/apiUrlGuard';
 import { esErrorDeRed, MENSAJE_ERROR_DE_RED } from '@/utils/networkError';

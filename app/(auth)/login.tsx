@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   errorBanner: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: Colors.status.errorBg,
     borderRadius: Spacing.radius.md,
     padding: Spacing.md,
     marginBottom: Spacing.lg,

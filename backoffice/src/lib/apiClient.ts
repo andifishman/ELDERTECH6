@@ -3,9 +3,11 @@
 // DESCRIPCIÓN:
 // Reemplaza las llamadas directas a Supabase en los servicios del backoffice,
 // módulo por módulo a medida que se migran. Agrega el access_token de la
-// sesión de Supabase — la única razón por la que el backoffice sigue usando
-// supabase-js es para el login/sesión (ver src/lib/supabase.ts) y el canal
-// de Realtime (ver src/hooks/useRealtime.ts).
+// sesión de Supabase. El backoffice usa supabase-js directo solo para:
+// login/sesión (src/lib/supabase.ts), el canal de Realtime
+// (src/hooks/useRealtime.ts) y subir videos de tutoriales a Storage
+// (src/services/articulosService.ts, no pasan por el backend por su tamaño).
+// El perfil, el rol y si es super admin los resuelve el backend.
 // ========================================
 import { supabase } from './supabase';
 

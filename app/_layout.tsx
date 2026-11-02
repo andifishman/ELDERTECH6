@@ -100,7 +100,7 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
  * "sin datos aún" por un mensaje imposible de ignorar — ver apiUrlGuard.ts. */
 function ConfigErrorScreen() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#B3261E', padding: 24, gap: 16 }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.status.errorDark, padding: 24, gap: 16 }}>
       <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center' }}>
         La app no está configurada correctamente
       </Text>

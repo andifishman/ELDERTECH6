@@ -99,8 +99,8 @@ export default function LlamarScreen() {
           // creado igual, solo se ve con las iniciales en vez de la foto.
         }
       }
-    } catch (err: any) {
-      if (err?.message?.includes('ya está en tu lista')) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('ya está en tu lista')) {
         Alert.alert('Contacto duplicado', 'Este contacto ya está en tu lista.');
       } else {
         Alert.alert('Error', 'No se pudo agregar el contacto. Intentá de nuevo.');

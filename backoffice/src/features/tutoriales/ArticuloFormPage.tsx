@@ -123,7 +123,7 @@ export function ArticuloFormPage() {
     });
     setCategoriaId(tutorial.categoria_id ?? '');
     setFormato((tutorial.formato as FormatoTutorial) || 'video');
-    setNivel(tutorial.nivel as any);
+    setNivel(tutorial.nivel as typeof nivel);
     setDispositivo(tutorial.dispositivo ?? 'ambos');
     setThumbnailUrl(tutorial.thumbnail_url ?? '');
     setLoQueAprenderas(tutorial.lo_que_aprenderas?.length ? tutorial.lo_que_aprenderas : ['']);

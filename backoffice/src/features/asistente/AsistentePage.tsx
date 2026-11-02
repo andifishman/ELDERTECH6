@@ -82,7 +82,7 @@ export function AsistentePage() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'faqs' | 'historial')}>
         <TabsList>
           <TabsTrigger value="faqs">Preguntas frecuentes ({lista.length})</TabsTrigger>
           <TabsTrigger value="historial">Historial de consultas</TabsTrigger>

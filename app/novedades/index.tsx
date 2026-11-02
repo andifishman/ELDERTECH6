@@ -44,7 +44,7 @@ export default function NovedadesScreen() {
       {isLoading ? (
         <LoadingState mensaje="Cargando novedades..." />
       ) : isError ? (
-        <ErrorState mensaje="No se pudieron cargar las novedades. Probá de nuevo en un rato." />
+        <ErrorState mensaje="No se pudieron cargar las novedades. Probá de nuevo en un rato." onReintentar={refetch} />
       ) : (
         <FlatList
           data={novedades}

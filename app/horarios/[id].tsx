@@ -22,7 +22,7 @@ import { formatHora, esMañana, parseHora } from '@/utils/dateUtils';
 
 export default function ActividadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: actividad, isLoading, error } = useActividad(id ?? null);
+  const { data: actividad, isLoading, error, refetch } = useActividad(id ?? null);
   const crearRecordatorio = useCrearRecordatorio();
   const [mostrarOpcionesAgenda, setMostrarOpcionesAgenda] = useState(false);
 
@@ -52,7 +52,7 @@ export default function ActividadDetalleScreen() {
   }, [actividad?.hora_inicio]);
 
   if (isLoading) return <LoadingState mensaje="Cargando actividad..." />;
-  if (error || !actividad) return <ErrorState mensaje="No se encontró la actividad." />;
+  if (error || !actividad) return <ErrorState mensaje="No se encontró la actividad." onReintentar={error ? refetch : undefined} />;
 
   const mañana = esMañana(actividad.hora_inicio);
   const colorAccent = mañana ? Colors.activity.morning : Colors.activity.afternoon;

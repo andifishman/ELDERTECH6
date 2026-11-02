@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    backgroundColor: '#FFEBEE',
+    backgroundColor: Colors.status.errorBg,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
     borderRadius: Spacing.radius.full,
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    backgroundColor: '#FFEBEE',
+    backgroundColor: Colors.status.errorBg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Spacing.radius.lg,
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
   favBtnTextoActivo: {
-    color: '#C62828',
+    color: Colors.status.errorDark,
   },
   favExplicacion: {
     fontSize: Typography.size.sm,

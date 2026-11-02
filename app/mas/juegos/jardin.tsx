@@ -44,6 +44,9 @@ import { useGameSounds } from '@/hooks/useGameSounds';
 import { useSonidoJuegos } from '@/context/SonidoJuegosContext';
 import { registrarPartida, obtenerEstadisticasPuntaje, completarNivelJardin } from '@/services/juegosService';
 import { obtenerNivelJardin, calcularEstrellasJardin, TOTAL_NIVELES_JARDIN } from '@/constants/nivelesJardin';
+import { Colors as AppColors } from '@/constants/Colors';
+import { useGuardadoPartida } from '@/hooks/useGuardadoPartida';
+import { AvisoGuardadoPartida } from '@/components/juegos/AvisoGuardadoPartida';
 
 const FILAS = 6;
 const COLUMNAS = 6;
@@ -60,7 +63,7 @@ interface Pieza { id: number; tipo: number; especial?: EspecialTipo }
 interface Coord { r: number; c: number }
 
 const CARAMELOS: { nombre: string; forma: Forma; claro: string; oscuro: string }[] = [
-  { nombre: 'cereza', forma: 'circulo', claro: '#FF8A80', oscuro: '#C62828' },
+  { nombre: 'cereza', forma: 'circulo', claro: '#FF8A80', oscuro: AppColors.status.errorDark },
   { nombre: 'arándano', forma: 'circulo', claro: '#64B5F6', oscuro: '#1565C0' },
   { nombre: 'limón', forma: 'cuadrado', claro: '#FFF59D', oscuro: '#F9A825' },
   { nombre: 'manzana', forma: 'cuadrado', claro: '#AED581', oscuro: '#2E7D32' },
@@ -565,6 +568,8 @@ export default function JardinScreen() {
   // apenas termina la jugada, antes de que React vuelva a dibujar. Si el ref se copiara del estado en
   // cada render, ahí todavía tendría el puntaje viejo y el nivel seguía 1-2 jugadas después del objetivo.
   const puntajeRef = useRef(0);
+  // Guardado del resultado (con aviso y reintento): mismo hook que usa Bloques.
+  const { errorGuardado, guardando: guardandoResultado, guardar, reintentar: reintentarGuardado, reiniciar: reiniciarGuardado } = useGuardadoPartida();
   const sumarPuntos = useCallback((puntos: number) => {
     puntajeRef.current += puntos;
     setPuntaje(puntajeRef.current);
@@ -658,22 +663,29 @@ export default function JardinScreen() {
       setMejorPuntaje(puntajeFinal);
       reproducir('puntaje_alto');
     }
-    void registrarPartida('jardin', null, puntajeFinal);
-  }, [reproducir]);
+    void guardar(() => registrarPartida('jardin', null, puntajeFinal));
+  }, [reproducir, guardar]);
 
   const finalizarNivel = useCallback((resultado: 'ganado' | 'perdido') => {
     setFase('fin');
     setResultadoNivel(resultado);
     const puntajeFinal = puntajeRef.current;
-    void registrarPartida('jardin', resultado, puntajeFinal);
+    let estrellas: ReturnType<typeof calcularEstrellasJardin> | null = null;
+    let movimientosUsados = 0;
     if (resultado === 'ganado' && nivelConfig) {
-      const movimientosUsados = nivelConfig.movimientos - movimientosRef.current;
-      const estrellas = calcularEstrellasJardin(movimientosUsados, nivelConfig.movimientos);
+      movimientosUsados = nivelConfig.movimientos - movimientosRef.current;
+      estrellas = calcularEstrellasJardin(movimientosUsados, nivelConfig.movimientos);
       setEstrellasGanadas(estrellas);
       reproducir('puntaje_alto');
-      void completarNivelJardin(nivelConfig.numero, estrellas, movimientosUsados).catch(() => {});
     }
-  }, [reproducir, nivelConfig]);
+    // La partida y el progreso del nivel se guardan juntos: si falla cualquiera, se avisa y se puede reintentar.
+    void guardar(async () => {
+      const seRegistro = await registrarPartida('jardin', resultado, puntajeFinal);
+      if (estrellas === null || !nivelConfig) return seRegistro;
+      const progresoGuardado = await completarNivelJardin(nivelConfig.numero, estrellas, movimientosUsados).then(() => true, () => false);
+      return seRegistro && progresoGuardado;
+    });
+  }, [reproducir, nivelConfig, guardar]);
 
   /** Chequea, después de resolver un movimiento, si el nivel se ganó (objetivo alcanzado) o se perdió (sin movimientos). En modo libre, solo corta cuando se acaban los movimientos. */
   const evaluarFinDeTurno = useCallback((movimientosRestantes: number) => {
@@ -777,8 +789,9 @@ export default function JardinScreen() {
     setEsRecordNuevo(false);
     setResultadoNivel(null);
     setEstrellasGanadas(null);
+    reiniciarGuardado();
     setFase('jugando');
-  }, [presupuestoMovimientos]);
+  }, [presupuestoMovimientos, reiniciarGuardado]);
 
   const irASiguienteNivel = useCallback(() => {
     if (!nivelConfig) return;
@@ -896,7 +909,7 @@ export default function JardinScreen() {
       <Modal visible={showTutorial} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <LinearGradient colors={['#FF8A80', '#C62828']} style={styles.modalIconWrap}>
+            <LinearGradient colors={['#FF8A80', AppColors.status.errorDark]} style={styles.modalIconWrap}>
               <Ionicons name="flower" size={40} color={Colors.white} />
             </LinearGradient>
             <Text style={styles.modalTitle}>¿Cómo se juega?</Text>
@@ -948,6 +961,7 @@ export default function JardinScreen() {
                     </>
                   )}
                 </Text>
+                <AvisoGuardadoPartida guardando={guardandoResultado} errorGuardado={errorGuardado} onReintentar={reintentarGuardado} />
                 {resultadoNivel === 'ganado' && nivelConfig!.numero < TOTAL_NIVELES_JARDIN && (
                   <TouchableOpacity style={styles.modalBtnPrimary} onPress={irASiguienteNivel}>
                     <Text style={styles.modalBtnPrimaryText}>Siguiente nivel</Text>
@@ -972,6 +986,7 @@ export default function JardinScreen() {
                   Conseguiste <Text style={{ fontWeight: 'bold', color: Colors.primary }}>{puntaje}</Text> puntos.{'\n'}
                   Mejor puntaje: <Text style={{ fontWeight: 'bold', color: Colors.success }}>{mejorPuntaje}</Text>
                 </Text>
+                <AvisoGuardadoPartida guardando={guardandoResultado} errorGuardado={errorGuardado} onReintentar={reintentarGuardado} />
                 <TouchableOpacity style={styles.modalBtnPrimary} onPress={empezar}>
                   <Text style={styles.modalBtnPrimaryText}>Jugar de nuevo</Text>
                 </TouchableOpacity>

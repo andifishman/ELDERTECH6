@@ -17,7 +17,7 @@ import { etiquetaCategoria, eventoEsHoy, fechaDeEvento } from '@/utils/novedades
 export default function NovedadDetalleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { data, isLoading, isError } = useNovedades();
+  const { data, isLoading, isError, refetch } = useNovedades();
   const marcarLeida = useMarcarNovedadLeida();
   const novedad = data?.find((n) => n.id === id);
 
@@ -40,7 +40,7 @@ export default function NovedadDetalleScreen() {
     return (
       <View style={styles.root}>
         <AppHeader titulo="Novedad" mostrarVolver mostrarHablar={false} />
-        <ErrorState mensaje="No encontramos esta novedad. Puede que ya no esté publicada." />
+        <ErrorState mensaje="No encontramos esta novedad. Puede que ya no esté publicada." onReintentar={isError ? refetch : undefined} />
       </View>
     );
   }

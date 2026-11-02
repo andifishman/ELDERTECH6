@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   badge: {},
   badgePais: {},
   badgeError: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: Colors.status.errorBg,
   },
   badgeText: {
     fontSize: Typography.size.sm,

@@ -62,6 +62,8 @@ function escalarEnWeb(componente: unknown): void {
   const forwardRef = componente as ForwardRefComponent;
   const renderOriginal = forwardRef.render;
   forwardRef.render = (props, ref) => {
+    // `render` es el render de un componente forwardRef: React lo invoca como componente, así que el hook es válido acá.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { escala } = useContext(AccesibilidadContext);
     const escaladas = escalarProps(props, escala);
     // adjustsFontSizeToFit no existe en react-native-web: se marca el elemento y lo resuelve utils/ajusteTextoWeb.ts
