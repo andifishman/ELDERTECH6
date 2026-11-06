@@ -3,18 +3,44 @@
 @tailwind utilities;
 
 @layer base {
+  /* Escala del color principal (R G B): la sobrescribe lib/tema.ts con el color de la institución */
+  :root {
+    --primary-50: 244 239 250;
+    --primary-100: 230 219 243;
+    --primary-200: 205 184 230;
+    --primary-300: 176 145 212;
+    --primary-400: 148 113 190;
+    --primary-500: 122 82 168;
+    --primary-600: 95 62 136;
+    --primary-700: 79 51 114;
+    --primary-800: 63 41 96;
+    --primary-900: 44 29 68;
+  }
   html {
     -webkit-text-size-adjust: 100%;
-    background: #f7f4fb;
+    background: #fff9f2;
   }
   body {
-    @apply bg-[#f7f4fb] font-sans text-base text-ink antialiased;
+    @apply font-sans text-base text-ink antialiased;
     margin: 0;
     padding-top: env(safe-area-inset-top);
+    background-color: #fff9f2;
+    /* Manchas suaves de color en las esquinas: calidez sin ensuciar la lectura */
+    background-image:
+      radial-gradient(60rem 28rem at 105% -5%, rgba(246, 185, 59, 0.16), transparent 60%),
+      radial-gradient(48rem 26rem at -10% 35%, rgba(214, 69, 107, 0.09), transparent 60%),
+      radial-gradient(52rem 30rem at 110% 85%, rgba(35, 153, 138, 0.1), transparent 60%);
+    background-attachment: fixed;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    font-optical-sizing: auto;
   }
   /* Foco siempre visible: se usa con teclado, lector de pantalla y botones físicos */
   :focus-visible {
-    outline: 3px solid #5f3e88;
+    outline: 3px solid rgb(var(--primary-600));
     outline-offset: 2px;
   }
   button,
@@ -27,8 +53,23 @@
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@layer utilities {
+  /* Entrada escalonada de las secciones: --i define el orden */
+  .aparece {
+    animation: subir 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  .sin-barra {
+    scrollbar-width: none;
+  }
+  .sin-barra::-webkit-scrollbar {
+    display: none;
   }
 }

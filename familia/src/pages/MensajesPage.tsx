@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Camera, ChevronRight, MessageCircle, Send, X } from 'lucide-react';
 import clsx from 'clsx';
@@ -54,7 +54,9 @@ export function ChatPage() {
   const residente = me?.residentes.find((r) => r.id === residenteId);
   const fin = useRef<HTMLDivElement>(null);
   const inputFoto = useRef<HTMLInputElement>(null);
-  const [texto, setTexto] = useState('');
+  // Las frases rápidas del Inicio llegan como ?texto=…: se precargan en el cuadro para revisarlas antes de enviar.
+  const [params] = useSearchParams();
+  const [texto, setTexto] = useState(() => (params.get('texto') ?? '').slice(0, 2000));
   const [foto, setFoto] = useState<File | null>(null);
   const [vista, setVista] = useState<string | null>(null);
   const [errorFoto, setErrorFoto] = useState<string | null>(null);

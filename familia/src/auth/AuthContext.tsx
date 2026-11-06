@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { ApiError } from '@/lib/apiClient';
 import { getMe, type Me, type ResidenteVinculado } from '@/services/familia';
+import { aplicarColorPrincipal } from '@/lib/tema';
 
 type EstadoAcceso = 'cargando' | 'sin-sesion' | 'ok' | 'sin-acceso' | 'error';
 
@@ -54,7 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const cargarMe = useCallback(async () => {
     setEstado('cargando');
     try {
-      setMe(await getMe());
+      const datos = await getMe();
+      setMe(datos);
+      // La app se pone con el color de la institución de este familiar
+      aplicarColorPrincipal(datos.institucion?.colorPrincipal);
       setEstado('ok');
     } catch (err) {
       setMe(null);
@@ -108,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     qc.clear();
     setMe(null);
+    aplicarColorPrincipal(null);
   }, [qc]);
 
   const value = useMemo<AuthState>(
