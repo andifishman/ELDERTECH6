@@ -7,7 +7,7 @@ import { env } from '../config/env';
  * de entorno del deploy, un olvido ahí deja la web "sin datos" sin ningún error visible
  * (el navegador bloquea las respuestas y las pantallas quedan vacías).
  */
-const ORIGENES_FIJOS: readonly string[] = ['https://eldertech6web.vercel.app'];
+const ORIGENES_FIJOS: readonly string[] = ['https://eldertech6web.vercel.app', 'https://eldertech-familia.vercel.app'];
 
 const origenesPermitidos = new Set<string>([...ORIGENES_FIJOS, ...env.corsAllowedOrigins]);
 

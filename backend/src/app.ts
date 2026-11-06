@@ -26,6 +26,7 @@ import { meRouter } from './routes/me.routes';
 import { hablemosRouter } from './routes/hablemos.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { novedadesAdminRouter, novedadesRouter } from './routes/novedades.routes';
+import { familiaAdminRouter, familiaRouter, miFamiliaRouter } from './routes/familia.routes';
 import { notificationsAdminRouter } from './routes/notificationsAdmin.routes';
 import { notificationsCronRouter } from './routes/notificationsCron.routes';
 import { profileRouter } from './routes/profile.routes';
@@ -112,6 +113,9 @@ export function createApp(): Express {
   app.use('/api/novedades', novedadesRouter);
   app.use('/api/internal/novedades', novedadesCronRouter);
   app.use('/api/admin/novedades', novedadesAdminRouter);
+  app.use('/api/familia', familiaRouter);
+  app.use('/api/mi-familia', miFamiliaRouter);
+  app.use('/api/admin/familia', familiaAdminRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

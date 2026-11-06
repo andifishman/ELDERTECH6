@@ -61,6 +61,8 @@ export interface Novedad {
   fijada: boolean;
   categoria: CategoriaNovedad;
   fecha_evento: string | null;
+  /** Además de los residentes, la ven las familias (app de familiares) */
+  para_familias: boolean;
   notificacion_id: string | null;
   creado_por: string | null;
   created_at: string;
@@ -100,6 +102,7 @@ export interface PublicarNovedadInput {
   /** ISO */
   fechaEvento: string | null;
   borrador: boolean;
+  paraFamilias: boolean;
 }
 
 export interface EditarNovedadInput {
@@ -111,6 +114,7 @@ export interface EditarNovedadInput {
   fechaEvento?: string | null;
   publicarEn?: string;
   visibleHasta?: string;
+  paraFamilias?: boolean;
 }
 
 export interface CategoriaPropia {

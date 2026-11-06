@@ -39,6 +39,8 @@ export interface Novedad {
   /** Si la noticia es de un evento, cuándo es */
   fecha_evento: string | null;
   notificacion_id: string | null;
+  /** Además de los residentes, la ven las familias (app de familiares) */
+  para_familias: boolean;
   creado_por: string | null;
   created_at: string;
   updated_at: string;
@@ -68,6 +70,7 @@ export interface CrearNovedadInput {
   fijada: boolean;
   categoria: CategoriaNovedad;
   fechaEvento: string | null;
+  paraFamilias: boolean;
 }
 
 export interface ActualizarNovedadInput {
@@ -80,6 +83,7 @@ export interface ActualizarNovedadInput {
   publicarEn?: string;
   visibleHasta?: string;
   esBorrador?: boolean;
+  paraFamilias?: boolean;
 }
 
 export async function listarParaAdmin(organizacionId: string): Promise<NovedadAdmin[]> {
@@ -151,6 +155,8 @@ export async function crear(organizacionId: string, creadoPor: string, input: Cr
       fijada: input.fijada,
       categoria: input.categoria,
       fecha_evento: input.fechaEvento,
+      // Solo se manda cuando es true: así publicar una novedad común no depende de que la columna ya exista (migración de familias).
+      ...(input.paraFamilias ? { para_familias: true } : {}),
       creado_por: creadoPor,
     })
     .select('*')
@@ -170,6 +176,7 @@ export async function actualizar(id: string, cambios: ActualizarNovedadInput): P
   if (cambios.publicarEn !== undefined) fila.publicar_en = cambios.publicarEn;
   if (cambios.visibleHasta !== undefined) fila.visible_hasta = cambios.visibleHasta;
   if (cambios.esBorrador !== undefined) fila.es_borrador = cambios.esBorrador;
+  if (cambios.paraFamilias !== undefined) fila.para_familias = cambios.paraFamilias;
   const { data, error } = await getSupabaseAdmin().from('novedades').update(fila).eq('id', id).select('*').single();
   if (error) throw new Error(`Error al actualizar la novedad: ${error.message}`);
   return data as Novedad;

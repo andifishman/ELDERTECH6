@@ -82,6 +82,7 @@ export function NovedadFormPage() {
   const [paraTodos, setParaTodos] = useState(true);
   const [grupoIds, setGrupoIds] = useState<string[]>([]);
   const [notificar, setNotificar] = useState(true);
+  const [paraFamilias, setParaFamilias] = useState(false);
   const [categoria, setCategoria] = useState<CategoriaNovedad>('general');
   const [programar, setProgramar] = useState(false);
   const [programadaPara, setProgramadaPara] = useState('');
@@ -106,6 +107,7 @@ export function NovedadFormPage() {
     setParaTodos(!n.grupo_ids);
     setGrupoIds(n.grupo_ids ?? []);
     setCategoria(n.categoria);
+    setParaFamilias(n.para_familias);
     setFechaEvento(!duplicarDe ? aInputFechaHora(n.fecha_evento) : '');
     if (editando) {
       if (estadoDe(n) === 'programada') {
@@ -159,6 +161,7 @@ export function NovedadFormPage() {
         visibleHasta: visibleHastaIso ?? undefined,
         fechaEvento: fechaEventoIso,
         borrador,
+        paraFamilias,
       },
       { onSuccess: volver },
     );
@@ -176,6 +179,7 @@ export function NovedadFormPage() {
           imagenUrl,
           categoria,
           fechaEvento: fechaEventoIso,
+          paraFamilias,
           ...(estadoOriginal === 'programada' && publicarEnIso ? { publicarEn: publicarEnIso } : {}),
           ...(visibleHastaIso ? { visibleHasta: visibleHastaIso } : {}),
         },
@@ -427,6 +431,14 @@ export function NovedadFormPage() {
                     {faltaDestino && !editando && <p className="text-sm text-destructive">Elegí al menos un grupo.</p>}
                   </>
                 )}
+              </div>
+
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+                <div>
+                  <Label htmlFor="para-familias">También para las familias</Label>
+                  <p className="text-sm text-muted-foreground">Además de los residentes, los familiares la ven en la sección Noticias de su app.</p>
+                </div>
+                <Switch id="para-familias" checked={paraFamilias} onCheckedChange={setParaFamilias} />
               </div>
 
               {(!editando || esBorrador) && (

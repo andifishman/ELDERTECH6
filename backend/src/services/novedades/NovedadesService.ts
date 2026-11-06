@@ -88,6 +88,8 @@ export interface PublicarNovedadInput {
   fechaEvento?: string | null;
   /** Guardarla sin publicar */
   borrador?: boolean;
+  /** Además de los residentes, la ven las familias */
+  paraFamilias?: boolean;
 }
 
 /**
@@ -147,6 +149,7 @@ export async function publicar(user: AuthUser, input: PublicarNovedadInput): Pro
     fijada: input.fijada ?? false,
     categoria: input.categoria ?? 'general',
     fechaEvento: input.fechaEvento ?? null,
+    paraFamilias: input.paraFamilias ?? false,
   });
 
   const programada = !esBorrador && publicarEn.getTime() > Date.now();

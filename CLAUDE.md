@@ -36,6 +36,9 @@ npx expo start --ios
 
 # Backoffice
 cd backoffice && npm run dev   # Vite, queda en :5173
+
+# App de familiares (PWA aparte) — ver docs/FAMILIA.md
+cd familia && npm install && npm run dev   # Vite, queda en :5174
 ```
 
 Si en Windows ves `SELF_SIGNED_CERT_IN_CHAIN` en los logs del backend (típico

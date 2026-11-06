@@ -21,7 +21,10 @@ export type ModuloId =
   | 'accesos'
   | 'grupos'
   | 'juegos'
-  | 'novedades';
+  | 'novedades'
+  | 'familiares'
+  | 'familia_comunicacion'
+  | 'familia_contenido';
 
 export function tienePermiso(permisos: accessRepo.PermisoModulo[], modulo: ModuloId, accion: AccionModulo): boolean {
   const p = permisos.find((x) => x.moduloId === modulo);

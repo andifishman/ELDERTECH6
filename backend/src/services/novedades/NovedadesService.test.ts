@@ -38,7 +38,7 @@ const residente: AuthUser = { ...staff, supabaseUserId: 'user-r1', residenteId: 
 const novedad: repo.Novedad = {
   id: 'nov-1', organizacion_id: 'org-1', titulo: 'Fiesta de la primavera', texto: 'El sábado festejamos en el salón.',
   imagen_url: null, grupo_ids: null, visible_hasta: '', publicar_en: '', es_borrador: false, fijada: false, categoria: 'general', fecha_evento: null,
-  notificacion_id: null, creado_por: 'staff-1', created_at: '', updated_at: '',
+  notificacion_id: null, para_familias: false, creado_por: 'staff-1', created_at: '', updated_at: '',
 };
 
 beforeEach(() => {

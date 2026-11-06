@@ -22,6 +22,8 @@ export const publicarNovedadSchema = z.object({
   fechaEvento: fechaIso,
   /** Guardarla sin publicar */
   borrador: z.boolean().optional().default(false),
+  /** Además de los residentes, la ven las familias */
+  paraFamilias: z.boolean().optional().default(false),
 });
 
 export const actualizarNovedadSchema = z.object({
@@ -33,6 +35,7 @@ export const actualizarNovedadSchema = z.object({
   fechaEvento: fechaIso.optional(),
   publicarEn: fechaIso.optional(),
   visibleHasta: fechaIso.optional(),
+  paraFamilias: z.boolean().optional(),
 });
 
 /** Publicar un borrador: ahora o a una fecha, con o sin aviso. */
