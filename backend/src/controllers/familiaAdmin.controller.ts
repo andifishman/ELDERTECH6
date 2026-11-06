@@ -54,7 +54,7 @@ export async function postReinvitar(req: Request, res: Response): Promise<void> 
 export async function postVinculo(req: Request, res: Response): Promise<void> {
   const { residenteId, parentesco } = crearVinculoSchema.parse(req.body);
   await familiaService.vincular(user(req), id(req), residenteId, parentesco);
-  res.status(StatusCodes.CREATED).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function patchVinculo(req: Request, res: Response): Promise<void> {
@@ -188,7 +188,7 @@ export async function getCaso(req: Request, res: Response): Promise<void> {
 
 export async function postRespuestaCaso(req: Request, res: Response): Promise<void> {
   await comunicacionService.responderCasoPersonal(user(req), id(req), respuestaSchema.parse(req.body).texto);
-  res.status(StatusCodes.CREATED).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function patchEstadoCaso(req: Request, res: Response): Promise<void> {

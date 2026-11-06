@@ -98,7 +98,7 @@ export async function getComentarios(req: Request, res: Response): Promise<void>
 export async function postComentario(req: Request, res: Response): Promise<void> {
   const { texto } = comentarioSchema.parse(req.body);
   await contenidoService.comentar(ctx(req), requireUuidParam(req, 'id'), texto);
-  res.status(StatusCodes.CREATED).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function deleteComentario(req: Request, res: Response): Promise<void> {
@@ -144,7 +144,7 @@ export async function getCaso(req: Request, res: Response): Promise<void> {
 export async function postRespuestaCaso(req: Request, res: Response): Promise<void> {
   const { texto } = respuestaSchema.parse(req.body);
   await comunicacionService.responderCasoFamiliar(ctx(req), requireUuidParam(req, 'id'), texto);
-  res.status(StatusCodes.CREATED).end();
+  res.status(StatusCodes.NO_CONTENT).end();
 }
 
 export async function getPropuestas(req: Request, res: Response): Promise<void> {
