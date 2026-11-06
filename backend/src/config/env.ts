@@ -50,6 +50,8 @@ export const env = {
   // pantalla de Horarios del hogar responde 503 — no rompe nada más.
   ledorFeedUrl: process.env.LEDOR_FEED_URL || 'https://ledor.com.ar/actividades-feed.php',
   ledorFeedKey: optional('LEDOR_FEED_KEY'),
+  // URL pública de la app de familiares (donde aterriza el link de invitación). Ver docs/FAMILIA.md.
+  familiaAppUrl: optional('FAMILIA_APP_URL') ?? 'http://localhost:5174',
 
   // Vercel inyecta automáticamente `Authorization: Bearer <CRON_SECRET>` en las
   // llamadas de sus Cron Jobs SOLO si la env var se llama exactamente así — es

@@ -22,6 +22,7 @@ nuevo, usá el nombre en español del dominio y sumalo acá.**
 | Accesos (permisos por módulo) | `access` | — | `accesos` | `/api/admin/accesos` |
 | Administradores | `administradores` | — | `administradores` | `/api/admin/administradores` |
 | Residentes / usuarios | `residents` | `AuthContext` | `usuarios` | `/api/admin/residents` |
+| Familias (app de familiares) | `familia` | — (app aparte: `familia/`); `mas/familia` para que el residente conteste | `familia` (Familiares, Contenido, Comunicación) | `/api/familia`, `/api/mi-familia`, `/api/admin/familia` |
 | Auditoría | `audit` | — | `auditoria` | `/api/admin/audit` |
 | Notificaciones | `notifications` | `notifications` | `notificaciones` | `/api/notifications` |
 | Configuración | `configuracion` | — | `configuracion` | `/api/admin/configuracion` |

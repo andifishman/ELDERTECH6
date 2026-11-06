@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    background: #f7f4fb;
+  }
+  body {
+    @apply bg-[#f7f4fb] font-sans text-base text-ink antialiased;
+    margin: 0;
+    padding-top: env(safe-area-inset-top);
+  }
+  /* Foco siempre visible: se usa con teclado, lector de pantalla y botones físicos */
+  :focus-visible {
+    outline: 3px solid #5f3e88;
+    outline-offset: 2px;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

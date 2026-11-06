@@ -106,7 +106,10 @@ export type ModuloId =
   | 'accesos'
   | 'grupos'
   | 'juegos'
-  | 'novedades';
+  | 'novedades'
+  | 'familiares'
+  | 'familia_comunicacion'
+  | 'familia_contenido';
 
 export type AccionModulo = 'ver' | 'crear' | 'editar' | 'eliminar';
 

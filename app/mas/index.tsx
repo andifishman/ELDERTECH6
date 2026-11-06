@@ -51,6 +51,14 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     textoHablar: 'Juegos. Divertite con ElderTech.',
   },
   {
+    id: 'familia',
+    emoji: '👪',
+    titulo: 'Mi familia',
+    descripcion: 'Mensajes de tus familiares',
+    ruta: '/mas/familia',
+    textoHablar: 'Mi familia. Leé y contestá los mensajes de tus familiares.',
+  },
+  {
     id: 'pedidos',
     emoji: '📋',
     titulo: 'Sugerencias',
@@ -78,7 +86,7 @@ export default function MasScreen() {
         titulo="Más"
         mostrarVolver
         tituloGrande
-        textoHablar="Más opciones: Clima, Radio, Juegos, Sugerencias, y Accesibilidad."
+        textoHablar="Más opciones: Clima, Radio, Juegos, Mi familia, Sugerencias, y Accesibilidad."
       />
 
       <ScrollView

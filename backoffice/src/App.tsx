@@ -41,6 +41,10 @@ const NovedadFormPage = lazy(() => import('@/features/novedades/NovedadFormPage'
 const GrupoDetailPage = lazy(() => import('@/features/grupos/GrupoDetailPage').then((m) => ({ default: m.GrupoDetailPage })));
 const NotificacionesPage = lazy(() => import('@/features/notificaciones/NotificacionesPage').then((m) => ({ default: m.NotificacionesPage })));
 const NotificacionFormPage = lazy(() => import('@/features/notificaciones/NotificacionFormPage').then((m) => ({ default: m.NotificacionFormPage })));
+const FamiliaresPage = lazy(() => import('@/features/familia/FamiliaresPage').then((m) => ({ default: m.FamiliaresPage })));
+const ContenidoFamiliaPage = lazy(() => import('@/features/familia/ContenidoFamiliaPage').then((m) => ({ default: m.ContenidoFamiliaPage })));
+const AlbumPage = lazy(() => import('@/features/familia/AlbumPage').then((m) => ({ default: m.AlbumPage })));
+const ComunicacionFamiliaPage = lazy(() => import('@/features/familia/ComunicacionFamiliaPage').then((m) => ({ default: m.ComunicacionFamiliaPage })));
 const NotificacionDetailPage = lazy(() => import('@/features/notificaciones/NotificacionDetailPage').then((m) => ({ default: m.NotificacionDetailPage })));
 
 const router = createBrowserRouter([
@@ -81,6 +85,10 @@ const router = createBrowserRouter([
           { path: '/notificaciones/nueva', element: <RequireModulo modulo="notificaciones" accion="crear"><NotificacionFormPage /></RequireModulo>, handle: { titulo: 'Nueva notificación' } },
           { path: '/notificaciones/:id', element: <RequireModulo modulo="notificaciones"><NotificacionDetailPage /></RequireModulo>, handle: { titulo: 'Detalle de notificación' } },
           { path: '/notificaciones/:id/editar', element: <RequireModulo modulo="notificaciones" accion="editar"><NotificacionFormPage /></RequireModulo>, handle: { titulo: 'Editar notificación' } },
+          { path: '/familiares', element: <RequireModulo modulo="familiares"><FamiliaresPage /></RequireModulo>, handle: { titulo: 'Familiares' } },
+          { path: '/familia/contenido', element: <RequireModulo modulo="familia_contenido"><ContenidoFamiliaPage /></RequireModulo>, handle: { titulo: 'Contenido para familias' } },
+          { path: '/familia/contenido/fotos/:id', element: <RequireModulo modulo="familia_contenido"><AlbumPage /></RequireModulo>, handle: { titulo: 'Álbum de fotos' } },
+          { path: '/familia/comunicacion', element: <RequireModulo modulo="familia_comunicacion"><ComunicacionFamiliaPage /></RequireModulo>, handle: { titulo: 'Comunicación con familias' } },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

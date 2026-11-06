@@ -9,7 +9,7 @@ export interface AuthUser {
   email: string | null;
   residenteId: string | null;
   organizacionId: string | null;
-  rol: 'residente' | 'admin' | 'staff' | null;
+  rol: 'residente' | 'admin' | 'staff' | 'familiar' | null;
   /** false = cuenta deshabilitada: no puede usar el backoffice aunque tenga rol admin/staff. */
   activo: boolean;
   /** Cuenta del allowlist de super-admins — ver `config/superAdmins.ts`. Bypassa el chequeo de `rol`. */
