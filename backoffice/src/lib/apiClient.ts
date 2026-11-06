@@ -10,6 +10,7 @@
 // El perfil, el rol y si es super admin los resuelve el backend.
 // ========================================
 import { supabase } from './supabase';
+import { organizacionElegida } from './organizacionActiva';
 
 const API_URL = (import.meta.env.VITE_API_URL as string) ?? '';
 
@@ -41,6 +42,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: {
       ...(isJsonBody ? { 'Content-Type': 'application/json' } : {}),
       ...(await authHeader()),
+      // Solo lo respeta el backend para un super admin; para cualquier otra cuenta se ignora.
+      ...(organizacionElegida() ? { 'X-Organizacion-Id': organizacionElegida() as string } : {}),
       ...init.headers,
     },
   });

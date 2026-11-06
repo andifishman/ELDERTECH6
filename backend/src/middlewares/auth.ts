@@ -3,6 +3,7 @@ import { logger } from '../logging/logger';
 import { getSupabaseAdmin } from '../repositories/supabaseAdmin';
 import { esCuentaSuperAdmin } from '../config/superAdmins';
 import { StatusCodes } from 'http-status-codes';
+import * as organizacionesRepo from '../repositories/organizacionesRepository';
 
 export interface AuthUser {
   supabaseUserId: string;
@@ -23,6 +24,27 @@ declare global {
       user?: AuthUser;
     }
   }
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Instituciones ya validadas (id → vence en ms): evita una consulta por request cuando el super admin tiene elegida otra. */
+export const ORGANIZACIONES_VALIDAS = new Map<string, number>();
+const VIGENCIA_MS = 60_000;
+
+/**
+ * Solo un super admin puede operar sobre OTRA institución que la suya: manda el header `X-Organizacion-Id` desde el selector
+ * del backoffice y todo el backend (que resuelve la institución desde `req.user.organizacionId`) trabaja sobre esa. Para
+ * cualquier otra cuenta el header se ignora. Si la institución no existe o está inactiva, se ignora también.
+ */
+export async function organizacionElegida(header: unknown, propia: string | null): Promise<string | null> {
+  if (typeof header !== 'string' || !UUID.test(header) || header === propia) return propia;
+  const vence = ORGANIZACIONES_VALIDAS.get(header);
+  if (vence && vence > Date.now()) return header;
+  const existe = await organizacionesRepo.obtenerActiva(header);
+  if (!existe) return propia;
+  ORGANIZACIONES_VALIDAS.set(header, Date.now() + VIGENCIA_MS);
+  return existe.id;
 }
 
 /**
@@ -66,15 +88,18 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   const email = userData.user.email ?? null;
+  const esSuperAdmin = esCuentaSuperAdmin(userData.user.id, email);
+  const organizacionPropia: string | null = data?.organizacion_id ?? null;
+  const organizacionActiva = esSuperAdmin ? await organizacionElegida(req.headers['x-organizacion-id'], organizacionPropia) : organizacionPropia;
 
   req.user = {
     supabaseUserId: userData.user.id,
     email,
     residenteId: data?.residente_id ?? null,
-    organizacionId: data?.organizacion_id ?? null,
+    organizacionId: organizacionActiva,
     rol: (data?.rol as AuthUser['rol']) ?? null,
     activo: data?.activo !== false,
-    isSuperAdmin: esCuentaSuperAdmin(userData.user.id, email),
+    isSuperAdmin: esSuperAdmin,
   };
   next();
 }

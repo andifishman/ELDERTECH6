@@ -48,3 +48,18 @@ export function sumarMeses(mes: string, n: number): string {
 export const nombreMes = (mes: string): string => new Date(`${mes}-01T12:00:00Z`).toLocaleDateString('es-AR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 export const nombreCompleto = (r: { nombre: string; apellido: string }): string => `${r.nombre} ${r.apellido}`.trim();
+
+/** Saludo según la hora en Argentina. */
+export function saludo(): string {
+  const hora = Number(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: ZONA }).slice(0, 2));
+  return hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+/** Minutos desde las 00:00 de hoy, en hora de Argentina. */
+export function minutosAhora(): number {
+  const [h, m] = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: ZONA }).split(':').map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+/** "jueves 6 de noviembre" */
+export const fechaHoyLarga = (): string => new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: ZONA });

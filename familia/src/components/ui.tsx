@@ -5,13 +5,14 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { ApiError } from '@/lib/apiClient';
 
-type Variante = 'primario' | 'secundario' | 'peligro' | 'fantasma';
+type Variante = 'primario' | 'secundario' | 'peligro' | 'fantasma' | 'coral';
 
 const VARIANTES: Record<Variante, string> = {
   primario: 'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800',
   secundario: 'border-2 border-primary-600 bg-white text-primary-700 hover:bg-primary-50',
   peligro: 'bg-red-700 text-white hover:bg-red-800',
   fantasma: 'text-primary-700 hover:bg-primary-50',
+  coral: 'bg-coral-600 text-white shadow-calido hover:bg-coral-700',
 };
 
 interface BotonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -26,7 +27,7 @@ export function Boton({ variante = 'primario', cargando, bloque, className, chil
       type={type}
       disabled={disabled || cargando}
       className={clsx(
-        'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-base font-bold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50',
         VARIANTES[variante],
         bloque && 'w-full',
         className,
@@ -41,7 +42,7 @@ export function Boton({ variante = 'primario', cargando, bloque, className, chil
 
 export function Tarjeta({ className, children, ...resto }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={clsx('rounded-2xl border border-primary-100 bg-white p-4 shadow-sm', className)} {...resto}>
+    <div className={clsx('rounded-3xl border border-primary-100/70 bg-white p-4 shadow-suave', className)} {...resto}>
       {children}
     </div>
   );
@@ -50,7 +51,8 @@ export function Tarjeta({ className, children, ...resto }: { className?: string;
 export function Titulo({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   return (
     <header className="mb-4">
-      <h1 className="text-2xl font-bold text-primary-800">{children}</h1>
+      <h1 className="text-3xl font-bold text-primary-800">{children}</h1>
+      <span aria-hidden className="mt-2 block h-1.5 w-16 rounded-full bg-gradient-to-r from-sol-400 via-coral-400 to-rosa-500" />
       {sub && <p className="mt-1 text-sm text-soft">{sub}</p>}
     </header>
   );
@@ -136,7 +138,7 @@ export function Etiqueta({ children, color = 'violeta' }: { children: ReactNode;
 /** Pestañas accesibles (botones con aria-pressed) para alternar secciones dentro de una pantalla. */
 export function Pestanas<T extends string>({ valor, onCambio, opciones }: { valor: T; onCambio: (v: T) => void; opciones: Array<{ id: T; texto: string }> }) {
   return (
-    <div role="tablist" className="mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-primary-50 p-1">
+    <div role="tablist" className="mb-4 flex gap-1 overflow-x-auto rounded-2xl border border-primary-100 bg-white p-1 shadow-suave sin-barra">
       {opciones.map((o) => (
         <button
           key={o.id}
@@ -144,7 +146,7 @@ export function Pestanas<T extends string>({ valor, onCambio, opciones }: { valo
           role="tab"
           aria-selected={valor === o.id}
           onClick={() => onCambio(o.id)}
-          className={clsx('min-h-12 flex-1 whitespace-nowrap rounded-xl px-3 py-2 font-semibold transition-colors', valor === o.id ? 'bg-white text-primary-800 shadow-sm' : 'text-soft hover:text-primary-800')}
+          className={clsx('min-h-12 flex-1 whitespace-nowrap rounded-xl px-3 py-2 font-semibold transition-colors', valor === o.id ? 'bg-primary-600 text-white shadow-sm' : 'text-soft hover:text-primary-800')}
         >
           {o.texto}
         </button>

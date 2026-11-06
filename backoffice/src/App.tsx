@@ -45,6 +45,7 @@ const FamiliaresPage = lazy(() => import('@/features/familia/FamiliaresPage').th
 const ContenidoFamiliaPage = lazy(() => import('@/features/familia/ContenidoFamiliaPage').then((m) => ({ default: m.ContenidoFamiliaPage })));
 const AlbumPage = lazy(() => import('@/features/familia/AlbumPage').then((m) => ({ default: m.AlbumPage })));
 const ComunicacionFamiliaPage = lazy(() => import('@/features/familia/ComunicacionFamiliaPage').then((m) => ({ default: m.ComunicacionFamiliaPage })));
+const InstitucionesPage = lazy(() => import('@/features/instituciones/InstitucionesPage').then((m) => ({ default: m.InstitucionesPage })));
 const NotificacionDetailPage = lazy(() => import('@/features/notificaciones/NotificacionDetailPage').then((m) => ({ default: m.NotificacionDetailPage })));
 
 const router = createBrowserRouter([
@@ -89,6 +90,7 @@ const router = createBrowserRouter([
           { path: '/familia/contenido', element: <RequireModulo modulo="familia_contenido"><ContenidoFamiliaPage /></RequireModulo>, handle: { titulo: 'Contenido para familias' } },
           { path: '/familia/contenido/fotos/:id', element: <RequireModulo modulo="familia_contenido"><AlbumPage /></RequireModulo>, handle: { titulo: 'Álbum de fotos' } },
           { path: '/familia/comunicacion', element: <RequireModulo modulo="familia_comunicacion"><ComunicacionFamiliaPage /></RequireModulo>, handle: { titulo: 'Comunicación con familias' } },
+          { path: '/instituciones', element: <RequireModulo modulo="instituciones"><InstitucionesPage /></RequireModulo>, handle: { titulo: 'Instituciones', subtitulo: 'Datos y color de cada geriátrico · solo Super Admin' } },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

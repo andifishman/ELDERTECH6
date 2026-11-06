@@ -14,7 +14,7 @@ export interface ResidenteVinculado {
 
 export interface Me {
   familiar: { id: string; nombre: string; apellido: string; email: string };
-  institucion: { nombre: string; telefono: string | null; email: string | null } | null;
+  institucion: { nombre: string; telefono: string | null; email: string | null; colorPrincipal: string | null } | null;
   residentes: ResidenteVinculado[];
 }
 

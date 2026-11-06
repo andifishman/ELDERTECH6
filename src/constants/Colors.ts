@@ -3,7 +3,8 @@
 export const Colors = {
   // Marca principal
   brand: {
-    primary: '#5F3E88',     // Header, AppBar, botones principales — violeta de marca
+    primary: '#5F3E88',     // Header, AppBar, botones principales — violeta de marca (cada institución puede cambiarlo: src/theme/temaInstitucion.ts)
+    primarySoft: '#B9A5D6', // Tinte claro del color de marca (fondos de íconos)
     greenMedium: '#2E7D32', // Botón Llamar
     red: '#D32F2F',         // Botón Horarios, header Horarios
     purple: '#6A1B9A',      // Botón Artículos

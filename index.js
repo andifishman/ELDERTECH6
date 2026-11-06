@@ -1,4 +1,10 @@
-// Punto de entrada. Solo agrega un import antes de expo-router/entry (el original de package.json):
-// marcoWeb acota el ancho que ven las pantallas en web y es un no-op en Android/iOS.
+// Punto de entrada. Antes de cargar expo-router (y con él todas las pantallas):
+//  - marcoWeb acota el ancho que ven las pantallas en web y es un no-op en Android/iOS.
+//  - el color de marca de la institución se aplica a `Colors` ANTES de que las pantallas calculen sus estilos
+//    (ver src/theme/temaInstitucion.ts). Es una lectura local rápida y nunca bloquea el arranque más de unas décimas.
 import './src/utils/marcoWeb';
-import 'expo-router/entry';
+import { cargarYAplicarColor } from './src/theme/temaInstitucion';
+
+cargarYAplicarColor().finally(() => {
+  require('expo-router/entry');
+});

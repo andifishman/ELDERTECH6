@@ -259,10 +259,13 @@ export const eliminarCuentaAuth = withRepoLogging(REPO, 'eliminarCuentaAuth', as
 
 // ─── Institución ─────────────────────────────────────────────────────────────
 
-export const obtenerOrganizacion = withRepoLogging(REPO, 'obtenerOrganizacion', async (organizacionId: string): Promise<{ id: string; nombre: string; telefono: string | null; email: string | null } | null> => {
-  const { data, error } = await getSupabaseAdmin().from('organizaciones').select('id, nombre, telefono, email').eq('id', organizacionId).maybeSingle();
+export const obtenerOrganizacion = withRepoLogging(REPO, 'obtenerOrganizacion', async (organizacionId: string): Promise<{ id: string; nombre: string; telefono: string | null; email: string | null; colorPrincipal: string | null } | null> => {
+  // select('*'): funciona aunque la columna color_principal todavía no exista.
+  const { data, error } = await getSupabaseAdmin().from('organizaciones').select('*').eq('id', organizacionId).maybeSingle();
   if (error) throw new Error(`Error al cargar la institución: ${error.message}`);
-  return (data as { id: string; nombre: string; telefono: string | null; email: string | null } | null) ?? null;
+  if (!data) return null;
+  const f = data as { id: string; nombre: string; telefono: string | null; email: string | null; color_principal?: string | null };
+  return { id: f.id, nombre: f.nombre, telefono: f.telefono, email: f.email, colorPrincipal: f.color_principal ?? null };
 });
 
 // ─── Agenda del residente (solo lectura) ─────────────────────────────────────

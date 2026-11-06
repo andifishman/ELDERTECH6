@@ -8,3 +8,4 @@ export const meRouter = Router();
 meRouter.use(requireAuth);
 
 meRouter.post('/connection', asyncHandler(controller.postConexion));
+meRouter.get('/branding', asyncHandler(controller.getBranding));

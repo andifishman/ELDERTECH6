@@ -31,16 +31,16 @@ export default {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
-          50: '#F2EEF8',
-          100: '#E0D7EE',
-          200: '#C3B2DD',
-          300: '#A189C8',
-          400: '#8264B0',
-          500: '#6E4D9C', // violeta medio (botones)
-          600: '#5F3E88', // violeta de marca (sidebar/header)
-          700: '#4F3372',
-          800: '#3F2960',
-          900: '#2C1D44',
+          50: 'rgb(var(--primary-50) / <alpha-value>)',
+          100: 'rgb(var(--primary-100) / <alpha-value>)',
+          200: 'rgb(var(--primary-200) / <alpha-value>)',
+          300: 'rgb(var(--primary-300) / <alpha-value>)',
+          400: 'rgb(var(--primary-400) / <alpha-value>)',
+          500: 'rgb(var(--primary-500) / <alpha-value>)', // violeta medio (botones)
+          600: 'rgb(var(--primary-600) / <alpha-value>)', // violeta de marca (sidebar/header)
+          700: 'rgb(var(--primary-700) / <alpha-value>)',
+          800: 'rgb(var(--primary-800) / <alpha-value>)',
+          900: 'rgb(var(--primary-900) / <alpha-value>)',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',

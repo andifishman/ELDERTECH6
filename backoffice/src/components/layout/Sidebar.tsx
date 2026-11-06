@@ -14,6 +14,9 @@ import { NAV_ITEMS } from './nav.config';
 import { useAuth } from '@/features/auth/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { SelectorInstitucion } from './SelectorInstitucion';
+import { useQuery } from '@tanstack/react-query';
+import { listarInstituciones } from '@/services/organizacionesService';
 
 interface SidebarProps {
   abierto: boolean;
@@ -29,7 +32,10 @@ const ROL_LABEL: Record<string, string> = {
 export function Sidebar({ abierto, onCerrar }: SidebarProps) {
   const { perfil, rol, signOut, puede } = useAuth();
   // solo los módulos a los que el usuario tiene acceso (el servidor igual lo verifica en cada request)
-  const items = NAV_ITEMS.filter((i) => puede(i.modulo, 'ver'));
+  // Actividades: la grilla del Hogar es de una sola institución; las demás gestionan las suyas en /horarios.
+  const instQ = useQuery({ queryKey: ['instituciones'], queryFn: listarInstituciones, staleTime: 60_000 });
+  const sinFeedHogar = instQ.data?.usaFeedHogar === false;
+  const items = NAV_ITEMS.filter((i) => puede(i.modulo, 'ver')).map((i) => (sinFeedHogar && i.to === '/horarios-hogar' ? { ...i, to: '/horarios' } : i));
   const [confirmarCerrar, setConfirmarCerrar] = useState(false);
 
   return (
@@ -82,6 +88,8 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
             <p className="text-xs text-white/70">{ROL_LABEL[rol] ?? 'Editor'}</p>
           </div>
         </div>
+
+        <SelectorInstitucion />
 
         {/* navegación */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2 scrollbar-thin">

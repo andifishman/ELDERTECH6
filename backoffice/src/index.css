@@ -42,6 +42,18 @@
     --ring: 267 37% 39%;
 
     --radius: 0.75rem;
+
+    /* Escala del color principal (R G B): la sobrescribe lib/tema.ts con el color de la institución */
+    --primary-50: 242 238 248;
+    --primary-100: 224 215 238;
+    --primary-200: 195 178 221;
+    --primary-300: 161 137 200;
+    --primary-400: 130 100 176;
+    --primary-500: 110 77 156;
+    --primary-600: 95 62 136;
+    --primary-700: 79 51 114;
+    --primary-800: 63 41 96;
+    --primary-900: 44 29 68;
   }
 
   .dark {

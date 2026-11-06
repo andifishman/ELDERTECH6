@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { sincronizarColorInstitucion } from '../theme/temaInstitucion';
 import { AppState, Platform } from 'react-native';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -290,6 +291,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return () => sub.remove();
   }, []);
+
+  // Color de marca de la institución: si cambió desde el backoffice, se guarda y la app se recarga una vez para tomarlo.
+  const usuarioId = session?.user?.id ?? null;
+  useEffect(() => {
+    if (!usuarioId) return;
+    sincronizarColorInstitucion().catch(() => undefined);
+  }, [usuarioId]);
 
   return (
     <AuthContext.Provider value={{ session, profile, isLoading, refreshProfile }}>

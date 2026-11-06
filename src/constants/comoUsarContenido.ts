@@ -10,6 +10,7 @@
 // Si se agrega o cambia una función real de la app, actualizar acá también
 // — esta guía tiene que reflejar lo que el residente puede tocar hoy, nunca
 // una función que todavía no existe.
+import { Colors } from './Colors';
 
 export interface SeccionGuia {
   id: string;
@@ -34,7 +35,7 @@ export const INTRO_GENERAL: SeccionGuia = {
   emoji: '🏠',
   titulo: 'La pantalla principal',
   tituloBoton: 'Inicio',
-  color: '#5F3E88',
+  color: Colors.brand.primary,
   intro:
     'La pantalla principal es lo primero que ves al abrir ElderTech. Desde ahí entrás a todas las demás secciones de la aplicación.',
   pasos: [
@@ -133,7 +134,7 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     id: 'hablemos',
     emoji: '💬',
     titulo: 'Hablemos',
-    color: '#5F3E88',
+    color: Colors.brand.primary,
     intro: 'Hablemos te permite mandar mensajes de texto o de voz a otros residentes de la casa.',
     pasos: [
       'Desde la pantalla principal, tocá el botón violeta "Hablemos".',

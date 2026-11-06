@@ -1,4 +1,5 @@
 import { getCacheStore } from '../../cache';
+import { feedAplicaA } from '../../config/feedHorarios';
 import { env } from '../../config/env';
 import { ProviderManager, type IProvider } from '../../core/provider';
 import type { ChatCompletionInput, ChatCompletionOutput, GroqToolCall } from '../../providers/chat/ChatTypes';
@@ -236,7 +237,7 @@ async function ejecutarHerramienta(
       const horaStr = args.hora as string | undefined;
       // Con el feed del hogar configurado, las actividades son las que ve el residente en
       // la pantalla Actividades (vienen del sistema del hogar), no las de la tabla propia.
-      if (env.ledorFeedKey) {
+      if (env.ledorFeedKey && feedAplicaA(organizacionId)) {
         const delHogar = await horariosExternos.buscarParaAsistente({ fecha: fechaStr, busqueda, hora: horaStr });
         return delHogar.length > 0
           ? JSON.stringify(delHogar)
