@@ -4,6 +4,8 @@ import multer from 'multer';
 import { StatusCodes } from 'http-status-codes';
 import * as controller from '../controllers/familia.controller';
 import * as admin from '../controllers/familiaAdmin.controller';
+import * as acceso from '../controllers/familiaAcceso.controller';
+import { getCacheStore } from '../cache';
 import { requireAdmin, requireAuth } from '../middlewares/auth';
 import { HttpError } from '../middlewares/errorHandler';
 import { requireFamiliar } from '../middlewares/familia';
@@ -29,6 +31,32 @@ function conSubida(middleware: RequestHandler): RequestHandler {
 }
 
 const escribir = rateLimit({ limit: 30, windowSeconds: 60 });
+
+/**
+ * Límite por IP para los endpoints PÚBLICOS (todavía no hay usuario). En Vercel el backend va detrás de un proxy, así que la IP
+ * real es la primera de x-forwarded-for; sin ella todos compartirían un mismo contador.
+ */
+function limitePorIp(limit: number, windowSeconds: number): RequestHandler {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const reenviada = req.headers['x-forwarded-for'];
+      const ip = (typeof reenviada === 'string' ? reenviada.split(',')[0]?.trim() : undefined) || req.ip || 'anon';
+      const cuenta = await getCacheStore().increment(`ratelimit:acceso:${req.path}:${ip}`, windowSeconds);
+      if (cuenta > limit) {
+        res.status(StatusCodes.TOO_MANY_REQUESTS).json({ error: 'Demasiados intentos. Probá de nuevo en unos minutos.' });
+        return;
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+// ═══ Público: entrada a la app de familiares (/api/acceso-familia) ═══════════
+export const familiaAccesoRouter = Router();
+familiaAccesoRouter.post('/verificar', limitePorIp(20, 600), asyncHandler(acceso.postVerificar));
+familiaAccesoRouter.post('/solicitar', limitePorIp(5, 3600), asyncHandler(acceso.postSolicitar));
 
 // ═══ App de familiares: /api/familia ═════════════════════════════════════════
 export const familiaRouter = Router();
@@ -90,6 +118,11 @@ familiaAdminRouter.post('/familiares/:id/vinculos', requirePermission('familiare
 familiaAdminRouter.patch('/vinculos/:id', requirePermission('familiares', 'editar'), asyncHandler(admin.patchVinculo));
 familiaAdminRouter.post('/vinculos/:id/revocar', requirePermission('familiares', 'editar'), asyncHandler(admin.postRevocarVinculo));
 familiaAdminRouter.post('/vinculos/:id/reactivar', requirePermission('familiares', 'editar'), asyncHandler(admin.postReactivarVinculo));
+
+// Pedidos de acceso: quien intentó entrar sin estar dado de alta (se aprueban como un alta nueva)
+familiaAdminRouter.get('/solicitudes', requirePermission('familiares', 'ver'), asyncHandler(acceso.getSolicitudes));
+familiaAdminRouter.post('/solicitudes/:id/aprobar', requirePermission('familiares', 'crear'), asyncHandler(acceso.postAprobar));
+familiaAdminRouter.post('/solicitudes/:id/rechazar', requirePermission('familiares', 'editar'), asyncHandler(acceso.postRechazar));
 
 // Módulo "familia_contenido": avisos, eventos, documentos, fotos
 const contenido = (...acciones: Array<'ver' | 'crear' | 'editar' | 'eliminar'>) => requirePermission('familia_contenido', ...acciones);

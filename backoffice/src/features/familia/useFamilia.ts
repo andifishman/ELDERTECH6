@@ -4,6 +4,7 @@ import * as service from '@/services/familiaService';
 
 const K = {
   familiares: ['familia', 'familiares'] as const,
+  solicitudes: ['familia', 'solicitudes'] as const,
   avisos: ['familia', 'avisos'] as const,
   lecturas: (id: string) => ['familia', 'avisos', id, 'lecturas'] as const,
   eventos: ['familia', 'eventos'] as const,
@@ -64,6 +65,15 @@ export const useVincular = () =>
   });
 
 export const useRevocarVinculo = () => useAccion(service.revocarVinculo, { ok: 'Vínculo revocado: el familiar ya no ve a ese residente', error: 'No se pudo revocar el vínculo', invalidar: [K.familiares] });
+export const useSolicitudes = () => useQuery({ queryKey: K.solicitudes, queryFn: service.listarSolicitudes });
+export const useAprobarSolicitud = () =>
+  useAccion(({ id, input }: { id: string; input: Parameters<typeof service.aprobarSolicitud>[1] }) => service.aprobarSolicitud(id, input), {
+    ok: 'Solicitud aprobada: le llega la invitación por email',
+    error: 'No se pudo aprobar la solicitud',
+    invalidar: [K.solicitudes, K.familiares],
+  });
+export const useRechazarSolicitud = () => useAccion(service.rechazarSolicitud, { ok: 'Solicitud rechazada', error: 'No se pudo rechazar la solicitud', invalidar: [K.solicitudes] });
+
 export const useReactivarVinculo = () => useAccion(service.reactivarVinculo, { ok: 'Vínculo reactivado', error: 'No se pudo reactivar el vínculo', invalidar: [K.familiares] });
 
 // ─── Avisos ──────────────────────────────────────────────────────────────────

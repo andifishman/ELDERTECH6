@@ -8,7 +8,7 @@
 // instante (no borra nada: queda registro y se puede reactivar).
 // ========================================
 import { useMemo, useState } from 'react';
-import { Link2, Link2Off, Mail, Plus, Power, Search, UserRound, Users } from 'lucide-react';
+import { Check, Inbox, Link2, Link2Off, Mail, Plus, Power, Search, UserRound, Users, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -26,8 +26,9 @@ import { useResidentes } from '@/features/usuarios/useResidentes';
 import { coincideBusqueda } from '@/lib/textSearch';
 import { SECCION_EMPLEADO } from '@/types/database.types';
 import { cn } from '@/lib/utils';
-import type { Familiar, VinculoFamiliar } from '@/services/familiaService';
-import { useActualizarFamiliar, useCrearFamiliar, useFamiliares, useReactivarVinculo, useReinvitar, useRevocarVinculo, useVincular } from './useFamilia';
+import type { Familiar, SolicitudAcceso, VinculoFamiliar } from '@/services/familiaService';
+import { useActualizarFamiliar, useAprobarSolicitud, useCrearFamiliar, useFamiliares, useReactivarVinculo, useReinvitar, useRechazarSolicitud, useRevocarVinculo, useSolicitudes, useVincular } from './useFamilia';
+import { fechaHora } from './formato';
 
 const nombreResidente = (r: { nombre: string; apellido: string } | null) => (r ? `${r.nombre} ${r.apellido}`.trim() : 'Residente');
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -48,6 +49,7 @@ function SelectorResidentes({
   onParentesco,
   excluir = [],
   unico = false,
+  busquedaInicial = '',
 }: {
   residentes: ResidenteOpcion[];
   elegidos: string[];
@@ -56,8 +58,10 @@ function SelectorResidentes({
   onParentesco: (id: string, valor: string) => void;
   excluir?: string[];
   unico?: boolean;
+  /** Texto con el que arranca el buscador (en un pedido de acceso: el nombre que dijo la persona) */
+  busquedaInicial?: string;
 }) {
-  const [busqueda, setBusqueda] = useState('');
+  const [busqueda, setBusqueda] = useState(busquedaInicial);
   const visibles = useMemo(
     () => residentes.filter((r) => !excluir.includes(r.id) && (!busqueda.trim() || coincideBusqueda(`${r.nombre} ${r.apellido}`, busqueda))).slice(0, 60),
     [residentes, excluir, busqueda],
@@ -97,11 +101,17 @@ function SelectorResidentes({
   );
 }
 
-function AltaDialog({ abierto, onCerrar, residentes }: { abierto: boolean; onCerrar: () => void; residentes: ResidenteOpcion[] }) {
+/**
+ * Alta de un familiar. Con `solicitud` es la aprobación de un pedido de acceso: los datos vienen cargados, el email no se
+ * puede cambiar (se aprueba a quien lo pidió) y el buscador arranca con el nombre del residente que dijo.
+ */
+function AltaDialog({ abierto, onCerrar, residentes, solicitud = null }: { abierto: boolean; onCerrar: () => void; residentes: ResidenteOpcion[]; solicitud?: SolicitudAcceso | null }) {
   const crear = useCrearFamiliar();
-  const [datos, setDatos] = useState({ nombre: '', apellido: '', email: '', telefono: '' });
+  const aprobar = useAprobarSolicitud();
+  const [datos, setDatos] = useState({ nombre: solicitud?.nombre ?? '', apellido: solicitud?.apellido ?? '', email: solicitud?.email ?? '', telefono: solicitud?.telefono ?? '' });
   const [elegidos, setElegidos] = useState<string[]>([]);
   const [parentescos, setParentescos] = useState<Record<string, string>>({});
+  const trabajando = crear.isPending || aprobar.isPending;
 
   const emailValido = EMAIL.test(datos.email.trim());
   const listo = datos.nombre.trim() && datos.apellido.trim() && emailValido && elegidos.length > 0;
@@ -114,13 +124,18 @@ function AltaDialog({ abierto, onCerrar, residentes }: { abierto: boolean; onCer
   };
 
   return (
-    <Dialog open={abierto} onOpenChange={(v) => !v && !crear.isPending && cerrar()}>
+    <Dialog open={abierto} onOpenChange={(v) => !v && !trabajando && cerrar()}>
       <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nuevo familiar</DialogTitle>
+          <DialogTitle>{solicitud ? 'Aprobar solicitud de acceso' : 'Nuevo familiar'}</DialogTitle>
           <DialogDescription>Le llega un email con un link para entrar a la app de familiares. Después entra solo con su email, sin contraseña.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {solicitud && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Dijo ser familiar de <strong>{solicitud.residente_texto ?? '—'}</strong>{solicitud.parentesco ? ` (${solicitud.parentesco})` : ''}. Elegí abajo al residente correcto; si no es quien dice, rechazá la solicitud.
+            </p>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="fam-nombre">Nombre</Label>
@@ -133,7 +148,7 @@ function AltaDialog({ abierto, onCerrar, residentes }: { abierto: boolean; onCer
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="fam-email">Email</Label>
-            <Input id="fam-email" type="email" value={datos.email} maxLength={160} onChange={(e) => setDatos({ ...datos, email: e.target.value })} aria-invalid={datos.email !== '' && !emailValido} />
+            <Input id="fam-email" type="email" value={datos.email} maxLength={160} readOnly={!!solicitud} onChange={(e) => setDatos({ ...datos, email: e.target.value })} aria-invalid={datos.email !== '' && !emailValido} />
             {datos.email !== '' && !emailValido && <p className="text-sm text-destructive">Revisá el email.</p>}
           </div>
           <div className="space-y-1.5">
@@ -146,30 +161,33 @@ function AltaDialog({ abierto, onCerrar, residentes }: { abierto: boolean; onCer
               residentes={residentes}
               elegidos={elegidos}
               parentescos={parentescos}
-              onToggle={(id) => setElegidos((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]))}
+              busquedaInicial={solicitud?.residente_texto ?? ''}
+              onToggle={(id) => {
+                setElegidos((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]));
+                // En una solicitud, el parentesco que dijo la persona queda propuesto (se puede corregir).
+                if (solicitud?.parentesco && !elegidos.includes(id)) setParentescos((p) => ({ ...p, [id]: p[id] ?? solicitud.parentesco ?? '' }));
+              }}
               onParentesco={(id, v) => setParentescos((p) => ({ ...p, [id]: v }))}
             />
             {elegidos.length === 0 && <p className="text-sm text-muted-foreground">Elegí al menos uno.</p>}
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={cerrar} disabled={crear.isPending}>Cancelar</Button>
+          <Button variant="outline" onClick={cerrar} disabled={trabajando}>Cancelar</Button>
           <Button
-            disabled={!listo || crear.isPending}
-            onClick={() =>
-              crear.mutate(
-                {
-                  nombre: datos.nombre.trim(),
-                  apellido: datos.apellido.trim(),
-                  email: datos.email.trim().toLowerCase(),
-                  telefono: datos.telefono.trim() || null,
-                  residentes: elegidos.map((residenteId) => ({ residenteId, parentesco: parentescos[residenteId]?.trim() || null })),
-                },
-                { onSuccess: cerrar },
-              )
-            }
+            disabled={!listo || trabajando}
+            onClick={() => {
+              const base = {
+                nombre: datos.nombre.trim(),
+                apellido: datos.apellido.trim(),
+                telefono: datos.telefono.trim() || null,
+                residentes: elegidos.map((residenteId) => ({ residenteId, parentesco: parentescos[residenteId]?.trim() || null })),
+              };
+              if (solicitud) aprobar.mutate({ id: solicitud.id, input: base }, { onSuccess: cerrar });
+              else crear.mutate({ ...base, email: datos.email.trim().toLowerCase() }, { onSuccess: cerrar });
+            }}
           >
-            {crear.isPending ? 'Enviando…' : 'Dar de alta y enviar invitación'}
+            {trabajando ? 'Enviando…' : solicitud ? 'Aprobar y enviar invitación' : 'Dar de alta y enviar invitación'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -228,6 +246,11 @@ export function FamiliaresPage() {
   const reinvitar = useReinvitar();
   const revocar = useRevocarVinculo();
   const reactivar = useReactivarVinculo();
+  const solicitudesQ = useSolicitudes();
+  const rechazar = useRechazarSolicitud();
+  const [aAprobar, setAAprobar] = useState<SolicitudAcceso | null>(null);
+  const [aRechazar, setARechazar] = useState<SolicitudAcceso | null>(null);
+  const pendientes = (solicitudesQ.data ?? []).filter((s) => s.estado === 'pendiente');
 
   const [busqueda, setBusqueda] = useState('');
   const [alta, setAlta] = useState(false);
@@ -262,6 +285,35 @@ export function FamiliaresPage() {
         descripcion="Quién es familiar de quién. Cada familiar solo ve a los residentes que vincules acá."
         acciones={puedeCrear ? <Button onClick={() => setAlta(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Nuevo familiar</Button> : undefined}
       />
+
+      {pendientes.length > 0 && (
+        <section aria-labelledby="solicitudes-titulo" className="space-y-3 rounded-xl border-2 border-amber-300 bg-amber-50/60 p-4">
+          <div className="flex items-center gap-2">
+            <Inbox className="h-5 w-5 text-amber-800" />
+            <h3 id="solicitudes-titulo" className="font-semibold text-amber-950">Solicitudes de acceso ({pendientes.length})</h3>
+          </div>
+          <p className="text-sm text-amber-900">Personas que intentaron entrar a la app de familiares sin estar dadas de alta. Aprobá solo si reconocés a la persona y al residente.</p>
+          <div className="space-y-2">
+            {pendientes.map((s) => (
+              <Card key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div className="min-w-0">
+                  <p className="font-semibold">{`${s.nombre ?? ''} ${s.apellido ?? ''}`.trim() || 'Sin nombre'} <span className="font-normal text-muted-foreground">· {s.email}</span></p>
+                  <p className="text-sm">
+                    Dice ser familiar de <strong>{s.residente_texto ?? '—'}</strong>{s.parentesco ? ` (${s.parentesco})` : ''}{s.telefono ? ` · Tel. ${s.telefono}` : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{fechaHora(s.created_at)}{s.intentos > 1 ? ` · lo intentó ${s.intentos} veces` : ''}</p>
+                </div>
+                {(puedeCrear || puedeEditar) && (
+                  <div className="flex shrink-0 gap-2">
+                    {puedeCrear && <Button size="sm" className="gap-1.5" onClick={() => setAAprobar(s)}><Check className="h-4 w-4" /> Aprobar</Button>}
+                    {puedeEditar && <Button size="sm" variant="outline" className="gap-1.5 text-destructive" onClick={() => setARechazar(s)}><X className="h-4 w-4" /> Rechazar</Button>}
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       {total === 0 ? (
         <EmptyState
@@ -347,6 +399,16 @@ export function FamiliaresPage() {
       )}
 
       <AltaDialog abierto={alta} onCerrar={() => setAlta(false)} residentes={residentes} />
+      <AltaDialog key={aAprobar?.id ?? 'sin-solicitud'} abierto={!!aAprobar} onCerrar={() => setAAprobar(null)} residentes={residentes} solicitud={aAprobar} />
+      <ConfirmDialog
+        abierto={!!aRechazar}
+        onOpenChange={(v) => !v && setARechazar(null)}
+        titulo="¿Rechazar la solicitud?"
+        descripcion={aRechazar ? `${aRechazar.email} no va a tener acceso a la app de familiares. No se le avisa por email; si lo vuelve a intentar, se crea una solicitud nueva.` : ''}
+        textoConfirmar="Rechazar"
+        cargando={rechazar.isPending}
+        onConfirmar={() => aRechazar && rechazar.mutate(aRechazar.id, { onSuccess: () => setARechazar(null) })}
+      />
       <VincularDialog familiar={aVincular} onCerrar={() => setAVincular(null)} residentes={residentes} />
 
       <ConfirmDialog
