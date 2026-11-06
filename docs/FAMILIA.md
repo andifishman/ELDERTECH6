@@ -57,6 +57,7 @@ CORS_ALLOWED_ORIGINS=...,http://localhost:5174
    su misma transacción):
    - `supabase/migrations/20261101120000_familia_rol.sql`
    - `supabase/migrations/20261101120500_familia_module.sql`
+   - `supabase/migrations/20261101121000_familia_solicitudes_acceso.sql` (pedidos de acceso, ver más abajo)
 2. **Cerrar el acceso directo a Supabase (CRÍTICO).** Los familiares también son usuarios "authenticated". Si en
    producción siguen las políticas abiertas `TO authenticated USING (true)`, un familiar con conocimientos técnicos
    podría leer con la clave pública tablas de contenido (por ejemplo `residentes` de todas las instituciones, con DNI)
@@ -89,6 +90,16 @@ CORS_ALLOWED_ORIGINS=...,http://localhost:5174
 Backoffice → **Familiares** → *Nuevo familiar*: nombre, email, residente(s) y parentesco. Le llega un email con el link
 de invitación; después entra siempre con su email + un código. Un residente puede tener varios familiares y un familiar
 varios residentes. **Revocar** corta el acceso a ese residente al instante y no borra nada (se puede reactivar).
+
+## Pedidos de acceso (quien intenta entrar sin estar dado de alta)
+
+En la pantalla de entrada, la app consulta al backend si el email está dado de alta (`POST /api/acceso-familia/verificar`, público):
+
+- **Dado de alta** → se manda el código por email.
+- **Deshabilitado** → se le avisa que se comunique con la residencia.
+- **No dado de alta** → se le dice y puede completar un formulario (nombre, a quién visita, parentesco, teléfono). Eso crea una **solicitud** que el personal ve en Backoffice → Familiares (recuadro amarillo). *Aprobar* abre el alta con los datos cargados (el email sale de la solicitud, no se puede cambiar) y manda la invitación; *Rechazar* la cierra sin avisarle.
+
+Límites: un solo pedido pendiente por email (los reintentos lo actualizan), 5 pedidos por hora y 20 consultas por 10 minutos por IP, y tope de 300 pendientes por residencia. **Consecuencia a tener en cuenta:** como la pantalla dice si un email está dado de alta o no, alguien podría ir probando emails para saber quiénes son familiares; el límite por IP lo frena pero no lo elimina.
 
 ## Pendientes conocidos
 

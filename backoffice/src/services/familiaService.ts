@@ -61,6 +61,27 @@ export const vincularFamiliar = (familiarId: string, residenteId: string, parent
 export const revocarVinculo = (vinculoId: string) => apiClient.post<void>(`${BASE}/vinculos/${vinculoId}/revocar`);
 export const reactivarVinculo = (vinculoId: string) => apiClient.post<void>(`${BASE}/vinculos/${vinculoId}/reactivar`);
 
+// ─── Pedidos de acceso (quien intentó entrar sin estar dado de alta) ───────────
+
+export interface SolicitudAcceso {
+  id: string;
+  email: string;
+  nombre: string | null;
+  apellido: string | null;
+  telefono: string | null;
+  /** A quién dice ser familiar (texto libre, lo lee el personal) */
+  residente_texto: string | null;
+  parentesco: string | null;
+  estado: 'pendiente' | 'aprobada' | 'rechazada';
+  intentos: number;
+  created_at: string;
+}
+
+export const listarSolicitudes = () => apiClient.get<SolicitudAcceso[]>(`${BASE}/solicitudes`);
+/** Aprobar = dar de alta al familiar con los residentes elegidos. El email sale de la solicitud. */
+export const aprobarSolicitud = (id: string, input: Omit<CrearFamiliarInput, 'email'>) => apiClient.post<{ familiarId: string }>(`${BASE}/solicitudes/${id}/aprobar`, input);
+export const rechazarSolicitud = (id: string) => apiClient.post<void>(`${BASE}/solicitudes/${id}/rechazar`);
+
 // ─── Avisos ──────────────────────────────────────────────────────────────────
 
 export interface AvisoFamilia {

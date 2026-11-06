@@ -142,3 +142,23 @@ export const crearPropuestaSchema = z.object({
   titulo: texto(120),
   descripcion: texto(2000),
 });
+
+// ─── Pedidos de acceso (público: todavía no hay sesión) ──────────────────────
+
+const emailPublico = z.string().trim().toLowerCase().email('Email inválido').max(160);
+
+export const verificarEmailSchema = z.object({ email: emailPublico });
+
+export const solicitarAccesoSchema = z.object({
+  email: emailPublico,
+  nombre: texto(80),
+  apellido: texto(80),
+  telefono: textoOpcional(40),
+  /** A quién dice ser familiar (texto libre): lo lee el personal para elegir al residente correcto */
+  residenteTexto: texto(160),
+  parentesco: textoOpcional(60),
+  organizacionId: z.string().uuid().optional(),
+});
+
+/** Aprobar un pedido: el email NO se pide, sale de la solicitud. */
+export const aprobarSolicitudSchema = crearFamiliarSchema.omit({ email: true });
