@@ -50,7 +50,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(res.status, body?.error ?? `Error ${res.status} en ${path}`);
   }
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  // Una respuesta sin cuerpo (por ejemplo un 201 que no devuelve nada) no es un error: antes rompía con "Unexpected end of JSON input".
+  const texto = await res.text();
+  return (texto ? JSON.parse(texto) : undefined) as T;
 }
 
 export const apiClient = {
