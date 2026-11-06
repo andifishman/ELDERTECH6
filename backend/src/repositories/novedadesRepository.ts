@@ -155,7 +155,8 @@ export async function crear(organizacionId: string, creadoPor: string, input: Cr
       fijada: input.fijada,
       categoria: input.categoria,
       fecha_evento: input.fechaEvento,
-      para_familias: input.paraFamilias,
+      // Solo se manda cuando es true: así publicar una novedad común no depende de que la columna ya exista (migración de familias).
+      ...(input.paraFamilias ? { para_familias: true } : {}),
       creado_por: creadoPor,
     })
     .select('*')
