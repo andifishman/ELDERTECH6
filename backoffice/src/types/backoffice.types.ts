@@ -109,7 +109,8 @@ export type ModuloId =
   | 'novedades'
   | 'familiares'
   | 'familia_comunicacion'
-  | 'familia_contenido';
+  | 'familia_contenido'
+  | 'instituciones';
 
 export type AccionModulo = 'ver' | 'crear' | 'editar' | 'eliminar';
 

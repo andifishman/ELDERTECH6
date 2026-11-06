@@ -20,6 +20,7 @@ import {
   Gamepad2,
   Newspaper,
   HeartHandshake,
+  Building2,
   Images,
   MessageSquareText,
   type LucideIcon,
@@ -55,4 +56,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Auditoría', to: '/auditoria', icon: History, modulo: 'auditoria' },
   { label: 'Administradores', to: '/administradores', icon: ShieldCheck, modulo: 'administradores' },
   { label: 'Accesos', to: '/accesos', icon: KeyRound, modulo: 'accesos' },
+  { label: 'Instituciones', to: '/instituciones', icon: Building2, modulo: 'instituciones' },
 ];

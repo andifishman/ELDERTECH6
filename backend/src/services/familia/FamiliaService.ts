@@ -10,6 +10,7 @@ import * as horariosExternos from '../horariosExternos/HorariosExternosService';
 import type { ActividadExterna } from '../horariosExternos/HorariosExternosService';
 import { exigirVinculo, type FamiliarContext } from '../../utils/familia';
 import { filtrarPorPiso } from '../../utils/pisoHogar';
+import { feedAplicaA } from '../../config/feedHorarios';
 
 function requireOrganizacionId(user: AuthUser): string {
   if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
@@ -188,14 +189,14 @@ export async function actualizarParentesco(user: AuthUser, vinculoId: string, pa
 
 export async function obtenerMe(ctx: FamiliarContext): Promise<{
   familiar: { id: string; nombre: string; apellido: string; email: string };
-  institucion: { nombre: string; telefono: string | null; email: string | null } | null;
+  institucion: { nombre: string; telefono: string | null; email: string | null; colorPrincipal: string | null } | null;
   residentes: Array<{ id: string; vinculoId: string; nombre: string; apellido: string; parentesco: string | null; seccion: string | null }>;
 }> {
   const organizacion = await familiaRepo.obtenerOrganizacion(ctx.organizacionId);
   void familiaRepo.registrarAcceso(ctx.familiarId).catch((err: unknown) => logger.warn('[familia] no se pudo registrar el acceso', { err }));
   return {
     familiar: { id: ctx.familiarId, nombre: ctx.nombre, apellido: ctx.apellido, email: ctx.email },
-    institucion: organizacion ? { nombre: organizacion.nombre, telefono: organizacion.telefono, email: organizacion.email } : null,
+    institucion: organizacion ? { nombre: organizacion.nombre, telefono: organizacion.telefono, email: organizacion.email, colorPrincipal: organizacion.colorPrincipal } : null,
     residentes: ctx.vinculos.map((v) => ({ id: v.residenteId, vinculoId: v.vinculoId, nombre: v.nombre, apellido: v.apellido, parentesco: v.parentesco, seccion: v.seccion })),
   };
 }
@@ -203,7 +204,9 @@ export async function obtenerMe(ctx: FamiliarContext): Promise<{
 const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 
 /** Grilla semanal del Hogar. Si el sistema externo no responde, la pantalla se muestra igual, sin actividades y avisando. */
-async function grillaDelHogar(): Promise<{ actividades: ActividadExterna[]; disponible: boolean }> {
+async function grillaDelHogar(organizacionId: string): Promise<{ actividades: ActividadExterna[]; disponible: boolean }> {
+  // El feed del Hogar es de UNA institución: las demás no heredan su grilla.
+  if (!feedAplicaA(organizacionId)) return { actividades: [], disponible: true };
   try {
     return { actividades: (await horariosExternos.obtenerSnapshot()).actividades, disponible: true };
   } catch (err) {
@@ -224,7 +227,7 @@ export async function agendaDelResidente(
 }> {
   const vinculo = exigirVinculo(ctx, residenteId);
   const [grilla, recordatorios] = await Promise.all([
-    grillaDelHogar(),
+    grillaDelHogar(ctx.organizacionId),
     familiaRepo.listarRecordatoriosResidente(ctx.organizacionId, residenteId, rango.desde, rango.hasta),
   ]);
   return { actividades: filtrarPorPiso(grilla.actividades, vinculo.seccion), actividadesDisponibles: grilla.disponible, recordatorios };
@@ -236,7 +239,7 @@ export async function calendario(ctx: FamiliarContext, mes: string): Promise<{ e
   // Rango en hora de Argentina (UTC-3): del primer instante del mes al último.
   const desde = new Date(Date.UTC(anio, numeroMes - 1, 1, 3, 0, 0)).toISOString();
   const hasta = new Date(Date.UTC(anio, numeroMes, 1, 2, 59, 59)).toISOString();
-  const [eventos, grilla] = await Promise.all([contenidoRepo.listarEventos(ctx.organizacionId, ctx.familiarId, desde, hasta), grillaDelHogar()]);
+  const [eventos, grilla] = await Promise.all([contenidoRepo.listarEventos(ctx.organizacionId, ctx.familiarId, desde, hasta), grillaDelHogar(ctx.organizacionId)]);
   return { eventos, actividades: grilla.actividades, actividadesDisponibles: grilla.disponible };
 }
 
@@ -263,7 +266,7 @@ export async function inicio(ctx: FamiliarContext, residenteId: string | null): 
     contenidoRepo.listarAlbumesPublicados(ctx.organizacionId),
     contenidoRepo.listarEventos(ctx.organizacionId, ctx.familiarId, new Date().toISOString()),
     comunicacionRepo.resumirHilos(ctx.vinculos.map((v) => v.vinculoId), 'familiar'),
-    grillaDelHogar(),
+    grillaDelHogar(ctx.organizacionId),
   ]);
 
   const sinLeer = avisos.filter((a) => !a.leido);

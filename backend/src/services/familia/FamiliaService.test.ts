@@ -22,10 +22,12 @@ vi.mock('../horariosExternos/HorariosExternosService', () => ({
   obtenerSnapshot: vi.fn(),
   normalizarDia: (d: string) => d.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase(),
 }));
+vi.mock('../../config/feedHorarios', () => ({ feedAplicaA: vi.fn(() => true) }));
 vi.mock('../../logging/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import * as repo from '../../repositories/familiaRepository';
 import * as horarios from '../horariosExternos/HorariosExternosService';
+import { feedAplicaA } from '../../config/feedHorarios';
 import { agendaDelResidente, crearFamiliar, revocarVinculo } from './FamiliaService';
 import type { AuthUser } from '../../middlewares/auth';
 import type { FamiliarContext } from '../../utils/familia';
@@ -130,6 +132,14 @@ describe('agendaDelResidente', () => {
   it('NO deja ver la agenda de un residente al que no está vinculado, y ni siquiera consulta la base', async () => {
     await expect(agendaDelResidente(ctx, 'res-ajeno', { desde: '2026-11-01', hasta: '2026-11-30' })).rejects.toThrow('No encontramos a ese residente');
     expect(repo.listarRecordatoriosResidente).not.toHaveBeenCalled();
+    expect(horarios.obtenerSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('una institución que NO es dueña del feed del Hogar no recibe la grilla de otra', async () => {
+    vi.mocked(feedAplicaA).mockReturnValueOnce(false);
+    vi.mocked(repo.listarRecordatoriosResidente).mockResolvedValue([]);
+    const r = await agendaDelResidente(ctx, 'res-1', { desde: '2026-11-01', hasta: '2026-11-30' });
+    expect(r.actividades).toEqual([]);
     expect(horarios.obtenerSnapshot).not.toHaveBeenCalled();
   });
 
