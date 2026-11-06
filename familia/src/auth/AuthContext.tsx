@@ -8,7 +8,7 @@ import { aplicarColorPrincipal } from '@/lib/tema';
 
 type EstadoAcceso = 'cargando' | 'sin-sesion' | 'ok' | 'sin-acceso' | 'error';
 
-interface AuthState {
+export interface AuthState {
   estado: EstadoAcceso;
   me: Me | null;
   /** Residente que se está mirando (el familiar puede tener varios). */
@@ -20,7 +20,7 @@ interface AuthState {
   reintentar: () => void;
 }
 
-const AuthContext = createContext<AuthState | undefined>(undefined);
+export const AuthContext = createContext<AuthState | undefined>(undefined);
 const CLAVE_RESIDENTE = 'familia:residente';
 
 function leerResidenteGuardado(): string | null {

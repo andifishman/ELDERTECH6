@@ -1,5 +1,5 @@
 // Vista de la pantalla de Inicio. Es "tonta" a propósito (solo recibe datos y los dibuja) para poder
-// mirar el diseño con datos de ejemplo sin sesión ni backend — ver preview.html.
+// mirar el diseño con datos de ejemplo sin sesión ni backend.
 import { Link } from 'react-router-dom';
 import { Bell, Camera, CalendarDays, CheckCircle2, ChevronRight, Heart, MessageCircle, Newspaper, Phone, Send, Sparkles, Sun } from 'lucide-react';
 import clsx from 'clsx';
@@ -7,13 +7,26 @@ import { Boton } from '@/components/ui';
 import { fechaCorta, fechaHora, fechaHoyLarga, saludo } from '@/lib/format';
 import type { ActividadHogar, Album, Inicio, Noticia, Recordatorio } from '@/services/familia';
 
+export interface DiaSemana {
+  /** AAAA-MM-DD */
+  fecha: string;
+  /** "L", "M", … */
+  inicial: string;
+  nombre: string;
+  numero: string;
+  cantidad: number;
+  esHoy: boolean;
+}
+
 export interface InicioVistaProps {
   nombreFamiliar: string;
-  residente: { id: string; nombre: string; parentesco: string | null } | null;
+  residente: { id: string; nombre: string; apellido: string; parentesco: string | null; seccion: string | null } | null;
   inicio: Inicio;
   /** null = todavía no cargó o el sistema del Hogar no respondió */
   actividadesHoy: ActividadHogar[] | null;
   recordatoriosHoy: Recordatorio[];
+  /** Lunes a domingo de esta semana, con cuántas actividades tiene su piso cada día */
+  semana: DiaSemana[];
   albumes: Album[];
   noticias: Noticia[];
   institucion: { nombre: string; telefono: string | null } | null;
@@ -24,6 +37,17 @@ export interface InicioVistaProps {
 }
 
 const FRASES = ['❤️ Te quiero mucho', '😊 ¿Cómo estás hoy?', '🤗 Te mando un abrazo', '📞 Te llamo más tarde'];
+
+/** Una frase por día: pequeñas ideas para acompañar de lejos. */
+const IDEAS = [
+  'Un mensaje corto todos los días vale más que una visita larga cada tanto.',
+  'Mandale una foto de lo que hiciste hoy: le encanta enterarse de tu vida.',
+  'Preguntale por un recuerdo: a todos nos gusta que nos pidan una historia.',
+  'Una llamada de cinco minutos puede cambiarle la semana.',
+  'Contale una novedad de la familia, aunque parezca chica.',
+  'Pedile su receta favorita y sacale una foto cuando la prepare.',
+  'Un “pensé en vos” sin motivo es el mejor mensaje.',
+];
 
 const minutos = (hora: string | null): number => {
   if (!hora) return 9999;
@@ -39,13 +63,24 @@ function Seccion({ i, titulo, icono, color, children, enlace }: { i: number; tit
     <section className="aparece space-y-3" style={orden(i)} aria-label={titulo}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2.5 text-xl font-bold text-primary-800">
-          <span className={clsx('flex h-9 w-9 items-center justify-center rounded-xl', color)} aria-hidden>{icono}</span>
+          <span className={clsx('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', color)} aria-hidden>{icono}</span>
           {titulo}
         </h2>
-        {enlace && <Link to={enlace.to} className="flex min-h-10 items-center gap-0.5 text-sm font-extrabold text-primary-700">{enlace.texto}<ChevronRight className="h-4 w-4" aria-hidden /></Link>}
+        {enlace && <Link to={enlace.to} className="flex min-h-10 shrink-0 items-center gap-0.5 text-sm font-extrabold text-primary-700">{enlace.texto}<ChevronRight className="h-4 w-4" aria-hidden /></Link>}
       </div>
       {children}
     </section>
+  );
+}
+
+/** Estado vacío con calidez: nunca una pantalla "sin nada". */
+function Pronto({ emoji, titulo, texto, caja }: { emoji: string; titulo: string; texto: string; caja: string }) {
+  return (
+    <div className={clsx('rounded-3xl border-2 border-dashed p-5 text-center', caja)}>
+      <p className="text-4xl" aria-hidden>{emoji}</p>
+      <p className="mt-1 text-lg font-bold text-ink">{titulo}</p>
+      <p className="text-soft">{texto}</p>
+    </div>
   );
 }
 
@@ -65,6 +100,9 @@ export function InicioVista(p: InicioVistaProps) {
     { n: hoy.length, uno: 'actividad hoy', varios: 'actividades hoy', icono: <Sun className="h-4 w-4" aria-hidden /> },
   ].filter((c) => c.n > 0);
 
+  const idea = IDEAS[Math.floor(Date.now() / 86_400_000) % IDEAS.length]!;
+  const maxSemana = Math.max(1, ...p.semana.map((s) => s.cantidad));
+
   return (
     <div className="space-y-7">
       {/* ── Bienvenida ─────────────────────────────────────────────── */}
@@ -74,10 +112,21 @@ export function InicioVista(p: InicioVistaProps) {
         <span aria-hidden className="absolute -bottom-10 -left-8 h-28 w-28 rounded-full bg-white/10" />
         <Heart aria-hidden className="absolute right-4 top-4 h-9 w-9 animate-latido fill-coral-600 text-coral-600" />
         <p className="relative text-sm font-extrabold uppercase tracking-wider text-white/90">{fechaHoyLarga()}</p>
-        <h1 className="relative mt-1 max-w-[85%] text-3xl font-extrabold leading-tight">{saludo()}, {p.nombreFamiliar}</h1>
-        {residente && <p className="relative mt-1 text-lg font-semibold text-white/95">Así está el día de <strong className="font-extrabold">{nombreRes}</strong></p>}
+        <h1 className="relative mt-1 max-w-[70%] text-3xl font-extrabold leading-tight">{saludo()}, {p.nombreFamiliar}</h1>
+
+        {residente && (
+          <div className="relative mt-4 flex items-center gap-3 rounded-2xl bg-white/15 p-3 backdrop-blur-sm">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sol-400 font-display text-2xl font-extrabold text-sol-900 ring-4 ring-white/40" aria-hidden>{residente.nombre.charAt(0).toUpperCase()}</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-white/90">Así está el día de</span>
+              <span className="block truncate font-display text-xl font-extrabold leading-tight">{residente.nombre} {residente.apellido}</span>
+              <span className="block truncate text-sm font-semibold text-white/90">{[residente.seccion ? `Piso ${residente.seccion}` : null, residente.parentesco ? `Tu ${residente.parentesco.toLowerCase()}` : null].filter(Boolean).join(' · ') || 'Tu familiar'}</span>
+            </span>
+          </div>
+        )}
+
         {chips.length > 0 && (
-          <ul className="relative mt-4 flex flex-wrap gap-2">
+          <ul className="relative mt-3 flex flex-wrap gap-2">
             {chips.map((c) => (
               <li key={c.uno} className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-sm font-bold backdrop-blur-sm">{c.icono}{c.n} {c.n === 1 ? c.uno : c.varios}</li>
             ))}
@@ -131,9 +180,9 @@ export function InicioVista(p: InicioVistaProps) {
       {/* ── Hoy en el piso ─────────────────────────────────────────── */}
       <Seccion i={4} titulo={`Hoy en el piso de ${nombreRes}`} icono={<Sun className="h-5 w-5 text-sol-900" />} color="bg-sol-200" enlace={{ to: '/calendario', texto: 'Ver todo' }}>
         {p.actividadesHoy === null ? (
-          <p className="rounded-2xl bg-white p-4 text-soft shadow-suave">Estamos trayendo las actividades de hoy…</p>
+          <Pronto emoji="⏳" titulo="Estamos trayendo las actividades de hoy" texto="Si tarda, probá de nuevo en un rato." caja="border-sol-200 bg-sol-50" />
         ) : hoy.length === 0 && p.recordatoriosHoy.length === 0 ? (
-          <div className="rounded-3xl border-2 border-dashed border-sol-200 bg-sol-50 p-5 text-center"><p className="text-3xl" aria-hidden>🌿</p><p className="font-bold">Hoy es un día tranquilo</p><p className="text-soft">No hay actividades programadas en su piso.</p></div>
+          <Pronto emoji="🌿" titulo="Hoy es un día tranquilo" texto="No hay actividades programadas en su piso." caja="border-sol-200 bg-sol-50" />
         ) : (
           <ul className="space-y-2">
             {hoy.slice(0, 5).map((a, i) => {
@@ -164,9 +213,34 @@ export function InicioVista(p: InicioVistaProps) {
         )}
       </Seccion>
 
+      {/* ── Semana ─────────────────────────────────────────────────── */}
+      {p.semana.length > 0 && (
+        <Seccion i={5} titulo="Esta semana" icono={<CalendarDays className="h-5 w-5 text-primary-700" />} color="bg-primary-100">
+          <div className="rounded-3xl bg-white p-3 shadow-suave">
+            <ol className="grid grid-cols-7 gap-1.5">
+              {p.semana.map((s) => (
+                <li key={s.fecha}>
+                  <Link to="/calendario" aria-label={`${s.nombre} ${s.numero}: ${s.cantidad} ${s.cantidad === 1 ? 'actividad' : 'actividades'}${s.esHoy ? ' (hoy)' : ''}`} className={clsx('flex flex-col items-center gap-1 rounded-2xl px-0 py-2', s.esHoy ? 'bg-primary-600 text-white shadow-suave' : 'text-ink')}>
+                    <span className={clsx('text-xs font-extrabold uppercase', s.esHoy ? 'text-white/90' : 'text-soft')}>{s.inicial}</span>
+                    <span className="font-display text-lg font-extrabold leading-none">{s.numero}</span>
+                    <span className="flex h-8 w-3 items-end overflow-hidden rounded-full bg-black/5" aria-hidden>
+                      <span className={clsx('w-full rounded-full', s.esHoy ? 'bg-sol-400' : 'bg-agua-500')} style={{ height: `${Math.round((s.cantidad / maxSemana) * 100)}%` }} />
+                    </span>
+                    <span className="text-xs font-bold">{s.cantidad}</span>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-2 text-center text-xs font-semibold text-soft">Cantidad de actividades por día en su piso</p>
+          </div>
+        </Seccion>
+      )}
+
       {/* ── Últimas fotos ──────────────────────────────────────────── */}
-      {p.albumes.length > 0 && (
-        <Seccion i={5} titulo="Últimas fotos" icono={<Camera className="h-5 w-5 text-agua-700" />} color="bg-agua-100" enlace={{ to: '/fotos', texto: 'Ver todas' }}>
+      <Seccion i={6} titulo="Últimas fotos" icono={<Camera className="h-5 w-5 text-agua-700" />} color="bg-agua-100" enlace={p.albumes.length > 0 ? { to: '/fotos', texto: 'Ver todas' } : undefined}>
+        {p.albumes.length === 0 ? (
+          <Pronto emoji="📸" titulo="Pronto vas a ver fotos" texto="Cuando la residencia publique fotos de las actividades, aparecen acá." caja="border-agua-200 bg-agua-50" />
+        ) : (
           <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sin-barra">
             {p.albumes.slice(0, 6).map((a) => (
               <li key={a.id} className="w-44 shrink-0 snap-start">
@@ -180,12 +254,14 @@ export function InicioVista(p: InicioVistaProps) {
               </li>
             ))}
           </ul>
-        </Seccion>
-      )}
+        )}
+      </Seccion>
 
       {/* ── Próximos eventos ───────────────────────────────────────── */}
-      {d.proximosEventos.length > 0 && (
-        <Seccion i={6} titulo="Próximos eventos" icono={<CalendarDays className="h-5 w-5 text-rosa-700" />} color="bg-rosa-100" enlace={{ to: '/calendario?tab=eventos', texto: 'Ver todos' }}>
+      <Seccion i={7} titulo="Próximos eventos" icono={<Heart className="h-5 w-5 text-rosa-700" />} color="bg-rosa-100" enlace={d.proximosEventos.length > 0 ? { to: '/calendario?tab=eventos', texto: 'Ver todos' } : undefined}>
+        {d.proximosEventos.length === 0 ? (
+          <Pronto emoji="🎈" titulo="No hay eventos por ahora" texto="Las fiestas y visitas abiertas a las familias aparecen acá, y te podés anotar." caja="border-rosa-200 bg-rosa-50" />
+        ) : (
           <ul className="space-y-2">
             {d.proximosEventos.map((e) => {
               const [dia, mes] = fechaCorta(e.inicia_en).split(' ');
@@ -200,12 +276,14 @@ export function InicioVista(p: InicioVistaProps) {
               );
             })}
           </ul>
-        </Seccion>
-      )}
+        )}
+      </Seccion>
 
       {/* ── Noticias ───────────────────────────────────────────────── */}
-      {p.noticias.length > 0 && (
-        <Seccion i={7} titulo="Noticias" icono={<Newspaper className="h-5 w-5 text-primary-700" />} color="bg-primary-100" enlace={{ to: '/noticias', texto: 'Ver todas' }}>
+      <Seccion i={8} titulo="Noticias" icono={<Newspaper className="h-5 w-5 text-primary-700" />} color="bg-primary-100" enlace={p.noticias.length > 0 ? { to: '/noticias', texto: 'Ver todas' } : undefined}>
+        {p.noticias.length === 0 ? (
+          <Pronto emoji="📰" titulo="Sin noticias por ahora" texto="Cuando haya novedades de la residencia las vas a ver acá." caja="border-primary-200 bg-primary-50" />
+        ) : (
           <ul className="space-y-3">
             {p.noticias.slice(0, 2).map((n) => (
               <li key={n.id}>
@@ -216,12 +294,19 @@ export function InicioVista(p: InicioVistaProps) {
               </li>
             ))}
           </ul>
-        </Seccion>
-      )}
+        )}
+      </Seccion>
+
+      {/* ── Idea del día ───────────────────────────────────────────── */}
+      <section className="aparece relative overflow-hidden rounded-3xl bg-sol-100 p-5 shadow-suave" style={orden(9)} aria-label="Idea del día">
+        <span aria-hidden className="absolute -right-4 -top-4 text-7xl opacity-30">💛</span>
+        <p className="relative text-sm font-extrabold uppercase tracking-wide text-sol-700">Idea del día</p>
+        <p className="relative mt-1 font-display text-xl font-bold leading-snug text-sol-900">{idea}</p>
+      </section>
 
       {/* ── Llamar ─────────────────────────────────────────────────── */}
       {p.institucion?.telefono && (
-        <section className="aparece overflow-hidden rounded-3xl bg-gradient-to-br from-agua-700 to-agua-500 p-4 text-white shadow-suave" style={orden(8)} aria-label="Llamar a la residencia">
+        <section className="aparece overflow-hidden rounded-3xl bg-gradient-to-br from-agua-700 to-agua-500 p-4 text-white shadow-suave" style={orden(10)} aria-label="Llamar a la residencia">
           <p className="text-sm font-extrabold uppercase tracking-wide text-white/90">¿Querés hablar con alguien?</p>
           <p className="font-display text-xl font-bold">{p.institucion.nombre} te atiende</p>
           <a href={`tel:${p.institucion.telefono.replace(/[^\d+]/g, '')}`} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 text-lg font-extrabold text-agua-700"><Phone className="h-5 w-5" aria-hidden /> Llamar · {p.institucion.telefono}</a>
