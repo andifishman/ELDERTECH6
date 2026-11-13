@@ -13,7 +13,8 @@
 | Llamar | 🔲 Pendiente | - |
 | Artículos | 🔲 Pendiente | - |
 | Asistente | 🔲 Pendiente | - |
-| Juegos | 🔲 Pendiente | - |
+| Juegos | ✅ Implementada | `app/mas/juegos/` (se entra desde la Home, no desde Más) |
+| Agenda | ✅ Implementada | `app/agenda/` (se entra desde Más) |
 
 ## Pantallas implementadas
 
@@ -21,7 +22,7 @@
 - Header: verde oscuro (#1B5E3B) con logo + globo
 - Fecha del día + avatar del usuario
 - Tarjeta grande Horarios (roja)
-- Grid 2×2: Llamar (verde), Artículos (morado), Asistente (azul), Más (naranja)
+- Tarjetas: Llamar (verde), Tutoriales (celeste), Asistente (azul), Juegos (índigo), Hablemos (violeta), Más (naranja)
 - Cada tarjeta pequeña tiene SpeakRow
 - La tarjeta Horarios tiene SpeakButton chip
 
@@ -41,9 +42,8 @@
 - SpeakButton en cada sección
 
 ### Más menú (`app/mas/index.tsx`)
-- Lista vertical: Clima, Radio, Juegos
-- Separador rojo entre Clima y Radio
-- Juegos marcado como "Próximamente"
+- Lista vertical: Clima, Radio, Agenda, Mi familia, Sugerencias, Accesibilidad
+- Juegos ya no está acá: tiene botón propio en la Home (la ruta sigue siendo `/mas/juegos`)
 - Botón "Volver" grande al pie
 
 ### Clima (`app/mas/clima.tsx`)

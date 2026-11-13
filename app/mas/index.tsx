@@ -43,12 +43,12 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     textoHablar: 'Radio. Escuchá radios en vivo.',
   },
   {
-    id: 'juegos',
-    emoji: '🎲',
-    titulo: 'Juegos',
-    descripcion: 'Divertite con ElderTech',
-    ruta: '/mas/juegos',
-    textoHablar: 'Juegos. Divertite con ElderTech.',
+    id: 'agenda',
+    emoji: '🗒️',
+    titulo: 'Agenda',
+    descripcion: 'Tus recordatorios personales',
+    ruta: '/agenda',
+    textoHablar: 'Agenda. Anotá tus recordatorios y la aplicación te avisa una hora antes.',
   },
   {
     id: 'familia',
@@ -86,7 +86,7 @@ export default function MasScreen() {
         titulo="Más"
         mostrarVolver
         tituloGrande
-        textoHablar="Más opciones: Clima, Radio, Juegos, Mi familia, Sugerencias, y Accesibilidad."
+        textoHablar="Más opciones: Clima, Radio, Agenda, Mi familia, Sugerencias, y Accesibilidad."
       />
 
       <ScrollView

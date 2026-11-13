@@ -78,15 +78,15 @@ const menuItems: MenuItem[] = [
     audio: 'Asistente. Podés hacerle preguntas y te va a responder de forma simple y clara.',
   },
   {
-    id: 'agenda',
-    route: '/agenda',
-    icon: '🗒️',
-    label: 'Agenda',
-    subtitle: 'Tu agenda personal',
+    id: 'juegos',
+    route: '/mas/juegos',
+    icon: '🎲',
+    label: 'Juegos',
+    subtitle: 'Divertite y ejercitá la memoria',
     color: '#5C6BC0',
     iconBg: '#9FA8DA',
     size: 'medium',
-    audio: 'Agenda. Muy pronto vas a poder ver tu agenda personal acá.',
+    audio: 'Juegos. Juegos simples para divertirte y ejercitar la memoria, como memotest, sopa de letras y ahorcado.',
   },
   {
     id: 'hablemos',
@@ -108,7 +108,7 @@ const menuItems: MenuItem[] = [
     color: '#FFA726',
     iconBg: '#FFCC80',
     size: 'medium',
-    audio: 'Más opciones. Acá encontrás juegos, radio, noticias, clima, linterna y más.',
+    audio: 'Más opciones. Acá encontrás el clima, la radio, tu agenda, los mensajes de tu familia, sugerencias y accesibilidad.',
   },
 ];
 

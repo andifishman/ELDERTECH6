@@ -68,7 +68,7 @@ export const SECCIONES_APP: readonly SeccionApp[] = [
     ruta: '/agenda',
     emoji: '🗓️',
     palabras: ['agenda', 'recordatorio', 'recordatorios', 'mis turnos'],
-    comoLlegar: 'En la pantalla de inicio, tocá el botón "Agenda".',
+    comoLlegar: DESDE_MAS('Agenda'),
     queHay: 'Ahí anotás tus recordatorios personales y la app te avisa a la hora. Para crear uno, tocá "Nuevo recordatorio".',
   },
   {
@@ -87,7 +87,7 @@ export const SECCIONES_APP: readonly SeccionApp[] = [
     emoji: '➕',
     palabras: ['boton mas', 'seccion mas', 'menu mas', 'pantalla mas', 'mas opciones'],
     comoLlegar: 'En la pantalla de inicio, tocá el botón naranja "Más" (abajo de todo).',
-    queHay: 'Ahí están Clima, Radio, Juegos, Mi familia, Sugerencias y Accesibilidad (para agrandar la letra).',
+    queHay: 'Ahí están Clima, Radio, Agenda, Mi familia, Sugerencias y Accesibilidad (para agrandar la letra).',
   },
   {
     id: 'clima',
@@ -113,7 +113,7 @@ export const SECCIONES_APP: readonly SeccionApp[] = [
     ruta: '/mas/juegos',
     emoji: '🎮',
     palabras: ['juego', 'juegos', 'jugar', 'memotest', 'sopa de letras', 'ahorcado', 'laberinto'],
-    comoLlegar: DESDE_MAS('Juegos'),
+    comoLlegar: 'En la pantalla de inicio, tocá el botón "Juegos".',
     queHay: 'Ahí hay juegos para ejercitar la memoria y pasar el rato, como memotest, sopa de letras y ahorcado.',
   },
   {

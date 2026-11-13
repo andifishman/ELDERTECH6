@@ -122,8 +122,15 @@ describe('corregirCaminos', () => {
     const { corregirCaminos } = await import('./secciones');
     const ok = '1. Tocá el botón naranja "Más".\n2. Ahí tocá la tarjeta "Radio".';
     expect(corregirCaminos(ok)).toBe(ok);
-    const ok2 = 'Tocá el botón naranja "Más" y después la tarjeta "Juegos".';
+    const ok2 = 'Tocá el botón naranja "Más" y después la tarjeta "Agenda".';
     expect(corregirCaminos(ok2)).toBe(ok2);
+  });
+
+  it('Juegos ya no está en "Más": se corrige al botón de inicio', async () => {
+    const { corregirCaminos } = await import('./secciones');
+    expect(corregirCaminos('Tocá el botón naranja "Más" y después la tarjeta "Juegos".')).toBe(
+      'En la pantalla de inicio, tocá el botón "Juegos".',
+    );
   });
 
   it('no toca texto que no explica caminos', async () => {

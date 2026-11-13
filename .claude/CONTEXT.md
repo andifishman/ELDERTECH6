@@ -84,7 +84,9 @@ ELDERTECH6/
 ## Navegación
 - **Stack navigation** con Expo Router v4 — NO hay tabs
 - Flujo: Home → Horarios → Detalle actividad
-- Flujo: Home → Más → Clima / Radio / Juegos
+- Flujo: Home → Juegos (la ruta sigue siendo `/mas/juegos`)
+- Flujo: Home → Más → Clima / Radio / Agenda / Mi familia / Sugerencias / Accesibilidad
+- Si se mueve una sección de lugar, actualizar también la guía (`src/constants/comoUsarContenido.ts`) y el catálogo del asistente (`backend/src/services/assistant/secciones.ts`)
 
 ## Estado global
 - **React Query**: caché de datos remotos (actividades, clima, radios)

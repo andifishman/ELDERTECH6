@@ -427,7 +427,7 @@ function botonSugerido(
   if (usoHerramienta('buscar_tutoriales') && tutoriales) return botonDeSeccion(tutoriales);
 
   // La pregunta no nombra ninguna sección pero la respuesta explica cómo
-  // llegar a una ("tocá el botón naranja "Más" y después "Juegos""): botón a esa.
+  // llegar a una ("tocá el botón naranja "Más" y después "Radio""): botón a esa.
   if (enLaPregunta.length === 0 && /\b(?:toc[aá]|entr[aá]|and[aá])\s/i.test(respuesta)) {
     const enLaRespuesta = seccionesMencionadas(respuesta).filter((sec) => sec.id !== 'mas');
     const unicaEnLaRespuesta = enLaRespuesta.length === 1 ? enLaRespuesta[0] : undefined;
