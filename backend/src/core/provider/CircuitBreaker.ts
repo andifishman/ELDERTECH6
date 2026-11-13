@@ -6,6 +6,8 @@ export interface CircuitRecord {
   state: CircuitState;
   consecutiveFailures: number;
   openedAt: number | null;
+  /** Cooldown propio de esta apertura (p. ej. el `retry-after` de un rate limit); si falta, el default del breaker. */
+  cooldownMs?: number;
 }
 
 export interface CircuitBreakerOptions {
@@ -46,7 +48,8 @@ export class CircuitBreaker {
     const record = await this.getRecord(providerName);
     if (record.state !== 'open') return true;
 
-    const cooldownElapsed = record.openedAt !== null && Date.now() - record.openedAt >= this.cooldownMs;
+    const cooldownMs = record.cooldownMs ?? this.cooldownMs;
+    const cooldownElapsed = record.openedAt !== null && Date.now() - record.openedAt >= cooldownMs;
     if (!cooldownElapsed) return false;
 
     await this.setRecord(providerName, { ...record, state: 'half_open' });
@@ -68,6 +71,29 @@ export class CircuitBreaker {
       return;
     }
     await this.setRecord(providerName, { state: 'closed', consecutiveFailures, openedAt: null });
+  }
+
+  /**
+   * Sin cuota: se abre YA, pero solo por `cooldownMs` (lo que pidió el
+   * vendor). Antes un 429 de un límite por minuto contaba como falla común y,
+   * a la tercera, dejaba el provider apagado el cooldown entero (10 min) para
+   * toda la residencia, aunque la cuota se liberaba en segundos.
+   */
+  async recordRateLimited(providerName: string, cooldownMs: number): Promise<void> {
+    const record = await this.getRecord(providerName);
+    await this.setRecord(providerName, {
+      state: 'open',
+      consecutiveFailures: record.consecutiveFailures,
+      openedAt: Date.now(),
+      cooldownMs,
+    });
+  }
+
+  /** Milisegundos hasta que el provider vuelva a estar disponible (0 si ya lo está). */
+  async msUntilAvailable(providerName: string): Promise<number> {
+    const record = await this.getRecord(providerName);
+    if (record.state !== 'open' || record.openedAt === null) return 0;
+    return Math.max(0, record.openedAt + (record.cooldownMs ?? this.cooldownMs) - Date.now());
   }
 
   async getStateSnapshot(providerName: string): Promise<CircuitRecord> {

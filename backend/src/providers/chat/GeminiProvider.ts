@@ -1,5 +1,5 @@
-import { ProviderFatalError, ProviderRateLimitedError, type IProvider } from '../../core/provider';
-import type { ChatCompletionInput, ChatCompletionOutput } from './ChatTypes';
+import { ProviderFatalError, ProviderInputError, ProviderRateLimitedError, parseRetryAfterMs, type IProvider } from '../../core/provider';
+import { conFirmaParaGemini, type ChatCompletionInput, type ChatCompletionOutput } from './ChatTypes';
 
 const GEMINI_OPENAI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
@@ -26,7 +26,7 @@ export class GeminiProvider implements IProvider<ChatCompletionInput, ChatComple
   async call(input: ChatCompletionInput): Promise<ChatCompletionOutput> {
     const body: Record<string, unknown> = {
       model: this.model,
-      messages: input.messages,
+      messages: conFirmaParaGemini(input.messages),
       temperature: input.temperature ?? 0.7,
       max_tokens: input.maxTokens,
     };
@@ -52,7 +52,13 @@ export class GeminiProvider implements IProvider<ChatCompletionInput, ChatComple
         throw new ProviderFatalError(this.name, `Gemini: el modelo ${this.model} no está disponible: ${errText}`);
       }
       if (res.status === 429 || res.status === 503) {
-        throw new ProviderRateLimitedError(this.name, `Gemini ${res.status}: ${errText}`);
+        throw new ProviderRateLimitedError(this.name, `Gemini ${res.status}: ${errText}`, parseRetryAfterMs(res.headers.get('retry-after')));
+      }
+      // 400 (p. ej. tool_use_failed: el modelo armó mal una llamada a herramienta)
+      // y 413 (pedido más grande que la cuota por minuto): problema de ESTE pedido,
+      // no del provider — se pasa al siguiente sin abrir el circuit breaker.
+      if (res.status === 400 || res.status === 413) {
+        throw new ProviderInputError(this.name, `Gemini ${res.status}: ${errText}`);
       }
       throw new Error(`Gemini (${this.model}) respondió ${res.status}: ${errText}`);
     }

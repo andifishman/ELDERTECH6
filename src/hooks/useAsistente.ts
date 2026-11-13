@@ -135,8 +135,22 @@ export function useEnviarMensaje() {
             .catch(() => msgLocalUsuario());
 
       // 2. Llamar a la IA — operación principal (67s = 3/4 de 90s anteriores)
+      //    Si falla rápido (corte de red, un 5xx puntual del servidor) se
+      //    reintenta UNA vez sola, sin que el residente vea el cartel de error.
+      //    Si falló después de mucho rato, el backend ya probó todos sus
+      //    modelos: reintentar solo duplicaría la espera.
+      const consultarConReintento = async () => {
+        const inicio = Date.now();
+        try {
+          return await consultarIA(pregunta, historial);
+        } catch (err) {
+          if (Date.now() - inicio > 20000) throw err;
+          await new Promise((r) => setTimeout(r, 1500));
+          return consultarIA(pregunta, historial);
+        }
+      };
       const iaPromise = conTimeout(
-        consultarIA(pregunta, historial),
+        consultarConReintento(),
         67000,
         'La IA tardó demasiado. Tocá Reintentar.',
       );

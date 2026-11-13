@@ -1,5 +1,5 @@
-import { ProviderFatalError, ProviderRateLimitedError, type IProvider } from '../../core/provider';
-import type { ChatCompletionInput, ChatCompletionOutput } from './ChatTypes';
+import { ProviderFatalError, ProviderInputError, ProviderRateLimitedError, parseRetryAfterMs, type IProvider } from '../../core/provider';
+import { sinCamposDeGemini, type ChatCompletionInput, type ChatCompletionOutput } from './ChatTypes';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -22,7 +22,7 @@ export class OpenRouterProvider implements IProvider<ChatCompletionInput, ChatCo
   async call(input: ChatCompletionInput): Promise<ChatCompletionOutput> {
     const body: Record<string, unknown> = {
       model: this.model,
-      messages: input.messages,
+      messages: sinCamposDeGemini(input.messages),
       temperature: input.temperature ?? 0.7,
       max_tokens: input.maxTokens,
     };
@@ -47,7 +47,13 @@ export class OpenRouterProvider implements IProvider<ChatCompletionInput, ChatCo
       const errText = await res.text();
       if (res.status === 401) throw new ProviderFatalError(this.name, `OpenRouter key inválida: ${errText}`);
       if (res.status === 429 || res.status === 503) {
-        throw new ProviderRateLimitedError(this.name, `OpenRouter ${res.status}: ${errText}`);
+        throw new ProviderRateLimitedError(this.name, `OpenRouter ${res.status}: ${errText}`, parseRetryAfterMs(res.headers.get('retry-after')));
+      }
+      // 400 (p. ej. tool_use_failed: el modelo armó mal una llamada a herramienta)
+      // y 413 (pedido más grande que la cuota por minuto): problema de ESTE pedido,
+      // no del provider — se pasa al siguiente sin abrir el circuit breaker.
+      if (res.status === 400 || res.status === 413) {
+        throw new ProviderInputError(this.name, `OpenRouter ${res.status}: ${errText}`);
       }
       throw new Error(`OpenRouter (${this.model}) respondió ${res.status}: ${errText}`);
     }

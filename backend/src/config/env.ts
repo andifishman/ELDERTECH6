@@ -33,7 +33,9 @@ export const env = {
   // Alias "latest" a propósito: Google discontinúa modelos con nombre de
   // versión fija (gemini-2.5-flash ya dejó de estar disponible para cuentas
   // nuevas) y el alias sigue apuntando al Flash vigente sin tocar código.
-  geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-latest',
+  // flash-lite: es el que más pedidos diarios gratis da, y gemini-flash-latest
+  // devolvía 503 ("high demand") seguido. Es solo el respaldo de Groq.
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-lite-latest',
   // Texto a voz del servidor (ver services/tts) — usa la misma GEMINI_API_KEY que el chat.
   geminiTtsModel: process.env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts',
   geminiTtsVoice: process.env.GEMINI_TTS_VOICE || 'Kore',

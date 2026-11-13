@@ -1,3 +1,4 @@
+import { normalizarTexto, SECCIONES_APP } from './secciones';
 import type { NavegacionAccion } from './types';
 
 /**
@@ -6,7 +7,7 @@ import type { NavegacionAccion } from './types';
  * modelo invente (ej. una pantalla de "resultados" que no existe) se
  * descarta acá — el backend decide qué rutas son válidas, no el modelo.
  */
-const RUTAS_ESTATICAS_VALIDAS = new Set(['/', '/horarios', '/articulos', '/llamar', '/mas/radio', '/mas/clima', '/profile']);
+const RUTAS_ESTATICAS_VALIDAS = new Set(['/', ...SECCIONES_APP.map((s) => s.ruta)]);
 const RUTA_DINAMICA_REGEX = /^\/(horarios|articulos)\/[a-zA-Z0-9-]{1,64}$/;
 /** El prompt usa "ID" como marcador de posición; el modelo lo copia tal cual bastante seguido. */
 const PLACEHOLDER_ID_REGEX = /\/(ID|id|<ID>|\{id\}|:id)$/;
@@ -24,9 +25,16 @@ const ALIAS_RUTAS: Record<string, string> = {
   '/radio': '/mas/radio',
   '/contactos': '/llamar',
   '/llamadas': '/llamar',
-  '/perfil': '/profile',
   '/inicio': '/',
   '/actividades': '/horarios',
+  '/horarios-hogar': '/horarios',
+  '/juegos': '/mas/juegos',
+  '/hablemos': '/mas/hablemos',
+  '/familia': '/mas/familia',
+  '/sugerencias': '/mas/pedidos',
+  '/pedidos': '/mas/pedidos',
+  '/accesibilidad': '/mas/accesibilidad',
+  '/recordatorios': '/agenda',
 };
 
 export function normalizarRuta(ruta: string): string {
@@ -88,6 +96,9 @@ export function extraerNavegacionDelTexto(texto: string): { texto: string; naveg
   limpio = quitar(limpio, /<[a-zA-Z_][a-zA-Z0-9_]*(?:\s[^>]*)?\/>/g, sacados);
   // Línea suelta con una llamada tipo función, con o sin paréntesis cerrados.
   limpio = quitar(limpio, /(?:^|\n)[^\n]*\b(?:navegar_a_pantalla|buscar_[a-z_]+)\b[^\n]*/g, sacados, (m) => MENCIONA_HERRAMIENTA.test(m));
+  // Rutas técnicas escritas en el texto ('"Navegar a X" 📅 /horarios/122'):
+  // esa línea es para el botón, no para el residente.
+  limpio = quitar(limpio, /(?:^|\n)[^\n]*(?:^|\s)\/(?:horarios|articulos|mas|llamar|agenda|novedades|como-usar)(?:\/[\w-]+)*(?=[\s.,)"]|$)[^\n]*/g, []);
   limpio = limpio.replace(/\n{3,}/g, '\n\n').trim();
 
   const bloque = sacados.find((b) => /navegar_a_pantalla/.test(b));
@@ -136,5 +147,63 @@ export function esIntentLlamar(texto: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
+  // "¿Cómo agrego/borro un contacto?" es una pregunta de cómo se hace, no un
+  // pedido de llamar: la contesta el modelo (y el botón a Llamar se agrega solo).
+  if (/\b(agreg|sum|borr|elimin|sac|edit|cambi|modific|guard)/.test(lower)) return false;
   return /\bllama(r|me|lo|la)?\b|\bquiero llamar\b|\bpuedo llamar\b|\bllamar a\b|\bcontacto(s)?\b/.test(lower);
 }
+
+/**
+ * La burbuja del chat muestra texto plano: el markdown que mandan los modelos
+ * ("**Más**", "# Título", "* item") le llegaba al residente con los asteriscos.
+ */
+export function limpiarMarkdown(texto: string): string {
+  return texto
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/(^|\s)\*(\S[^*\n]*?)\*(?=\s|[.,;:!?]|$)/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[*•]\s+/gm, '- ')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+const MENCIONA_PERSONAL = /\b(?:al|del|el|un|una|alguien del|a alguien del) (?:personal|equipo|staff)\b|\b(?:enfermer[ao]s?|enfermeria|recepcion|coordinacion|cuidador(?:a|es|as)?|asistentes de la residencia|personal de la residencia)\b/;
+
+/** La respuesta manda al residente a preguntarle al personal (o sea, ya es el "no sé" correcto para algo de la residencia). */
+export function derivaAlPersonal(texto: string): boolean {
+  return MENCIONA_PERSONAL.test(normalizarTexto(texto));
+}
+
+const LUGAR_DE_LA_RESIDENCIA =
+  /\b(?:residencia|hogar|geriatrico|piso|sala|salon|oficina|recepcion|coordinacion|enfermeria|comedor|habitacion|cuarto|pasillo|planta baja|sinagoga|templo|administracion|lavadero|lavanderia|deposito|armario|placard)\b/;
+const SUPOSICION =
+  /\b(?:suele|suelen|generalmente|normalmente|por lo general|habitualmente|probablemente|seguramente|posiblemente|es posible que|puede que|podria|podrian|en la mayoria de|lo mas probable|tipicamente|en general)\b/;
+
+/**
+ * El modelo "contesta" algo de ESTA residencia (dónde está tal cosa, quién
+ * atiende, cómo es tal regla) suponiendo, sin ningún dato: "las kipot suelen
+ * guardarse en la sala de oración". No sabe nada del edificio ni de sus
+ * costumbres — eso solo lo sabe el personal.
+ */
+export function pareceSuposicionSobreLaResidencia(texto: string): boolean {
+  const norm = normalizarTexto(texto);
+  return LUGAR_DE_LA_RESIDENCIA.test(norm) && SUPOSICION.test(norm);
+}
+
+export const RESPUESTA_PREGUNTAR_AL_PERSONAL =
+  'No tengo esa información de la residencia y no quiero decirte algo equivocado. ' +
+  'Te conviene preguntarle al personal (enfermería, recepción o quien esté de turno): ellos te lo van a poder decir con seguridad.';
+
+const SALUDO_SIMPLE =
+  /^(?:hola|holi|holaa+|buen dia|buenos dias|buenas|buenas tardes|buenas noches|que tal|hey|hola que tal|hola buen dia|hola buenas|hola buenas tardes|hola buenas noches|hola buenos dias)(?: (?:como estas|como andas|como va|asistente|querido|querida))?$/;
+
+/** "Hola", "buenas tardes", "hola, ¿cómo estás?" — sin ninguna pregunta adentro. */
+export function esSaludoSimple(texto: string): boolean {
+  return SALUDO_SIMPLE.test(normalizarTexto(texto));
+}
+
+export const RESPUESTA_SALUDO =
+  '¡Hola! ¿En qué te puedo ayudar? Podés preguntarme qué actividades hay hoy, cómo está el clima, cómo usar algo del celular o de la app, o charlar de cualquier tema.';

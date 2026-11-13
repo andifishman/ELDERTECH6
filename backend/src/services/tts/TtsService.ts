@@ -2,8 +2,12 @@ import { createHash } from 'node:crypto';
 import { StatusCodes } from 'http-status-codes';
 import { env } from '../../config/env';
 import { getCacheStore } from '../../cache';
+import { consumirCupoDiario } from '../../core/provider';
 import { HttpError } from '../../middlewares/errorHandler';
 import { logger } from '../../logging/logger';
+
+/** Audios generados por día con Gemini TTS — debajo del cupo gratis del modelo de voz. */
+const CUPO_DIARIO_TTS = 50;
 
 // Texto a voz generado en el servidor. Existe porque el motor de voz del propio
 // celular/navegador no es confiable: hay Chrome en Android (sobre todo con Samsung TTS)
@@ -40,6 +44,10 @@ function pcmAWav(pcm: Buffer): Buffer {
 async function pedirAGemini(texto: string): Promise<Buffer> {
   const apiKey = env.geminiApiKey;
   if (!apiKey) throw new HttpError(StatusCodes.SERVICE_UNAVAILABLE, 'La voz del servidor no está configurada');
+  // COSTO CERO: cupo diario propio (ver ConCupoDiario). Pasado el tope, la
+  // app usa la voz del dispositivo/navegador — los textos repetidos salen de cache.
+  const { permitido } = await consumirCupoDiario(getCacheStore(), 'gemini-tts', CUPO_DIARIO_TTS);
+  if (!permitido) throw new HttpError(StatusCodes.SERVICE_UNAVAILABLE, 'La voz del servidor llegó a su cupo diario');
 
   const res = await fetch(`${GEMINI_TTS_URL}/${env.geminiTtsModel}:generateContent`, {
     method: 'POST',

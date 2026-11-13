@@ -1,7 +1,7 @@
 import { getCacheStore } from '../../cache';
 import { feedAplicaA } from '../../config/feedHorarios';
 import { env } from '../../config/env';
-import { ProviderManager, type IProvider } from '../../core/provider';
+import { ConCupoDiario, ProviderManager, type IProvider } from '../../core/provider';
 import type { ChatCompletionInput, ChatCompletionOutput, GroqToolCall } from '../../providers/chat/ChatTypes';
 import { GroqModelProvider } from '../../providers/chat/GroqModelProvider';
 import { GroqWhisperProvider, type TranscriptionInput, type TranscriptionOutput } from '../../providers/chat/GroqWhisperProvider';
@@ -14,7 +14,20 @@ import * as weatherService from '../weather/WeatherService';
 import * as residentsService from '../residents/ResidentsService';
 import * as searchService from '../search/SearchService';
 import { buildSystemPrompt, HERRAMIENTAS_IA } from './prompt';
-import { esIntentLlamar, esRutaValida, extraerNavegacionDelTexto, normalizarRuta, pareceQueNoSabe } from './textUtils';
+import { botonDeSeccion, corregirCaminos, detectarPedidoDeIr, respuestaComoLlegar, seccionesMencionadas, seccionPorId } from './secciones';
+import {
+  derivaAlPersonal,
+  esIntentLlamar,
+  esRutaValida,
+  esSaludoSimple,
+  extraerNavegacionDelTexto,
+  limpiarMarkdown,
+  normalizarRuta,
+  pareceQueNoSabe,
+  pareceSuposicionSobreLaResidencia,
+  RESPUESTA_PREGUNTAR_AL_PERSONAL,
+  RESPUESTA_SALUDO,
+} from './textUtils';
 import type { MensajeContexto, NavegacionAccion, RespuestaAsistente } from './types';
 
 // 6 en vez de 10: el historial también viaja en cada request y consume del
@@ -22,6 +35,29 @@ import type { MensajeContexto, NavegacionAccion, RespuestaAsistente } from './ty
 // repreguntas típicas ("¿y mañana?") sin gastar cuota de toda la residencia.
 const MAX_CONTEXTO = 6;
 const MAX_TOOL_ITERATIONS = 5;
+/** Pedidos por día a Gemini como respaldo (muy por debajo del cupo gratis de flash-lite). Ver ConCupoDiario. */
+const CUPO_DIARIO_GEMINI_CHAT = 300;
+/**
+ * Plazo total para contestar UN mensaje, contando todas las vueltas del loop
+ * y todos los fallbacks entre modelos. La función serverless corta a los 60s
+ * (vercel.json) con un 504 sin cuerpo — eso era el "Hubo un problema al
+ * responder" de las preguntas largas: varias vueltas de herramientas × varios
+ * modelos de respaldo pasaban el minuto. Con 45s queda margen para la base y la red.
+ */
+const PLAZO_TOTAL_MS = 45_000;
+/** Con menos que esto, la siguiente vuelta ya no ofrece herramientas: tiene que contestar con lo que tiene. */
+const RESERVA_RESPUESTA_FINAL_MS = 15_000;
+
+/** Sin TAVILY_API_KEY la búsqueda en internet falla siempre: ni se ofrece (ahorra tokens y una vuelta inútil). */
+function busquedaDisponible(): boolean {
+  return Boolean(env.tavilyApiKey);
+}
+
+function herramientasDisponibles() {
+  return busquedaDisponible()
+    ? HERRAMIENTAS_IA
+    : HERRAMIENTAS_IA.filter((h) => h.function.name !== 'buscar_informacion_externa');
+}
 
 let chatManager: ProviderManager<ChatCompletionInput, ChatCompletionOutput> | null = null;
 let whisperManager: ProviderManager<TranscriptionInput, TranscriptionOutput> | null = null;
@@ -30,21 +66,28 @@ function getChatManager(): ProviderManager<ChatCompletionInput, ChatCompletionOu
   if (chatManager) return chatManager;
   if (!env.groqApiKey) throw new Error('GROQ_API_KEY no configurada en el servidor.');
 
+  // Solo modelos que la cuenta de Groq tiene habilitados (GET /openai/v1/models).
+  // llama-3.3-70b-versatile y llama-3.1-8b-instant devolvían 404 en cada
+  // pedido: el residente esperaba esos intentos fallidos y la única cuota real
+  // eran los 8000 tokens/minuto de gpt-oss-120b — ~2 preguntas por minuto
+  // para toda la residencia. Cada modelo de Groq tiene su PROPIA cuota por
+  // minuto, así que tres modelos que andan triplican la capacidad.
   const providers: IProvider<ChatCompletionInput, ChatCompletionOutput>[] = [
-    new GroqModelProvider('llama-3.3-70b-versatile', env.groqApiKey, 1),
-    new GroqModelProvider('llama-3.1-8b-instant', env.groqApiKey, 2),
-    // llama3-70b-8192 fue decomisionado por Groq (agosto 2025) — cualquier
-    // pedido que llegara hasta el tier 3 fallaba con "model_decommissioned",
-    // sin importar de qué se tratara la pregunta. gpt-oss-120b es de OpenAI
-    // (no Meta/Llama), así que además da diversidad real de modelo, no solo
-    // de tier, ante un problema puntual con la familia Llama.
-    new GroqModelProvider('openai/gpt-oss-120b', env.groqApiKey, 3),
+    new GroqModelProvider('openai/gpt-oss-120b', env.groqApiKey, 1, { reasoning_effort: 'low', include_reasoning: false }),
+    new GroqModelProvider('qwen/qwen3.8-27b', env.groqApiKey, 2, { reasoning_effort: 'none', reasoning_format: 'hidden' }),
+    new GroqModelProvider('openai/gpt-oss-20b', env.groqApiKey, 3, { reasoning_effort: 'low', include_reasoning: false }),
   ];
 
   // Vendors DISTINTOS a Groq — si Groq se queda sin cuota (su tier gratuito
   // son 8000 tokens/minuto para toda la residencia) o se cae entero, los 3 de
   // arriba fallan juntos porque comparten infraestructura y cuota.
-  if (env.geminiApiKey) providers.push(new GeminiProvider(env.geminiApiKey, env.geminiModel, 4));
+  //
+  // COSTO CERO: Groq (cuenta sin tarjeta) solo corta con 429, nunca cobra.
+  // Gemini SÍ podría cobrar si alguien activa la facturación del proyecto de
+  // Google, así que va con un cupo diario propio bien por debajo del gratuito.
+  if (env.geminiApiKey) {
+    providers.push(new ConCupoDiario(new GeminiProvider(env.geminiApiKey, env.geminiModel, 4), getCacheStore(), CUPO_DIARIO_GEMINI_CHAT));
+  }
   if (env.openRouterApiKey) providers.push(new OpenRouterProvider(env.openRouterApiKey, env.openRouterModel, 5));
 
   // Slot listo para sumar otro vendor cuando se cargue esa key — implementaría
@@ -56,8 +99,19 @@ function getChatManager(): ProviderManager<ChatCompletionInput, ChatCompletionOu
   // el peor caso (3 modelos, sin reintento interno) entre en el maxDuration de
   // la función serverless (60s en Vercel Pro — ver vercel.json y el plan).
   chatManager = new ProviderManager(providers, getCacheStore(), {
-    timeoutMs: 12_000,
+    timeoutMs: 15_000,
     retriesPerProvider: 1,
+    // Antes un 429 (cuota por minuto de Groq, que se libera en segundos)
+    // contaba como falla común: a la tercera dejaba ese modelo apagado 10
+    // minutos para TODA la residencia. Tras un par de preguntas largas caían
+    // los tres modelos de Groq y hasta un "hola" fallaba.
+    rateLimitCooldownMs: 20_000,
+    circuitBreaker: { failureThreshold: 3, cooldownMs: 60_000 },
+    // Para el residente, un intento de más es mejor que un error sin intentar.
+    tryAllWhenAllOpen: true,
+    // Si los tres modelos están sin cuota por minuto (Groq dice "probá en
+    // 8s"), esperar ese rato dentro del plazo en vez de mostrar el error.
+    waitForCooldownWithinDeadline: true,
   });
   return chatManager;
 }
@@ -97,6 +151,7 @@ export async function generarTituloSesion(primerMensaje: string): Promise<string
       false,
       null,
       null,
+      Date.now() + 15_000,
     );
     return resultado.texto.length > 0 ? resultado.texto : fallback;
   } catch {
@@ -110,8 +165,10 @@ export async function consultarIA(
   mensajeUsuario: string,
   historial: MensajeContexto[],
 ): Promise<RespuestaAsistente> {
-  // Para solicitudes de llamada: respuesta fija sin llamar a la IA, para evitar
-  // que alucine sobre si una persona está o no en la lista de contactos.
+  // Respuestas fijas, sin llamar a la IA: son instantáneas, no gastan cuota y
+  // no pueden fallar ni equivocarse.
+
+  // Llamadas: evita que alucine sobre si una persona está o no en los contactos.
   if (esIntentLlamar(mensajeUsuario)) {
     return {
       texto: 'Te llevo a tu lista de contactos para que elijas a quién llamar.',
@@ -119,20 +176,38 @@ export async function consultarIA(
     };
   }
 
+  // "¿Cómo voy a Actividades?": el camino exacto sale del catálogo de
+  // pantallas, no de lo que el modelo se imagine que hay en la app.
+  const seccionPedida = detectarPedidoDeIr(mensajeUsuario);
+  if (seccionPedida) {
+    return { texto: respuestaComoLlegar(seccionPedida), navegacion: botonDeSeccion(seccionPedida) };
+  }
+
+  if (esSaludoSimple(mensajeUsuario)) return { texto: RESPUESTA_SALUDO };
+
   const messages: Array<Record<string, unknown>> = [
-    { role: 'system', content: buildSystemPrompt() },
+    { role: 'system', content: buildSystemPrompt(busquedaDisponible()) },
     ...historial.slice(-MAX_CONTEXTO),
     { role: 'user', content: mensajeUsuario },
   ];
 
-  return ejecutarLoopAgentico(messages, 400, true, organizacionId, residenteId);
+  const respuesta = await ejecutarLoopAgentico(
+    messages,
+    400,
+    true,
+    organizacionId,
+    residenteId,
+    Date.now() + PLAZO_TOTAL_MS,
+    mensajeUsuario,
+  );
+  return respuesta;
 }
 
 /**
  * Loop agéntico: pide una respuesta, y si el modelo eligió usar una
  * herramienta, la ejecuta y le devuelve el resultado hasta que responda texto
- * final. Porteo de la lógica de `ejecutarConModelo`/`llamarIA` en el cliente —
- * ahora el fallback entre modelos lo maneja `ProviderManager`, no este loop.
+ * final. El fallback entre modelos lo maneja `ProviderManager`; este loop se
+ * encarga de que todo entre en `deadlineAt` y de revisar la respuesta final.
  */
 async function ejecutarLoopAgentico(
   messages: Array<Record<string, unknown>>,
@@ -140,11 +215,14 @@ async function ejecutarLoopAgentico(
   conHerramientas: boolean,
   organizacionId: string | null,
   residenteId: string | null,
+  deadlineAt: number,
+  mensajeUsuario?: string,
 ): Promise<RespuestaAsistente> {
   const manager = getChatManager();
   const msgs = [...messages];
   let navegacion: NavegacionAccion | undefined;
   const herramientasUsadas = new Set<string>();
+  const usoHerramienta = (nombre: string) => [...herramientasUsadas].some((k) => k.startsWith(`${nombre}:`));
 
   // Red de seguridad determinística: si el modelo está por contestar "no sé"
   // sin haber buscado, se lo obliga a buscar UNA vez antes de dejarlo
@@ -155,49 +233,88 @@ async function ejecutarLoopAgentico(
   let yaSeForzoBusqueda = false;
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-    const input: ChatCompletionInput = {
-      messages: msgs,
-      maxTokens,
-      tools: conHerramientas ? HERRAMIENTAS_IA : undefined,
-      toolChoice: !conHerramientas
-        ? undefined
-        : busquedaForzadaPendiente
-          ? { type: 'function', function: { name: 'buscar_informacion_externa' } }
-          : 'auto',
-      // Baja a propósito: con 0.7 el modelo inventaba detalles que no estaban
-      // en el resultado de la búsqueda (p. ej. el autor de un gol). Acá se
-      // prioriza que el dato sea fiel por sobre que la redacción sea variada.
-      temperature: 0.3,
-    };
-    busquedaForzadaPendiente = false;
+    // Última vuelta posible (por cantidad o por tiempo): sin herramientas, así
+    // el modelo contesta con lo que ya juntó en vez de pedir otra búsqueda
+    // que no entra en el plazo.
+    const ultimaVuelta = iter === MAX_TOOL_ITERATIONS - 1 || deadlineAt - Date.now() < RESERVA_RESPUESTA_FINAL_MS;
+    const ofrecerHerramientas = conHerramientas && !ultimaVuelta;
 
-    const { message } = await manager.execute(input);
-    const toolCalls = message.tool_calls;
+    let message: ChatCompletionOutput['message'];
+    try {
+      ({ message } = await manager.execute(
+        {
+          messages: ofrecerHerramientas ? msgs : mensajesSinHerramientas(msgs),
+          maxTokens,
+          tools: ofrecerHerramientas ? herramientasDisponibles() : undefined,
+          toolChoice: !ofrecerHerramientas
+            ? undefined
+            : busquedaForzadaPendiente
+              ? { type: 'function', function: { name: 'buscar_informacion_externa' } }
+              : 'auto',
+          // Baja a propósito: con 0.7 el modelo inventaba detalles que no estaban
+          // en el resultado de la búsqueda (p. ej. el autor de un gol). Acá se
+          // prioriza que el dato sea fiel por sobre que la redacción sea variada.
+          temperature: 0.3,
+        },
+        { deadlineAt },
+      ));
+    } catch (error) {
+      // Si ya teníamos a dónde mandarlo, eso le sirve más que un error.
+      if (navegacion) return { texto: 'Tocá el botón para ir a donde necesitás.', navegacion };
+      throw error;
+    }
+    busquedaForzadaPendiente = false;
+    const toolCalls = ofrecerHerramientas ? message.tool_calls : undefined;
 
     if (!toolCalls || toolCalls.length === 0) {
       const textoRaw = (message.content ?? '').trim();
-      if (!textoRaw) throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+      if (!textoRaw) {
+        if (navegacion) return { texto: 'Tocá el botón para ir a donde necesitás.', navegacion };
+        throw new Error('El asistente no pudo responder. Probá de nuevo en un momento.');
+      }
 
-      const yaBusco = [...herramientasUsadas].some((k) => k.startsWith('buscar_informacion_externa:'));
-      if (conHerramientas && !yaSeForzoBusqueda && !yaBusco && pareceQueNoSabe(textoRaw)) {
+      if (
+        ofrecerHerramientas &&
+        busquedaDisponible() &&
+        !yaSeForzoBusqueda &&
+        !usoHerramienta('buscar_informacion_externa') &&
+        pareceQueNoSabe(textoRaw) &&
+        // "No sé, preguntale al personal" es la respuesta CORRECTA para algo de
+        // la residencia: buscarlo en internet solo trae datos de otro lugar.
+        !derivaAlPersonal(textoRaw)
+      ) {
         yaSeForzoBusqueda = true;
         busquedaForzadaPendiente = true;
-        msgs.push(message as unknown as Record<string, unknown>);
+        msgs.push(mensajeAsistenteLimpio(message));
         msgs.push({
-          role: 'system',
+          role: 'user',
           content:
-            'No le digas al usuario que no tenés esa información: todavía no buscaste. ' +
+            '(Nota del sistema, no la menciones) No le digas al usuario que no tenés esa información: todavía no buscaste. ' +
             'Usá buscar_informacion_externa ahora con una consulta breve y concreta, y después respondé con lo que encuentres. ' +
-            'Si la búsqueda no trae nada útil, recién ahí decile que no encontraste esa información.',
+            'Si la búsqueda no trae nada útil, recién ahí decile que no encontraste esa información. ' +
+            'Si la pregunta era sobre la residencia (lugares, objetos, personal, reglas), no busques: decile que le pregunte al personal.',
         });
         continue;
       }
 
-      const extraido = extraerNavegacionDelTexto(textoRaw);
-      return { texto: extraido.texto, navegacion: navegacion ?? extraido.navegacion };
+      return finalizarRespuesta(textoRaw, navegacion, conHerramientas, mensajeUsuario, usoHerramienta);
     }
 
-    msgs.push(message as unknown as Record<string, unknown>);
+    // Ya contestó y además pidió solo el botón (pasa seguido con qwen): no hace
+    // falta otra vuelta al modelo — cada vuelta son ~3000 tokens de la cuota.
+    const soloNavegacion = toolCalls.every((tc) => tc.function.name === 'navegar_a_pantalla');
+    const textoYaDado = (message.content ?? '').trim();
+    if (soloNavegacion && textoYaDado) {
+      for (const toolCall of toolCalls) {
+        await ejecutarHerramienta(toolCall, organizacionId, residenteId, herramientasUsadas, (nav) => {
+          navegacion = nav;
+        });
+      }
+      msgs.push({ role: 'assistant', content: textoYaDado });
+      return finalizarRespuesta(textoYaDado, navegacion, conHerramientas, mensajeUsuario, usoHerramienta);
+    }
+
+    msgs.push(mensajeAsistenteLimpio(message));
 
     for (const toolCall of toolCalls) {
       msgs.push({
@@ -212,6 +329,111 @@ async function ejecutarLoopAgentico(
 
   if (navegacion) return { texto: 'Tocá el botón para ir a donde necesitás.', navegacion };
   throw new Error('El asistente tardó demasiado generando la respuesta. Intentá de nuevo.');
+}
+
+/**
+ * Limpieza y controles de la respuesta final: herramientas escritas como
+ * texto, markdown, suposiciones sobre la residencia y el botón de sección.
+ */
+function finalizarRespuesta(
+  textoRaw: string,
+  navegacion: NavegacionAccion | undefined,
+  conHerramientas: boolean,
+  mensajeUsuario: string | undefined,
+  usoHerramienta: (nombre: string) => boolean,
+): RespuestaAsistente {
+  const extraido = extraerNavegacionDelTexto(textoRaw);
+  const texto = corregirCaminos(limpiarMarkdown(extraido.texto));
+
+  // Suposiciones sobre la residencia ("suelen guardarse en la sala de
+  // oración"): el modelo no tiene ese dato y el residente le cree. Si no
+  // salió de las actividades reales, se reemplaza por el "no sé" correcto.
+  if (conHerramientas && !usoHerramienta('buscar_actividades') && pareceSuposicionSobreLaResidencia(texto)) {
+    return { texto: RESPUESTA_PREGUNTAR_AL_PERSONAL };
+  }
+
+  const nav = navegacion ?? extraido.navegacion;
+  return {
+    texto: texto || 'Tocá el botón para ir a donde necesitás.',
+    navegacion: conHerramientas ? (nav ?? botonSugerido(mensajeUsuario ?? '', texto, usoHerramienta)) : nav,
+  };
+}
+
+/**
+ * Solo los campos estándar. Algunos modelos devuelven extras (p. ej.
+ * `reasoning` en gpt-oss) que otro vendor del fallback rechaza con un 400 si
+ * se los reenvía en el historial de la vuelta siguiente.
+ */
+function mensajeAsistenteLimpio(message: ChatCompletionOutput['message']): Record<string, unknown> {
+  const limpio: Record<string, unknown> = { role: 'assistant', content: message.content ?? '' };
+  if (message.tool_calls && message.tool_calls.length > 0) {
+    limpio.tool_calls = message.tool_calls.map((tc) => ({
+      id: tc.id,
+      type: 'function',
+      function: { name: tc.function.name, arguments: tc.function.arguments },
+      // Gemini 3 exige que se le devuelva la "thought_signature" de cada
+      // llamada a herramienta en la vuelta siguiente (si no, 400). Los demás
+      // vendors la sacan antes de enviar (ver sinCamposDeGemini).
+      ...(tc.extra_content ? { extra_content: tc.extra_content } : {}),
+    }));
+  }
+  return limpio;
+}
+
+/**
+ * Para la vuelta final sin herramientas: varios vendors rechazan un historial
+ * con `tool_calls`/`role: tool` si el pedido no declara `tools`. Se pasan los
+ * resultados ya obtenidos como texto, para que conteste con ellos.
+ */
+function mensajesSinHerramientas(msgs: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const resultados = msgs.filter((m) => m.role === 'tool').map((m) => String(m.content ?? ''));
+  const sinHerramientas = msgs.filter((m) => m.role !== 'tool' && !(m.role === 'assistant' && m.tool_calls));
+  if (resultados.length === 0) return sinHerramientas;
+  return [
+    ...sinHerramientas,
+    {
+      role: 'user',
+      content:
+        '(Nota del sistema, no la menciones) Estos son los datos que ya consultaste para responder:\n' +
+        resultados.join('\n').slice(0, 4000) +
+        '\nRespondé ahora la pregunta del usuario usando solo estos datos. Si no alcanzan, decilo sin inventar.',
+    },
+  ];
+}
+
+/**
+ * El modelo se olvida seguido de agregar el botón aunque la respuesta sea
+ * sobre una sección de la app. Se agrega solo cuando es claro a cuál:
+ * por la herramienta que usó, o porque la pregunta nombra UNA sección.
+ * Si la respuesta salió de internet, ninguna pantalla la muestra: sin botón.
+ */
+function botonSugerido(
+  mensajeUsuario: string,
+  respuesta: string,
+  usoHerramienta: (nombre: string) => boolean,
+): NavegacionAccion | undefined {
+  if (usoHerramienta('buscar_informacion_externa')) return undefined;
+  if (derivaAlPersonal(respuesta)) return undefined;
+
+  // Primero lo que nombró el residente ("¿cómo juego al memotest?" → Juegos),
+  // aunque el modelo haya consultado otra cosa (p. ej. los tutoriales).
+  const enLaPregunta = seccionesMencionadas(mensajeUsuario);
+  const unicaEnLaPregunta = enLaPregunta.length === 1 ? enLaPregunta[0] : undefined;
+  if (unicaEnLaPregunta) return botonDeSeccion(unicaEnLaPregunta);
+
+  const actividades = seccionPorId('actividades');
+  const tutoriales = seccionPorId('tutoriales');
+  if (usoHerramienta('buscar_actividades') && actividades) return botonDeSeccion(actividades);
+  if (usoHerramienta('buscar_tutoriales') && tutoriales) return botonDeSeccion(tutoriales);
+
+  // La pregunta no nombra ninguna sección pero la respuesta explica cómo
+  // llegar a una ("tocá el botón naranja "Más" y después "Juegos""): botón a esa.
+  if (enLaPregunta.length === 0 && /\b(?:toc[aá]|entr[aá]|and[aá])\s/i.test(respuesta)) {
+    const enLaRespuesta = seccionesMencionadas(respuesta).filter((sec) => sec.id !== 'mas');
+    const unicaEnLaRespuesta = enLaRespuesta.length === 1 ? enLaRespuesta[0] : undefined;
+    if (unicaEnLaRespuesta) return botonDeSeccion(unicaEnLaRespuesta);
+  }
+  return undefined;
 }
 
 async function ejecutarHerramienta(
@@ -292,6 +514,15 @@ async function ejecutarHerramienta(
         tempMax: clima.tempMax,
         tempMin: clima.tempMin,
         humedad: clima.humedad,
+        // Sin esto, ante "¿y mañana?" el modelo repetía el clima de HOY como si fuera el pronóstico.
+        pronosticoProximosDias: clima.pronostico.slice(0, 5).map((d) => ({
+          fecha: d.fecha,
+          dia: d.labelDia,
+          descripcion: d.descripcion,
+          tempMax: d.tempMax,
+          tempMin: d.tempMin,
+        })),
+        nota: 'temperatura/sensacionTermica/humedad son de AHORA. Para otro día usá pronosticoProximosDias.',
       });
     }
 
