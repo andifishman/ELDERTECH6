@@ -59,7 +59,7 @@ export function Sidebar({ abierto, onCerrar }: SidebarProps) {
         <div className="flex h-24 items-center justify-between gap-2 px-4">
           <div className="flex items-center gap-3">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl p-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.95)' }}>
-              <img src="/logo.png" alt="ElderTech" className="h-full w-full object-contain" />
+              <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ElderTech" className="h-full w-full object-contain" />
             </div>
             <div className="leading-tight">
               <p className="text-2xl font-extrabold tracking-tight">ElderTech</p>

@@ -11,6 +11,8 @@
     "build:web": "expo export -p web && node tools/postexport-web.mjs",
     "serve:web": "node tools/serve-dist.mjs",
     "deploy:ftp": "node tools/deploy-ftp.mjs",
+    "build:backoffice-ftp": "node tools/build-backoffice-ftp.mjs",
+    "deploy:ftp:backoffice": "node tools/deploy-ftp.mjs --backoffice",
     "pwa:assets": "node tools/generar-pwa-assets.mjs",
     "postinstall": "patch-package"
   },

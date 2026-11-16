@@ -10,8 +10,12 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from '
 import { join, posix, relative, sep } from 'node:path';
 import { Client } from 'basic-ftp';
 
-const DIST = 'dist';
 const args = new Set(process.argv.slice(2));
+// --backoffice: sube backoffice/dist a la subcarpeta /admin (https://eldertech.ledor.com.ar/admin/).
+const BACKOFFICE = args.has('--backoffice');
+const DIST = BACKOFFICE ? 'backoffice/dist' : 'dist';
+const SUBCARPETA = BACKOFFICE ? 'admin' : '';
+const BUILD_CMD = BACKOFFICE ? 'npm run build:backoffice-ftp' : 'npm run build:web';
 
 // ─── Credenciales ────────────────────────────────────────────────────────────
 function leerEnvFtp() {
@@ -85,6 +89,41 @@ AddType application/javascript .js .mjs
 </IfModule>
 `;
 
+// .htaccess del backoffice (SPA en /admin). Un .htaccess en la subcarpeta reemplaza al de la raíz.
+const HTACCESS_ADMIN = `# Generado por tools/deploy-ftp.mjs — backoffice en /admin.
+RewriteEngine On
+RewriteBase /admin/
+
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/admin/$1 [R=301,L]
+
+RewriteCond %{REQUEST_URI} !^/admin/assets/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !\.[A-Za-z0-9]+$
+RewriteRule ^ /admin/index.html [L]
+
+AddType application/javascript .js .mjs
+
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "microphone=(), camera=(), geolocation=(), payment=(), usb=()"
+  # El backoffice usa Google Fonts: la CSP de la raíz (pensada para la app web) la bloquearía.
+  Header always unset Content-Security-Policy
+  <Files "index.html">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </Files>
+  <If "%{REQUEST_URI} =~ m#^/admin/assets/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+</IfModule>
+`;
+const HTACCESS_FINAL = BACKOFFICE ? HTACCESS_ADMIN : HTACCESS;
+
 // ─── Recorrido de dist/ ──────────────────────────────────────────────────────
 function listarArchivos(dir) {
   const salida = [];
@@ -107,12 +146,13 @@ const prioridad = (rel) => {
 async function main() {
   // Sin FTP: deja el .htaccess dentro de dist/ para empaquetar todo y subirlo a mano (administrador de archivos del hosting).
   if (args.has('--preparar')) {
-    if (!existsSync(`${DIST}/index.html`)) throw new Error('No existe dist/index.html — corré `npm run build:web` primero.');
-    writeFileSync(`${DIST}/.htaccess`, HTACCESS);
-    console.log('Listo: dist/.htaccess generado.');
+    if (!existsSync(`${DIST}/index.html`)) throw new Error(`No existe ${DIST}/index.html — corré \`${BUILD_CMD}\` primero.`);
+    writeFileSync(`${DIST}/.htaccess`, HTACCESS_FINAL);
+    console.log(`Listo: ${DIST}/.htaccess generado.`);
     return;
   }
   const cfg = leerEnvFtp();
+  if (SUBCARPETA) cfg.remoteDir = posix.join(cfg.remoteDir, SUBCARPETA);
   const cliente = new Client(60_000);
   try {
     console.log(`Conectando a ${cfg.host} como ${cfg.user} (${cfg.secure ? 'FTPS cifrado' : 'FTP SIN cifrar'})…`);
@@ -132,7 +172,7 @@ async function main() {
       return;
     }
 
-    if (!existsSync(`${DIST}/index.html`)) throw new Error('No existe dist/index.html — corré `npm run build:web` primero.');
+    if (!existsSync(`${DIST}/index.html`)) throw new Error(`No existe ${DIST}/index.html — corré \`${BUILD_CMD}\` primero.`);
     const archivos = listarArchivos(DIST)
       .map((ruta) => relative(DIST, ruta).split(sep).join('/'))
       .sort((a, b) => prioridad(a) - prioridad(b));
@@ -157,7 +197,7 @@ async function main() {
     // El .htaccess se sube al final de los assets pero antes que index.html nunca importa: no cambia el contenido.
     await cliente.cd(raiz);
     const { Readable } = await import('node:stream');
-    await cliente.uploadFrom(Readable.from([HTACCESS]), '.htaccess');
+    await cliente.uploadFrom(Readable.from([HTACCESS_FINAL]), '.htaccess');
     console.log(`\nListo: ${n} archivos + .htaccess subidos.`);
   } finally {
     cliente.close();

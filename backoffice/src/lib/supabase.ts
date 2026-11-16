@@ -25,6 +25,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    // Clave propia: en el dominio del FTP la app web y el backoffice comparten origen (localStorage).
+    // Con la clave por defecto se pisarían las sesiones entre sí.
+    storageKey: 'eldertech-backoffice-auth',
   },
 });
 

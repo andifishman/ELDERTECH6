@@ -61,7 +61,7 @@ export function ResetPasswordPage() {
     <div className="relative hidden flex-col justify-between bg-primary-600 p-12 text-white lg:flex">
       <div className="flex items-center gap-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15">
-          <img src="/favicon-48.png" alt="ElderTech" className="h-14 w-14 object-contain" />
+          <img src={`${import.meta.env.BASE_URL}favicon-48.png`} alt="ElderTech" className="h-14 w-14 object-contain" />
         </div>
         <div>
           <p className="text-2xl font-extrabold">ElderTech</p>
@@ -140,7 +140,7 @@ export function ResetPasswordPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white">
-              <img src="/favicon-48.png" alt="ElderTech" className="h-14 w-14 object-contain" />
+              <img src={`${import.meta.env.BASE_URL}favicon-48.png`} alt="ElderTech" className="h-14 w-14 object-contain" />
             </div>
             <p className="text-2xl font-extrabold">ElderTech Backoffice</p>
           </div>
