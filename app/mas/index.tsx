@@ -51,14 +51,6 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     textoHablar: 'Agenda. Anotá tus recordatorios y la aplicación te avisa una hora antes.',
   },
   {
-    id: 'familia',
-    emoji: '👪',
-    titulo: 'Mi familia',
-    descripcion: 'Mensajes de tus familiares',
-    ruta: '/mas/familia',
-    textoHablar: 'Mi familia. Leé y contestá los mensajes de tus familiares.',
-  },
-  {
     id: 'pedidos',
     emoji: '📋',
     titulo: 'Sugerencias',
@@ -86,7 +78,7 @@ export default function MasScreen() {
         titulo="Más"
         mostrarVolver
         tituloGrande
-        textoHablar="Más opciones: Clima, Radio, Agenda, Mi familia, Sugerencias, y Accesibilidad."
+        textoHablar="Más opciones: Clima, Radio, Agenda, Sugerencias, y Accesibilidad."
       />
 
       <ScrollView

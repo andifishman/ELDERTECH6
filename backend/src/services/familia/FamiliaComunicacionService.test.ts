@@ -120,9 +120,9 @@ describe('mensajes familiar ↔ residente', () => {
     await expect(mensajesDelResidente(residente, 'v-de-otro')).rejects.toThrow('Conversación no encontrado');
     await expect(responderResidente(residente, 'v-de-otro', 'hola')).rejects.toThrow('Conversación no encontrado');
     expect(repo.crearMensaje).not.toHaveBeenCalled();
-    vi.mocked(repo.crearMensaje).mockResolvedValue({ id: 'm1', vinculo_id: 'v1', autor: 'residente', contenido: 'Hola hija', imagen_path: null, leido_en: null, created_at: '' });
+    vi.mocked(repo.crearMensaje).mockResolvedValue({ id: 'm1', vinculo_id: 'v1', autor: 'residente', contenido: 'Hola hija', imagen_path: null, audio_path: null, audio_duracion_segundos: null, leido_en: null, created_at: '' });
     await responderResidente(residente, 'v1', 'Hola hija');
-    expect(repo.crearMensaje).toHaveBeenCalledWith('v1', 'residente', 'Hola hija', null);
+    expect(repo.crearMensaje).toHaveBeenCalledWith({ vinculoId: 'v1', autor: 'residente', contenido: 'Hola hija' });
   });
 
   it('un usuario sin residente asociado no entra a Mi familia', async () => {

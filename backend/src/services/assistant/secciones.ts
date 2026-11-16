@@ -76,9 +76,9 @@ export const SECCIONES_APP: readonly SeccionApp[] = [
     nombre: 'Hablemos',
     ruta: '/mas/hablemos',
     emoji: '💬',
-    palabras: ['hablemos', 'mensajes', 'mensajear', 'chatear con otros residentes'],
+    palabras: ['hablemos', 'mensajes', 'mensajear', 'chatear con otros residentes', 'mi familia', 'familiares', 'mensajes de mi familia'],
     comoLlegar: 'En la pantalla de inicio, tocá el botón "Hablemos".',
-    queHay: 'Ahí podés mandarles mensajes de texto o de voz a otros residentes.',
+    queHay: 'Ahí podés mandarles mensajes de texto o de voz a otros residentes y a tus familiares (sus conversaciones tienen la etiqueta "Familia").',
   },
   {
     id: 'mas',
@@ -87,7 +87,7 @@ export const SECCIONES_APP: readonly SeccionApp[] = [
     emoji: '➕',
     palabras: ['boton mas', 'seccion mas', 'menu mas', 'pantalla mas', 'mas opciones'],
     comoLlegar: 'En la pantalla de inicio, tocá el botón naranja "Más" (abajo de todo).',
-    queHay: 'Ahí están Clima, Radio, Agenda, Mi familia, Sugerencias y Accesibilidad (para agrandar la letra).',
+    queHay: 'Ahí están Clima, Radio, Agenda, Sugerencias y Accesibilidad (para agrandar la letra).',
   },
   {
     id: 'clima',
@@ -115,15 +115,6 @@ export const SECCIONES_APP: readonly SeccionApp[] = [
     palabras: ['juego', 'juegos', 'jugar', 'memotest', 'sopa de letras', 'ahorcado', 'laberinto'],
     comoLlegar: 'En la pantalla de inicio, tocá el botón "Juegos".',
     queHay: 'Ahí hay juegos para ejercitar la memoria y pasar el rato, como memotest, sopa de letras y ahorcado.',
-  },
-  {
-    id: 'familia',
-    nombre: 'Mi familia',
-    ruta: '/mas/familia',
-    emoji: '👨‍👩‍👧',
-    palabras: ['mi familia', 'familiares'],
-    comoLlegar: DESDE_MAS('Mi familia'),
-    queHay: 'Ahí ves a los familiares vinculados con vos y lo que te mandan.',
   },
   {
     id: 'sugerencias',

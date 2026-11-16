@@ -136,6 +136,9 @@ export interface Mensaje {
   autor: 'familiar' | 'residente';
   contenido: string | null;
   imagenUrl: string | null;
+  /** Nota de voz del residente (URL firmada de 1 hora). */
+  audioUrl: string | null;
+  audioDuracionSegundos: number | null;
   leido: boolean;
   creadoEn: string;
 }

@@ -1,6 +1,6 @@
 // Hooks de React Query para "Mi familia"
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { listarConversacionesFamilia, listarMensajesFamilia, responderFamilia } from '@/services/miFamiliaService';
+import { listarConversacionesFamilia, listarMensajesFamilia, responderFamilia, responderFamiliaConAudio } from '@/services/miFamiliaService';
 
 export const KEYS = {
   conversaciones: ['mi-familia', 'conversaciones'] as const,
@@ -37,6 +37,17 @@ export function useResponderFamilia(vinculoId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (contenido: string) => responderFamilia(vinculoId, contenido),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: KEYS.mensajes(vinculoId) });
+      void qc.invalidateQueries({ queryKey: KEYS.conversaciones });
+    },
+  });
+}
+
+export function useResponderFamiliaConAudio(vinculoId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ audioUri, duracionSegundos }: { audioUri: string; duracionSegundos: number }) => responderFamiliaConAudio(vinculoId, audioUri, duracionSegundos),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEYS.mensajes(vinculoId) });
       void qc.invalidateQueries({ queryKey: KEYS.conversaciones });

@@ -17,6 +17,8 @@ export interface Mensaje {
   autor: AutorMensaje;
   contenido: string | null;
   imagen_path: string | null;
+  audio_path: string | null;
+  audio_duracion_segundos: number | null;
   leido_en: string | null;
   created_at: string;
 }
@@ -27,7 +29,7 @@ export interface ResumenHilo {
   sin_leer: number;
 }
 
-const COLUMNAS_MENSAJE = 'id, vinculo_id, autor, contenido, imagen_path, leido_en, created_at';
+const COLUMNAS_MENSAJE = 'id, vinculo_id, autor, contenido, imagen_path, audio_path, audio_duracion_segundos, leido_en, created_at';
 
 /** Último mensaje y cantidad sin leer de cada hilo. `leeAutor` = quién lee: cuenta los mensajes del OTRO. */
 export const resumirHilos = withRepoLogging(REPO, 'resumirHilos', async (vinculoIds: string[], leeAutor: AutorMensaje): Promise<ResumenHilo[]> => {
@@ -56,15 +58,31 @@ export const listarMensajes = withRepoLogging(REPO, 'listarMensajes', async (vin
   return ((data ?? []) as Mensaje[]).reverse();
 });
 
-export const crearMensaje = withRepoLogging(
-  REPO,
-  'crearMensaje',
-  async (vinculoId: string, autor: AutorMensaje, contenido: string | null, imagenPath: string | null): Promise<Mensaje> => {
-    const { data, error } = await getSupabaseAdmin().from('familia_mensajes').insert({ vinculo_id: vinculoId, autor, contenido, imagen_path: imagenPath }).select(COLUMNAS_MENSAJE).single();
-    if (error) falla('enviar el mensaje', error);
-    return data as Mensaje;
-  },
-);
+export interface NuevoMensaje {
+  vinculoId: string;
+  autor: AutorMensaje;
+  contenido: string | null;
+  imagenPath?: string | null;
+  audioPath?: string | null;
+  audioDuracionSegundos?: number | null;
+}
+
+export const crearMensaje = withRepoLogging(REPO, 'crearMensaje', async (m: NuevoMensaje): Promise<Mensaje> => {
+  const { data, error } = await getSupabaseAdmin()
+    .from('familia_mensajes')
+    .insert({
+      vinculo_id: m.vinculoId,
+      autor: m.autor,
+      contenido: m.contenido,
+      imagen_path: m.imagenPath ?? null,
+      audio_path: m.audioPath ?? null,
+      audio_duracion_segundos: m.audioDuracionSegundos ?? null,
+    })
+    .select(COLUMNAS_MENSAJE)
+    .single();
+  if (error) falla('enviar el mensaje', error);
+  return data as Mensaje;
+});
 
 /** Marca como leídos los mensajes que escribió el OTRO lado. */
 export const marcarLeidos = withRepoLogging(REPO, 'marcarLeidos', async (vinculoId: string, leeAutor: AutorMensaje): Promise<void> => {

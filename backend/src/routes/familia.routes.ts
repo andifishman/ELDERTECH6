@@ -103,6 +103,7 @@ miFamiliaRouter.use(requireAuth);
 miFamiliaRouter.get('/conversaciones', asyncHandler(controller.getHilosResidente));
 miFamiliaRouter.get('/conversaciones/:vinculoId/mensajes', asyncHandler(controller.getMensajesResidente));
 miFamiliaRouter.post('/conversaciones/:vinculoId/mensajes', escribir, asyncHandler(controller.postMensajeResidente));
+miFamiliaRouter.post('/conversaciones/:vinculoId/mensajes/audio', escribir, conSubida(subir.single('audio')), asyncHandler(controller.postMensajeAudioResidente));
 
 // ═══ Backoffice: /api/admin/familia ══════════════════════════════════════════
 export const familiaAdminRouter = Router();

@@ -118,6 +118,12 @@ export function ChatPage() {
           <div key={m.id} className={clsx('flex', m.autor === 'familiar' ? 'justify-end' : 'justify-start')}>
             <div className={clsx('max-w-[85%] rounded-2xl px-4 py-2.5', m.autor === 'familiar' ? 'rounded-br-md bg-primary-600 text-white' : 'rounded-bl-md border border-primary-100 bg-white')}>
               {m.imagenUrl && <img src={m.imagenUrl} alt="Foto enviada" className="mb-2 max-h-72 rounded-xl object-contain" loading="lazy" />}
+              {(m.audioUrl || m.audioDuracionSegundos) && (
+                <div className="mb-1">
+                  <p className="mb-1 font-semibold">🎤 Mensaje de voz{m.audioDuracionSegundos ? ` · ${Math.floor(m.audioDuracionSegundos / 60)}:${String(m.audioDuracionSegundos % 60).padStart(2, '0')}` : ''}</p>
+                  {m.audioUrl ? <audio controls preload="none" src={m.audioUrl} className="h-12 w-full max-w-64" aria-label="Escuchar el mensaje de voz" /> : <p className="text-soft">El audio no está disponible ahora.</p>}
+                </div>
+              )}
               {m.contenido && <p className="whitespace-pre-line break-words">{m.contenido}</p>}
               <p className={clsx('mt-1 text-xs', m.autor === 'familiar' ? 'text-white/80' : 'text-soft')}>
                 {fechaHora(m.creadoEn)}{m.autor === 'familiar' ? (m.leido ? ' · Leído' : ' · Enviado') : ''}

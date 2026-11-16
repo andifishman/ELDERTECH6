@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { z } from 'zod';
+import { HttpError } from '../middlewares/errorHandler';
 import { requireFamiliarContext } from '../middlewares/familia';
 import * as familiaService from '../services/familia/FamiliaService';
 import * as contenidoService from '../services/familia/FamiliaContenidoService';
@@ -169,5 +170,13 @@ export async function getMensajesResidente(req: Request, res: Response): Promise
 export async function postMensajeResidente(req: Request, res: Response): Promise<void> {
   const { contenido } = mensajeSchema.parse(req.body ?? {});
   const mensaje = await comunicacionService.responderResidente(requireUser(req), requireUuidParam(req, 'vinculoId'), contenido);
+  res.status(StatusCodes.CREATED).json(mensaje);
+}
+
+export async function postMensajeAudioResidente(req: Request, res: Response): Promise<void> {
+  if (!req.file) throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta el archivo de audio.');
+  const duracion = Number(req.body?.duracionSegundos);
+  const duracionSegundos = Number.isFinite(duracion) ? Math.min(600, Math.max(1, Math.round(duracion))) : null;
+  const mensaje = await comunicacionService.responderResidenteConAudio(requireUser(req), requireUuidParam(req, 'vinculoId'), req.file.buffer, duracionSegundos);
   res.status(StatusCodes.CREATED).json(mensaje);
 }

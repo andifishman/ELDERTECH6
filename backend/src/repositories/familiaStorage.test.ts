@@ -13,6 +13,13 @@ describe('detectarTipo (por los bytes, no por lo que diga el cliente)', () => {
     expect(detectarTipo(Buffer.from('%PDF-1.7\n'))).toBe('application/pdf');
   });
 
+  it('reconoce los audios que graban la app (m4a) y los navegadores (webm, ogg, wav)', () => {
+    expect(detectarTipo(Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypM4A '), Buffer.alloc(8)]))).toBe('audio/mp4');
+    expect(detectarTipo(Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0]))).toBe('audio/webm');
+    expect(detectarTipo(Buffer.from('OggS\0\0'))).toBe('audio/ogg');
+    expect(detectarTipo(Buffer.concat([Buffer.from('RIFF'), Buffer.from([0, 0, 0, 0]), Buffer.from('WAVEfmt ')]))).toBe('audio/wav');
+  });
+
   it('rechaza un HTML o un script disfrazado de imagen, y archivos vacíos o cortos', () => {
     expect(detectarTipo(Buffer.from('<html><script>alert(1)</script></html>'))).toBeNull();
     expect(detectarTipo(Buffer.from('GIF89a....'))).toBeNull();

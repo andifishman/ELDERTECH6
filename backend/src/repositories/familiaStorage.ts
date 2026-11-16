@@ -16,13 +16,27 @@ export type BucketFamilia = (typeof BUCKETS_FAMILIA)[keyof typeof BUCKETS_FAMILI
 
 export const SEGUNDOS_URL_FAMILIA = 60 * 60;
 
-export type TipoArchivo = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
+export type TipoArchivo =
+  | 'image/jpeg'
+  | 'image/png'
+  | 'image/webp'
+  | 'application/pdf'
+  | 'audio/mp4'
+  | 'audio/webm'
+  | 'audio/ogg'
+  | 'audio/mpeg'
+  | 'audio/wav';
 
 const EXTENSION: Record<TipoArchivo, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
   'application/pdf': 'pdf',
+  'audio/mp4': 'm4a',
+  'audio/webm': 'webm',
+  'audio/ogg': 'ogg',
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
 };
 
 /**
@@ -34,6 +48,13 @@ export function detectarTipo(buffer: Buffer): TipoArchivo | null {
   if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
   if (buffer.length >= 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
   if (buffer.length >= 5 && buffer.subarray(0, 5).toString('ascii') === '%PDF-') return 'application/pdf';
+  // Audio: m4a/mp4 ("ftyp" en el byte 4), webm (cabecera EBML), ogg, mp3 (ID3 o frame MPEG) y wav.
+  if (buffer.length >= 12 && buffer.subarray(4, 8).toString('ascii') === 'ftyp') return 'audio/mp4';
+  if (buffer.length >= 4 && buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3) return 'audio/webm';
+  if (buffer.length >= 4 && buffer.subarray(0, 4).toString('ascii') === 'OggS') return 'audio/ogg';
+  if (buffer.length >= 3 && buffer.subarray(0, 3).toString('ascii') === 'ID3') return 'audio/mpeg';
+  if (buffer.length >= 2 && buffer[0] === 0xff && (buffer[1]! & 0xe0) === 0xe0) return 'audio/mpeg';
+  if (buffer.length >= 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WAVE') return 'audio/wav';
   return null;
 }
 

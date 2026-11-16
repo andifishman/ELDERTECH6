@@ -84,8 +84,9 @@ ELDERTECH6/
 ## Navegación
 - **Stack navigation** con Expo Router v4 — NO hay tabs
 - Flujo: Home → Horarios → Detalle actividad
+- Flujo: Home → Hablemos (incluye las conversaciones con familiares, con etiqueta "Familia"; la ruta `/mas/familia/[vinculoId]` es la conversación)
 - Flujo: Home → Juegos (la ruta sigue siendo `/mas/juegos`)
-- Flujo: Home → Más → Clima / Radio / Agenda / Mi familia / Sugerencias / Accesibilidad
+- Flujo: Home → Más → Clima / Radio / Agenda / Sugerencias / Accesibilidad
 - Si se mueve una sección de lugar, actualizar también la guía (`src/constants/comoUsarContenido.ts`) y el catálogo del asistente (`backend/src/services/assistant/secciones.ts`)
 
 ## Estado global

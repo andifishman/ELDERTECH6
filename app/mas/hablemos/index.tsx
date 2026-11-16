@@ -18,9 +18,50 @@ import { Typography } from '@/constants/Typography';
 import { Spacing } from '@/constants/Spacing';
 import { useConversacionesHablemos } from '@/hooks/useHablemos';
 import { useConversacionesRealtime } from '@/hooks/useHablemosRealtime';
+import { useConversacionesFamilia } from '@/hooks/useMiFamilia';
 import { formatFechaListaConversaciones } from '@/utils/dateUtils';
 import { coincideBusqueda } from '@/utils/textSearch';
 import { nombreParaMostrar, type ConversacionHablemos } from '@/services/hablemosService';
+import type { ConversacionFamilia } from '@/services/miFamiliaService';
+
+// La lista mezcla conversaciones con otros residentes y con familiares (las de
+// familia llevan la etiqueta "Familia" y abren la pantalla de Mi familia).
+interface ItemLista {
+  clave: string;
+  ruta: string;
+  esFamilia: boolean;
+  nombre: string;
+  fotoUrl: string | null;
+  preview: string;
+  fechaIso: string | null;
+  noLeidos: number;
+}
+
+function itemDeHablemos(c: ConversacionHablemos): ItemLista {
+  return {
+    clave: `h-${c.id}`,
+    ruta: `/mas/hablemos/${c.id}`,
+    esFamilia: false,
+    nombre: nombreCompleto(c),
+    fotoUrl: c.otroParticipante?.foto_url ?? null,
+    preview: previewMensaje(c),
+    fechaIso: c.ultimo_mensaje_at,
+    noLeidos: c.noLeidosCount,
+  };
+}
+
+function itemDeFamilia(c: ConversacionFamilia): ItemLista {
+  return {
+    clave: `f-${c.vinculoId}`,
+    ruta: `/mas/familia/${c.vinculoId}`,
+    esFamilia: true,
+    nombre: c.parentesco ? `${c.familiar} (${c.parentesco})` : c.familiar,
+    fotoUrl: null,
+    preview: c.ultimoMensaje?.vistaPrevia ?? 'Todavía no hay mensajes',
+    fechaIso: c.ultimoMensaje?.creadoEn ?? null,
+    noLeidos: c.sinLeer,
+  };
+}
 
 function nombreCompleto(conversacion: ConversacionHablemos): string {
   const otro = conversacion.otroParticipante;
@@ -36,13 +77,16 @@ function previewMensaje(conversacion: ConversacionHablemos): string {
 export default function HablemosListaScreen() {
   const { data: conversaciones, isLoading } = useConversacionesHablemos();
   useConversacionesRealtime(true);
+  // Si "Mi familia" falla (o el residente no tiene familiares vinculados) la lista sigue mostrando Hablemos normal.
+  const { data: conversacionesFamilia, isLoading: cargandoFamilia } = useConversacionesFamilia();
   const [busqueda, setBusqueda] = useState('');
 
   const conversacionesFiltradas = useMemo(() => {
-    if (!conversaciones) return [];
-    if (!busqueda.trim()) return conversaciones;
-    return conversaciones.filter((c) => coincideBusqueda(nombreCompleto(c), busqueda));
-  }, [conversaciones, busqueda]);
+    const items = [...(conversaciones ?? []).map(itemDeHablemos), ...(conversacionesFamilia ?? []).map(itemDeFamilia)];
+    items.sort((a, b) => (b.fechaIso ? Date.parse(b.fechaIso) : 0) - (a.fechaIso ? Date.parse(a.fechaIso) : 0));
+    if (!busqueda.trim()) return items;
+    return items.filter((i) => coincideBusqueda(i.nombre, busqueda) || (i.esFamilia && coincideBusqueda('familia', busqueda)));
+  }, [conversaciones, conversacionesFamilia, busqueda]);
 
   return (
     <View style={styles.root}>
@@ -50,7 +94,7 @@ export default function HablemosListaScreen() {
         titulo="Hablemos"
         mostrarVolver
         backgroundColor={Colors.hablemos.accent}
-        textoHablar="Hablemos. Mandá mensajes de texto o de voz a otros residentes."
+        textoHablar="Hablemos. Mandá mensajes de texto o de voz a otros residentes y a tu familia."
       />
 
       <View style={styles.buscadorContainer}>
@@ -65,12 +109,12 @@ export default function HablemosListaScreen() {
         />
       </View>
 
-      {isLoading ? (
+      {isLoading || (cargandoFamilia && !conversacionesFamilia) ? (
         <ActivityIndicator color={Colors.hablemos.accent} style={{ marginTop: Spacing.xxl }} />
       ) : (
         <FlatList
           data={conversacionesFiltradas}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.clave}
           contentContainerStyle={styles.lista}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -84,37 +128,42 @@ export default function HablemosListaScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.conversacionCard}
-              onPress={() => router.push(`/mas/hablemos/${item.id}` as never)}
+              onPress={() => router.push(item.ruta as never)}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel={`Conversación con ${nombreCompleto(item)}`}
+              accessibilityLabel={`${item.esFamilia ? 'Conversación con tu familiar' : 'Conversación con'} ${item.nombre}${item.noLeidos > 0 ? `, ${item.noLeidos} sin leer` : ''}`}
             >
-              {item.otroParticipante?.foto_url ? (
-                <Image source={{ uri: item.otroParticipante.foto_url }} style={styles.avatar} />
+              {item.fotoUrl ? (
+                <Image source={{ uri: item.fotoUrl }} style={styles.avatar} />
               ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarInicial}>{nombreCompleto(item).charAt(0).toUpperCase()}</Text>
+                <View style={[styles.avatarPlaceholder, item.esFamilia && styles.avatarFamilia]}>
+                  <Text style={styles.avatarInicial}>{item.nombre.charAt(0).toUpperCase()}</Text>
                 </View>
               )}
 
               <View style={styles.infoContainer}>
-                <Text style={styles.nombreTexto} numberOfLines={1} maxFontSizeMultiplier={1.3}>{nombreCompleto(item)}</Text>
+                <Text style={styles.nombreTexto} numberOfLines={1} maxFontSizeMultiplier={1.3}>{item.nombre}</Text>
+                {item.esFamilia && (
+                  <View style={styles.etiquetaFamilia}>
+                    <Text style={styles.etiquetaFamiliaTexto} maxFontSizeMultiplier={1.3}>👪 Familia</Text>
+                  </View>
+                )}
                 <Text
-                  style={[styles.previewTexto, item.noLeidosCount > 0 && styles.previewTextoNoLeido]}
+                  style={[styles.previewTexto, item.noLeidos > 0 && styles.previewTextoNoLeido]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={1.3}
                 >
-                  {previewMensaje(item)}
+                  {item.preview}
                 </Text>
               </View>
 
               <View style={styles.metaContainer}>
-                {item.ultimo_mensaje_at && (
-                  <Text style={styles.horaTexto} maxFontSizeMultiplier={1.3}>{formatFechaListaConversaciones(item.ultimo_mensaje_at)}</Text>
+                {item.fechaIso && (
+                  <Text style={styles.horaTexto} maxFontSizeMultiplier={1.3}>{formatFechaListaConversaciones(item.fechaIso)}</Text>
                 )}
-                {item.noLeidosCount > 0 && (
+                {item.noLeidos > 0 && (
                   <View style={styles.badge}>
-                    <Text style={styles.badgeTexto}>{item.noLeidosCount > 99 ? '99+' : item.noLeidosCount}</Text>
+                    <Text style={styles.badgeTexto}>{item.noLeidos > 99 ? '99+' : item.noLeidos}</Text>
                   </View>
                 )}
               </View>
@@ -188,6 +237,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarFamilia: { backgroundColor: Colors.hablemos.accentDark },
+  etiquetaFamilia: { alignSelf: 'flex-start', backgroundColor: '#EDE7F6', borderRadius: Spacing.radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
+  etiquetaFamiliaTexto: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: Colors.hablemos.accentDark },
   avatarInicial: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, color: Colors.text.onDark },
   infoContainer: { flex: 1, gap: 2, overflow: 'visible' },
   // paddingRight: colchón contra el recorte del último carácter con "Texto en

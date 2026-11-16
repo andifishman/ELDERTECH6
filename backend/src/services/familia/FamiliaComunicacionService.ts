@@ -7,7 +7,7 @@ import * as storage from '../../repositories/familiaStorage';
 import * as auditService from '../audit/AuditService';
 import { exigirVinculo, type FamiliarContext } from '../../utils/familia';
 import { requireResidenteContext } from '../../utils/validators';
-import { validarImagen } from './FamiliaContenidoService';
+import { validarAudio, validarImagen } from './FamiliaContenidoService';
 
 function requireOrganizacionId(user: AuthUser): string {
   if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una organización asociada.');
@@ -25,17 +25,24 @@ export interface MensajeVista {
   autor: repo.AutorMensaje;
   contenido: string | null;
   imagenUrl: string | null;
+  audioUrl: string | null;
+  audioDuracionSegundos: number | null;
   leido: boolean;
   creadoEn: string;
 }
 
 async function aVista(mensajes: repo.Mensaje[]): Promise<MensajeVista[]> {
-  const urls = await storage.firmarVarias(storage.BUCKETS_FAMILIA.mensajes, mensajes.flatMap((m) => (m.imagen_path ? [m.imagen_path] : [])));
+  const urls = await storage.firmarVarias(
+    storage.BUCKETS_FAMILIA.mensajes,
+    mensajes.flatMap((m) => [...(m.imagen_path ? [m.imagen_path] : []), ...(m.audio_path ? [m.audio_path] : [])]),
+  );
   return mensajes.map((m) => ({
     id: m.id,
     autor: m.autor,
     contenido: m.contenido,
     imagenUrl: m.imagen_path ? (urls.get(m.imagen_path) ?? null) : null,
+    audioUrl: m.audio_path ? (urls.get(m.audio_path) ?? null) : null,
+    audioDuracionSegundos: m.audio_path ? m.audio_duracion_segundos : null,
     leido: m.leido_en !== null,
     creadoEn: m.created_at,
   }));
@@ -53,6 +60,7 @@ export interface HiloFamiliar {
 
 function vistaPrevia(m: repo.Mensaje): string {
   if (m.contenido) return m.contenido.length > 80 ? `${m.contenido.slice(0, 79).trimEnd()}…` : m.contenido;
+  if (m.audio_path) return '🎤 Nota de voz';
   return '📷 Foto';
 }
 
@@ -85,7 +93,7 @@ export async function enviarMensajeFamiliar(ctx: FamiliarContext, residenteId: s
   let ruta: string | null = null;
   if (imagen) ruta = await storage.subir(storage.BUCKETS_FAMILIA.mensajes, ctx.organizacionId, imagen, validarImagen(imagen));
   try {
-    const mensaje = await repo.crearMensaje(vinculo.vinculoId, 'familiar', contenido || null, ruta);
+    const mensaje = await repo.crearMensaje({ vinculoId: vinculo.vinculoId, autor: 'familiar', contenido: contenido || null, imagenPath: ruta });
     return (await aVista([mensaje]))[0]!;
   } catch (err) {
     if (ruta) await storage.borrar(storage.BUCKETS_FAMILIA.mensajes, [ruta]).catch((e: unknown) => logger.warn('[familia] no se pudo limpiar la foto del mensaje', { e }));
@@ -135,8 +143,23 @@ export async function mensajesDelResidente(user: AuthUser, vinculoId: string): P
 export async function responderResidente(user: AuthUser, vinculoId: string, contenido: string): Promise<MensajeVista> {
   await vinculoDelResidente(user, vinculoId);
   if (!contenido) throw new HttpError(StatusCodes.BAD_REQUEST, 'Escribí un mensaje.');
-  const mensaje = await repo.crearMensaje(vinculoId, 'residente', contenido, null);
+  const mensaje = await repo.crearMensaje({ vinculoId, autor: 'residente', contenido });
   return (await aVista([mensaje]))[0]!;
+}
+
+/** Nota de voz del residente: muchos no pueden escribir. El tipo se verifica por los bytes, no por lo que diga el cliente. */
+export async function responderResidenteConAudio(user: AuthUser, vinculoId: string, audio: Buffer, duracionSegundos: number | null): Promise<MensajeVista> {
+  const { organizacionId } = requireResidenteContext(user);
+  await vinculoDelResidente(user, vinculoId);
+  if (audio.length === 0) throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta el audio.');
+  const ruta = await storage.subir(storage.BUCKETS_FAMILIA.mensajes, organizacionId, audio, validarAudio(audio));
+  try {
+    const mensaje = await repo.crearMensaje({ vinculoId, autor: 'residente', contenido: null, audioPath: ruta, audioDuracionSegundos: duracionSegundos });
+    return (await aVista([mensaje]))[0]!;
+  } catch (err) {
+    await storage.borrar(storage.BUCKETS_FAMILIA.mensajes, [ruta]).catch((e: unknown) => logger.warn('[familia] no se pudo limpiar el audio del mensaje', { e }));
+    throw err;
+  }
 }
 
 // ─── Consultas, sugerencias y reclamos ───────────────────────────────────────

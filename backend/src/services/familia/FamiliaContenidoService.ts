@@ -31,6 +31,15 @@ export function validarArchivo(buffer: Buffer, permitidos: storage.TipoArchivo[]
   return tipo;
 }
 
+const TIPOS_AUDIO: storage.TipoArchivo[] = ['audio/mp4', 'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav'];
+
+/** Igual que `validarArchivo` pero para notas de voz (mensajes de Mi familia). */
+export function validarAudio(buffer: Buffer): storage.TipoArchivo {
+  const tipo = storage.detectarTipo(buffer);
+  if (!tipo || !TIPOS_AUDIO.includes(tipo)) throw new HttpError(StatusCodes.BAD_REQUEST, 'El audio no es válido. Grabalo de nuevo.');
+  return tipo;
+}
+
 export const validarImagen = (buffer: Buffer): storage.TipoArchivo => validarArchivo(buffer, TIPOS_IMAGEN);
 export const validarDocumento = (buffer: Buffer): storage.TipoArchivo => validarArchivo(buffer, TIPOS_DOCUMENTO);
 

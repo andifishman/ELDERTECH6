@@ -257,7 +257,7 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     emoji: '💬',
     titulo: 'Hablemos',
     color: Colors.brand.primary,
-    intro: 'Hablemos te permite mandar mensajes de texto o de voz a otros residentes de la casa.',
+    intro: 'Hablemos te permite mandar mensajes de texto o de voz a otros residentes de la casa y a tus familiares.',
     pasos: [
       'Desde la pantalla principal, tocá el botón violeta "Hablemos".',
       'Vas a ver la lista de tus conversaciones, con la más reciente arriba de todo.',
@@ -265,6 +265,7 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
       'Adentro de una conversación, tocá el botón grande "Escribir mensaje" para abrir una pantalla con letra grande donde escribís tu texto, y después tocá "Enviar".',
       'Si preferís no escribir, tocá el botón del micrófono para grabar un mensaje de voz. Al terminar de hablar podés elegir "Borrar" o "Enviar".',
       'Los mensajes de voz que te manden a vos tienen un botón "Escuchar" para reproducirlos cuando quieras.',
+      'Los mensajes de tus familiares aparecen en la misma lista, con la etiqueta "Familia". Los podés leer, escuchar y contestar escribiendo o con un mensaje de voz.',
     ],
   },
   {
@@ -272,10 +273,10 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     emoji: '➕',
     titulo: 'Más',
     color: '#FFA726',
-    intro: 'Más reúne otras funciones útiles: el clima, la radio, tu agenda de recordatorios, los mensajes de tu familia, un lugar para mandar sugerencias al personal, y los ajustes de accesibilidad.',
+    intro: 'Más reúne otras funciones útiles: el clima, la radio, tu agenda de recordatorios, un lugar para mandar sugerencias al personal, y los ajustes de accesibilidad.',
     pasos: [
       'Desde la pantalla principal, tocá el botón naranja "Más".',
-      'Vas a ver varias tarjetas: Clima, Radio, Agenda, Mi familia, Sugerencias y Accesibilidad. Tocá "Ver más" en cualquiera para entrar.',
+      'Vas a ver varias tarjetas: Clima, Radio, Agenda, Sugerencias y Accesibilidad. Tocá "Ver más" en cualquiera para entrar.',
     ],
     subsecciones: [
       {

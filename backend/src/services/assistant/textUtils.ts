@@ -30,7 +30,7 @@ const ALIAS_RUTAS: Record<string, string> = {
   '/horarios-hogar': '/horarios',
   '/juegos': '/mas/juegos',
   '/hablemos': '/mas/hablemos',
-  '/familia': '/mas/familia',
+  '/familia': '/mas/hablemos',
   '/sugerencias': '/mas/pedidos',
   '/pedidos': '/mas/pedidos',
   '/accesibilidad': '/mas/accesibilidad',

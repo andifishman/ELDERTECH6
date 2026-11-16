@@ -2,6 +2,7 @@
 // Habla con el backend propio (nunca con Supabase directo). El residente lee y contesta; el familiar
 // escribe desde la app de familiares (carpeta `familia/`).
 import { apiClient } from './apiClient';
+import { adjuntarAudio } from '@/utils/archivoForm';
 
 export interface ConversacionFamilia {
   vinculoId: string;
@@ -17,6 +18,8 @@ export interface MensajeFamilia {
   autor: 'familiar' | 'residente';
   contenido: string | null;
   imagenUrl: string | null;
+  audioUrl: string | null;
+  audioDuracionSegundos: number | null;
   leido: boolean;
   creadoEn: string;
 }
@@ -32,4 +35,12 @@ export async function listarMensajesFamilia(vinculoId: string): Promise<MensajeF
 
 export async function responderFamilia(vinculoId: string, contenido: string): Promise<MensajeFamilia> {
   return apiClient.post<MensajeFamilia>(`/api/mi-familia/conversaciones/${vinculoId}/mensajes`, { contenido });
+}
+
+/** Nota de voz: muchos residentes no pueden escribir, así que contestan hablando. */
+export async function responderFamiliaConAudio(vinculoId: string, audioUri: string, duracionSegundos: number): Promise<MensajeFamilia> {
+  const form = new FormData();
+  form.append('duracionSegundos', String(duracionSegundos));
+  await adjuntarAudio(form, audioUri);
+  return apiClient.postForm<MensajeFamilia>(`/api/mi-familia/conversaciones/${vinculoId}/mensajes/audio`, form);
 }
