@@ -184,6 +184,26 @@ export const getMe = () => apiClient.get<Me>(`${B}/me`);
 export const getInicio = (residenteId: string | null) => apiClient.get<Inicio>(`${B}/inicio${residenteId ? `?residenteId=${residenteId}` : ''}`);
 export const getAgenda = (residenteId: string, desde: string, hasta: string) =>
   apiClient.get<{ actividades: ActividadHogar[]; actividadesDisponibles: boolean; recordatorios: Recordatorio[] }>(`${B}/residentes/${residenteId}/agenda?desde=${desde}&hasta=${hasta}`);
+export interface ResumenJuego {
+  juego: string;
+  partidas: number;
+  ganadas: number;
+  perdidas: number;
+  mejorPuntaje: number | null;
+  ultimaPartida: string | null;
+}
+
+export interface Estadisticas {
+  juegos: ResumenJuego[];
+  totalPartidas: number;
+  progreso: {
+    jardin: { niveles: number; estrellas: number };
+    palabras: { niveles: number; nivelMaximo: number };
+    tutoriales: { vistos: number; completados: number };
+  };
+}
+
+export const getEstadisticas = (residenteId: string) => apiClient.get<Estadisticas>(`${B}/residentes/${residenteId}/estadisticas`);
 export const getCalendario = (mes: string) => apiClient.get<{ eventos: Evento[]; actividades: ActividadHogar[]; actividadesDisponibles: boolean }>(`${B}/calendario?mes=${mes}`);
 
 export const getAvisos = () => apiClient.get<Aviso[]>(`${B}/avisos`);
@@ -203,10 +223,14 @@ export const borrarComentario = (id: string) => apiClient.delete<void>(`${B}/com
 
 export const getHilos = () => apiClient.get<Hilo[]>(`${B}/mensajes`);
 export const getMensajes = (residenteId: string) => apiClient.get<Mensaje[]>(`${B}/mensajes/${residenteId}`);
-export const enviarMensaje = (residenteId: string, contenido: string, imagen: File | null) => {
+export const enviarMensaje = (residenteId: string, contenido: string, imagen: File | null, audio: { archivo: File; segundos: number } | null = null) => {
   const form = new FormData();
   form.append('contenido', contenido);
   if (imagen) form.append('imagen', imagen);
+  if (audio) {
+    form.append('duracionSegundos', String(audio.segundos));
+    form.append('audio', audio.archivo);
+  }
   return apiClient.postForm<Mensaje>(`${B}/mensajes/${residenteId}`, form);
 };
 

@@ -65,6 +65,7 @@ familiaRouter.use(requireAuth, requireFamiliar, rateLimit({ limit: 240, windowSe
 familiaRouter.get('/me', asyncHandler(controller.getMe));
 familiaRouter.get('/inicio', asyncHandler(controller.getInicio));
 familiaRouter.get('/residentes/:residenteId/agenda', asyncHandler(controller.getAgenda));
+familiaRouter.get('/residentes/:residenteId/estadisticas', asyncHandler(controller.getEstadisticas));
 familiaRouter.get('/calendario', asyncHandler(controller.getCalendario));
 
 familiaRouter.get('/avisos', asyncHandler(controller.getAvisos));
@@ -85,7 +86,7 @@ familiaRouter.delete('/comentarios/:id', escribir, asyncHandler(controller.delet
 
 familiaRouter.get('/mensajes', asyncHandler(controller.getHilos));
 familiaRouter.get('/mensajes/:residenteId', asyncHandler(controller.getMensajes));
-familiaRouter.post('/mensajes/:residenteId', escribir, conSubida(subir.single('imagen')), asyncHandler(controller.postMensaje));
+familiaRouter.post('/mensajes/:residenteId', escribir, conSubida(subir.fields([{ name: 'imagen', maxCount: 1 }, { name: 'audio', maxCount: 1 }])), asyncHandler(controller.postMensaje));
 
 familiaRouter.get('/categorias', asyncHandler(controller.getCategorias));
 familiaRouter.get('/casos', asyncHandler(controller.getCasos));

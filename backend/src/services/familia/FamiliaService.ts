@@ -5,6 +5,7 @@ import { logger } from '../../logging/logger';
 import * as familiaRepo from '../../repositories/familiaRepository';
 import * as contenidoRepo from '../../repositories/familiaContenidoRepository';
 import * as comunicacionRepo from '../../repositories/familiaComunicacionRepository';
+import * as gamesRepo from '../../repositories/gamesRepository';
 import * as auditService from '../audit/AuditService';
 import * as horariosExternos from '../horariosExternos/HorariosExternosService';
 import type { ActividadExterna } from '../horariosExternos/HorariosExternosService';
@@ -298,3 +299,21 @@ function normalizarDia(dia: string): string {
   return horariosExternos.normalizarDia(dia);
 }
 
+
+
+// ─── Estadísticas del residente ──────────────────────────────────────────────
+
+export interface EstadisticasResidente {
+  /** Solo los juegos a los que ya jugó. */
+  juegos: gamesRepo.ResumenJuego[];
+  totalPartidas: number;
+  progreso: familiaRepo.ProgresoResidente;
+}
+
+/** Cómo le va al residente en los juegos y los tutoriales. Solo lectura y solo de un residente vinculado. */
+export async function estadisticasDelResidente(ctx: FamiliarContext, residenteId: string): Promise<EstadisticasResidente> {
+  exigirVinculo(ctx, residenteId);
+  const [resumen, progreso] = await Promise.all([gamesRepo.resumenPorJuego(residenteId), familiaRepo.obtenerProgresoResidente(residenteId)]);
+  const juegos = resumen.filter((j) => j.partidas > 0).sort((a, b) => b.partidas - a.partidas);
+  return { juegos, totalPartidas: juegos.reduce((suma, j) => suma + j.partidas, 0), progreso };
+}

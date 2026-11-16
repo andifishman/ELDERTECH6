@@ -297,3 +297,31 @@ export const listarRecordatoriosResidente = withRepoLogging(
     return (data ?? []) as RecordatorioResidente[];
   },
 );
+
+
+// ─── Estadísticas del residente (solo lectura, para su familia) ──────────────
+
+export interface ProgresoResidente {
+  jardin: { niveles: number; estrellas: number };
+  palabras: { niveles: number; nivelMaximo: number };
+  tutoriales: { vistos: number; completados: number };
+}
+
+/** Avance en los juegos de niveles y en los tutoriales — el mismo dato que ve el personal en la ficha del residente. */
+export const obtenerProgresoResidente = withRepoLogging(REPO, 'obtenerProgresoResidente', async (residenteId: string): Promise<ProgresoResidente> => {
+  const db = getSupabaseAdmin();
+  const [jardinR, palabrasR, tutorialesR] = await Promise.allSettled([
+    db.from('jardin_niveles_progreso').select('nivel, estrellas').eq('residente_id', residenteId),
+    db.from('palabras_niveles_progreso').select('nivel').eq('residente_id', residenteId),
+    db.from('progreso_tutorial').select('completado').eq('residente_id', residenteId),
+  ]);
+  const filas = <T>(r: PromiseSettledResult<{ data: unknown }>): T[] => (r.status === 'fulfilled' ? ((r.value.data ?? []) as T[]) : []);
+  const jardin = filas<{ nivel: number; estrellas: number }>(jardinR);
+  const palabras = filas<{ nivel: number }>(palabrasR);
+  const tutoriales = filas<{ completado: boolean }>(tutorialesR);
+  return {
+    jardin: { niveles: jardin.length, estrellas: jardin.reduce((suma, f) => suma + f.estrellas, 0) },
+    palabras: { niveles: palabras.length, nivelMaximo: palabras.reduce((max, f) => Math.max(max, f.nivel), 0) },
+    tutoriales: { vistos: tutoriales.length, completados: tutoriales.filter((t) => t.completado).length },
+  };
+});

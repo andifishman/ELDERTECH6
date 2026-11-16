@@ -37,6 +37,10 @@ export async function getAgenda(req: Request, res: Response): Promise<void> {
   res.json(await familiaService.agendaDelResidente(ctx(req), requireUuidParam(req, 'residenteId'), rango));
 }
 
+export async function getEstadisticas(req: Request, res: Response): Promise<void> {
+  res.json(await familiaService.estadisticasDelResidente(ctx(req), requireUuidParam(req, 'residenteId')));
+}
+
 export async function getCalendario(req: Request, res: Response): Promise<void> {
   const { mes } = mesSchema.parse(req.query);
   res.json(await familiaService.calendario(ctx(req), mes));
@@ -119,7 +123,16 @@ export async function getMensajes(req: Request, res: Response): Promise<void> {
 
 export async function postMensaje(req: Request, res: Response): Promise<void> {
   const { contenido } = mensajeSchema.parse(req.body ?? {});
-  const mensaje = await comunicacionService.enviarMensajeFamiliar(ctx(req), requireUuidParam(req, 'residenteId'), contenido, req.file?.buffer ?? null);
+  const archivos = (req.files ?? {}) as Record<string, Express.Multer.File[] | undefined>;
+  const audio = archivos.audio?.[0];
+  const duracion = Number(req.body?.duracionSegundos);
+  const mensaje = await comunicacionService.enviarMensajeFamiliar(
+    ctx(req),
+    requireUuidParam(req, 'residenteId'),
+    contenido,
+    archivos.imagen?.[0]?.buffer ?? null,
+    audio ? { buffer: audio.buffer, duracionSegundos: Number.isFinite(duracion) ? Math.min(600, Math.max(1, Math.round(duracion))) : null } : null,
+  );
   res.status(StatusCodes.CREATED).json(mensaje);
 }
 

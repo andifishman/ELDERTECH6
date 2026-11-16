@@ -12,6 +12,7 @@ import { InicioPage } from '@/pages/InicioPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { AvisosPage, DocumentosPage, MasPage, NoticiasPage, PropuestasPage } from '@/pages/MasPage';
 import { ChatPage, MensajesPage } from '@/pages/MensajesPage';
+import { EstadisticasPage } from '@/pages/EstadisticasPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +67,7 @@ function Puerta() {
       <Route element={<Layout />}>
         <Route index element={<InicioPage />} />
         <Route path="calendario" element={<CalendarioPage />} />
+        <Route path="estadisticas" element={<EstadisticasPage />} />
         <Route path="fotos" element={<FotosPage />} />
         <Route path="fotos/:id" element={<AlbumPage />} />
         <Route path="mensajes" element={<MensajesPage />} />

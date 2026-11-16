@@ -87,16 +87,40 @@ export async function mensajesDelFamiliar(ctx: FamiliarContext, residenteId: str
   return aVista(mensajes);
 }
 
-export async function enviarMensajeFamiliar(ctx: FamiliarContext, residenteId: string, contenido: string, imagen: Buffer | null): Promise<MensajeVista> {
+export interface AudioEntrante {
+  buffer: Buffer;
+  duracionSegundos: number | null;
+}
+
+export async function enviarMensajeFamiliar(
+  ctx: FamiliarContext,
+  residenteId: string,
+  contenido: string,
+  imagen: Buffer | null,
+  audio: AudioEntrante | null = null,
+): Promise<MensajeVista> {
   const vinculo = exigirVinculo(ctx, residenteId);
-  if (!contenido && !imagen) throw new HttpError(StatusCodes.BAD_REQUEST, 'Escribí un mensaje o elegí una foto.');
-  let ruta: string | null = null;
-  if (imagen) ruta = await storage.subir(storage.BUCKETS_FAMILIA.mensajes, ctx.organizacionId, imagen, validarImagen(imagen));
+  if (!contenido && !imagen && !audio) throw new HttpError(StatusCodes.BAD_REQUEST, 'Escribí un mensaje, elegí una foto o grabá un audio.');
+  // Se validan los dos archivos ANTES de subir cualquiera, para no dejar uno huérfano si el otro es inválido.
+  const tipoImagen = imagen ? validarImagen(imagen) : null;
+  const tipoAudio = audio ? validarAudio(audio.buffer) : null;
+  const rutas: string[] = [];
   try {
-    const mensaje = await repo.crearMensaje({ vinculoId: vinculo.vinculoId, autor: 'familiar', contenido: contenido || null, imagenPath: ruta });
+    const imagenPath = imagen && tipoImagen ? await storage.subir(storage.BUCKETS_FAMILIA.mensajes, ctx.organizacionId, imagen, tipoImagen) : null;
+    if (imagenPath) rutas.push(imagenPath);
+    const audioPath = audio && tipoAudio ? await storage.subir(storage.BUCKETS_FAMILIA.mensajes, ctx.organizacionId, audio.buffer, tipoAudio) : null;
+    if (audioPath) rutas.push(audioPath);
+    const mensaje = await repo.crearMensaje({
+      vinculoId: vinculo.vinculoId,
+      autor: 'familiar',
+      contenido: contenido || null,
+      imagenPath,
+      audioPath,
+      audioDuracionSegundos: audioPath ? (audio?.duracionSegundos ?? null) : null,
+    });
     return (await aVista([mensaje]))[0]!;
   } catch (err) {
-    if (ruta) await storage.borrar(storage.BUCKETS_FAMILIA.mensajes, [ruta]).catch((e: unknown) => logger.warn('[familia] no se pudo limpiar la foto del mensaje', { e }));
+    if (rutas.length > 0) await storage.borrar(storage.BUCKETS_FAMILIA.mensajes, rutas).catch((e: unknown) => logger.warn('[familia] no se pudo limpiar el archivo del mensaje', { e }));
     throw err;
   }
 }

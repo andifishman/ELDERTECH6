@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ChevronRight, ExternalLink, FileText, Lightbulb, LogOut, MessageSquareText, Newspaper, Phone, ArrowLeft } from 'lucide-react';
+import { Bell, ChevronRight, Gamepad2, ExternalLink, FileText, Lightbulb, LogOut, MessageSquareText, Newspaper, Phone, ArrowLeft } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '@/auth/AuthContext';
 import { Aviso, Boton, Cargando, ErrorCaja, Etiqueta, Tarjeta, Titulo, Vacio, mensajeDeError, AreaTexto, Campo } from '@/components/ui';
@@ -18,6 +18,7 @@ export function MasPage() {
   const sinLeer = (avisosQ.data ?? []).filter((a) => !a.leido).length;
 
   const items: Array<{ to: string; texto: string; ayuda: string; icono: ReactNode; insignia?: number }> = [
+    { to: '/estadisticas', texto: 'Sus juegos', ayuda: 'Partidas, niveles y tutoriales', icono: <Gamepad2 className="h-7 w-7" aria-hidden /> },
     { to: '/avisos', texto: 'Avisos', ayuda: 'Comunicados de la residencia', icono: <Bell className="h-7 w-7" aria-hidden />, insignia: sinLeer },
     { to: '/noticias', texto: 'Noticias', ayuda: 'Novedades de la residencia', icono: <Newspaper className="h-7 w-7" aria-hidden /> },
     { to: '/documentos', texto: 'Documentos', ayuda: 'Archivos generales para las familias', icono: <FileText className="h-7 w-7" aria-hidden /> },

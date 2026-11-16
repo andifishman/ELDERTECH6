@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarX, ChevronLeft, ChevronRight, MapPin, Users } from 'lucide-react';
@@ -43,13 +43,19 @@ function ListaActividades({ actividades }: { actividades: ActividadHogar[] }) {
 /** Selector de los próximos 7 días (el feed del Hogar es una grilla semanal). */
 function SelectorDia({ dia, onCambio }: { dia: string; onCambio: (d: string) => void }) {
   const hoy = hoyISO();
-  const dias = Array.from({ length: 7 }, (_, i) => sumarDias(hoy, i));
+  // Desde el lunes de esta semana (para poder mirar los días que ya pasaron) hasta una semana adelante.
+  const atras = (new Date(`${hoy}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const dias = Array.from({ length: atras + 7 }, (_, i) => sumarDias(hoy, i - atras));
+  const activoRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activoRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [dia]);
   return (
     <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Elegí un día">
       {dias.map((d) => {
         const activo = d === dia;
         return (
-          <button key={d} type="button" aria-pressed={activo} onClick={() => onCambio(d)} className={clsx('min-h-14 min-w-20 shrink-0 rounded-xl border-2 px-3 py-1.5 text-center font-semibold capitalize', activo ? 'border-primary-600 bg-primary-600 text-white' : 'border-primary-200 bg-white text-ink')}>
+          <button key={d} ref={activo ? activoRef : undefined} type="button" aria-pressed={activo} onClick={() => onCambio(d)} className={clsx('min-h-14 min-w-20 shrink-0 rounded-xl border-2 px-3 py-1.5 text-center font-semibold capitalize', activo ? 'border-primary-600 bg-primary-600 text-white' : 'border-primary-200 bg-white text-ink')}>
             <span className="block text-sm">{d === hoy ? 'Hoy' : new Date(`${d}T12:00:00Z`).toLocaleDateString('es-AR', { weekday: 'short', timeZone: 'UTC' })}</span>
             <span className="block text-lg">{d.slice(8)}</span>
           </button>
@@ -61,7 +67,13 @@ function SelectorDia({ dia, onCambio }: { dia: string; onCambio: (d: string) => 
 
 function ActividadesYAgenda({ tab }: { tab: 'actividades' | 'agenda' }) {
   const { residente } = useAuth();
-  const [dia, setDia] = useState(hoyISO);
+  // El Inicio manda ?dia=AAAA-MM-DD al tocar un día de "Esta semana".
+  const [params] = useSearchParams();
+  const diaPedido = params.get('dia');
+  const [dia, setDia] = useState(() => (diaPedido && /^\d{4}-\d{2}-\d{2}$/.test(diaPedido) ? diaPedido : hoyISO()));
+  useEffect(() => {
+    if (diaPedido && /^\d{4}-\d{2}-\d{2}$/.test(diaPedido)) setDia(diaPedido);
+  }, [diaPedido]);
   const desde = hoyISO();
   const hasta = sumarDias(desde, 30);
   const agendaQ = useQuery({ queryKey: ['agenda', residente?.id, desde], queryFn: () => getAgenda(residente!.id, desde, hasta), enabled: !!residente });

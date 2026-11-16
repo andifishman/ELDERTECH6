@@ -1,7 +1,7 @@
 // Vista de la pantalla de Inicio. Es "tonta" a propósito (solo recibe datos y los dibuja) para poder
 // mirar el diseño con datos de ejemplo sin sesión ni backend.
 import { Link } from 'react-router-dom';
-import { Bell, Camera, CalendarDays, CheckCircle2, ChevronRight, Heart, MessageCircle, Newspaper, Phone, Send, Sparkles, Sun } from 'lucide-react';
+import { Bell, Camera, Gamepad2, CalendarDays, CheckCircle2, ChevronRight, Heart, MessageCircle, Newspaper, Phone, Send, Sparkles, Sun } from 'lucide-react';
 import clsx from 'clsx';
 import { Boton } from '@/components/ui';
 import { fechaCorta, fechaHora, fechaHoyLarga, saludo } from '@/lib/format';
@@ -177,6 +177,12 @@ export function InicioVista(p: InicioVistaProps) {
         ))}
       </nav>
 
+      <Link to="/estadisticas" className="aparece flex min-h-16 items-center gap-3 rounded-3xl border-2 border-agua-200 bg-agua-100 p-4 shadow-suave" style={orden(3)}>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-agua-500 text-white shadow"><Gamepad2 className="h-7 w-7" aria-hidden /></span>
+        <span className="min-w-0 flex-1"><span className="block font-display text-xl font-bold leading-tight text-ink">Sus juegos</span><span className="block text-sm font-bold text-agua-700">Cómo le va a {nombreRes}: partidas, niveles y más</span></span>
+        <ChevronRight className="h-6 w-6 shrink-0 text-agua-700" aria-hidden />
+      </Link>
+
       {/* ── Hoy en el piso ─────────────────────────────────────────── */}
       <Seccion i={4} titulo={`Hoy en el piso de ${nombreRes}`} icono={<Sun className="h-5 w-5 text-sol-900" />} color="bg-sol-200" enlace={{ to: '/calendario', texto: 'Ver todo' }}>
         {p.actividadesHoy === null ? (
@@ -220,7 +226,7 @@ export function InicioVista(p: InicioVistaProps) {
             <ol className="grid grid-cols-7 gap-1.5">
               {p.semana.map((s) => (
                 <li key={s.fecha}>
-                  <Link to="/calendario" aria-label={`${s.nombre} ${s.numero}: ${s.cantidad} ${s.cantidad === 1 ? 'actividad' : 'actividades'}${s.esHoy ? ' (hoy)' : ''}`} className={clsx('flex flex-col items-center gap-1 rounded-2xl px-0 py-2', s.esHoy ? 'bg-primary-600 text-white shadow-suave' : 'text-ink')}>
+                  <Link to={`/calendario?dia=${s.fecha}`} aria-label={`${s.nombre} ${s.numero}: ${s.cantidad} ${s.cantidad === 1 ? 'actividad' : 'actividades'}${s.esHoy ? ' (hoy)' : ''}`} className={clsx('flex flex-col items-center gap-1 rounded-2xl px-0 py-2', s.esHoy ? 'bg-primary-600 text-white shadow-suave' : 'text-ink')}>
                     <span className={clsx('text-xs font-extrabold uppercase', s.esHoy ? 'text-white/90' : 'text-soft')}>{s.inicial}</span>
                     <span className="font-display text-lg font-extrabold leading-none">{s.numero}</span>
                     <span className="flex h-8 w-3 items-end overflow-hidden rounded-full bg-black/5" aria-hidden>

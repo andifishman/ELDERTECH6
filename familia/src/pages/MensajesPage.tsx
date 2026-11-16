@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, ChevronRight, MessageCircle, Send, X } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, MessageCircle, Mic, Send, Square, X } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/auth/AuthContext';
 import { Aviso, Boton, Cargando, ErrorCaja, Tarjeta, Titulo, Vacio, mensajeDeError } from '@/components/ui';
 import { fechaRelativa, fechaHora, nombreCompleto } from '@/lib/format';
+import { formatoDuracion, grabacionDisponible, useGrabadora } from '@/lib/grabadora';
 import { enviarMensaje, getHilos, getMensajes } from '@/services/familia';
 
 const MAX_FOTO_MB = 5;
@@ -60,13 +61,16 @@ export function ChatPage() {
   const [foto, setFoto] = useState<File | null>(null);
   const [vista, setVista] = useState<string | null>(null);
   const [errorFoto, setErrorFoto] = useState<string | null>(null);
+  const grabadora = useGrabadora();
+  const { audio } = grabadora;
 
   const q = useQuery({ queryKey: ['mensajes', residenteId], queryFn: () => getMensajes(residenteId!), enabled: !!residenteId, refetchInterval: 15_000 });
   const enviar = useMutation({
-    mutationFn: () => enviarMensaje(residenteId!, texto.trim(), foto),
+    mutationFn: () => enviarMensaje(residenteId!, texto.trim(), foto, audio),
     onSuccess: () => {
       setTexto('');
       quitarFoto();
+      grabadora.quitar();
       void qc.invalidateQueries({ queryKey: ['mensajes', residenteId] });
       void qc.invalidateQueries({ queryKey: ['hilos'] });
     },
@@ -100,7 +104,7 @@ export function ChatPage() {
 
   const alEnviar = (e: FormEvent) => {
     e.preventDefault();
-    if ((texto.trim() || foto) && !enviar.isPending) enviar.mutate();
+    if ((texto.trim() || foto || audio) && !grabadora.grabando && !enviar.isPending) enviar.mutate();
   };
 
   if (!residente) return <ErrorCaja error={new Error('No encontramos esa conversación.')} />;
@@ -141,6 +145,21 @@ export function ChatPage() {
             <button type="button" onClick={quitarFoto} aria-label="Quitar la foto" className="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-700 text-white"><X className="h-5 w-5" aria-hidden /></button>
           </div>
         )}
+        {audio && (
+          <div className="flex items-center gap-2 rounded-xl bg-primary-50 p-2">
+            <audio controls src={audio.vistaUrl} className="h-12 min-w-0 flex-1" aria-label="Escuchá tu audio antes de enviarlo" />
+            <button type="button" onClick={grabadora.quitar} aria-label="Quitar el audio" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-700 text-white"><X className="h-5 w-5" aria-hidden /></button>
+          </div>
+        )}
+        {grabadora.grabando && (
+          <div role="status" className="flex items-center gap-3 rounded-xl bg-red-50 p-3 text-red-800">
+            <span aria-hidden className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-red-700" />
+            <span className="flex-1 font-bold">Grabando… {formatoDuracion(grabadora.segundos)}</span>
+            <button type="button" onClick={grabadora.cancelar} className="min-h-11 rounded-xl px-3 font-semibold underline">Cancelar</button>
+            <button type="button" onClick={grabadora.detener} className="flex min-h-11 items-center gap-1.5 rounded-xl bg-red-700 px-4 font-bold text-white"><Square className="h-4 w-4 fill-white" aria-hidden /> Listo</button>
+          </div>
+        )}
+        {grabadora.error && <Aviso tipo="error">{grabadora.error}</Aviso>}
         {errorFoto && <Aviso tipo="error">{errorFoto}</Aviso>}
         {enviar.isError && <Aviso tipo="error">{mensajeDeError(enviar.error)}</Aviso>}
         <label htmlFor="mensaje" className="sr-only">Escribí tu mensaje</label>
@@ -148,7 +167,8 @@ export function ChatPage() {
         <div className="flex items-center gap-2">
           <input ref={inputFoto} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" id="foto-mensaje" onChange={(e) => elegirFoto(e.target.files?.[0])} />
           <label htmlFor="foto-mensaje" className="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border-2 border-primary-600 px-4 font-semibold text-primary-700 focus-within:outline focus-within:outline-2"><Camera className="h-5 w-5" aria-hidden /> Foto</label>
-          <Boton type="submit" className="flex-1" cargando={enviar.isPending} disabled={!texto.trim() && !foto}><Send className="h-5 w-5" aria-hidden /> Enviar</Boton>
+          {grabacionDisponible() && !grabadora.grabando && <button type="button" onClick={() => void grabadora.iniciar()} className="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border-2 border-primary-600 px-4 font-semibold text-primary-700"><Mic className="h-5 w-5" aria-hidden /> Audio</button>}
+          <Boton type="submit" className="flex-1" cargando={enviar.isPending} disabled={(!texto.trim() && !foto && !audio) || grabadora.grabando}><Send className="h-5 w-5" aria-hidden /> Enviar</Boton>
         </div>
       </form>
     </div>
