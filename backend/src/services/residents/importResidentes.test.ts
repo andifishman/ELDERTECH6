@@ -103,26 +103,45 @@ describe('validarFilas', () => {
     const crudas = await leerExcel(await generarPlantilla());
     expect(() => validarFilas(crudas, vacio())).toThrow(/solo tiene las filas de ejemplo/);
   });
-  it('la plantilla completada se importa y deja el puesto solo a empleados', async () => {
+  it('la plantilla completada se importa y el puesto queda solo para empleados', async () => {
     const libro = new ExcelJS.Workbook();
     await libro.xlsx.load((await generarPlantilla()) as unknown as ArrayBuffer);
     const hoja = libro.getWorksheet('Residentes')!;
-    ['rosa', 'garcia', '30111222', '2 B', '', 'iphone', 'enfermera'].forEach((v, i) => { hoja.getCell(5, i + 1).value = v; });
-    ['pedro', 'sosa', '30111223', 'EMPLEADO LEDOR VADOR', '', '', 'enfermero'].forEach((v, i) => { hoja.getCell(6, i + 1).value = v; });
+    ['rosa', 'garcia', '30.111.222', '2 B'].forEach((v, i) => { hoja.getCell(5, i + 1).value = v; });
+    ['pedro', 'sosa', '30111223', 'EMPLEADO LEDOR VADOR', 'enfermero'].forEach((v, i) => { hoja.getCell(6, i + 1).value = v; });
     const r = validarFilas(await leerExcel(Buffer.from(await libro.xlsx.writeBuffer())), vacio());
     expect(r.resumen).toMatchObject({ total: 2, validas: 2, ejemplosOmitidos: 3 });
-    expect(r.filas[0]!.datos).toMatchObject({ tipo_celular: 'iphone', rol_empleado: null });
+    expect(r.filas[0]!.datos).toMatchObject({ nombre: 'Rosa', dni: '30111222', tipo_celular: 'no_especificado', rol_empleado: null });
     expect(r.filas[1]!.datos).toMatchObject({ rol_empleado: 'Enfermero' });
+  });
+  it('rechaza un puesto en una sección que no es de empleados', async () => {
+    const crudas = await leerExcel(await libroConFilas([['Ana', 'Perez', '11111111', '1 AC', 'enfermera']], ['Nombre', 'Apellido', 'DNI', 'Sección', 'Puesto (solo empleados)']));
+    const r = validarFilas(crudas, vacio());
+    expect(r.filas[0]!.errores[0]).toMatch(/solo se completa para la sección EMPLEADO LEDOR VADOR/);
+  });
+  it('acepta un Excel con las columnas viejas de más (se ignoran)', async () => {
+    const crudas = await leerExcel(await libroConFilas([['Ana', 'Perez', '11111111', '1 AC', 'anita', 'android']], ['Nombre', 'Apellido', 'DNI', 'Sección', 'Usuario (opcional)', 'Tipo de celular (opcional)']));
+    const r = validarFilas(crudas, vacio());
+    expect(r.filas[0]!.datos).toMatchObject({ username: 'aperez', tipo_celular: 'no_especificado' });
   });
 });
 
 describe('generarPlantilla', () => {
-  it('tiene desplegable de sección y 3 filas de ejemplo', async () => {
+  it('tiene solo las columnas Nombre, Apellido, DNI, Sección y Puesto, y 3 filas de ejemplo', async () => {
+    const libro = new ExcelJS.Workbook();
+    await libro.xlsx.load((await generarPlantilla()) as unknown as ArrayBuffer);
+    const hoja = libro.getWorksheet('Residentes')!;
+    expect(hoja.getRow(1).values).toEqual([undefined, 'Nombre', 'Apellido', 'DNI', 'Sección', 'Puesto (solo empleados)']);
+    expect([2, 3, 4].map((n) => String(hoja.getCell(n, 1).value))).toEqual(['prueba1', 'prueba2', 'prueba3']);
+    expect(hoja.getCell('C2').value).toBe(10000001);
+  });
+  it('la sección es un desplegable y el puesto solo se habilita para empleados', async () => {
     const libro = new ExcelJS.Workbook();
     await libro.xlsx.load((await generarPlantilla()) as unknown as ArrayBuffer);
     const hoja = libro.getWorksheet('Residentes')!;
     expect(hoja.getCell('D2').dataValidation.type).toBe('list');
     expect(hoja.getCell('D300').dataValidation.type).toBe('list');
-    expect([2, 3, 4].map((n) => String(hoja.getCell(n, 1).value))).toEqual(['prueba1', 'prueba2', 'prueba3']);
+    expect(hoja.getCell('E2').dataValidation.type).toBe('custom');
+    expect(String(hoja.getCell('E7').dataValidation.formulae?.[0])).toContain('$D7="EMPLEADO LEDOR VADOR"');
   });
 });

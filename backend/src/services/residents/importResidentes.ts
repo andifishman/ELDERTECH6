@@ -17,8 +17,7 @@ export const SECCIONES_IMPORT = [
 ] as const;
 
 const SECCION_EMPLEADO = 'EMPLEADO LEDOR VADOR';
-const TIPOS_CELULAR = { android: 'Android', iphone: 'iPhone', no_especificado: 'Ninguno' } as const;
-type TipoCelularImport = keyof typeof TIPOS_CELULAR;
+type TipoCelularImport = 'android' | 'iphone' | 'no_especificado';
 
 export const HOJA_RESIDENTES = 'Residentes';
 const HOJA_INSTRUCCIONES = 'Instrucciones';
@@ -28,7 +27,7 @@ export const MAX_FILAS_IMPORT = 200;
 const FILAS_PLANTILLA = 500;
 
 interface Columna {
-  clave: 'nombre' | 'apellido' | 'dni' | 'seccion' | 'usuario' | 'tipo_celular' | 'puesto';
+  clave: 'nombre' | 'apellido' | 'dni' | 'seccion' | 'puesto';
   titulo: string;
   obligatoria: boolean;
   ancho: number;
@@ -38,10 +37,8 @@ const COLUMNAS: Columna[] = [
   { clave: 'nombre', titulo: 'Nombre', obligatoria: true, ancho: 20 },
   { clave: 'apellido', titulo: 'Apellido', obligatoria: true, ancho: 20 },
   { clave: 'dni', titulo: 'DNI', obligatoria: true, ancho: 16 },
-  { clave: 'seccion', titulo: 'Sección', obligatoria: true, ancho: 24 },
-  { clave: 'usuario', titulo: 'Usuario (opcional)', obligatoria: false, ancho: 20 },
-  { clave: 'tipo_celular', titulo: 'Tipo de celular (opcional)', obligatoria: false, ancho: 24 },
-  { clave: 'puesto', titulo: 'Puesto (solo empleados)', obligatoria: false, ancho: 24 },
+  { clave: 'seccion', titulo: 'Sección', obligatoria: true, ancho: 26 },
+  { clave: 'puesto', titulo: 'Puesto (solo empleados)', obligatoria: false, ancho: 26 },
 ];
 
 // ── Normalización ────────────────────────────────────────────────────────────
@@ -134,7 +131,6 @@ export interface ExistentesImport {
 }
 
 const DNI_EJEMPLO = new Set(['10000001', '10000002', '10000003']);
-const USERNAME_VALIDO = /^[a-z0-9._-]{3,30}$/;
 
 function esFilaEjemplo(nombre: string, dniCrudo: string): boolean {
   return /^prueba\s*[123]$/i.test(nombre.trim()) && DNI_EJEMPLO.has(normalizarDni(dniCrudo) ?? '');
@@ -149,8 +145,6 @@ export interface FilaCruda {
   dni: string;
   dniNumeroInvalido: boolean;
   seccion: string;
-  usuario: string;
-  tipoCelular: string;
   puesto: string;
 }
 
@@ -209,11 +203,9 @@ export async function leerExcel(buffer: Buffer): Promise<FilaCruda[]> {
       dni: leer(fila, 'dni'),
       dniNumeroInvalido: esNumeroConDecimales(fila.getCell(indicePorClave.get('dni') as number).value),
       seccion: leer(fila, 'seccion'),
-      usuario: leer(fila, 'usuario'),
-      tipoCelular: leer(fila, 'tipo_celular'),
       puesto: leer(fila, 'puesto'),
     };
-    const vacia = !crudo.nombre && !crudo.apellido && !crudo.dni && !crudo.seccion && !crudo.usuario && !crudo.tipoCelular && !crudo.puesto;
+    const vacia = !crudo.nombre && !crudo.apellido && !crudo.dni && !crudo.seccion && !crudo.puesto;
     if (!vacia) filas.push(crudo);
   }
 
@@ -237,15 +229,6 @@ export function validarFilas(crudas: FilaCruda[], existentes: ExistentesImport):
   const dnisVistos = new Map<string, number>();
   const usernamesTomados = new Set(existentes.usernames);
   const filas: FilaImport[] = [];
-
-  // Primero se reservan los usuarios escritos a mano, así uno automático no se los "roba".
-  const manuales = new Map<number, string>();
-  for (const f of reales) {
-    const u = f.usuario.trim().toLowerCase().replace(/\s+/g, '');
-    if (u) manuales.set(f.fila, u);
-  }
-  const conteoManual = new Map<string, number>();
-  for (const u of manuales.values()) conteoManual.set(u, (conteoManual.get(u) ?? 0) + 1);
 
   for (const f of reales) {
     const errores: string[] = [];
@@ -284,43 +267,26 @@ export function validarFilas(crudas: FilaCruda[], existentes: ExistentesImport):
       else errores.push(`La sección "${f.seccion}" no existe. Elegí una de la lista desplegable.`);
     }
 
-    let tipoCelular: TipoCelularImport = 'no_especificado';
-    if (f.tipoCelular) {
-      const k = clave(f.tipoCelular);
-      const encontrado = (Object.keys(TIPOS_CELULAR) as TipoCelularImport[]).find(
-        (t) => clave(TIPOS_CELULAR[t]) === k || clave(t) === k || (t === 'no_especificado' && ['NINGUNO', 'NOESPECIFICADO'].includes(k)),
-      );
-      if (encontrado) tipoCelular = encontrado;
-      else errores.push(`El tipo de celular "${f.tipoCelular}" no es válido. Elegí Android, iPhone o Ninguno.`);
-    }
-
+    // El usuario se genera solo (inicial del nombre + apellido); si ya existe se le agrega un número.
     let username = '';
-    const manual = manuales.get(f.fila);
-    if (manual) {
-      if (!USERNAME_VALIDO.test(manual)) {
-        errores.push('El usuario solo puede tener letras, números, punto, guion y guion bajo (entre 3 y 30 caracteres).');
-      } else if (existentes.usernames.has(manual)) {
-        errores.push(`El usuario "${manual}" ya está en uso.`);
-      } else if ((conteoManual.get(manual) ?? 0) > 1) {
-        errores.push(`El usuario "${manual}" está repetido en el archivo.`);
-      } else {
-        username = manual;
-        usernamesTomados.add(manual);
-      }
-    } else if (nombre && apellido) {
+    if (nombre && apellido) {
       const base = generarUsernameBase(nombre, apellido);
       if (base.length < 3) {
-        errores.push('No se pudo generar un usuario a partir del nombre; escribilo en la columna "Usuario".');
+        errores.push('No se pudo generar un usuario a partir del nombre y el apellido.');
       } else {
         let candidato = base;
-        for (let n = 2; usernamesTomados.has(candidato) || [...manuales.values()].includes(candidato); n += 1) candidato = `${base}${n}`;
+        for (let n = 2; usernamesTomados.has(candidato); n += 1) candidato = `${base}${n}`;
         username = candidato;
         usernamesTomados.add(candidato);
       }
     }
 
     const puesto = normalizarNombrePropio(f.puesto).slice(0, 80);
+    if (puesto && seccion && seccion !== SECCION_EMPLEADO) {
+      errores.push(`El puesto solo se completa para la sección ${SECCION_EMPLEADO}. Dejalo vacío para esta fila.`);
+    }
     const rolEmpleado = seccion === SECCION_EMPLEADO && puesto ? puesto : null;
+    const tipoCelular: TipoCelularImport = 'no_especificado'; // se detecta solo cuando entra a la app
 
     filas.push({
       fila: f.fila,
@@ -348,18 +314,20 @@ export async function generarPlantilla(): Promise<Buffer> {
   encabezado.eachCell((celda, n) => {
     const obligatoria = COLUMNAS[n - 1]?.obligatoria ?? false;
     celda.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: obligatoria ? 'FF1F4E79' : 'FF7F8FA6' } };
+    celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: obligatoria ? 'FF5F3E88' : 'FF9A8BB5' } };
     celda.alignment = { vertical: 'middle', horizontal: 'center' };
   });
 
-  // DNI como texto (para que Excel no lo convierta ni le saque ceros) en todas las filas editables.
-  hoja.getColumn('dni').numFmt = '@';
+  const colSeccion = COLUMNAS.findIndex((c) => c.clave === 'seccion') + 1;
+  const colDni = COLUMNAS.findIndex((c) => c.clave === 'dni') + 1;
+  const colPuesto = COLUMNAS.findIndex((c) => c.clave === 'puesto') + 1;
+  const letraSeccion = String.fromCharCode(64 + colSeccion);
 
-  // Tres filas de ejemplo — se omiten al importar.
-  const ejemplos: Array<Record<string, string>> = [
-    { nombre: 'prueba1', apellido: 'ejemplo uno', dni: '10000001', seccion: '1 AC', usuario: '', tipo_celular: 'Android', puesto: '' },
-    { nombre: 'prueba2', apellido: 'ejemplo dos', dni: '10000002', seccion: '2 MODERADO', usuario: 'prueba2', tipo_celular: 'iPhone', puesto: '' },
-    { nombre: 'prueba3', apellido: 'ejemplo tres', dni: '10000003', seccion: 'EMPLEADO LEDOR VADOR', usuario: '', tipo_celular: '', puesto: 'enfermera' },
+  // Tres filas de ejemplo — se omiten al importar. El DNI va como número (sin el triangulito verde de "número guardado como texto").
+  const ejemplos: Array<Record<string, string | number>> = [
+    { nombre: 'prueba1', apellido: 'ejemplo uno', dni: 10000001, seccion: '1 AC', puesto: '' },
+    { nombre: 'prueba2', apellido: 'ejemplo dos', dni: 10000002, seccion: '2 MODERADO', puesto: '' },
+    { nombre: 'prueba3', apellido: 'ejemplo tres', dni: 10000003, seccion: 'EMPLEADO LEDOR VADOR', puesto: 'enfermera' },
   ];
   ejemplos.forEach((e) => {
     const fila = hoja.addRow(e);
@@ -368,14 +336,12 @@ export async function generarPlantilla(): Promise<Buffer> {
     });
   });
 
-  // Hoja de listas (oculta) que alimenta los desplegables.
+  // Hoja de listas (oculta) que alimenta el desplegable de secciones.
   const listas = libro.addWorksheet(HOJA_LISTAS, { state: 'veryHidden' });
   SECCIONES_IMPORT.forEach((s, i) => { listas.getCell(i + 1, 1).value = s; });
-  Object.values(TIPOS_CELULAR).forEach((t, i) => { listas.getCell(i + 1, 2).value = t; });
 
-  const colSeccion = COLUMNAS.findIndex((c) => c.clave === 'seccion') + 1;
-  const colCelular = COLUMNAS.findIndex((c) => c.clave === 'tipo_celular') + 1;
   for (let n = 2; n <= FILAS_PLANTILLA; n += 1) {
+    hoja.getCell(n, colDni).numFmt = '0';
     hoja.getCell(n, colSeccion).dataValidation = {
       type: 'list',
       allowBlank: true,
@@ -385,16 +351,16 @@ export async function generarPlantilla(): Promise<Buffer> {
       errorTitle: 'Sección no válida',
       error: 'Elegí una sección de la lista desplegable.',
     };
-    hoja.getCell(n, colCelular).dataValidation = {
-      type: 'list',
+    // El puesto solo se puede escribir si la sección es la de empleados.
+    hoja.getCell(n, colPuesto).dataValidation = {
+      type: 'custom',
       allowBlank: true,
-      formulae: [`${HOJA_LISTAS}!$B$1:$B$${Object.keys(TIPOS_CELULAR).length}`],
+      formulae: [`$${letraSeccion}${n}="${SECCION_EMPLEADO}"`],
       showErrorMessage: true,
       errorStyle: 'stop',
-      errorTitle: 'Tipo de celular no válido',
-      error: 'Elegí Android, iPhone o Ninguno.',
+      errorTitle: 'Solo para empleados',
+      error: `El puesto se completa solo cuando la sección es ${SECCION_EMPLEADO}.`,
     };
-    hoja.getCell(n, 3).numFmt = '@';
   }
 
   const ayuda = libro.addWorksheet(HOJA_INSTRUCCIONES);
@@ -404,14 +370,13 @@ export async function generarPlantilla(): Promise<Buffer> {
     '',
     '1. Completá la hoja "Residentes" a partir de la fila 5 (las filas prueba1, prueba2 y prueba3 son de ejemplo: podés dejarlas o borrarlas, no se importan).',
     '2. Una fila por residente. No cambies ni borres los encabezados de la fila 1.',
-    '3. Columnas azules: obligatorias (Nombre, Apellido, DNI, Sección). Columnas grises: opcionales.',
-    '4. Nombre y Apellido: podés escribirlos como quieras ("maria perez"); el sistema los deja con mayúscula inicial ("María Perez").',
+    '3. Nombre, Apellido, DNI y Sección son obligatorios.',
+    '4. Nombre y Apellido: escribilos como quieras ("maria perez"); el sistema los deja con mayúscula inicial ("Maria Perez").',
     '5. DNI: solo números, sin puntos ni espacios (si los ponés, se quitan solos). Entre 6 y 8 dígitos. Es la contraseña inicial del residente.',
-    '6. Sección: elegila de la lista desplegable. Si escribís algo que no está en la lista, la fila se rechaza.',
-    '7. Usuario: opcional. Si lo dejás vacío se genera solo (inicial del nombre + apellido, ej. "mperez"). Si ya existe, se agrega un número.',
-    '8. Tipo de celular: opcional (Android, iPhone o Ninguno). Sirve para mostrarle los tutoriales correctos.',
-    '9. Puesto: solo para la sección EMPLEADO LEDOR VADOR (ej. Enfermera). En otras secciones se ignora.',
-    `10. Máximo ${MAX_FILAS_IMPORT} residentes por archivo. Guardalo como .xlsx y subilo desde Backoffice → Usuarios → Importar desde Excel.`,
+    '6. Sección: elegila de la lista desplegable. Si escribís algo que no está en la lista, Excel no te deja.',
+    '7. Puesto (ej. Enfermera): SOLO para la sección EMPLEADO LEDOR VADOR. En las demás secciones no se puede completar.',
+    '8. El nombre de usuario se genera solo (inicial del nombre + apellido, ej. "mperez"; si ya existe se agrega un número).',
+    `9. Máximo ${MAX_FILAS_IMPORT} residentes por archivo. Guardalo como .xlsx y subilo desde Backoffice → Usuarios → Importar desde Excel.`,
     '',
     'Antes de crear nada, el sistema te muestra una vista previa con los errores fila por fila. Si hay algún error, no se importa nada hasta corregirlo.',
   ].forEach((t, i) => {

@@ -55,6 +55,9 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !\\.[A-Za-z0-9]+$
 RewriteRule ^ /index.html [L]
 
+# Lo que de verdad no existe (ej. /assets/viejo.js) muestra la 404 de ElderTech.
+ErrorDocument 404 /404.html
+
 AddType application/manifest+json .webmanifest
 AddType application/javascript .js .mjs
 
@@ -101,8 +104,12 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}/admin/$1 [R=301,L]
 RewriteCond %{REQUEST_URI} !^/admin/assets/
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !\.[A-Za-z0-9]+$
+# OJO: dentro de un template string de JS hay que escribir \\. para que llegue \. al servidor (con \. se perdía la barra y el F5 daba 404).
+RewriteCond %{REQUEST_URI} !\\.[A-Za-z0-9]+$
 RewriteRule ^ /admin/index.html [L]
+
+# Lo que de verdad no existe (un archivo con extensión) muestra la 404 de ElderTech.
+ErrorDocument 404 /admin/404.html
 
 AddType application/javascript .js .mjs
 

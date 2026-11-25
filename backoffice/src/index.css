@@ -99,25 +99,6 @@
   }
 }
 
-/* Botón de cierre de las notificaciones toast (Sonner) */
-[data-sonner-toast] [data-close-button] {
-  width: 32px !important;
-  height: 32px !important;
-  top: 50% !important;
-  right: 10px !important;
-  transform: translateY(-50%) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 6px !important;
-  left: unset !important;
-}
-
-[data-sonner-toast] [data-close-button] svg {
-  width: 18px !important;
-  height: 18px !important;
-}
-
 /* Scrollbar sutil y consistente */
 @layer utilities {
   /* Campos de formulario separados con una línea y aire entre cada uno,
@@ -133,3 +114,19 @@
     @apply rounded-full bg-border;
   }
 }
+
+/* ── Mate, la mascota de ElderTech (components/common/Mate.tsx) ─────────────── */
+.mate-flota { animation: mate-flota 4.5s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes mate-flota { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+.mate-vapor { fill: none; stroke: hsl(var(--primary) / 0.45); stroke-width: 5; stroke-linecap: round; opacity: 0; animation: mate-sube 3.2s ease-in-out infinite; }
+.mate-vapor-2 { animation-delay: 1.4s; }
+@keyframes mate-sube { 0% { opacity: 0; transform: translateY(14px); } 30% { opacity: 0.95; } 100% { opacity: 0; transform: translateY(-18px); } }
+.mate-corazon { fill: #e0709a; animation: mate-late 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes mate-late { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+.mate-parpado { animation: mate-parpadea 5s infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes mate-parpadea { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
+@media (prefers-reduced-motion: reduce) { .mate-vapor { opacity: 0.7; animation: none; } }
+
+/* Barrita de tiempo de las notificaciones que se cierran solas */
+.toast-progreso { animation-name: toast-progreso; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes toast-progreso { from { transform: scaleX(1); } to { transform: scaleX(0); } }

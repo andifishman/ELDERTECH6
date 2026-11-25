@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#5F3E88" />
+<title>Página no encontrada · ElderTech</title>
+<style>
+  :root {
+    --bg1: #f2eef8; --bg2: #ffffff; --ink: #2c1d44; --muted: #5b5170;
+    --brand: #5f3e88; --brand-soft: #b9a5d6; --brand-ink: #ffffff; --card: #ffffff; --line: #e2d9ef;
+    --gourd: #5f3e88; --gourd-dark: #4a2f6d; --yerba: #5c8a3a; --yerba-dark: #3f6b28;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg1: #140d20; --bg2: #1d1330; --ink: #f4effb; --muted: #b9afcc;
+      --brand: #b9a5d6; --brand-soft: #6e4d9c; --brand-ink: #1a1028; --card: #241a38; --line: #3a2c57;
+      --gourd: #8a68b8; --gourd-dark: #6e4d9c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: radial-gradient(1200px 600px at 50% -10%, var(--bg1), var(--bg2));
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  main {
+    width: 100%; max-width: 640px; text-align: center;
+    background: var(--card); border: 1px solid var(--line); border-radius: 28px;
+    padding: 36px 28px 30px; box-shadow: 0 18px 50px -20px rgba(95, 62, 136, .35);
+  }
+  .marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: .2px; color: var(--brand); font-size: 18px; }
+  .marca i { font-style: normal; }
+  .numeros { display: flex; align-items: center; justify-content: center; gap: clamp(2px, 2vw, 14px); margin: 10px 0 4px; line-height: 1; }
+  .cuatro { font-size: clamp(110px, 24vw, 190px); font-weight: 900; color: var(--brand); letter-spacing: -4px; text-shadow: 0 6px 0 var(--brand-soft); }
+  .mate { width: clamp(84px, 19vw, 150px); height: auto; overflow: visible; animation: flota 4.5s ease-in-out infinite; transform-origin: 50% 90%; }
+  @keyframes flota { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-7px) rotate(2deg); } }
+  .vapor { fill: none; stroke: var(--brand-soft); stroke-width: 5; stroke-linecap: round; opacity: 0; animation: sube 3.2s ease-in-out infinite; }
+  .vapor.v2 { animation-delay: 1.05s; } .vapor.v3 { animation-delay: 2.1s; }
+  @keyframes sube { 0% { opacity: 0; transform: translateY(14px); } 30% { opacity: .95; } 100% { opacity: 0; transform: translateY(-18px); } }
+  .corazon { fill: #e0709a; animation: late 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes late { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+  .parpado { animation: parpadea 5s infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes parpadea { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+  h1 { font-size: clamp(24px, 5.2vw, 32px); line-height: 1.2; margin: 14px 0 10px; font-weight: 800; }
+  p { font-size: 19px; line-height: 1.5; color: var(--muted); margin: 0 auto 8px; max-width: 30em; }
+  .botones { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 56px; min-width: 56px; padding: 0 28px;
+    border-radius: 16px; font-size: 19px; font-weight: 700; text-decoration: none; cursor: pointer; border: 2px solid var(--brand);
+    font-family: inherit; transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn.primario { background: var(--brand); color: var(--brand-ink); box-shadow: 0 8px 20px -8px var(--brand); }
+  .btn.secundario { background: transparent; color: var(--brand); }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:focus-visible { outline: 4px solid var(--brand-soft); outline-offset: 3px; }
+  .pie { margin-top: 26px; font-size: 15px; color: var(--muted); }
+  .cod { display: inline-block; margin-top: 6px; font-size: 13px; opacity: .8; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } .vapor { opacity: .8; } }
+</style>
+</head>
+<body>
+<main role="main">
+  <div class="marca"><i aria-hidden="true">💜</i> ElderTech</div>
+
+  <div class="numeros" aria-hidden="true">
+    <span class="cuatro">4</span>
+    <svg class="mate" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg">
+      <path class="vapor v1" d="M62 66 C52 54 72 46 62 32 C56 24 62 18 64 14" />
+      <path class="vapor v2" d="M82 62 C72 50 92 42 82 28 C76 20 82 14 84 10" />
+      <path class="corazon" d="M104 40 c-5-8-15-3-11 5 c2 4 11 10 11 10 s9-6 11-10 c4-8-6-13-11-5z" />
+      <!-- bombilla -->
+      <line x1="88" y1="92" x2="118" y2="34" stroke="#c9ced6" stroke-width="6" stroke-linecap="round" />
+      <ellipse cx="119.5" cy="31" rx="7" ry="4.5" transform="rotate(-28 119.5 31)" fill="#aab1bd" />
+      <!-- yerba -->
+      <ellipse cx="80" cy="96" rx="40" ry="12" fill="var(--yerba-dark)" />
+      <path d="M46 96 C52 80 66 74 80 74 C94 74 108 80 114 96 C100 102 60 102 46 96Z" fill="var(--yerba)" />
+      <!-- mate -->
+      <path d="M40 98 C32 150 54 190 80 190 C106 190 128 150 120 98 C104 108 56 108 40 98Z" fill="var(--gourd)" />
+      <path d="M40 98 C104 112 56 112 120 98" fill="none" />
+      <path d="M44 128 C64 138 96 138 116 128" fill="none" stroke="var(--gourd-dark)" stroke-width="7" stroke-linecap="round" opacity=".55" />
+      <path d="M50 110 C46 134 54 160 66 174" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".22" />
+      <!-- cara: un poco perdido, pero simpático -->
+      <g class="parpado"><ellipse cx="66" cy="146" rx="6.5" ry="8" fill="#fff" /><circle cx="68" cy="148" r="3.6" fill="#2c1d44" /></g>
+      <g class="parpado"><ellipse cx="96" cy="146" rx="6.5" ry="8" fill="#fff" /><circle cx="98" cy="148" r="3.6" fill="#2c1d44" /></g>
+      <path d="M72 166 Q81 160 90 166" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" />
+      <ellipse cx="56" cy="160" rx="6" ry="3.5" fill="#e0709a" opacity=".55" />
+      <ellipse cx="106" cy="160" rx="6" ry="3.5" fill="#e0709a" opacity=".55" />
+    </svg>
+    <span class="cuatro">4</span>
+  </div>
+
+  <h1>¡Ups! Esta página se fue a tomar unos mates</h1>
+  <p>No encontramos lo que buscabas. No es culpa tuya: puede que el enlace esté viejo o que la página ya no exista.</p>
+
+  <div class="botones">
+    <a class="btn primario" href="/">Ir al inicio</a>
+    <button class="btn secundario" type="button" onclick="if (history.length > 1) history.back(); else location.href = '/';">Volver atrás</button>
+  </div>
+
+  <div class="pie">Si algo no funciona, avisale a quien te acompaña en tu residencia.<br /><span class="cod">Error 404 · página no encontrada</span></div>
+</main>
+</body>
+</html>
