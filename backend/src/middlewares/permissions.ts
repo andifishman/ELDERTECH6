@@ -49,7 +49,7 @@ export function requirePermission(modulo: ModuloId, ...acciones: AccionModulo[])
         res.status(StatusCodes.UNAUTHORIZED).json({ error: 'No autenticado' });
         return;
       }
-      if (req.user.isSuperAdmin) {
+      if (req.user.isSuperAdmin || req.user.isAdminInstitucion) {
         next();
         return;
       }
@@ -71,6 +71,18 @@ export function requirePermission(modulo: ModuloId, ...acciones: AccionModulo[])
       res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'No se pudieron verificar los permisos' });
     }
   };
+}
+
+/**
+ * Super Super Admin o super admin de institución. Para lo que un admin de institución puede hacer dentro de la suya
+ * (Accesos, Administradores): el servicio tiene que verificar además que el objetivo sea de SU institución.
+ */
+export function requireSuperAdminOInstitucion(req: Request, res: Response, next: NextFunction): void {
+  if (!req.user?.isSuperAdmin && !req.user?.isAdminInstitucion) {
+    res.status(StatusCodes.FORBIDDEN).json({ error: 'Solo un Super Admin puede hacer esto.' });
+    return;
+  }
+  next();
 }
 
 /** Solo el Super Super Admin (allowlist de emails). Usar en lo que nunca se delega: Accesos, Administradores. */

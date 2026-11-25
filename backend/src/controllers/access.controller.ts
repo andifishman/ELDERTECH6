@@ -11,8 +11,8 @@ export async function getModulos(_req: Request, res: Response): Promise<void> {
   res.json(await accessService.listarModulos());
 }
 
-export async function getUsuarios(_req: Request, res: Response): Promise<void> {
-  res.json(await accessService.listarUsuarios());
+export async function getUsuarios(req: Request, res: Response): Promise<void> {
+  res.json(await accessService.listarUsuarios(requireUser(req)));
 }
 
 export async function putPermisos(req: Request, res: Response): Promise<void> {

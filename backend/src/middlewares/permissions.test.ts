@@ -7,7 +7,7 @@ vi.mock('../repositories/accessRepository', () => ({
 vi.mock('../logging/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import * as accessRepo from '../repositories/accessRepository';
-import { requirePermission, requireSuperAdmin, tienePermiso } from './permissions';
+import { requirePermission, requireSuperAdmin, requireSuperAdminOInstitucion, tienePermiso } from './permissions';
 import type { AuthUser } from './auth';
 
 const permiso = (moduloId: string, ver: boolean, crear = false, editar = false, eliminar = false) => ({ moduloId, ver, crear, editar, eliminar });
@@ -112,6 +112,25 @@ describe('requirePermission', () => {
     const { res, next } = await ejecutar(requirePermission('tutoriales', 'ver'), usuario());
     expect(res.status).toHaveBeenCalledWith(500);
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('super admin de institución', () => {
+  it('pasa requirePermission en cualquier módulo sin consultar la base', async () => {
+    vi.mocked(accessRepo.obtenerPermisosUsuario).mockClear();
+    const { next } = await ejecutar(requirePermission('usuarios', 'eliminar'), usuario({ isAdminInstitucion: true }));
+    expect(next).toHaveBeenCalled();
+    expect(accessRepo.obtenerPermisosUsuario).not.toHaveBeenCalled();
+  });
+  it('pasa requireSuperAdminOInstitucion, pero NO requireSuperAdmin (Instituciones sigue siendo solo del Super Super Admin)', async () => {
+    expect((await ejecutar(requireSuperAdminOInstitucion, usuario({ isAdminInstitucion: true }))).next).toHaveBeenCalled();
+    const r = await ejecutar(requireSuperAdmin, usuario({ isAdminInstitucion: true }));
+    expect(r.res.status).toHaveBeenCalledWith(403);
+    expect(r.next).not.toHaveBeenCalled();
+  });
+  it('un admin común no pasa requireSuperAdminOInstitucion', async () => {
+    const r = await ejecutar(requireSuperAdminOInstitucion, usuario());
+    expect(r.res.status).toHaveBeenCalledWith(403);
   });
 });
 

@@ -1,7 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 import { HttpError } from '../../middlewares/errorHandler';
 import type { AuthUser } from '../../middlewares/auth';
-import { SUPER_ADMIN_IDS } from '../../config/superAdmins';
+import { esCuentaProtegida } from '../../config/superAdmins';
 import * as repo from '../../repositories/accessRepository';
 import * as auditService from '../audit/AuditService';
 
@@ -20,12 +20,26 @@ export interface UsuarioConAccesos {
   permisos: repo.PermisoModulo[];
 }
 
+function requireOrganizacionDeActor(actor: AuthUser): string {
+  if (!actor.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una institución asociada.');
+  return actor.organizacionId;
+}
+
+/** Un super admin de institución solo opera sobre la suya; el Super Super Admin sobre cualquiera. */
+function limitadoAInstitucion(actor: AuthUser): boolean {
+  return !!actor.isAdminInstitucion && !actor.isSuperAdmin;
+}
+
 const TODOS_LOS_PERMISOS = (modulos: repo.Modulo[]): repo.PermisoModulo[] =>
   modulos.map((m) => ({ moduloId: m.id, ver: true, crear: true, editar: true, eliminar: true }));
 
 /** Lo que el backoffice necesita saber del usuario logueado para armar el menú y las pantallas. */
 export async function obtenerMisPermisos(user: AuthUser): Promise<PermisosPropios> {
   const modulos = await repo.listarModulos();
+  // El super admin de institución también recibe todo (Accesos y Administradores incluidos); el alcance por institución lo aplican los servicios.
+  if (limitadoAInstitucion(user)) {
+    return { isSuperAdmin: false, rol: user.rol, permisos: TODOS_LOS_PERMISOS(modulos) };
+  }
   if (user.isSuperAdmin) {
     return { isSuperAdmin: true, rol: user.rol, permisos: TODOS_LOS_PERMISOS(modulos) };
   }
@@ -39,32 +53,37 @@ export async function listarModulos(): Promise<repo.Modulo[]> {
   return repo.listarModulos();
 }
 
-export async function listarUsuarios(): Promise<UsuarioConAccesos[]> {
-  const [usuarios, permisosDeTodos] = await Promise.all([repo.listarUsuariosBackoffice(), repo.obtenerPermisosDeTodos()]);
+export async function listarUsuarios(actor: AuthUser): Promise<UsuarioConAccesos[]> {
+  const soloSuInstitucion = limitadoAInstitucion(actor) ? requireOrganizacionDeActor(actor) : null;
+  const [usuarios, permisosDeTodos] = await Promise.all([repo.listarUsuariosBackoffice(soloSuInstitucion), repo.obtenerPermisosDeTodos()]);
   return usuarios.map((u) => ({
     id: u.id,
     username: u.username,
     rol: u.rol,
     activo: u.activo,
-    esSuperAdmin: SUPER_ADMIN_IDS.includes(u.id),
+    esSuperAdmin: esCuentaProtegida(u.id),
     permisos: permisosDeTodos.get(u.id) ?? [],
   }));
 }
 
 /**
  * Guarda los permisos de un usuario. Reglas (todas verificadas acá, nunca solo en la pantalla):
- *  - Solo un Super Admin llega hasta acá (lo exige la ruta con `requireSuperAdmin`).
+ *  - Solo un Super Admin (o uno de institución, limitado a la suya) llega hasta acá (lo exige la ruta).
  *  - No se tocan los permisos de otro Super Admin: ya tiene todo y no se le puede quitar.
  *  - El destinatario tiene que ser un usuario de backoffice (rol admin/staff).
  *  - Solo se asignan módulos que existen y son asignables.
  *  - Crear / editar / eliminar implican "ver": si falta, se rechaza en vez de adivinar.
  */
 export async function guardarPermisos(actor: AuthUser, usuarioId: string, permisos: repo.PermisoModulo[]): Promise<repo.PermisoModulo[]> {
-  if (SUPER_ADMIN_IDS.includes(usuarioId)) {
+  if (esCuentaProtegida(usuarioId)) {
     throw new HttpError(StatusCodes.FORBIDDEN, 'Una cuenta Super Admin tiene acceso total y no se puede modificar.');
   }
   const perfil = await repo.obtenerPerfilBackoffice(usuarioId);
   if (!perfil) throw new HttpError(StatusCodes.NOT_FOUND, 'Usuario no encontrado.');
+  if (limitadoAInstitucion(actor) && perfil.organizacion_id !== requireOrganizacionDeActor(actor)) {
+    // Misma respuesta que "no existe": no se revela qué hay en otras instituciones.
+    throw new HttpError(StatusCodes.NOT_FOUND, 'Usuario no encontrado.');
+  }
   if (perfil.rol !== 'admin' && perfil.rol !== 'staff') {
     throw new HttpError(StatusCodes.BAD_REQUEST, 'Ese usuario no tiene acceso al backoffice. Dale acceso primero desde Administradores.');
   }

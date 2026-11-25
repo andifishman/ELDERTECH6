@@ -3,7 +3,7 @@ import type { AuthUser } from '../../middlewares/auth';
 import * as repo from '../../repositories/administradoresRepository';
 import * as auditService from '../audit/AuditService';
 import * as accessService from '../access/AccessService';
-import { SUPER_ADMIN_IDS } from '../../config/superAdmins';
+import { esCuentaProtegida } from '../../config/superAdmins';
 import { StatusCodes } from 'http-status-codes';
 
 /**
@@ -21,23 +21,30 @@ import { StatusCodes } from 'http-status-codes';
  * adelante — fuera de alcance de esta migración.
  */
 function requireSuperAdmin(user: AuthUser): void {
-  if (!user.isSuperAdmin) {
+  if (!user.isSuperAdmin && !user.isAdminInstitucion) {
     throw new HttpError(StatusCodes.FORBIDDEN, 'Solo una cuenta super admin puede gestionar administradores.');
   }
 }
 
+/** Un super admin de institución solo ve y cambia a los de la suya; el Super Super Admin, a cualquiera (null = sin filtro). */
+function institucionAcotada(user: AuthUser): string | null {
+  if (user.isSuperAdmin || !user.isAdminInstitucion) return null;
+  if (!user.organizacionId) throw new HttpError(StatusCodes.FORBIDDEN, 'Este usuario no tiene una institución asociada.');
+  return user.organizacionId;
+}
+
 export async function listar(user: AuthUser): Promise<repo.PerfilAdmin[]> {
   requireSuperAdmin(user);
-  return repo.listarPerfiles();
+  return repo.listarPerfiles(institucionAcotada(user));
 }
 
 export async function cambiarRol(user: AuthUser, id: string, rol: repo.RolUsuarioDB): Promise<void> {
   requireSuperAdmin(user);
-  if (SUPER_ADMIN_IDS.includes(id)) {
+  if (esCuentaProtegida(id)) {
     throw new HttpError(StatusCodes.FORBIDDEN, 'No se puede modificar el rol de una cuenta super admin.');
   }
 
-  if (!(await repo.actualizarRol(id, rol))) throw new HttpError(StatusCodes.NOT_FOUND, 'Usuario no encontrado.');
+  if (!(await repo.actualizarRol(id, rol, institucionAcotada(user)))) throw new HttpError(StatusCodes.NOT_FOUND, 'Usuario no encontrado.');
   // Los permisos por módulo acompañan al acceso: quien entra al backoffice arranca con lo mínimo
   // (ver el Dashboard) y quien sale pierde todo. El Super Admin después ajusta desde Accesos.
   if (rol === 'residente') await accessService.quitarPermisos(id);

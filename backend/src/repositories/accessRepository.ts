@@ -109,20 +109,23 @@ export interface PerfilBackoffice {
   username: string;
   rol: 'residente' | 'admin' | 'staff';
   activo: boolean;
+  organizacion_id?: string | null;
 }
 
-export async function listarUsuariosBackoffice(): Promise<PerfilBackoffice[]> {
-  const { data, error } = await getSupabaseAdmin()
+/** Con `organizacionId` solo trae los de esa institución (el super admin de institución no ve las demás). */
+export async function listarUsuariosBackoffice(organizacionId?: string | null): Promise<PerfilBackoffice[]> {
+  let consulta = getSupabaseAdmin()
     .from('perfiles_usuario')
-    .select('id, username, rol, activo')
-    .in('rol', ['admin', 'staff'])
-    .order('username', { ascending: true });
+    .select('id, username, rol, activo, organizacion_id')
+    .in('rol', ['admin', 'staff']);
+  if (organizacionId) consulta = consulta.eq('organizacion_id', organizacionId);
+  const { data, error } = await consulta.order('username', { ascending: true });
   if (error) throw new Error(`Error al cargar los usuarios del backoffice: ${error.message}`);
   return (data ?? []) as PerfilBackoffice[];
 }
 
 export async function obtenerPerfilBackoffice(id: string): Promise<PerfilBackoffice | null> {
-  const { data, error } = await getSupabaseAdmin().from('perfiles_usuario').select('id, username, rol, activo').eq('id', id).maybeSingle();
+  const { data, error } = await getSupabaseAdmin().from('perfiles_usuario').select('id, username, rol, activo, organizacion_id').eq('id', id).maybeSingle();
   if (error) throw new Error(`Error al cargar el usuario: ${error.message}`);
   return (data as PerfilBackoffice | null) ?? null;
 }

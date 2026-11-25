@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { logger } from '../logging/logger';
 import { getSupabaseAdmin } from '../repositories/supabaseAdmin';
-import { esCuentaSuperAdmin } from '../config/superAdmins';
+import { esAdminDeInstitucion, esCuentaSuperAdmin } from '../config/superAdmins';
 import { StatusCodes } from 'http-status-codes';
 import * as organizacionesRepo from '../repositories/organizacionesRepository';
 
@@ -15,6 +15,8 @@ export interface AuthUser {
   activo: boolean;
   /** Cuenta del allowlist de super-admins — ver `config/superAdmins.ts`. Bypassa el chequeo de `rol`. */
   isSuperAdmin: boolean;
+  /** Acceso total pero solo en su institución (ver `ADMIN_INSTITUCION_IDS`). */
+  isAdminInstitucion?: boolean;
 }
 
 declare global {
@@ -100,6 +102,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     rol: (data?.rol as AuthUser['rol']) ?? null,
     activo: data?.activo !== false,
     isSuperAdmin: esSuperAdmin,
+    isAdminInstitucion: !esSuperAdmin && esAdminDeInstitucion(userData.user.id),
   };
   next();
 }

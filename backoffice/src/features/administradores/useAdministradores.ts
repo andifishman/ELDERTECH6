@@ -24,6 +24,8 @@ export interface PerfilAdmin {
 // esto es solo para no mostrar la opción en la UI antes de intentarlo.
 const SUPER_ADMIN_IDS = [
   '9cb4b7a5-759b-432d-a805-bd4722954c88', // eldertech6@gmail.com
+  '63ccd47e-f3f1-433a-ac79-6298306b210e', // jpresman (super admin de Ledor Vador)
+  '72324b13-82f3-46df-8fe0-5c19055c8fc1', // lmakarz (super admin de Ledor Vador)
 ];
 
 export function useAdministradores() {
