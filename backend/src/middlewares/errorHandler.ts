@@ -28,6 +28,12 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
     return;
   }
 
+  if (err && err.name === 'MulterError') {
+    const mensaje = err.code === 'LIMIT_FILE_SIZE' ? 'El archivo es demasiado grande.' : 'No se pudo recibir el archivo.';
+    res.status(StatusCodes.BAD_REQUEST).json({ error: mensaje });
+    return;
+  }
+
   logger.error('Error no manejado', {
     path: req.path,
     method: req.method,

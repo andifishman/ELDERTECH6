@@ -3,6 +3,7 @@ import * as residentsAdminService from '../services/residents/ResidentsAdminServ
 import { crearUsuarioSchema, residenteAdminInputSchema, resetearPasswordSchema, setActivoSchema } from '../validators/residentsAdmin.validators';
 import { requireUuidParam, requireToken, requireUser } from '../utils/validators';
 import { StatusCodes } from 'http-status-codes';
+import { HttpError } from '../middlewares/errorHandler';
 
 export async function getResidentes(req: Request, res: Response): Promise<void> {
   res.json(await residentsAdminService.listar(requireUser(req)));
@@ -39,4 +40,18 @@ export async function patchActivo(req: Request, res: Response): Promise<void> {
   const { activo, nombre } = setActivoSchema.parse(req.body);
   await residentsAdminService.setActivo(requireUser(req), requireUuidParam(req, 'id'), activo, nombre);
   res.status(StatusCodes.NO_CONTENT).end();
+}
+
+export async function getPlantillaImportacion(_req: Request, res: Response): Promise<void> {
+  const buffer = await residentsAdminService.plantillaImportacion();
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="plantilla-residentes-eldertech.xlsx"');
+  res.send(buffer);
+}
+
+export async function postImportar(req: Request, res: Response): Promise<void> {
+  if (!req.file) throw new HttpError(StatusCodes.BAD_REQUEST, 'Falta el archivo Excel (campo "archivo").');
+  const confirmar = String(req.body?.confirmar ?? '') === 'true';
+  const resultado = await residentsAdminService.importarExcel(requireUser(req), requireToken(req), req.file.buffer, confirmar);
+  res.json(resultado);
 }

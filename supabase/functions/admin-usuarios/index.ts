@@ -8,6 +8,7 @@ const CORS_HEADERS = {
 };
 
 const SUPER_ADMIN_IDS = [
+  'b035a808-2a4b-4296-9a69-76ac491b1367',
   '9cb4b7a5-759b-432d-a805-bd4722954c88',
 ];
 
@@ -39,14 +40,18 @@ Deno.serve(async (req: Request) => {
   if (callerError || !callerData.user) return json({ error: 'Sesión inválida' }, 401);
 
   const callerId = callerData.user.id;
-  let autorizado = SUPER_ADMIN_IDS.includes(callerId);
-  if (!autorizado) {
+  const esSuperAdmin = SUPER_ADMIN_IDS.includes(callerId);
+  let autorizado = esSuperAdmin;
+  // Institución del que llama: un admin/staff solo puede crear usuarios en la suya.
+  let organizacionCaller: string | null = null;
+  {
     const { data: perfilCaller } = await admin
       .from('perfiles_usuario')
-      .select('rol')
+      .select('rol, organizacion_id')
       .eq('id', callerId)
       .maybeSingle();
-    autorizado = perfilCaller?.rol === 'admin' || perfilCaller?.rol === 'staff';
+    organizacionCaller = perfilCaller?.organizacion_id ?? null;
+    if (!autorizado) autorizado = perfilCaller?.rol === 'admin' || perfilCaller?.rol === 'staff';
   }
   if (!autorizado) return json({ error: 'No tenés permisos para gestionar usuarios' }, 403);
 
@@ -89,8 +94,16 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (existente) return json({ error: 'Ese nombre de usuario ya está en uso' }, 400);
 
-    const { data: org } = await admin.from('organizaciones').select('id').limit(1).single();
-    if (!org) return json({ error: 'No hay organización configurada' }, 500);
+    // Institución destino: un admin/staff siempre la suya (ignora lo que mande el body);
+    // un super admin puede elegir una con `organizacion_id`, y si no, la suya.
+    const orgPedida = body.organizacion_id ? String(body.organizacion_id) : null;
+    const orgId = esSuperAdmin ? (orgPedida ?? organizacionCaller) : organizacionCaller;
+    if (!orgId) return json({ error: 'No se pudo determinar la institución del usuario' }, 400);
+    if (!esSuperAdmin && orgPedida && orgPedida !== orgId) {
+      return json({ error: 'No podés crear usuarios en otra institución' }, 403);
+    }
+    const { data: org } = await admin.from('organizaciones').select('id').eq('id', orgId).eq('activo', true).maybeSingle();
+    if (!org) return json({ error: 'La institución no existe o está inactiva' }, 400);
 
     const emailInterno = `${username}@eldertech.internal`;
 

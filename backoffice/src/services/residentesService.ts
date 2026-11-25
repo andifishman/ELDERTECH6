@@ -84,3 +84,40 @@ export async function obtenerResidenteDetalle(id: string): Promise<ResidenteDeta
 export async function setActivoResidente(id: string, activo: boolean, nombre?: string): Promise<void> {
   await apiClient.patch<void>(`/api/admin/residents/${id}/active`, { activo, nombre });
 }
+
+// ── Importación masiva desde Excel ──────────────────────────────────────────
+
+export interface FilaImportada {
+  fila: number;
+  estado: 'ok' | 'error';
+  datos: {
+    nombre: string;
+    apellido: string;
+    dni: string;
+    seccion: string;
+    username: string;
+    tipo_celular: TipoCelular;
+    rol_empleado: string | null;
+  } | null;
+  errores: string[];
+}
+
+export interface ResultadoImportacion {
+  validacion: {
+    filas: FilaImportada[];
+    resumen: { total: number; validas: number; conErrores: number; ejemplosOmitidos: number };
+  };
+  creados: { fila: number; username: string; ok: boolean; error?: string }[] | null;
+}
+
+export async function descargarPlantillaImportacion(): Promise<Blob> {
+  return apiClient.getBlob('/api/admin/residents/import/template');
+}
+
+/** `confirmar=false` solo valida y devuelve la vista previa; `true` crea a los residentes si no hay errores. */
+export async function importarResidentesExcel(archivo: File, confirmar: boolean): Promise<ResultadoImportacion> {
+  const form = new FormData();
+  form.append('archivo', archivo);
+  form.append('confirmar', String(confirmar));
+  return apiClient.postForm<ResultadoImportacion>('/api/admin/residents/import', form);
+}

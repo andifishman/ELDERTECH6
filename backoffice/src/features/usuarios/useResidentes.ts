@@ -6,6 +6,7 @@ import { queryKeys } from '@/lib/queryClient';
 import {
   actualizarResidente,
   crearUsuario,
+  importarResidentesExcel,
   eliminarResidente,
   listarResidentes,
   obtenerResidenteDetalle,
@@ -91,5 +92,17 @@ export function useToggleResidente() {
       invalidar();
     },
     onError: () => notify.error('No se pudo cambiar el estado'),
+  });
+}
+
+export function useImportarResidentes() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: ({ archivo, confirmar }: { archivo: File; confirmar: boolean }) => importarResidentesExcel(archivo, confirmar),
+    onSuccess: (data, vars) => {
+      if (vars.confirmar) invalidar();
+      void data;
+    },
+    onError: (err: Error) => notify.error('No se pudo procesar el archivo', err.message),
   });
 }

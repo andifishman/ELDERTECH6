@@ -5,6 +5,7 @@ import * as auditService from '../audit/AuditService';
 import * as gamesService from '../games/GamesService';
 import type { ResumenJuego } from '../games/GamesService';
 import { StatusCodes } from 'http-status-codes';
+import * as importador from './importResidentes';
 
 /** Porteo de `backoffice/src/services/residentesService.ts` — operaciones admin-only (backoffice). */
 
@@ -39,7 +40,8 @@ function normalizarRolEmpleado(seccion: string | null | undefined, rol: string |
 
 export async function crearUsuario(user: AuthUser, callerToken: string, input: CrearUsuarioInput): Promise<{ id: string; username: string }> {
   const { intereses, rol_empleado, ...datosCuenta } = input;
-  const data = await repo.invocarAdminUsuarios(callerToken, { accion: 'crear', ...datosCuenta });
+  // La organización la resuelve el backend (la del admin, o la que eligió un super admin); la Edge Function la verifica.
+  const data = await repo.invocarAdminUsuarios(callerToken, { accion: 'crear', organizacion_id: requireOrganizacionId(user), ...datosCuenta });
   if (!data.id || !data.username) throw new HttpError(StatusCodes.INTERNAL_SERVER_ERROR, 'La función de administración de usuarios no devolvió los datos esperados.');
 
   // La Edge Function solo crea la cuenta + el residente. El puesto y los
@@ -121,4 +123,54 @@ export async function setActivo(user: AuthUser, id: string, activo: boolean, nom
     registroId: id,
     descripcion: `${activo ? 'Reactivó' : 'Desactivó'} a ${nombre ?? 'un residente'}`,
   });
+}
+
+// ── Importación masiva desde Excel ──────────────────────────────────────────
+
+export function plantillaImportacion(): Promise<Buffer> {
+  return importador.generarPlantilla();
+}
+
+export interface ResultadoCreacionFila {
+  fila: number;
+  username: string;
+  ok: boolean;
+  error?: string;
+}
+
+export interface ResultadoImportacion {
+  validacion: importador.ResultadoValidacion;
+  /** null cuando solo se pidió la vista previa (o hay errores y no se creó nada). */
+  creados: ResultadoCreacionFila[] | null;
+}
+
+export async function importarExcel(user: AuthUser, callerToken: string, archivo: Buffer, confirmar: boolean): Promise<ResultadoImportacion> {
+  const orgId = requireOrganizacionId(user);
+  const crudas = await importador.leerExcel(archivo);
+  const existentes = await repo.listarClavesExistentes(orgId);
+  const validacion = importador.validarFilas(crudas, { dnis: new Set(existentes.dnis), usernames: new Set(existentes.usernames) });
+
+  // Todo o nada a nivel validación: con un solo error no se crea a nadie.
+  if (!confirmar || validacion.resumen.conErrores > 0) return { validacion, creados: null };
+
+  const creados: ResultadoCreacionFila[] = [];
+  for (const fila of validacion.filas) {
+    const d = fila.datos;
+    if (!d) continue;
+    try {
+      const r = await crearUsuario(user, callerToken, {
+        nombre: d.nombre,
+        apellido: d.apellido,
+        dni: d.dni,
+        seccion: d.seccion,
+        username: d.username,
+        tipo_celular: d.tipo_celular,
+        rol_empleado: d.rol_empleado,
+      });
+      creados.push({ fila: fila.fila, username: r.username, ok: true });
+    } catch (err) {
+      creados.push({ fila: fila.fila, username: d.username, ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return { validacion, creados };
 }

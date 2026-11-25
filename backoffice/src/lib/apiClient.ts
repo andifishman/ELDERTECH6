@@ -58,7 +58,24 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (texto ? JSON.parse(texto) : undefined) as T;
 }
 
+/** Descarga un archivo (ej. una plantilla Excel) con la sesión actual. */
+async function requestBlob(path: string): Promise<Blob> {
+  if (!API_URL) throw new Error('Falta VITE_API_URL. Copiá .env.example a .env y completá la URL del backend (después reiniciá el dev server).');
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: {
+      ...(await authHeader()),
+      ...(organizacionElegida() ? { 'X-Organizacion-Id': organizacionElegida() as string } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.error ?? `Error ${res.status} en ${path}`);
+  }
+  return res.blob();
+}
+
 export const apiClient = {
+  getBlob: requestBlob,
   get: <T>(path: string) => request<T>(path, { method: 'GET' }),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),

@@ -10,7 +10,7 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, Plus, Pencil, Search, UserCog, Power, Wifi, WifiOff, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -43,6 +43,7 @@ import {
   useResidentes,
   useToggleResidente,
 } from './useResidentes';
+import { ImportarResidentesDialog } from './ImportarResidentesDialog';
 import { SECCIONES, SECCION_EMPLEADO } from '@/types/database.types';
 import { coincideBusqueda } from '@/lib/textSearch';
 import type { SeccionResidente } from '@/types/database.types';
@@ -92,6 +93,7 @@ export function UsuariosPage() {
   const eliminar = useEliminarResidente();
   useRealtime('residentes', [['residentes']]);
 
+  const [importando, setImportando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'activo' | 'inactivo'>('todos');
   const [ordenarPor, setOrdenarPor] = useState<'nombre' | 'habitacion' | 'seccion' | 'conexion'>('nombre');
@@ -218,7 +220,12 @@ export function UsuariosPage() {
       <PageHeader
         titulo="Usuarios"
         descripcion="Creá y administrá los usuarios que acceden a la app. Elegís un nombre de usuario y la contraseña es el DNI."
-        acciones={permisos.puedeCrear && <Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>}
+        acciones={permisos.puedeCrear && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setImportando(true)}><FileSpreadsheet className="h-4 w-4" /> Importar desde Excel</Button>
+            <Button onClick={abrirNuevo}><Plus className="h-4 w-4" /> Crear usuario</Button>
+          </div>
+        )}
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -347,6 +354,8 @@ export function UsuariosPage() {
           </div>
         )}
       </Card>
+
+      <ImportarResidentesDialog abierto={importando} onCerrar={() => setImportando(false)} />
 
       {/* diálogo alta/edición */}
       <Dialog open={abierto} onOpenChange={setAbierto}>

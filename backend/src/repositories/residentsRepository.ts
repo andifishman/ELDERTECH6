@@ -447,3 +447,17 @@ export const registrarConexion = withRepoLogging('residentsRepository', 'registr
   const { error } = await getSupabaseAdmin().from('residentes').update({ ultima_conexion: new Date().toISOString() }).eq('id', residenteId);
   if (error) throw new Error(`Error al registrar la conexión: ${error.message}`);
 });
+
+/** DNIs ya cargados en la institución y nombres de usuario ya tomados (globales) — para validar una importación masiva. */
+export const listarClavesExistentes = withRepoLogging('residentsRepository', 'listarClavesExistentes', async (organizacionId: string): Promise<{ dnis: string[]; usernames: string[] }> => {
+  const [dnisR, usersR] = await Promise.all([
+    getSupabaseAdmin().from('residentes').select('dni').eq('organizacion_id', organizacionId).not('dni', 'is', null),
+    getSupabaseAdmin().from('perfiles_usuario').select('username').not('username', 'is', null),
+  ]);
+  if (dnisR.error) throw new Error(`Error al leer los DNI existentes: ${dnisR.error.message}`);
+  if (usersR.error) throw new Error(`Error al leer los usuarios existentes: ${usersR.error.message}`);
+  return {
+    dnis: ((dnisR.data ?? []) as { dni: string }[]).map((r) => r.dni.replace(/\D/g, '')),
+    usernames: ((usersR.data ?? []) as { username: string }[]).map((r) => r.username.toLowerCase()),
+  };
+});
