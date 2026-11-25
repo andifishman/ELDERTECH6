@@ -37,3 +37,6 @@ Backoffice → **Instituciones**: datos de cada geriátrico y su **color princip
 "Residencia Los Aromos (DEMO)", Rosario: administrador `admin@losaromos.example.com`, 6 residentes, grupos por sección y
 contenido de ejemplo. Residente de prueba: `rosa.garcia`. El dominio `example.com` está reservado y no recibe mails: no hay
 recuperación de contraseña por email para esas cuentas.
+
+## Alta masiva de usuarios
+Los usuarios nuevos se crean en la institución de quien los carga (alta manual o importación desde Excel): ver `docs/IMPORTAR_RESIDENTES.md`.
