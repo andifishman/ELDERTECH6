@@ -558,6 +558,14 @@ export default function JardinScreen() {
   const [puntaje, setPuntaje] = useState(0);
   const [movimientos, setMovimientos] = useState(presupuestoMovimientos);
   const [resolviendo, setResolviendo] = useState(false);
+  // Bloqueo SINCRÓNICO del tablero desde que se acepta una jugada hasta que se evalúa el fin de turno.
+  // `resolviendo` (estado) recién se activa dentro de resolverCadena y, con un especial, eso pasa
+  // después de las animaciones: en ese hueco se podía hacer otra jugada (incluso sin movimientos),
+  // quedaban dos turnos en paralelo y el nivel terminaba dos veces — "No llegaste al objetivo" y,
+  // un segundo después, "¡Nivel superado!" cuando el otro turno sumaba sus puntos.
+  const turnoEnCursoRef = useRef(false);
+  // El nivel / la partida termina UNA sola vez.
+  const terminadoRef = useRef(false);
   const [mejorPuntaje, setMejorPuntaje] = useState<number | null>(null);
   const [esRecordNuevo, setEsRecordNuevo] = useState(false);
   const [medida, setMedida] = useState(0);
@@ -655,6 +663,8 @@ export default function JardinScreen() {
   }, [reproducir, sumarPuntos]);
 
   const finalizarPartida = useCallback(() => {
+    if (terminadoRef.current) return;
+    terminadoRef.current = true;
     setFase('fin');
     const puntajeFinal = puntajeRef.current;
     const esRecord = mejorPuntajeRef.current == null || puntajeFinal > mejorPuntajeRef.current;
@@ -667,6 +677,8 @@ export default function JardinScreen() {
   }, [reproducir, guardar]);
 
   const finalizarNivel = useCallback((resultado: 'ganado' | 'perdido') => {
+    if (terminadoRef.current) return;
+    terminadoRef.current = true;
     setFase('fin');
     setResultadoNivel(resultado);
     const puntajeFinal = puntajeRef.current;
@@ -701,7 +713,7 @@ export default function JardinScreen() {
   }, [modoNivel, nivelConfig, finalizarPartida, finalizarNivel]);
 
   const intentarIntercambio = useCallback((origen: Coord, destino: Coord) => {
-    if (resolviendo || fase !== 'jugando') return;
+    if (turnoEnCursoRef.current || terminadoRef.current || resolviendo || fase !== 'jugando' || movimientos <= 0) return;
     if (Math.abs(origen.r - destino.r) + Math.abs(origen.c - destino.c) !== 1) return;
     if (destino.r < 0 || destino.r >= FILAS || destino.c < 0 || destino.c >= COLUMNAS) return;
 
@@ -723,22 +735,27 @@ export default function JardinScreen() {
             piezaDestino.especial ? piezaOrigen.tipo : piezaDestino.tipo,
           );
 
+      turnoEnCursoRef.current = true;
       setTablero(probado);
       reproducir('linea_completa');
       const movimientosNuevos = movimientos - 1;
       setMovimientos(movimientosNuevos);
 
       void (async () => {
-        const expandido = expandirEfectosEspeciales(probado, limpiarCombo);
-        setCeldasResaltadas(expandido);
-        await esperar(ESPERA_RESALTADO_MS);
-        sumarPuntos(expandido.size * 10);
-        let siguiente = aplicarGravedadYRellenar(probado, expandido);
-        setTablero(siguiente);
-        setCeldasResaltadas(new Set());
-        await esperar(ESPERA_GRAVEDAD_MS);
-        siguiente = await resolverCadena(siguiente);
-        evaluarFinDeTurno(movimientosNuevos);
+        try {
+          const expandido = expandirEfectosEspeciales(probado, limpiarCombo);
+          setCeldasResaltadas(expandido);
+          await esperar(ESPERA_RESALTADO_MS);
+          sumarPuntos(expandido.size * 10);
+          let siguiente = aplicarGravedadYRellenar(probado, expandido);
+          setTablero(siguiente);
+          setCeldasResaltadas(new Set());
+          await esperar(ESPERA_GRAVEDAD_MS);
+          siguiente = await resolverCadena(siguiente);
+          evaluarFinDeTurno(movimientosNuevos);
+        } finally {
+          turnoEnCursoRef.current = false;
+        }
       })();
       return;
     }
@@ -750,18 +767,23 @@ export default function JardinScreen() {
       return;
     }
 
+    turnoEnCursoRef.current = true;
     setTablero(probado);
     reproducir('colocar');
     const movimientosNuevos = movimientos - 1;
     setMovimientos(movimientosNuevos);
 
-    void resolverCadena(probado, destino).then(() => {
-      evaluarFinDeTurno(movimientosNuevos);
-    });
+    void resolverCadena(probado, destino)
+      .then(() => {
+        evaluarFinDeTurno(movimientosNuevos);
+      })
+      .finally(() => {
+        turnoEnCursoRef.current = false;
+      });
   }, [tablero, resolviendo, fase, movimientos, resolverCadena, evaluarFinDeTurno, reproducir, sumarPuntos]);
 
   const onTapCelda = useCallback((r: number, c: number) => {
-    if (resolviendo || fase !== 'jugando') return;
+    if (turnoEnCursoRef.current || terminadoRef.current || resolviendo || fase !== 'jugando') return;
 
     if (!seleccionado) {
       setSeleccionado({ r, c });
@@ -790,6 +812,8 @@ export default function JardinScreen() {
     setResultadoNivel(null);
     setEstrellasGanadas(null);
     reiniciarGuardado();
+    turnoEnCursoRef.current = false;
+    terminadoRef.current = false;
     setFase('jugando');
   }, [presupuestoMovimientos, reiniciarGuardado]);
 
