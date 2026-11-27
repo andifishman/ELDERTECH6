@@ -15,6 +15,7 @@ describe('detectarPedidoDeIr', () => {
     ['como voy a horarios', 'actividades'],
     ['¿Cómo llego a las actividades?', 'actividades'],
     ['donde esta la radio', 'radio'],
+    ['donde estan los tutoriales', 'tutoriales'],
     ['como entro a los juegos', 'juegos'],
     ['llevame al clima', 'clima'],
     ['como hago para ver mis recordatorios', 'agenda'],
@@ -120,7 +121,7 @@ describe('corregirCaminos', () => {
 
   it('respeta caminos correctos de varias líneas', async () => {
     const { corregirCaminos } = await import('./secciones');
-    const ok = '1. Tocá el botón naranja "Más".\n2. Ahí tocá la tarjeta "Radio".';
+    const ok = '1. Tocá el botón naranja "Más".\n2. Ahí tocá la tarjeta "Tutoriales".';
     expect(corregirCaminos(ok)).toBe(ok);
     const ok2 = 'Tocá el botón naranja "Más" y después la tarjeta "Agenda".';
     expect(corregirCaminos(ok2)).toBe(ok2);
@@ -130,6 +131,13 @@ describe('corregirCaminos', () => {
     const { corregirCaminos } = await import('./secciones');
     expect(corregirCaminos('Tocá el botón naranja "Más" y después la tarjeta "Juegos".')).toBe(
       'En la pantalla de inicio, tocá el botón "Juegos".',
+    );
+  });
+
+  it('Radio ya no está en "Más": se corrige al botón celeste de inicio', async () => {
+    const { corregirCaminos } = await import('./secciones');
+    expect(corregirCaminos('Tocá el botón naranja "Más" y después la tarjeta "Radio".')).toBe(
+      'En la pantalla de inicio, tocá el botón celeste "Radio".',
     );
   });
 

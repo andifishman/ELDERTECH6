@@ -26,7 +26,7 @@ export interface SeccionGuia {
   pasos: string[];
   /** Aclaración corta y útil, opcional (se muestra destacada) */
   tip?: string;
-  /** Subsecciones: las tarjetas de "Más" (Clima, Radio, Agenda…) o cada juego dentro de "Juegos" */
+  /** Subsecciones: las tarjetas de "Más" (Clima, Tutoriales, Agenda…) o cada juego dentro de "Juegos" */
   subsecciones?: SeccionGuia[];
 }
 
@@ -42,7 +42,7 @@ export const INTRO_GENERAL: SeccionGuia = {
     'Arriba de todo dice "ElderTech" y, al lado, este mismo botón "¿Cómo usar?" que te trajo hasta esta guía.',
     'Debajo está el botón "Novedades", con las noticias de la residencia que publica el personal. Si hay alguna que todavía no leíste, dice cuántas son nuevas en rojo.',
     'Más abajo aparece la fecha de hoy.',
-    'Más abajo hay botones grandes de colores: Actividades, Llamar, Tutoriales, Asistente, Juegos, Hablemos y Más. Tocá cualquiera para entrar a esa parte de la aplicación.',
+    'Más abajo hay botones grandes de colores: Actividades, Llamar, Radio, Asistente, Juegos, Hablemos y Más. Tocá cualquiera para entrar a esa parte de la aplicación.',
     'Cada botón tiene, al lado de su dibujo, un parlante 🔊 — tocalo para que el celular te lea en voz alta de qué se trata, sin necesidad de leer la pantalla.',
     'Adentro de cualquier sección vas a encontrar, arriba a la izquierda, una flecha "←" — tocala cuando quieras volver a la pantalla anterior.',
   ],
@@ -83,20 +83,19 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     ],
   },
   {
-    id: 'tutoriales',
-    emoji: '📚',
-    titulo: 'Tutoriales',
+    id: 'radio',
+    emoji: '📻',
+    titulo: 'Radio',
     color: '#0097A7',
-    intro: 'Tutoriales tiene guías paso a paso y videos para aprender a usar el celular.',
+    intro: 'Radio te deja escuchar radios en vivo, organizadas por idioma y por tipo.',
     pasos: [
-      'Desde la pantalla principal, tocá el botón celeste "Tutoriales".',
-      'Arriba vas a ver categorías, como "WhatsApp" o "Fotos": tocá una para ver solo esos tutoriales, o dejá "Todo" para verlos todos juntos.',
-      'Debajo hay un buscador: escribí una palabra para encontrar un tutorial más rápido.',
-      'Tocá la estrella de arriba a la derecha para ver solamente los tutoriales que marcaste como favoritos.',
-      'Tocá cualquier tutorial para abrirlo. Si es un video, se reproduce solo; si es una guía, vas a ver los pasos con fotos.',
-      'Dentro de un video hay un botón que dice "Ver los pasos uno por uno" — tocalo si además del video querés ver la guía escrita con imágenes.',
-      'En la guía escrita, tocá "Siguiente" para avanzar de a un paso, y "Anterior" para volver. Al terminar todos los pasos aparece un cartel de "¡Muy bien!".',
+      'Desde la pantalla principal, tocá el botón celeste "Radio".',
+      'Vas a ver una lista de radios: podés filtrarlas por idioma (Español, Hebreo, Inglés) o por categoría, tocando los botones de arriba.',
+      'Tocá cualquier radio para abrirla y empezar a escucharla.',
+      'Mientras suena, aparece una barra abajo de la pantalla con el nombre de la radio y un botón para detenerla — se ve en cualquier parte de la aplicación, no hace falta quedarse en la pantalla de Radio.',
+      'Adentro de una radio, tocá "Agregar a favoritos" (el corazón) para guardarla: tus radios favoritas aparecen primero en la lista.',
     ],
+    tip: 'Podés ir a Actividades, Llamar o cualquier otra sección mientras escuchás: la radio sigue sonando hasta que la detengas.',
   },
   {
     id: 'asistente',
@@ -273,10 +272,10 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
     emoji: '➕',
     titulo: 'Más',
     color: '#FFA726',
-    intro: 'Más reúne otras funciones útiles: el clima, la radio, tu agenda de recordatorios, un lugar para mandar sugerencias al personal, y los ajustes de accesibilidad.',
+    intro: 'Más reúne otras funciones útiles: el clima, los tutoriales para aprender a usar el celular, tu agenda de recordatorios, un lugar para mandar sugerencias al personal, y los ajustes de accesibilidad.',
     pasos: [
       'Desde la pantalla principal, tocá el botón naranja "Más".',
-      'Vas a ver varias tarjetas: Clima, Radio, Agenda, Sugerencias y Accesibilidad. Tocá "Ver más" en cualquiera para entrar.',
+      'Vas a ver varias tarjetas: Clima, Tutoriales, Agenda, Sugerencias y Accesibilidad. Tocá "Ver más" en cualquiera para entrar.',
     ],
     subsecciones: [
       {
@@ -293,17 +292,21 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
         tip: 'Tocá "🔊 Escuchar" para que te lean el pronóstico completo en voz alta.',
       },
       {
-        id: 'radio',
-        emoji: '📻',
-        titulo: 'Radio',
-        color: '#2E7D32',
-        intro: 'Te deja escuchar radios en vivo, organizadas por idioma y por tipo.',
+        id: 'tutoriales',
+        emoji: '📚',
+        titulo: 'Tutoriales',
+        color: Colors.brand.purple,
+        intro: 'Tutoriales tiene guías paso a paso y videos para aprender a usar el celular.',
         pasos: [
-          'Vas a ver una lista de radios: podés filtrarlas por idioma (Español, Hebreo, Inglés) o por categoría, tocando los botones de arriba.',
-          'Tocá cualquier radio para empezar a escucharla.',
-          'Mientras suena, aparece una barra abajo de la pantalla con el nombre de la radio y un botón para detenerla — se ve en cualquier parte de la aplicación, no hace falta quedarse en la pantalla de Radio.',
-          'Tocá la estrella de una radio para guardarla como favorita.',
+          'Desde "Más", tocá "Ver más" en la tarjeta de Tutoriales.',
+          'Arriba vas a ver categorías, como "WhatsApp" o "Fotos": tocá una para ver solo esos tutoriales, o dejá "Todo" para verlos todos juntos.',
+          'Debajo hay un buscador: escribí una palabra para encontrar un tutorial más rápido.',
+          'Tocá la estrella de arriba a la derecha para ver solamente los tutoriales que marcaste como favoritos.',
+          'Tocá cualquier tutorial para abrirlo. Si es un video, se reproduce solo; si es una guía, vas a ver los pasos con fotos.',
+          'Dentro de un video hay un botón que dice "Ver los pasos uno por uno" — tocalo si además del video querés ver la guía escrita con imágenes.',
+          'En la guía escrita, tocá "Siguiente" para avanzar de a un paso, y "Anterior" para volver. Al terminar todos los pasos aparece un cartel de "¡Muy bien!".',
         ],
+        tip: 'Si no encontrás lo que buscás, preguntale al Asistente: también te puede recomendar un tutorial.',
       },
       {
         id: 'agenda',

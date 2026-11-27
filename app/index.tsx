@@ -1,4 +1,4 @@
-//pantalla principal (home) con el menu de accesos directos — Horarios, Llamar, Tutoriales, Asistente, Más
+//pantalla principal (home) con el menu de accesos directos — Actividades, Llamar, Radio, Asistente, Juegos, Hablemos, Más
 import { RUTA_HORARIOS } from '@/constants/features';
 import { useRouter, type Href } from 'expo-router';
 import { Colors } from '@/constants/Colors';
@@ -56,15 +56,15 @@ const menuItems: MenuItem[] = [
     audio: 'Llamar. Desde acá podés llamar o escribirle por WhatsApp a tu familia y amigos.',
   },
   {
-    id: 'articulos',
-    route: '/articulos',
-    icon: '📚',
-    label: 'Tutoriales',
-    subtitle: 'Aprendé con videos',
+    id: 'radio',
+    route: '/mas/radio',
+    icon: '📻',
+    label: 'Radio',
+    subtitle: 'Escuchá radios en vivo',
     color: '#0097A7',
     iconBg: '#80DEEA',
     size: 'medium',
-    audio: 'Tutoriales. Encontrás guías y videos para aprender a usar el celular paso a paso.',
+    audio: 'Radio. Escuchá radios en vivo, en español, hebreo e inglés. Sigue sonando aunque vayas a otra parte de la aplicación.',
   },
   {
     id: 'asistente',
@@ -108,7 +108,7 @@ const menuItems: MenuItem[] = [
     color: '#FFA726',
     iconBg: '#FFCC80',
     size: 'medium',
-    audio: 'Más opciones. Acá encontrás el clima, la radio, tu agenda, los mensajes de tu familia, sugerencias y accesibilidad.',
+    audio: 'Más opciones. Acá encontrás el clima, los tutoriales para aprender a usar el celular, tu agenda, sugerencias y accesibilidad.',
   },
 ];
 
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   },
   mediumCardIcon: { fontSize: 26 },
   mediumCardLabel: { fontSize: 29, fontWeight: 'bold', color: '#FFFFFF' },
-  // 3 columnas en un ancho justo (tablet en vertical): el nombre más largo ("Tutoriales") tiene que entrar entero
+  // 3 columnas en un ancho justo (tablet en vertical): el nombre más largo ("Asistente", "Hablemos") tiene que entrar entero
   mediumCardLabelAngosta: { fontSize: 22 },
 
   // Celular: 3 columnas en ~110 px de tarjeta — todo se achica para que ícono + parlante + nombre entren

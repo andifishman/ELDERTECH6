@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.medium,
   },
 
-  // Grilla de cuadrados para las subsecciones (ej: Clima/Radio/Juegos/Sugerencias
+  // Grilla de cuadrados para las subsecciones (ej: Clima/Tutoriales/Agenda/Sugerencias
   // dentro de "Más", o cada juego dentro de "Juegos") — usa flexWrap en vez del
   // reparto fijo en 4 filas de la grilla principal, porque acá la cantidad de
   // ítems varía según la sección (4, 7, etc).

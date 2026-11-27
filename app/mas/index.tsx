@@ -35,12 +35,12 @@ const OPCIONES_ACTIVAS: OpcionMenu[] = [
     textoHablar: 'Clima. Consultá el clima del día.',
   },
   {
-    id: 'radio',
-    emoji: '📻',
-    titulo: 'Radio',
-    descripcion: 'Escuchá la radio',
-    ruta: '/mas/radio',
-    textoHablar: 'Radio. Escuchá radios en vivo.',
+    id: 'tutoriales',
+    emoji: '📚',
+    titulo: 'Tutoriales',
+    descripcion: 'Aprendé con videos',
+    ruta: '/articulos',
+    textoHablar: 'Tutoriales. Guías y videos para aprender a usar el celular paso a paso.',
   },
   {
     id: 'agenda',
@@ -78,7 +78,7 @@ export default function MasScreen() {
         titulo="Más"
         mostrarVolver
         tituloGrande
-        textoHablar="Más opciones: Clima, Radio, Agenda, Sugerencias, y Accesibilidad."
+        textoHablar="Más opciones: Clima, Tutoriales, Agenda, Sugerencias, y Accesibilidad."
       />
 
       <ScrollView

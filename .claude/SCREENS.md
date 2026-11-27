@@ -22,7 +22,8 @@
 - Header: verde oscuro (#1B5E3B) con logo + globo
 - Fecha del día + avatar del usuario
 - Tarjeta grande Horarios (roja)
-- Tarjetas: Llamar (verde), Tutoriales (celeste), Asistente (azul), Juegos (índigo), Hablemos (violeta), Más (naranja)
+- Tarjetas: Llamar (verde), Radio (celeste), Asistente (azul), Juegos (índigo), Hablemos (violeta), Más (naranja)
+- Radio tiene botón propio en la Home (la ruta sigue siendo `/mas/radio`); Tutoriales pasó a "Más" (la ruta sigue siendo `/articulos`)
 - Cada tarjeta pequeña tiene SpeakRow
 - La tarjeta Horarios tiene SpeakButton chip
 
@@ -42,8 +43,8 @@
 - SpeakButton en cada sección
 
 ### Más menú (`app/mas/index.tsx`)
-- Lista vertical: Clima, Radio, Agenda, Mi familia, Sugerencias, Accesibilidad
-- Juegos ya no está acá: tiene botón propio en la Home (la ruta sigue siendo `/mas/juegos`)
+- Lista vertical: Clima, Tutoriales, Agenda, Sugerencias, Accesibilidad
+- Juegos y Radio ya no están acá: tienen botón propio en la Home (las rutas siguen siendo `/mas/juegos` y `/mas/radio`)
 - Botón "Volver" grande al pie
 
 ### Clima (`app/mas/clima.tsx`)
