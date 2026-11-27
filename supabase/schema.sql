@@ -485,7 +485,7 @@ CREATE TABLE public.partidas_juegos (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   organizacion_id uuid NOT NULL,
   residente_id uuid NOT NULL,
-  juego text NOT NULL CHECK (juego = ANY (ARRAY['ahorcado'::text, 'memotest'::text, 'simon'::text, 'conexiones'::text, 'laberinto'::text, 'sopa'::text, 'puntos'::text, 'jardin'::text, 'bloques'::text, 'palabras'::text])),
+  juego text NOT NULL CHECK (juego = ANY (ARRAY['ahorcado'::text, 'memotest'::text, 'simon'::text, 'conexiones'::text, 'laberinto'::text, 'puntos'::text, 'jardin'::text, 'bloques'::text, 'palabras'::text])),
   resultado text CHECK (resultado = ANY (ARRAY['ganado'::text, 'perdido'::text])),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   puntos integer CHECK (puntos IS NULL OR puntos >= 0),

@@ -85,4 +85,4 @@
 
 ### Juegos
 - Definir juegos apropiados para adultos mayores
-- Opciones: memoria, trivia, sopa de letras
+- Opciones: memoria, trivia, palabras

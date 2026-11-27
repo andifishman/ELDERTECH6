@@ -86,7 +86,7 @@ const menuItems: MenuItem[] = [
     color: '#5C6BC0',
     iconBg: '#9FA8DA',
     size: 'medium',
-    audio: 'Juegos. Juegos simples para divertirte y ejercitar la memoria, como memotest, sopa de letras y ahorcado.',
+    audio: 'Juegos. Juegos simples para divertirte y ejercitar la memoria, como memotest, ahorcado y palabras.',
   },
   {
     id: 'hablemos',

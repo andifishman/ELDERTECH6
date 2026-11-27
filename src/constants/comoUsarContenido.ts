@@ -222,20 +222,6 @@ export const SECCIONES_GUIA: SeccionGuia[] = [
         ],
       },
       {
-        id: 'sopa',
-        emoji: '🔤',
-        titulo: 'Sopa de Letras',
-        color: '#F57F17',
-        intro: 'Encontrá las palabras escondidas entre las letras de la grilla.',
-        pasos: [
-          'Hay palabras escondidas en la grilla de letras, sobre un tema (por ejemplo, Animales o Colores).',
-          'Arrastrá el dedo sobre las letras, o tocá cada letra por separado, en el orden que quieras.',
-          'Cuando seleccionás todas las letras correctas de una palabra, se marca sola automáticamente.',
-          'Las palabras que tenés que encontrar aparecen en una lista debajo de la grilla.',
-        ],
-        tip: 'Si no encontrás una palabra, tocá "💡 Pedir pista".',
-      },
-      {
         id: 'puntos',
         emoji: '🔵',
         titulo: 'Une los Puntos',

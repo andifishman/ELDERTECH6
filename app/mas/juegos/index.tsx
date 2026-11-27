@@ -72,13 +72,6 @@ const JUEGOS: {
     color: '#00796B',
   },
   {
-    id: 'sopa',
-    emoji: '🔤',
-    titulo: 'Sopa de Letras',
-    descripcion: 'Encontrá las palabras escondidas',
-    color: '#F57F17',
-  },
-  {
     id: 'puntos',
     emoji: '🔵',
     titulo: 'Une los Puntos',
@@ -94,7 +87,7 @@ export default function JuegosScreen() {
         titulo="Juegos"
         subtitulo="Elegí un juego para jugar"
         mostrarVolver
-        textoHablar="Juegos. Jardín ElderTech, Palabras, Bloques ElderTech, Ahorcado, Memotest, Simon, Conexiones, Laberinto, Sopa de Letras y Une los Puntos."
+        textoHablar="Juegos. Jardín ElderTech, Palabras, Bloques ElderTech, Ahorcado, Memotest, Simon, Conexiones, Laberinto y Une los Puntos."
       />
 
       <ScrollView

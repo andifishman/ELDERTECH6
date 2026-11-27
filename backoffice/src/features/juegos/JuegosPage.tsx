@@ -38,7 +38,6 @@ const JUEGOS: Record<string, InfoJuego> = {
   simon: { emoji: '🎮', titulo: 'Simon', tienePuntaje: false },
   conexiones: { emoji: '🔗', titulo: 'Conexiones', tienePuntaje: false },
   laberinto: { emoji: '🌀', titulo: 'Laberinto', tienePuntaje: false },
-  sopa: { emoji: '🔤', titulo: 'Sopa de Letras', tienePuntaje: false },
   puntos: { emoji: '🔵', titulo: 'Une los Puntos', tienePuntaje: false },
 };
 

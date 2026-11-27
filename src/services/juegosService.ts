@@ -3,7 +3,7 @@
 // puntaje en los juegos de puntaje). Habla con el backend propio.
 import { apiClient, ApiError } from './apiClient';
 
-export type Juego = 'ahorcado' | 'memotest' | 'simon' | 'conexiones' | 'laberinto' | 'sopa' | 'puntos' | 'jardin' | 'bloques' | 'palabras';
+export type Juego = 'ahorcado' | 'memotest' | 'simon' | 'conexiones' | 'laberinto' | 'puntos' | 'jardin' | 'bloques' | 'palabras';
 
 export interface EstadisticasPuntaje {
   mejorPuntaje: number | null;

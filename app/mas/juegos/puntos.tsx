@@ -279,12 +279,12 @@ export default function PuntosScreen() {
 
   // Posición de la grilla en pantalla, medida en el momento del toque (no al
   // montar la pantalla) — así el cálculo de celda sigue siendo correcto aunque
-  // el usuario haya scrolleado antes de tocar. Mismo enfoque que sopa.tsx.
+  // el usuario haya scrolleado antes de tocar.
   const gridViewRef = useRef<View>(null);
   const gridMeasure = useRef({ x: 0, y: 0 });
   // El dedo tapa el punto que se está tocando, así que el contacto real queda
   // un poco más abajo de donde el usuario apunta visualmente — sin este
-  // ajuste, se selecciona la fila de abajo (mismo fix que sopa.tsx).
+  // ajuste, se selecciona la fila de abajo.
   const TOUCH_Y_OFFSET = 16;
   const getCellAt = (pageX: number, pageY: number): Cell | null => {
     const size = cellSizeRef.current;

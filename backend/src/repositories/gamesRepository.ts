@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { withRepoLogging } from '../logging/repoLogger';
 
-export const JUEGOS = ['ahorcado', 'memotest', 'simon', 'conexiones', 'laberinto', 'sopa', 'puntos', 'jardin', 'bloques', 'palabras'] as const;
+export const JUEGOS = ['ahorcado', 'memotest', 'simon', 'conexiones', 'laberinto', 'puntos', 'jardin', 'bloques', 'palabras'] as const;
 export type Juego = (typeof JUEGOS)[number];
 export type ResultadoPartida = 'ganado' | 'perdido';
 

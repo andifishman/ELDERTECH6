@@ -112,9 +112,9 @@ export const SECCIONES_APP: readonly SeccionApp[] = [
     nombre: 'Juegos',
     ruta: '/mas/juegos',
     emoji: '🎮',
-    palabras: ['juego', 'juegos', 'jugar', 'memotest', 'sopa de letras', 'ahorcado', 'laberinto'],
+    palabras: ['juego', 'juegos', 'jugar', 'memotest', 'ahorcado', 'laberinto'],
     comoLlegar: 'En la pantalla de inicio, tocá el botón "Juegos".',
-    queHay: 'Ahí hay juegos para ejercitar la memoria y pasar el rato, como memotest, sopa de letras y ahorcado.',
+    queHay: 'Ahí hay juegos para ejercitar la memoria y pasar el rato, como memotest, ahorcado y palabras.',
   },
   {
     id: 'sugerencias',
