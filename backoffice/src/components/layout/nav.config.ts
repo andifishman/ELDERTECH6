@@ -37,7 +37,7 @@ export interface NavItem {
 // Horarios: hoy se muestran los del Hogar (feed externo). La gestión propia (/horarios) sigue completa
 // y funcionando — solo está oculta del menú — para ofrecérsela a geriátricos sin sistema propio.
 // Para volver a usarla: poner esto en false.
-const HORARIOS_DEL_HOGAR = true;
+export const HORARIOS_DEL_HOGAR = true;
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, modulo: 'dashboard' },

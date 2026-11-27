@@ -16,7 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LoadingState } from '@/components/common/states';
-import { formatHora, iniciales } from '@/lib/utils';
+import { iniciales } from '@/lib/utils';
+import { HORARIOS_DEL_HOGAR } from '@/components/layout/nav.config';
 import { useRealtime } from '@/hooks/useRealtime';
 import { queryKeys } from '@/lib/queryClient';
 import {
@@ -84,7 +85,7 @@ export function DashboardPage() {
               <p className="text-xs capitalize text-muted-foreground">{fechaHoy}</p>
             </div>
             <Button asChild variant="outline" size="sm">
-              <Link to="/horarios">Ver todas</Link>
+              <Link to={HORARIOS_DEL_HOGAR ? '/horarios-hogar' : '/horarios'}>Ver todas</Link>
             </Button>
           </CardHeader>
           <CardContent>
@@ -95,16 +96,21 @@ export function DashboardPage() {
             ) : (
               <ul className="divide-y divide-border">
                 {(actividadesHoy.data ?? []).map((a) => (
-                  <li key={a.id} className="flex items-center gap-3 py-3">
-                    <span className="w-14 shrink-0 text-sm font-semibold text-primary-700">{formatHora(a.hora_inicio)}</span>
-                    <span className="text-xl">{a.emoji_icono ?? a.tipo_actividad?.emoji ?? '📌'}</span>
+                  <li key={a.id} className={`flex items-center gap-3 py-3 ${a.suspendida ? 'opacity-60' : ''}`}>
+                    <span className="w-14 shrink-0 text-sm font-semibold text-primary-700">{a.hora ?? 'A coord.'}</span>
+                    {a.emoji ? (
+                      <span className="text-xl">{a.emoji}</span>
+                    ) : (
+                      <CalendarDays className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                    )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{a.nombre}</p>
+                      <p className={`truncate text-sm font-medium text-foreground ${a.suspendida ? 'line-through' : ''}`}>{a.nombre}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {a.ubicacion?.nombre ?? 'Sin lugar'}
-                        {a.responsable ? ` · ${a.responsable.nombre} ${a.responsable.apellido}` : ''}
+                        {a.lugar ?? 'Sin lugar'}
+                        {a.detalle ? ` · ${a.detalle}` : ''}
                       </p>
                     </div>
+                    {a.suspendida && <Badge variant="danger">Suspendida</Badge>}
                   </li>
                 ))}
               </ul>

@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/apiClient';
 import type { AuditLog, DashboardKpis } from '@/types/backoffice.types';
-import type { ActividadCompleta, Residente } from '@/types/database.types';
+import type { Residente } from '@/types/database.types';
 
 export interface ResidenteConConexion extends Residente {
   ultima_conexion: string | null;
@@ -10,8 +10,21 @@ export async function obtenerKpis(): Promise<DashboardKpis> {
   return apiClient.get<DashboardKpis>('/api/admin/dashboard/kpis');
 }
 
-export async function obtenerActividadesHoy(): Promise<ActividadCompleta[]> {
-  return apiClient.get<ActividadCompleta[]>('/api/admin/dashboard/activities-today');
+/** Actividad de hoy — las mismas que ve el residente en la app (grilla del Hogar o tabla propia, lo decide el backend). */
+export interface ActividadHoy {
+  id: string;
+  /** "HH:MM"; null si es "Horario a coordinar". */
+  hora: string | null;
+  nombre: string;
+  emoji: string | null;
+  lugar: string | null;
+  /** Quién la da (tallerista / responsable). */
+  detalle: string | null;
+  suspendida: boolean;
+}
+
+export async function obtenerActividadesHoy(): Promise<ActividadHoy[]> {
+  return apiClient.get<ActividadHoy[]>('/api/admin/dashboard/activities-today');
 }
 
 export async function obtenerResidentesRecientes(limite = 5): Promise<ResidenteConConexion[]> {
