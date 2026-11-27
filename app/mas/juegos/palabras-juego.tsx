@@ -39,8 +39,9 @@ const AMARILLO_OSCURO = '#E8A200';
 const TINTA = '#2B3A55';
 const MARRON = '#3A2A00';
 
-const TAM_LETRA = 70; // diámetro del círculo de una letra elegida
-const RADIO_ACIERTO = 40; // qué tan cerca del centro de una letra tiene que pasar el dedo
+const TAM_LETRA_MAX = 70; // diámetro del círculo de una letra elegida (se achica un poco si la rueda es chica)
+const TAM_LETRA_MIN = 56;
+const RADIO_ACIERTO_MAX = 40; // qué tan cerca del centro de una letra tiene que pasar el dedo
 
 type TipoPildora = 'armando' | 'ok' | 'extra' | 'error' | 'info';
 interface Pildora {
@@ -374,7 +375,7 @@ export default function PalabrasJuegoScreen() {
       const sel = seleccionRef.current;
       if (sel.length > 0) setDedo({ x, y });
 
-      const acierto = centros.findIndex((c) => Math.hypot(c.x - x, c.y - y) <= RADIO_ACIERTO);
+      const acierto = centros.findIndex((c) => Math.hypot(c.x - x, c.y - y) <= radioAciertoRef.current);
       if (acierto < 0) return;
 
       // Volver hacia atrás por la letra anterior la quita.
@@ -404,6 +405,8 @@ export default function PalabrasJuegoScreen() {
     [mostrarPildora, pEscala, pSube, pOpacidad, pSacude],
   );
 
+  // Lo calcula el render según el tamaño de la rueda (en una rueda chica las letras quedan más juntas).
+  const radioAciertoRef = useRef(RADIO_ACIERTO_MAX);
   const procesarRef = useRef(procesarPunto);
   procesarRef.current = procesarPunto;
 
@@ -488,7 +491,14 @@ export default function PalabrasJuegoScreen() {
     Animated.spring(ruedaEscala, { toValue: 1, friction: 4, tension: 140, useNativeDriver: true }).start();
   };
 
-  const volver = () => router.replace('/mas/juegos/palabras' as never);
+  // Volver de verdad a la lista (sacar este nivel de la pila), NO abrir otra lista encima: con replace
+  // cada nivel jugado dejaba una pantalla de Palabras más apilada y la flecha de la lista había que
+  // tocarla varias veces para salir. El nivel siempre se abre desde la lista (y "Siguiente nivel" lo
+  // reemplaza), así que atrás está la lista; replace queda solo si se entró directo al nivel (ej. F5 en la web).
+  const volver = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/mas/juegos/palabras' as never);
+  };
   const irAlSiguiente = () => {
     if (numeroNivel >= TOTAL_NIVELES_PALABRAS) volver();
     else router.replace({ pathname: '/mas/juegos/palabras-juego', params: { nivel: String(numeroNivel + 1) } } as never);
@@ -507,13 +517,20 @@ export default function PalabrasJuegoScreen() {
   }
 
   // ─── Medidas ───
+  // El alto es lo que manda (casi todos los niveles son de 8×9 casillas): la rueda se achica en pantallas
+  // bajas y el contador "X / Y palabras" comparte franja con la píldora, así la grilla se lleva el resto.
+  // Antes la rueda ocupaba siempre ~340 px y en la mayoría de los celulares las casillas quedaban de 30 px.
   const ALTO_BARRA = 88;
-  const ALTO_PILDORA = 76;
-  const RESERVA_CONTADOR = 30; // lugar propio para "X / Y palabras", así no se pisa con la grilla
-  const diametro = Math.round(Math.min(width - 24, 340, (height - insets.top - insets.bottom - ALTO_BARRA - ALTO_PILDORA) * 0.52));
-  const radioRueda = diametro / 2 - TAM_LETRA / 2 - 14;
-  const altoGrilla = Math.max(height - insets.top - insets.bottom - ALTO_BARRA - ALTO_PILDORA - diametro - 28, 150);
-  const celda = Math.max(30, Math.min(56, Math.floor((width - 40) / nivel.ancho), Math.floor((altoGrilla - RESERVA_CONTADOR) / nivel.alto)));
+  const ALTO_PILDORA = 64; // franja entre grilla y rueda: la píldora mientras se arma una palabra, si no el contador
+  const disponible = height - insets.top - insets.bottom - ALTO_BARRA - ALTO_PILDORA;
+  const diametro = Math.round(Math.max(230, Math.min(width - 24, 330, disponible * 0.4)));
+  const tamLetra = Math.round(Math.max(TAM_LETRA_MIN, Math.min(TAM_LETRA_MAX, diametro * 0.24)));
+  const radioRueda = diametro / 2 - tamLetra / 2 - 14;
+  // Que el dedo no "toque" dos letras vecinas a la vez cuando quedan juntas (rueda chica con 6 letras).
+  const separacionLetras = 2 * radioRueda * Math.sin(Math.PI / Math.max(nivel.letras.length, 2));
+  radioAciertoRef.current = Math.min(RADIO_ACIERTO_MAX, separacionLetras * 0.48);
+  const altoGrilla = Math.max(disponible - diametro - 24, 140);
+  const celda = Math.max(24, Math.min(56, Math.floor((width - 24) / nivel.ancho), Math.floor(altoGrilla / nivel.alto)));
   const anchoGrilla = celda * nivel.ancho;
   const altoGrillaReal = celda * nivel.alto;
 
@@ -569,7 +586,7 @@ export default function PalabrasJuegoScreen() {
       </View>
 
       {/* Grilla */}
-      <View style={[styles.zonaGrilla, { height: altoGrilla, paddingBottom: RESERVA_CONTADOR }]}>
+      <View style={[styles.zonaGrilla, { height: altoGrilla }]}>
         <Animated.View
           style={{
             width: anchoGrilla,
@@ -587,13 +604,15 @@ export default function PalabrasJuegoScreen() {
             );
           })}
         </Animated.View>
-        <Text style={styles.contador} allowFontScaling={false}>
-          {palabrasHechas.size} / {nivel.palabras.length} palabras{extrasHalladas.size > 0 ? `  ·  ${extrasHalladas.size} extra` : ''}
-        </Text>
       </View>
 
       {/* Píldora con la palabra que se va armando */}
       <View style={[styles.zonaPildora, { height: ALTO_PILDORA }]} pointerEvents="none">
+        {!pildora ? (
+          <Text style={styles.contador} allowFontScaling={false}>
+            {palabrasHechas.size} / {nivel.palabras.length} palabras{extrasHalladas.size > 0 ? `  ·  ${extrasHalladas.size} extra` : ''}
+          </Text>
+        ) : null}
         {pildora ? (
           <Animated.View
             style={[
@@ -629,8 +648,8 @@ export default function PalabrasJuegoScreen() {
               const elegida = seleccion.includes(posicion);
               const c = centros[posicion];
               return (
-                <View key={`${indiceLetra}-${posicion}`} pointerEvents="none" style={[styles.letraBase, { left: c.x - TAM_LETRA / 2, top: c.y - TAM_LETRA / 2 }, elegida && styles.letraElegida]}>
-                  <Text style={[styles.letraTexto, elegida && styles.letraTextoElegida]} allowFontScaling={false}>
+                <View key={`${indiceLetra}-${posicion}`} pointerEvents="none" style={[styles.letraBase, { left: c.x - tamLetra / 2, top: c.y - tamLetra / 2, width: tamLetra, height: tamLetra, borderRadius: tamLetra / 2 }, elegida && styles.letraElegida]}>
+                  <Text style={[styles.letraTexto, { fontSize: Math.round(tamLetra * 0.63) }, elegida && styles.letraTextoElegida]} allowFontScaling={false}>
                     {nivel.letras[indiceLetra]}
                   </Text>
                 </View>
@@ -735,14 +754,14 @@ const styles = StyleSheet.create({
   celdaVisible: { backgroundColor: AMARILLO, borderColor: AMARILLO_OSCURO },
   celdaPista: { backgroundColor: '#FFE08A', borderColor: '#FFFFFF' },
   celdaLetra: { fontWeight: '800', color: MARRON },
-  contador: { position: 'absolute', bottom: -6, fontSize: 17, fontWeight: '700', color: 'rgba(255,255,255,0.95)', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  contador: { fontSize: 17, fontWeight: '700', color: 'rgba(255,255,255,0.95)', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
 
   zonaPildora: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   pildora: { minHeight: 52, minWidth: 90, paddingHorizontal: 22, paddingVertical: 6, borderRadius: 26, alignItems: 'center', justifyContent: 'center', ...sombra },
   pildoraTexto: { fontWeight: '800', textAlign: 'center' },
 
   rueda: { backgroundColor: 'rgba(240,244,250,0.9)', ...sombra },
-  letraBase: { position: 'absolute', width: TAM_LETRA, height: TAM_LETRA, borderRadius: TAM_LETRA / 2, alignItems: 'center', justifyContent: 'center' },
+  letraBase: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   letraElegida: { backgroundColor: AMARILLO, transform: [{ scale: 1.08 }], ...sombra },
   letraTexto: { fontSize: 44, fontWeight: '800', color: TINTA },
   letraTextoElegida: { color: '#FFFFFF', textShadowColor: 'rgba(120,80,0,0.55)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },

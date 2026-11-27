@@ -57,7 +57,7 @@ export default function PalabrasNivelesScreen() {
       <FondoPalabras mundo={mundoActual} />
 
       <View style={[styles.barra, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity style={styles.volver} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Volver">
+        <TouchableOpacity style={styles.volver} onPress={() => (router.canGoBack() ? router.back() : router.replace('/mas/juegos' as never))} accessibilityRole="button" accessibilityLabel="Volver">
           <Text style={styles.volverTexto}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.titulo} allowFontScaling={false}>Palabras</Text>
